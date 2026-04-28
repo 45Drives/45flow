@@ -499,7 +499,7 @@ function handleResetOnboarding() {
 }
 
 function openUserGuide() {
-    window.open('https://github.com/45Drives/studio-share/blob/main/docs/45Flow_User_Guide.md', '_blank', 'noopener,noreferrer');
+    window.open('https://github.com/45Drives/45flow-premium-dev/blob/main/docs/45Flow_User_Guide.md', '_blank', 'noopener,noreferrer');
 }
 
 const busy = ref(false);

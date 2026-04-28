@@ -12,7 +12,7 @@ That means the key release requirement is: publish correct update metadata (`lat
 1. Keep GitHub publish config in `electron-builder.json`:
    - `publish.provider=github`
    - `owner=45Drives`
-   - `repo=studio-share`
+   - `repo=45flow-premium-dev`
 2. Ensure every release build uses the same `package.json` version on all machines.
 3. Install GitHub CLI (`gh`) on your Linux control machine and authenticate:
    - `gh auth login`
@@ -182,7 +182,7 @@ If all final signed artifacts are already in one folder (example `/builds/releas
 RELEASE_DIR=/builds/release \
 RELEASE_VERSION=1.0.1 \
 RELEASE_TAG=v1.0.1 \
-GH_REPO=45Drives/studio-share \
+GH_REPO=45Drives/45flow-premium-dev \
 GH_CREATE_DRAFT=1 \
 GH_UPLOAD_RELEASE=1 \
 GH_PUBLISH_RELEASE=0 \
@@ -207,7 +207,7 @@ Example: test only Windows + Linux while macOS is still building:
 RELEASE_DIR=/builds/release \
 RELEASE_VERSION=1.0.1 \
 RELEASE_TAG=v1.0.1 \
-GH_REPO=45Drives/studio-share \
+GH_REPO=45Drives/45flow-premium-dev \
 PUBLISH_WINDOWS=1 \
 PUBLISH_MAC=0 \
 PUBLISH_LINUX=1 \
@@ -230,7 +230,7 @@ Then publish when ready:
 RELEASE_DIR=/builds/release \
 RELEASE_VERSION=1.0.1 \
 RELEASE_TAG=v1.0.1 \
-GH_REPO=45Drives/studio-share \
+GH_REPO=45Drives/45flow-premium-dev \
 GH_CREATE_DRAFT=0 \
 GH_UPLOAD_RELEASE=0 \
 GH_PUBLISH_RELEASE=1 \

@@ -33,7 +33,7 @@
 
 ### 1. Install the Desktop Client
 
-Download the latest release from the [Releases page](https://github.com/45Drives/studio-share/releases) and install:
+Download the latest release from the [Releases page](https://github.com/45Drives/45flow-premium-dev/releases) and install:
 
 | OS | File | Install |
 |----|------|---------|

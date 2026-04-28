@@ -1,0 +1,64 @@
+name: Sync upstream bugfixes
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * 1' # every Monday at 8am UTC
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout premium repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_PAT }}
+
+      - name: Fetch upstream and attempt merge
+        id: merge
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git remote add upstream https://x-access-token:${{ secrets.SYNC_PAT }}@github.com/45Drives/studio-share.git
+          git fetch upstream main
+
+          BEHIND=$(git rev-list HEAD..upstream/main --count)
+          echo "behind=$BEHIND" >> "$GITHUB_OUTPUT"
+
+          if [ "$BEHIND" -eq 0 ]; then
+            echo "Already up to date."
+            exit 0
+          fi
+
+          BRANCH="sync/upstream-$(date +%Y%m%d-%H%M%S)"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          git checkout -b "$BRANCH"
+
+          if git merge upstream/main --no-edit; then
+            echo "conflicts=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "conflicts=true" >> "$GITHUB_OUTPUT"
+            git add -A
+            git commit --no-edit -m "merge: upstream sync (has conflicts)"
+          fi
+
+          git push origin "$BRANCH"
+
+      - name: Create pull request
+        if: steps.merge.outputs.behind != '0'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.SYNC_PAT }}
+          branch: ${{ steps.merge.outputs.branch }}
+          base: main
+          title: "Sync bugfixes from studio-share"
+          body: |
+            Automated merge from `studio-share` upstream.
+
+            **Commits behind:** ${{ steps.merge.outputs.behind }}
+            **Has conflicts:** ${{ steps.merge.outputs.conflicts }}
+
+            ${{ steps.merge.outputs.conflicts == 'true' && '⚠️ This merge has conflicts that need manual resolution.' || '✅ Clean merge — review and merge when ready.' }}
+          delete-branch: true

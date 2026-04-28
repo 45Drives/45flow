@@ -83,7 +83,7 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
 
 ## 2. Installation
 
-Download the latest version of 45Flow from the **[Releases page](https://github.com/45Drives/studio-share/releases)**. Under the **Assets** section of the latest release, download the file matching your operating system.
+Download the latest version of 45Flow from the **[Releases page](https://github.com/45Drives/45flow-premium-dev/releases)**. Under the **Assets** section of the latest release, download the file matching your operating system.
 
 ### macOS
 
@@ -778,7 +778,7 @@ The Client Log Viewer lets you inspect application activity, identify errors, an
 
 At the top, you'll see:
 
-- **Log file** — The name of the currently loaded log file (e.g., `45studio-share-client-2026-03-11.json`).
+- **Log file** — The name of the currently loaded log file (e.g., `4545flow-premium-dev-client-2026-03-11.json`).
 - **Directory** — The file path where logs are stored on your system.
 - **Entries loaded** — Total number of parsed log entries.
 
