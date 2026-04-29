@@ -11,7 +11,7 @@
                 <div class="flex items-center justify-between px-5 py-3 border-b border-default shrink-0" data-tour="settings-modal-header">
                     <div>
                         <h2 class="text-lg font-semibold text-default">45Flow Settings</h2>
-                        <div class="text-xs text-muted mt-0.5">Adjust global settings for share links.</div>
+                        <div class="text-xs text-accent mt-0.5">Adjust global settings for share links.</div>
                     </div>
                     <button class="btn btn-secondary" type="button" @click="close" :disabled="busy">Close</button>
                 </div>
@@ -54,7 +54,7 @@
                                 </SettingRow>
                             </div>
 
-                            <p class="text-xs font-semibold text-muted uppercase tracking-wide mt-5 mb-2">External Share URL (Public)</p>
+                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">External Share URL (Public)</p>
                             <div class="divide-y divide-default">
                                 <SettingRow label="Auto-detect" description="Use the detected public WAN IP.">
                                     <Switch v-model="externalAuto" :disabled="busy" :class="[
@@ -79,7 +79,7 @@
                                 </SettingRow>
                             </div>
 
-                            <p class="text-xs font-semibold text-muted uppercase tracking-wide mt-5 mb-2">Internal Share URL (LAN / VPN)</p>
+                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Internal Share URL (LAN / VPN)</p>
                             <div class="divide-y divide-default">
                                 <SettingRow label="Auto-detect" description="Use the detected LAN IP.">
                                     <Switch v-model="internalAuto" :disabled="busy" :class="[
@@ -102,10 +102,10 @@
 
                             <!-- URL Preview -->
                             <div class="mt-5 rounded-lg border border-default bg-default/40 p-3 space-y-2">
-                                <div class="text-xs font-semibold text-muted uppercase tracking-wide">URL Preview</div>
+                                <div class="text-xs font-semibold text-accent uppercase tracking-wide">URL Preview</div>
                                 <div class="grid grid-cols-2 gap-3 text-sm">
                                     <div>
-                                        <div class="text-xs text-muted">External</div>
+                                        <div class="text-xs text-accent">External</div>
                                         <div class="font-mono text-xs break-all mt-0.5">{{ externalPreview || '—' }}</div>
                                         <div v-if="externalAuto && externalEffectivePreview"
                                             class="mt-1 text-xs opacity-60 break-all">
@@ -113,11 +113,59 @@
                                         </div>
                                     </div>
                                     <div>
-                                        <div class="text-xs text-muted">Internal</div>
+                                        <div class="text-xs text-accent">Internal</div>
                                         <div class="font-mono text-xs break-all mt-0.5">{{ internalPreview || '—' }}</div>
                                     </div>
                                 </div>
                             </div>
+                        </template>
+
+                        <!-- ═══ Default Link Options ══════════════════════════ -->
+                        <template v-if="activeSection === 'linkOptions'">
+                            <div class="divide-y divide-default">
+                                <SettingRow label="Restrict access to users"
+                                    description="New links will require user accounts by default.">
+                                    <Switch v-model="defaultRestrictAccess" :disabled="busy" :class="[
+                                        defaultRestrictAccess ? 'bg-primary' : 'bg-well',
+                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
+                                    ]">
+                                        <span class="sr-only">Toggle restrict access</span>
+                                        <span :class="[
+                                            defaultRestrictAccess ? 'translate-x-4' : 'translate-x-0',
+                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
+                                        ]" />
+                                    </Switch>
+                                </SettingRow>
+                                <SettingRow label="Allow comments on open links"
+                                    description="Enable commenting for links accessible without sign-in.">
+                                    <Switch v-model="defaultAllowComments" :disabled="busy" :class="[
+                                        defaultAllowComments ? 'bg-primary' : 'bg-well',
+                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
+                                    ]">
+                                        <span class="sr-only">Toggle allow comments</span>
+                                        <span :class="[
+                                            defaultAllowComments ? 'translate-x-4' : 'translate-x-0',
+                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
+                                        ]" />
+                                    </Switch>
+                                </SettingRow>
+                                <SettingRow label="Generate review copies by default"
+                                    description="Create streamable review copies of video files when sharing.">
+                                    <Switch v-model="defaultUseProxyFiles" :disabled="busy" :class="[
+                                        defaultUseProxyFiles ? 'bg-primary' : 'bg-well',
+                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
+                                    ]">
+                                        <span class="sr-only">Toggle review copies</span>
+                                        <span :class="[
+                                            defaultUseProxyFiles ? 'translate-x-4' : 'translate-x-0',
+                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
+                                        ]" />
+                                    </Switch>
+                                </SettingRow>
+                            </div>
+                            <p class="text-xs text-accent mt-3">
+                                These defaults apply when creating new links and can be changed per link.
+                            </p>
                         </template>
 
                         <!-- ═══ Project Root ══════════════════════════════════ -->
@@ -144,60 +192,15 @@
                                     :apiFetch="apiFetch"
                                     :dirsOnly="true"
                                 />
-                                <div class="text-xs text-muted mt-1">
+                                <div class="text-xs text-accent mt-1">
                                     Absolute path used as the default root when creating share/upload destinations.
                                 </div>
                             </div>
                         </template>
 
-                        <!-- ═══ Default Link Options ══════════════════════════ -->
-                        <template v-if="activeSection === 'defaults'">
-                            <div class="divide-y divide-default">
-                                <SettingRow label="Restrict access to users" description="New links will require user accounts by default.">
-                                    <Switch v-model="defaultRestrictAccess" :disabled="busy" :class="[
-                                        defaultRestrictAccess ? 'bg-primary' : 'bg-well',
-                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                    ]">
-                                        <span class="sr-only">Toggle restrict access</span>
-                                        <span :class="[
-                                            defaultRestrictAccess ? 'translate-x-4' : 'translate-x-0',
-                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                        ]" />
-                                    </Switch>
-                                </SettingRow>
-                                <SettingRow label="Allow comments on open links" description="Enable commenting for links accessible without sign-in.">
-                                    <Switch v-model="defaultAllowComments" :disabled="busy" :class="[
-                                        defaultAllowComments ? 'bg-primary' : 'bg-well',
-                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                    ]">
-                                        <span class="sr-only">Toggle allow comments</span>
-                                        <span :class="[
-                                            defaultAllowComments ? 'translate-x-4' : 'translate-x-0',
-                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                        ]" />
-                                    </Switch>
-                                </SettingRow>
-                                <SettingRow label="Generate review copies by default" description="Create streamable review copies of video files when sharing.">
-                                    <Switch v-model="defaultUseProxyFiles" :disabled="busy" :class="[
-                                        defaultUseProxyFiles ? 'bg-primary' : 'bg-well',
-                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                    ]">
-                                        <span class="sr-only">Toggle review copies</span>
-                                        <span :class="[
-                                            defaultUseProxyFiles ? 'translate-x-4' : 'translate-x-0',
-                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                        ]" />
-                                    </Switch>
-                                </SettingRow>
-                            </div>
-                            <p class="text-xs text-muted mt-3">
-                                These defaults apply when creating new links and can be changed per link.
-                            </p>
-                        </template>
-
                         <!-- ═══ Application / Preferences ═════════════════════ -->
                         <template v-if="activeSection === 'app'">
-                            <p class="text-xs font-semibold text-muted uppercase tracking-wide mb-2">Display</p>
+                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Display</p>
                             <div class="divide-y divide-default">
                                 <SettingRow label="Time format" description="How timestamps are displayed throughout the app.">
                                     <div class="flex items-center gap-3">
@@ -217,7 +220,7 @@
                                 </SettingRow>
                             </div>
 
-                            <p class="text-xs font-semibold text-muted uppercase tracking-wide mt-5 mb-2">Guided Tours</p>
+                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Guided Tours</p>
                             <div class="divide-y divide-default">
                                 <SettingRow label="Re-enable guided tours" description="Reset onboarding walkthroughs so they show again on each page.">
                                     <button
@@ -247,9 +250,119 @@
                             </div>
                         </template>
 
+                        <!-- ═══ SSL Certificate ═══════════════════════════════ -->
+                        <template v-if="activeSection === 'certificate'">
+                            <!-- Current status -->
+                            <div class="rounded-lg border border-default bg-default/40 p-3 mb-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="text-xs font-semibold text-accent uppercase tracking-wide">Certificate Status</div>
+                                    <span v-if="certStatus.certMode === 'letsencrypt' && certStatus.valid"
+                                        class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                        Trusted
+                                    </span>
+                                    <span v-else
+                                        class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                                        Self-Signed
+                                    </span>
+                                </div>
+                                <div class="text-sm space-y-1">
+                                    <div v-if="certStatus.certMode === 'letsencrypt'">
+                                        <span class="text-accent">Domain:</span>
+                                        <span class="font-mono ml-1">{{ certStatus.certDomain }}</span>
+                                    </div>
+                                    <div v-if="certStatus.certMode === 'letsencrypt' && certStatus.certExpiry">
+                                        <span class="text-accent">Expires:</span>
+                                        <span class="ml-1">{{ formatCertExpiry(certStatus.certExpiry) }}</span>
+                                        <span v-if="certStatus.daysRemaining != null" class="text-accent ml-1">({{ certStatus.daysRemaining }} days)</span>
+                                    </div>
+                                    <div v-if="certStatus.certMode === 'self-signed'" class="text-accent text-xs mt-1">
+                                        Browsers will show a security warning when clients open share links. Set up a trusted certificate below to fix this.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Setup form -->
+                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Set Up Trusted Certificate</p>
+
+                            <div class="divide-y divide-default">
+                                <SettingRow label="Domain" description="Your custom domain name (e.g. studio.yourcompany.com).">
+                                    <input v-model="certDomainInput" type="text" :disabled="certBusy"
+                                        class="input-textlike border border-default px-2 py-1 rounded text-sm w-56"
+                                        placeholder="studio.yourcompany.com" />
+                                </SettingRow>
+                                <SettingRow label="Contact email" description="Let's Encrypt sends renewal notices here.">
+                                    <input v-model="certEmailInput" type="text" :disabled="certBusy"
+                                        class="input-textlike border border-default px-2 py-1 rounded text-sm w-56"
+                                        placeholder="admin@yourcompany.com" />
+                                </SettingRow>
+                            </div>
+
+                            <!-- DNS Instructions -->
+                            <div class="mt-4 rounded-lg border border-default bg-default/40 p-3">
+                                <div class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">DNS Setup Instructions</div>
+                                <div class="text-sm space-y-2">
+                                    <p>Before obtaining a trusted certificate, you need a DNS A record pointing your domain to this server's public IP.</p>
+                                    <div class="rounded border border-default overflow-hidden">
+                                        <table class="w-full text-xs">
+                                            <thead>
+                                                <tr class="border-b border-default bg-well">
+                                                    <th class="px-3 py-1.5 text-left font-semibold text-accent">Type</th>
+                                                    <th class="px-3 py-1.5 text-left font-semibold text-accent">Name / Host</th>
+                                                    <th class="px-3 py-1.5 text-left font-semibold text-accent">Value / Points To</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td class="px-3 py-1.5 font-mono">A</td>
+                                                    <td class="px-3 py-1.5 font-mono">{{ dnsHostPart }}</td>
+                                                    <td class="px-3 py-1.5 font-mono">{{ certStatus.wanIp || '(detecting...)' }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <p class="text-xs text-accent">
+                                        Create this record at your domain registrar (GoDaddy, Namecheap, Cloudflare, etc.) under DNS settings.
+                                        Propagation is usually instant but can take a few minutes.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Action buttons -->
+                            <div class="flex flex-wrap items-center gap-2 mt-4">
+                                <button class="btn btn-secondary text-sm" type="button"
+                                    @click="verifyDNS" :disabled="certBusy || !certDomainInput.trim()">
+                                    <span v-if="certBusy && certStep === 'verify'">Verifying…</span>
+                                    <span v-else>Verify DNS</span>
+                                </button>
+                                <button class="btn btn-success text-sm" type="button"
+                                    @click="setupLetsEncrypt"
+                                    :disabled="certBusy || !certDomainInput.trim() || !certEmailInput.trim() || !certDnsVerified">
+                                    <span v-if="certBusy && certStep === 'setup'">Obtaining Certificate…</span>
+                                    <span v-else>Install Trusted Certificate</span>
+                                </button>
+                                <button v-if="certStatus.certMode === 'letsencrypt'"
+                                    class="btn btn-danger text-sm" type="button"
+                                    @click="revertToSelfSigned" :disabled="certBusy">
+                                    <span v-if="certBusy && certStep === 'revert'">Reverting…</span>
+                                    <span v-else>Revert to Self-Signed</span>
+                                </button>
+                            </div>
+
+                            <!-- Status messages -->
+                            <div v-if="certDnsResult && !certDnsResult.ok" class="mt-3 rounded-lg border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 p-3 text-sm">
+                                <div class="font-semibold text-yellow-800 dark:text-yellow-300 mb-1">DNS Not Ready</div>
+                                <div class="text-yellow-700 dark:text-yellow-400">{{ certDnsResult.message }}</div>
+                            </div>
+                            <div v-if="certDnsVerified" class="mt-3 rounded-lg border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 p-3 text-sm text-green-700 dark:text-green-400">
+                                DNS verified — {{ certDomainInput }} points to {{ certStatus.wanIp }}.
+                            </div>
+                            <div v-if="certError" class="text-danger text-sm mt-3">{{ certError }}</div>
+                            <div v-if="certSuccessMsg" class="text-success text-sm mt-3">{{ certSuccessMsg }}</div>
+                        </template>
+
                         <!-- ═══ Maintenance ═══════════════════════════════════ -->
                         <template v-if="activeSection === 'maintenance'">
-                            <p class="text-xs text-muted mb-3">
+                            <p class="text-xs text-accent mb-3">
                                 Scan for orphaned transcode folders and missing-file metadata, then optionally apply cleanup.
                             </p>
 
@@ -280,7 +393,7 @@
                                 </SettingRow>
                             </div>
 
-                            <p class="text-xs font-semibold text-muted uppercase tracking-wide mt-5 mb-2">Parameters</p>
+                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Parameters</p>
                             <div class="grid grid-cols-2 gap-3">
                                 <div class="flex items-center justify-between gap-2 rounded-lg border border-default bg-default/40 px-3 py-2">
                                     <div class="text-sm text-default">Orphan min age</div>
@@ -288,7 +401,7 @@
                                         <input v-model.number="cleanupOrphanMinAgeHours" type="number" min="0" max="8760"
                                             :disabled="busy || cleanupBusy"
                                             class="input-textlike border border-default px-2 py-1 rounded text-sm w-16 text-right" />
-                                        <span class="text-xs text-muted">hrs</span>
+                                        <span class="text-xs text-accent">hrs</span>
                                     </div>
                                 </div>
                                 <div class="flex items-center justify-between gap-2 rounded-lg border border-default bg-default/40 px-3 py-2">
@@ -359,7 +472,7 @@
                         <div v-if="validationError" class="text-danger text-sm">{{ validationError }}</div>
                         <div v-else-if="saveError" class="text-danger text-sm">{{ saveError }}</div>
                         <div v-else-if="saveOk" class="text-success text-sm">Saved.</div>
-                        <div v-else class="text-xs text-muted">New shares will use these settings automatically.</div>
+                        <div v-else class="text-xs text-accent">New shares will use these settings automatically.</div>
                     </div>
                     <div class="flex items-center gap-2">
                         <button class="btn btn-secondary" type="button" @click="reload" :disabled="busy">Reload</button>
@@ -388,7 +501,7 @@ const SettingRow = defineComponent({
             h('div', { class: 'min-w-0' }, [
                 h('div', { class: 'text-sm font-medium text-default' }, props.label),
                 props.description
-                    ? h('div', { class: 'text-xs text-muted mt-0.5' }, props.description)
+                    ? h('div', { class: 'text-xs text-accent mt-0.5' }, props.description)
                     : null,
             ]),
             h('div', { class: 'flex items-center gap-1 justify-end min-w-[160px]' }, slots.default?.()),
@@ -447,7 +560,7 @@ const settingsTourSteps: TourStep[] = [
 ]
 
 // ── Section navigation ──────────────────────────────────────────────────
-type Section = 'sharing' | 'project' | 'defaults' | 'app' | 'maintenance' | 'help';
+type Section = 'sharing' | 'project' | 'app' | 'maintenance' | 'help' | 'certificate' | 'linkOptions';
 const activeSection = ref<Section>('sharing');
 
 const navGroups = [
@@ -455,13 +568,9 @@ const navGroups = [
         label: 'Link Sharing',
         items: [
             { key: 'sharing' as Section, label: 'URLs & Access' },
+            { key: 'certificate' as Section, label: 'Certificate' },
+            { key: 'linkOptions' as Section, label: 'Link Options' },
             { key: 'project' as Section, label: 'Project Root' },
-        ],
-    },
-    {
-        label: 'Defaults',
-        items: [
-            { key: 'defaults' as Section, label: 'Link Options' },
         ],
     },
     {
@@ -561,6 +670,149 @@ const cleanupLastRunAtLabel = computed(() =>
 const externalBaseEffective = ref<string | null>(null);
 // Read-only server-reported custom base (what’s stored)
 const externalBaseCustom = ref<string | null>(null);
+
+// ── Certificate / Let’s Encrypt ───────────────────────────────────────────────────────
+const certBusy = ref(false);
+const certStep = ref<'verify' | 'setup' | 'revert' | null>(null);
+const certError = ref<string | null>(null);
+const certSuccessMsg = ref<string | null>(null);
+const certDomainInput = ref('');
+const certEmailInput = ref('');
+const certDnsVerified = ref(false);
+const certDnsResult = ref<{ ok: boolean; wanIp?: string; resolvedIps?: string[]; message?: string } | null>(null);
+const certStatus = ref<{
+    certMode: 'self-signed' | 'letsencrypt';
+    certDomain: string | null;
+    certEmail: string | null;
+    certExpiry: string | null;
+    daysRemaining: number | null;
+    valid: boolean;
+    wanIp: string | null;
+}>({
+    certMode: 'self-signed',
+    certDomain: null,
+    certEmail: null,
+    certExpiry: null,
+    daysRemaining: null,
+    valid: false,
+    wanIp: null,
+});
+
+const dnsHostPart = computed(() => {
+    const d = certDomainInput.value.trim();
+    if (!d) return '(enter domain above)';
+    const parts = d.split('.');
+    if (parts.length > 2) return parts[0];
+    return '@';
+});
+
+function formatCertExpiry(iso: string | null) {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }
+    catch { return iso; }
+}
+
+async function loadCertStatus() {
+    try {
+        const data = await apiFetch('/api/settings/letsencrypt/status', { timeoutMs: 15000 });
+        certStatus.value = {
+            certMode: data.certMode || 'self-signed',
+            certDomain: data.certDomain || null,
+            certEmail: data.certEmail || null,
+            certExpiry: data.certExpiry || null,
+            daysRemaining: data.daysRemaining ?? null,
+            valid: data.valid,
+            wanIp: data.wanIp || null,
+        };
+        // Pre-fill form from existing values
+    } catch {
+        // Silent — cert status is non-critical
+    }
+}
+
+async function verifyDNS() {
+    certError.value = null;
+    certSuccessMsg.value = null;
+    certDnsVerified.value = false;
+    certDnsResult.value = null;
+    certBusy.value = true;
+    certStep.value = 'verify';
+
+    try {
+        const result = await apiFetch('/api/settings/letsencrypt/verify-dns', {
+            method: 'POST',
+            body: JSON.stringify({ domain: certDomainInput.value.trim() }),
+            timeoutMs: 20000,
+        });
+        certDnsResult.value = result;
+        certDnsVerified.value = result.ok;
+        if (result.wanIp) certStatus.value.wanIp = result.wanIp;
+    } catch (e: any) {
+        certError.value = e?.message || 'DNS verification failed.';
+    } finally {
+        certBusy.value = false;
+        certStep.value = null;
+    }
+}
+
+async function setupLetsEncrypt() {
+    certError.value = null;
+    certSuccessMsg.value = null;
+    certBusy.value = true;
+    certStep.value = 'setup';
+
+    try {
+        const result = await apiFetch('/api/settings/letsencrypt/setup', {
+            method: 'POST',
+            body: JSON.stringify({
+                domain: certDomainInput.value.trim(),
+                email: certEmailInput.value.trim(),
+            }),
+            timeoutMs: 120000, // certbot can take a while
+        });
+
+        certSuccessMsg.value = result.message || 'Certificate installed successfully!';
+        pushNotification(
+            new Notification('Certificate Installed', certSuccessMsg.value || 'Certificate installed successfully!', 'success', 10000)
+        );
+        await loadCertStatus();
+    } catch (e: any) {
+        certError.value = e?.message || 'Failed to obtain certificate.';
+        pushNotification(
+            new Notification('Certificate Error', certError.value || 'Failed to obtain certificate.', 'error', 8000)
+        );
+    } finally {
+        certBusy.value = false;
+        certStep.value = null;
+    }
+}
+
+async function revertToSelfSigned() {
+    certError.value = null;
+    certSuccessMsg.value = null;
+    certBusy.value = true;
+    certStep.value = 'revert';
+
+    try {
+        const result = await apiFetch('/api/settings/letsencrypt/revert', {
+            method: 'POST',
+            timeoutMs: 15000,
+        });
+
+        certSuccessMsg.value = result.message || 'Reverted to self-signed certificate.';
+        certDnsVerified.value = false;
+        certDnsResult.value = null;
+        pushNotification(
+            new Notification('Certificate Reverted', certSuccessMsg.value || 'Reverted to self-signed certificate.', 'success', 8000)
+        );
+        await loadCertStatus();
+    } catch (e: any) {
+        certError.value = e?.message || 'Failed to revert certificate.';
+    } finally {
+        certBusy.value = false;
+        certStep.value = null;
+    }
+}
 
 function close() {
     if (!busy.value) emit("close");
@@ -709,6 +961,9 @@ async function reload() {
     } finally {
         busy.value = false;
     }
+
+    // Load cert status in parallel (non-blocking)
+    loadCertStatus();
 }
 
 async function save() {
