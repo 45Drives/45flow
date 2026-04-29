@@ -48,7 +48,6 @@ Download the latest release from the [Releases page](https://github.com/45Drives
 1. Open 45Flow — your server should appear automatically if `houston-broadcaster` is running.
 2. If not, enter the server IP manually.
 3. Log in with your server credentials.
-4. Activate your license key on first connection (`STUDIO-XXXX-XXXX-XXXX-XXXX`).
 
 ### 3. Start Sharing
 
@@ -119,10 +118,6 @@ yarn dev
 # Build for production
 yarn build
 ```
-
-See [RELEASE_WORKFLOW.md](RELEASE_WORKFLOW.md) for the full build and release process.
-
----
 
 ## License
 

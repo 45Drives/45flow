@@ -14,6 +14,7 @@
   --btn-primary-hover-border: #b02428;
   --btn-primary-fill: var(--btn-primary-bg);
   --btn-primary-hover-fill: var(--btn-primary-hover-bg);
+  --flow-logo-theme-fill: var(--btn-primary-fill);
 
   /* Secondary (default theme) */
   --btn-secondary-bg: #a02226;
@@ -126,7 +127,7 @@
   --btn-secondary-hover-border: #346527;
 }
 
-.theme-studio {
+.theme-studio-blue-steel{
   --btn-primary-bg: #4E6B93;
   --btn-primary-border: #4E6B93;
   --btn-primary-hover-bg: #3F587A;
@@ -149,6 +150,7 @@
     linear-gradient(145deg, #e4eaf2 0%, #ecf1f8 50%, #f0f4fa 100%);
 }
 
+.theme-studio,
 .theme-studio-original-purple {
   --btn-primary-bg: #6557A5;
   --btn-primary-border: #6557A5;
@@ -171,6 +173,31 @@
     radial-gradient(72rem 34rem at 108% -10%, color-mix(in srgb, #9B8ADB 16%, transparent), transparent 58%),
     linear-gradient(145deg, #ece6fb 0%, #f0ecf8 50%, #f5f0ff 100%);
   --studio-logo-filter: saturate(1.12) hue-rotate(2deg) brightness(1.02);
+}
+
+.theme-studio-grad-logo-flow {
+  --btn-primary-bg: #2EA8FF;
+  --btn-primary-border: #2EA8FF;
+  --btn-primary-hover-bg: #1C8FE2;
+  --btn-primary-hover-border: #1C8FE2;
+  --btn-primary-fill: linear-gradient(135deg, #2EA8FF 0%, #7A4DFF 30%, #D02BD6 56%, #F1578A 76%, #FF9A2A 100%);
+  --btn-primary-hover-fill: linear-gradient(135deg, #1C8FE2 0%, #6538E6 30%, #B51FBA 56%, #D94575 76%, #E77F18 100%);
+
+  --btn-secondary-bg: #7A4DFF;
+  --btn-secondary-border: #7A4DFF;
+  --btn-secondary-hover-bg: #6538E6;
+  --btn-secondary-hover-border: #6538E6;
+  --btn-secondary-fill: var(--btn-secondary-bg);
+  --btn-secondary-hover-fill: var(--btn-secondary-hover-bg);
+
+  --ui-panel-border: color-mix(in srgb, var(--btn-primary-bg) 24%, #c6a6d8);
+  --ui-ring: color-mix(in srgb, var(--btn-primary-bg) 62%, white);
+  --ui-app-bg:
+    radial-gradient(76rem 36rem at -8% -12%, color-mix(in srgb, #2EA8FF 20%, transparent), transparent 54%),
+    radial-gradient(68rem 30rem at 42% -16%, color-mix(in srgb, #D02BD6 14%, transparent), transparent 52%),
+    radial-gradient(72rem 34rem at 108% -10%, color-mix(in srgb, #FF9A2A 18%, transparent), transparent 58%),
+    linear-gradient(140deg, #eaf6ff 0%, #f0eaff 34%, #ffecf7 66%, #fff2df 100%);
+  --studio-logo-filter: saturate(1.22) hue-rotate(-2deg) brightness(1.04);
 }
 
 .theme-studio-grad-purple-orange {
@@ -234,7 +261,7 @@
   --btn-secondary-bg: #9A24E4;
     --btn-secondary-border: #9A24E4;
     --btn-secondary-hover-bg: #7F18C7;
-    --btn-secondary-hover-border: #7F18C7
+    --btn-secondary-hover-border: #7F18C7;
   --btn-secondary-fill: var(--btn-secondary-bg);
   --btn-secondary-hover-fill: var(--btn-secondary-hover-bg);
 
@@ -583,30 +610,6 @@
   --studio-logo-filter: saturate(1.22) hue-rotate(4deg) brightness(1.03);
 }
 
-.theme-studio-grad-cinematic-gold {
-  --btn-primary-bg: #B45309;
-  --btn-primary-border: #B45309;
-  --btn-primary-hover-bg: #92400E;
-  --btn-primary-hover-border: #92400E;
-  --btn-primary-fill: linear-gradient(135deg, #92400E 0%, #D97706 45%, #F59E0B 100%);
-  --btn-primary-hover-fill: linear-gradient(135deg, #78350F 0%, #B45309 45%, #D97706 100%);
-
-  --btn-secondary-bg: #A16207;
-  --btn-secondary-border: #A16207;
-  --btn-secondary-hover-bg: #854D0E;
-  --btn-secondary-hover-border: #854D0E;
-  --btn-secondary-fill: var(--btn-secondary-bg);
-  --btn-secondary-hover-fill: var(--btn-secondary-hover-bg);
-
-  --ui-panel-border: color-mix(in srgb, var(--btn-primary-bg) 28%, #c8b898);
-  --ui-ring: color-mix(in srgb, var(--btn-primary-bg) 58%, white);
-  --ui-app-bg:
-    radial-gradient(72rem 34rem at -8% -12%, color-mix(in srgb, #92400E 16%, transparent), transparent 54%),
-    radial-gradient(72rem 34rem at 108% -10%, color-mix(in srgb, #F59E0B 18%, transparent), transparent 58%),
-    linear-gradient(145deg, #f5ece0 0%, #fff8e8 50%, #faebd0 100%);
-  --studio-logo-filter: saturate(1.15) hue-rotate(-14deg) brightness(1.02);
-}
-
 .theme-studio-grad-infrared {
   --btn-primary-bg: #E11D48;
   --btn-primary-border: #E11D48;
@@ -806,6 +809,7 @@
 .theme-studio-original-purple,
 .theme-studio-slate,
 .theme-studio-ocean,
+.theme-studio-grad-logo-flow,
 .theme-studio-grad-purple-orange,
 .theme-studio-grad-purple-pink-orange,
 .theme-studio-grad-purple-pink-blue,
@@ -820,7 +824,6 @@
 .theme-studio-grad-yellow-orange-red,
 .theme-studio-grad-orange-pink,
 .theme-studio-grad-electric-violet,
-.theme-studio-grad-cinematic-gold,
 .theme-studio-grad-infrared,
 .theme-studio-grad-chrome,
 .theme-studio-grad-aurora,
@@ -1259,6 +1262,7 @@ input[type="checkbox"].proxy-quality-checkbox:checked::after {
 .theme-professional,
 .theme-studio,
 .theme-studio-original-purple,
+.theme-studio-grad-logo-flow,
 .theme-studio-grad-purple-orange,
 .theme-studio-grad-purple-pink-orange,
 .theme-studio-grad-purple-pink-blue,
@@ -1275,7 +1279,6 @@ input[type="checkbox"].proxy-quality-checkbox:checked::after {
 .theme-studio-grad-yellow-orange-red,
 .theme-studio-grad-orange-pink,
 .theme-studio-grad-electric-violet,
-.theme-studio-grad-cinematic-gold,
 .theme-studio-grad-infrared,
 .theme-studio-grad-chrome,
 .theme-studio-grad-aurora,
@@ -1327,4 +1330,267 @@ button.text-secondary:focus-visible {
 .theme-logo-tint {
   filter: var(--studio-logo-filter, none);
   transition: filter 180ms ease;
+}
+
+/* =====================
+   45Flow logo masked theme fills
+   ===================== */
+
+/*
+  These are intentionally separate from --btn-primary-fill.
+
+  Full-width UI gradients need broad stops.
+  The small header logo needs compressed stops so the whole palette
+  appears inside the masked icon.
+*/
+
+/* Default fallback / Enterprise-style red */
+:root,
+.theme-default {
+  --flow-logo-bg-size: 100% 100%;
+  --flow-logo-bg-position: center;
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #D92B2F 0%,
+      #D92B2F 12%,
+      #F05A5E 48%,
+      #A02226 88%,
+      #A02226 100%);
+}
+
+/* Flow Logo */
+.theme-studio-grad-logo-flow {
+  --flow-logo-theme-fill:
+    linear-gradient(88deg,
+      #32AEFB 0%,
+      #32AEFB 8.5%,
+      #409CF6 10%,
+      #5276FF 16%,
+      #7A4DFF 24%,
+      #B749E3 30%,
+      #D02BD6 38%,
+      #D340BF 45%,
+      #D848AB 51%,
+      #E2578D 56%,
+      #E96A82 61%,
+      #EC6E67 70%,
+      #F47F4F 80%,
+      #FD9432 86%,
+      #FD9432 91.5%,
+      #FD9432 100%);
+}
+
+/* Enterprise */
+.theme-studio-grad-enterprise {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #8B1A1E 0%,
+      #8B1A1E 12%,
+      #D92B2F 50%,
+      #FF6B6B 88%,
+      #FF6B6B 100%);
+}
+
+/* Homelab */
+.theme-homelab,
+.theme-studio-grad-homelab {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #1E3A8A 0%,
+      #1E3A8A 12%,
+      #2563EB 50%,
+      #60A5FA 88%,
+      #60A5FA 100%);
+}
+
+/* Professional */
+.theme-professional,
+.theme-studio-grad-professional {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #2D6A1E 0%,
+      #2D6A1E 12%,
+      #65A443 50%,
+      #A8E063 88%,
+      #A8E063 100%);
+}
+
+/* Studio */
+.theme-studio,
+.theme-studio-original-purple {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #3D2D78 0%,
+      #3D2D78 12%,
+      #6557A5 50%,
+      #9B8ADB 88%,
+      #9B8ADB 100%);
+}
+
+/* Party */
+.theme-studio-grad-purple-pink-orange {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #9A24E4 0%,
+      #9A24E4 10%,
+      #CF20AE 34%,
+      #F6336E 42%,
+      #FE774F 58%,
+      #FE774F 100%);
+}
+
+/* Prism */
+.theme-studio-grad-red-purple-blue {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #F43F5E 0%,
+      #F43F5E 12%,
+      #8B5CF6 50%,
+      #3B82F6 88%,
+      #3B82F6 100%);
+}
+
+/* Ultraviolet */
+.theme-studio-grad-electric-violet {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #7C3AED 0%,
+      #7C3AED 16%,
+      #3B82F6 48%,
+      #06B6D4 84%,
+      #06B6D4 100%);
+}
+
+/* Synthwave */
+.theme-studio-grad-sunset-laser {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #FF6A00 0%,
+      #FF6A00 12%,
+      #FF2D95 48%,
+      #2CF3E9 88%,
+      #2CF3E9 100%);
+}
+
+/* Cyber Pulse */
+.theme-studio-grad-neon-studio {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #14B8A6 0%,
+      #14B8A6 12%,
+      #2EA8FF 28%,
+      #6D28D9 50%,
+      #F43F5E 88%,
+      #F43F5E 100%);
+}
+
+/* Blue Steel */
+.theme-studio-blue-steel {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #2C3E5A 0%,
+      #2C3E5A 12%,
+      #4E6B93 50%,
+      #7A9BC0 88%,
+      #7A9BC0 100%);
+}
+
+/* Graphite */
+.theme-studio-slate {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #374151 0%,
+      #374151 12%,
+      #5F6E82 50%,
+      #8B9DB3 88%,
+      #8B9DB3 100%);
+}
+
+/* Deep Sea */
+.theme-studio-ocean {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #1B3D4F 0%,
+      #1B3D4F 12%,
+      #3E6D84 50%,
+      #6BA4BE 88%,
+      #6BA4BE 100%);
+}
+
+/* Moon Mist */
+.theme-studio-grad-moon-mist {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #7A2CFF 0%,
+      #7A2CFF 12%,
+      #2EA8FF 52%,
+      #FFE44D 88%,
+      #FFE44D 100%);
+}
+
+/* Flamingo */
+.theme-studio-grad-pink-orange {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #E84393 0%,
+      #E84393 16%,
+      #F1578A 45%,
+      #F39C12 84%,
+      #F39C12 100%);
+}
+
+/* Solstice */
+.theme-studio-grad-yellow-orange-red {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #EAB308 0%,
+      #EAB308 12%,
+      #F97316 50%,
+      #EF4444 88%,
+      #EF4444 100%);
+}
+
+/* Infrared */
+.theme-studio-grad-infrared {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #F43F7F 0%,
+      #F43F7F 12%,
+      #E11D48 50%,
+      #9F1239 88%,
+      #9F1239 100%);
+}
+
+/* Titanium */
+.theme-studio-grad-chrome {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #64748B 0%,
+      #64748B 12%,
+      #94A3B8 50%,
+      #475569 88%,
+      #475569 100%);
+}
+
+/* Borealis */
+.theme-studio-grad-aurora {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #10B981 0%,
+      #10B981 12%,
+      #0891B2 50%,
+      #7C3AED 88%,
+      #7C3AED 100%);
+}
+
+
+/* Spectrum */
+.theme-studio-grad-red-blue-green {
+  --flow-logo-theme-fill:
+    linear-gradient(128deg,
+      #EF4444 0%,
+      #EF4444 12%,
+      #3B82F6 50%,
+      #22C55E 88%,
+      #22C55E 100%);
 }

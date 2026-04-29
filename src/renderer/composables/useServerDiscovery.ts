@@ -1,9 +1,7 @@
 // useServerDiscovery.ts
 import { reactive, onMounted, onBeforeUnmount } from 'vue'
 import type { Server } from '../types'
-import { loadSavedManualServers, loadRegistryLicenseId } from './useSessionPersistence'
-
-const LICENSE_SERVER_URL = 'https://studio-license.45d.io'
+import { loadSavedManualServers } from './useSessionPersistence'
 
 export function useServerDiscovery() {
   const discoveryState = reactive<{ servers: Server[]; fallbackTriggered: boolean }>({
@@ -67,51 +65,8 @@ export function useServerDiscovery() {
     }
   }
 
-  /** Query VPS registry for servers on the same license */
-  async function queryRegistryServers() {
-    try {
-      const licenseId = loadRegistryLicenseId()
-      if (!licenseId) return
-
-      const resp = await fetch(`${LICENSE_SERVER_URL}/api/servers/discover`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ licenseId }),
-        signal: AbortSignal.timeout(8000),
-      })
-      if (!resp.ok) return
-
-      const data = await resp.json()
-      if (!data?.ok || !Array.isArray(data.servers)) return
-
-      for (const entry of data.servers) {
-        // Each entry has ips[] — add each IP as a discoverable server
-        const ips: string[] = Array.isArray(entry.ips) ? entry.ips : []
-        for (const ip of ips) {
-          mergeServer({
-            ip,
-            name: entry.serverName || ip,
-            status: 'unknown',
-            lastSeen: entry.lastSeen || Date.now(),
-            setupComplete: entry.setupComplete,
-            serverName: entry.serverName || ip,
-            serverInfo: entry.info || {},
-            manuallyAdded: false,
-            fallbackAdded: false,
-            registryDiscovered: true,
-          } as Server)
-        }
-      }
-      sortServers()
-    } catch (err) {
-      console.error('Registry discovery failed:', err)
-    }
-  }
-
   onMounted(() => {
     window.electron?.ipcRenderer.on('discovered-servers', onDiscovered)
-    // Query VPS registry first (fast, works cross-subnet), then local fallback scan
-    queryRegistryServers()
     setTimeout(runFallbackScanOnce, 1200)
   })
 
