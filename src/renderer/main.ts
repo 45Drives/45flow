@@ -40,7 +40,7 @@ app.use(router)
 app.directive('enter-next', enterNextDirective);
 app.use(pinia);
 app.mount('#app');
-document.documentElement.classList.add('theme-studio-grad-purple-pink-orange');
+document.documentElement.classList.add('theme-studio-grad-logo-flow');
 window.electron?.ipcRenderer.send('renderer-ready');
 
 const IGNORE = [

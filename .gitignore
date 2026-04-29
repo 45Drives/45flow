@@ -16,6 +16,5 @@ scripts/test-pkg.sh
 .DS_Store
 buildMac.sh
 
-scripts/release/RELEASE_RUNBOOK.md
-scripts/release/RELEASE_RUNBOOK.pdf
+scripts/release/RELEASE_*
 .electron-dev-userdata

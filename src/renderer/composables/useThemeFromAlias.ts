@@ -119,7 +119,7 @@ function isTheme(value: string): value is Theme {
 function loadStoredTheme(): Theme | null {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (raw === 'theme-studio-carbon') return 'theme-studio-grad-moon-mist'
+    if (raw === 'theme-studio-grad-logo-flow') return 'theme-studio-grad-logo-flow'
     return raw && isTheme(raw) ? raw : null
   } catch {
     return null
@@ -153,6 +153,7 @@ function saveThemeUnlockState(unlocked: boolean) {
 const themeControlsUnlocked = ref<boolean>(loadThemeUnlockState())
 const currentTheme = ref<Theme>(loadStoredTheme() ?? FORCED_THEME)
 const currentDivision = ref<Division>('studio')
+let isInitialLoad = true
 
 function setHtmlThemeClass(theme: Theme) {
   const root = document.documentElement
@@ -194,12 +195,15 @@ function setHtmlThemeClass(theme: Theme) {
 }
 
 watchEffect(() => {
-  if (!themeControlsUnlocked.value && currentTheme.value !== FORCED_THEME) {
+  // Only force theme when controls are locked AFTER initial load
+  // This prevents overriding stored themes on app startup
+  if (!isInitialLoad && !themeControlsUnlocked.value && currentTheme.value !== FORCED_THEME) {
     currentTheme.value = FORCED_THEME
   }
   setHtmlThemeClass(currentTheme.value)
   currentDivision.value = themeToDivision[currentTheme.value]
   saveStoredTheme(currentTheme.value)
+  isInitialLoad = false
 })
 
 /** Apply a theme using the 45Drives alias coming from the server (e.g. "homelab"|"professional") */
@@ -209,19 +213,6 @@ function applyThemeFromAlias(aliasStyle?: string) {
     currentTheme.value = FORCED_THEME
     return
   }
-
-  // const normalized = (aliasStyle || '').toLowerCase()
-  // const mapped = aliasToTheme[normalized]
-
-  // if (mapped && mapped !== 'theme-studio') {
-  //   currentTheme.value = mapped
-  //   return
-  // }
-
-  // // Keep selected studio variant when server reports "studio"
-  // if (mapped === 'theme-studio' && themeToDivision[currentTheme.value] === 'studio') {
-  //   return
-  // }
 
   // currentTheme.value = mapped ?? 'theme-studio'
   const normalized = (aliasStyle || '').toLowerCase()
