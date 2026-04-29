@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+UPSTREAM_REMOTE="upstream"
+UPSTREAM_URL="git@github.com:45Drives/studio-share.git"
+UPSTREAM_BRANCH="main"
+
+echo "Checking studio-share upstream before push..."
+
+if ! git remote get-url "$UPSTREAM_REMOTE" >/dev/null 2>&1; then
+  echo "Adding upstream remote: $UPSTREAM_URL"
+  git remote add "$UPSTREAM_REMOTE" "$UPSTREAM_URL"
+fi
+
+git fetch "$UPSTREAM_REMOTE" "$UPSTREAM_BRANCH" --quiet
+
+BEHIND=$(git rev-list "HEAD..$UPSTREAM_REMOTE/$UPSTREAM_BRANCH" --count)
+
+if [ "$BEHIND" -ne 0 ]; then
+  echo ""
+  echo "Push blocked."
+  echo "This branch is behind studio-share/$UPSTREAM_BRANCH by $BEHIND commit(s)."
+  echo ""
+  echo "Sync first with one of these:"
+  echo ""
+  echo "  git merge $UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+  echo ""
+  echo "or:"
+  echo ""
+  echo "  git rebase $UPSTREAM_REMOTE/$UPSTREAM_BRANCH"
+  echo ""
+  echo "Then resolve any conflicts, test, and push again."
+  echo ""
+  exit 1
+fi
+
+echo "Premium branch includes latest studio-share/$UPSTREAM_BRANCH. Continuing push."

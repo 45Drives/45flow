@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "dev": "yarn build:common && node scripts/dev-server.js",
+    "install:hooks": "bash scripts/install-git-hooks.sh",
     "build": "yarn build:common && node scripts/build.js && electron-builder",
     "build:common": "yarn build:lib && yarn build:ui",
     "build:win": "yarn build:common && node scripts/build.js && electron-builder --win --config electron-builder.json",
