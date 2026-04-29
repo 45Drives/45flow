@@ -3,17 +3,28 @@ name: Sync upstream bugfixes
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 8 * * 1' # every Monday at 8am UTC
+    - cron: '0 8 * * 1'
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout premium repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.SYNC_PAT }}
+
+      - name: Verify SYNC_PAT exists
+        run: |
+          if [ -z "${{ secrets.SYNC_PAT }}" ]; then
+            echo "SYNC_PAT is missing or unavailable to this workflow run."
+            exit 1
+          fi
 
       - name: Fetch upstream and attempt merge
         id: merge
@@ -34,31 +45,32 @@ jobs:
 
           BRANCH="sync/upstream-$(date +%Y%m%d-%H%M%S)"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
           git checkout -b "$BRANCH"
 
           if git merge upstream/main --no-edit; then
             echo "conflicts=false" >> "$GITHUB_OUTPUT"
           else
             echo "conflicts=true" >> "$GITHUB_OUTPUT"
-            git add -A
-            git commit --no-edit -m "merge: upstream sync (has conflicts)"
+            git status
+            git merge --abort || true
+            exit 1
           fi
 
           git push origin "$BRANCH"
 
       - name: Create pull request
-        if: steps.merge.outputs.behind != '0'
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.SYNC_PAT }}
-          branch: ${{ steps.merge.outputs.branch }}
-          base: main
-          title: "Sync bugfixes from studio-share"
-          body: |
-            Automated merge from `studio-share` upstream.
+        if: steps.merge.outputs.behind != '0' && steps.merge.outputs.conflicts != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.SYNC_PAT }}
+        run: |
+          gh pr create \
+            --base main \
+            --head "${{ steps.merge.outputs.branch }}" \
+            --title "Sync bugfixes from studio-share" \
+            --body "Automated merge from studio-share upstream.
 
-            **Commits behind:** ${{ steps.merge.outputs.behind }}
-            **Has conflicts:** ${{ steps.merge.outputs.conflicts }}
+          Commits behind: ${{ steps.merge.outputs.behind }}
+          Has conflicts: ${{ steps.merge.outputs.conflicts }}
 
-            ${{ steps.merge.outputs.conflicts == 'true' && '⚠️ This merge has conflicts that need manual resolution.' || '✅ Clean merge — review and merge when ready.' }}
-          delete-branch: true
+          Clean merge. Review and merge when ready."
