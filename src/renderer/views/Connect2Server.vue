@@ -146,20 +146,7 @@
         </div>
     </form>
     <PortForwardingModal v-if="showPortFwdModal" @close="togglePortFwdModal" />
-    <div v-if="showLicenseModal" class="fixed inset-0 z-[1100] bg-black/40 grid place-items-center p-4" @click.self="cancelLicenseEntry">
-        <div class="w-full max-w-[560px] rounded-xl border border-default bg-default text-default shadow-2xl p-4">
-            <h3 class="text-lg font-bold mb-1">License Required</h3>
-            <p class="text-sm opacity-80 mb-3">Enter your 45Flow license key to activate this server.</p>
-            <input v-model="licenseInput"
-                class="w-full rounded-lg border border-default bg-default text-default px-3 py-2 text-sm input-textlike"
-                type="text" placeholder="STUDIO-XXXX-XXXX-XXXX-XXXX"
-                @keydown.enter.prevent="submitLicenseEntry" />
-            <div class="mt-3 flex justify-end gap-2">
-                <button type="button" class="btn btn-secondary" @click="cancelLicenseEntry">Cancel</button>
-                <button type="button" class="btn btn-primary" @click="submitLicenseEntry">Activate</button>
-            </div>
-        </div>
-    </div>
+ 
 </template>
 
 <script setup lang="ts">
@@ -171,7 +158,7 @@ import { DiscoveryState, Server } from '../types'
 import { pushNotification, Notification, CardContainer, useDarkModeState } from '@45drives/houston-common-ui'
 import PortForwardingModal from '../components/modals/PortForwardingModal.vue' 
 import { useResilientNav } from '../composables/useResilientNav';
-import { loadLastSession, saveLastSession, clearLastSession, saveManualServer, saveRegistryLicenseId } from '../composables/useSessionPersistence';
+import { loadLastSession, saveLastSession, clearLastSession, saveManualServer } from '../composables/useSessionPersistence';
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
 useHeader('Welcome to 45Flow!');
@@ -235,7 +222,7 @@ const connectTourSteps: TourStep[] = [
 	},
 	{
 		target: '[data-tour="connect-submit"]',
-		message: 'Once you\'ve selected a server and entered credentials, click here to connect.\n\n45Flow will verify the SSH connection, check that houston-broadcaster is installed (and set it up if needed), validate your license, and log you in. You\'ll be taken to the dashboard when everything\'s ready.',
+		message: 'Once you\'ve selected a server and entered credentials, click here to connect.\n\n45Flow will verify the SSH connection, check that houston-broadcaster is installed (and set it up if needed), and log you in. You\'ll be taken to the dashboard when everything\'s ready.',
 	},
 ]
 
@@ -567,34 +554,6 @@ function togglePortFwdModal() {
     showPortFwdModal.value = !showPortFwdModal.value;
 }
 
-const showLicenseModal = ref(false)
-const licenseInput = ref('')
-let licensePromptResolver: ((value: string | null) => void) | null = null
-
-function requestLicenseKey(): Promise<string | null> {
-    licenseInput.value = ''
-    showLicenseModal.value = true
-    return new Promise((resolve) => {
-        licensePromptResolver = resolve
-    })
-}
-
-function submitLicenseEntry() {
-    const value = String(licenseInput.value || '').trim()
-    if (!value) return
-    showLicenseModal.value = false
-    const resolve = licensePromptResolver
-    licensePromptResolver = null
-    resolve?.(value)
-}
-
-function cancelLicenseEntry() {
-    showLicenseModal.value = false
-    const resolve = licensePromptResolver
-    licensePromptResolver = null
-    resolve?.(null)
-}
-
 
 function listenBootstrap(id: string) {
     const handler = (_: any, msg: any) => {
@@ -619,46 +578,6 @@ async function readHttpError(res: Response): Promise<string> {
     const bodyReqId = parsed && typeof parsed.requestId === 'string' ? parsed.requestId : '';
     const rid = bodyReqId || requestId;
     return rid && !String(base).includes(rid) ? `${base} (request ${rid})` : String(base);
-}
-
-async function ensureLicenseActivated(apiBase: string) {
-    let statusResp: Response
-    try {
-        statusResp = await fetch(`${apiBase}/api/license/status`)
-    } catch {
-        // License endpoint unavailable (older broadcaster) -> continue.
-        return
-    }
-    if (!statusResp.ok) return
-
-    let statusBody: any = null
-    try { statusBody = await statusResp.json() } catch { return }
-    if (!statusBody?.enforcement || statusBody?.licensed) return
-
-    const key = await requestLicenseKey()
-    if (!key || !key.trim()) throw new Error('License activation canceled.')
-
-    const activateResp = await fetch(`${apiBase}/api/license/activate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ licenseKey: key.trim() }),
-    })
-
-    const activateText = await activateResp.text()
-    let activateBody: any = null
-    try { activateBody = activateText ? JSON.parse(activateText) : null } catch { /* keep raw text fallback */ }
-
-    if (!activateResp.ok || !activateBody?.ok) {
-        const requestId = String(
-            activateResp.headers.get('x-request-id') ||
-            (typeof activateBody?.requestId === 'string' ? activateBody.requestId : '')
-        ).trim()
-        const base = activateBody?.error || activateBody?.detail?.error || activateText || `HTTP ${activateResp.status}`
-        const msg = requestId && !String(base).includes(requestId) ? `${base} (request ${requestId})` : String(base)
-        throw new Error(`License activation failed: ${msg}`)
-    }
-
-    pushNotification(new Notification('License Activated', 'This server is now licensed for perpetual use.', 'success', 6000))
 }
 
 async function connectToServer() {
@@ -856,9 +775,6 @@ async function connectToServer() {
             unlistenProgress = null;
         }
 
-        // Healthy now — activate license if required, then proceed to login
-        await ensureLicenseActivated(apiBase)
-
         const res = await fetch(`${apiBase}/api/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -927,12 +843,6 @@ async function connectToServer() {
         });
 
         window.appLog?.info('login.success', { ip });
-
-        // Fire-and-forget: cache licenseId for VPS registry discovery
-        fetch(`${apiBase}/api/license/status`)
-            .then(r => r.ok ? r.json() : null)
-            .then(d => { if (d?.license?.licenseId) saveRegistryLicenseId(d.license.licenseId) })
-            .catch(() => { /* best-effort */ })
 
         // Fire-and-forget: check for broadcaster package updates via API (runs in background)
         checkBroadcasterUpdateInBackground(apiBase, token);
@@ -1043,8 +953,6 @@ onMounted(async () => {
 onUnmounted(() => {
     unlistenProgress?.()
     unlistenProgress = null
-    licensePromptResolver?.(null)
-    licensePromptResolver = null
 })
 
 /**

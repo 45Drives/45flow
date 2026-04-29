@@ -79,7 +79,8 @@ const { setTheme, currentTheme } = useThemeFromAlias()
 
 const studioPalettes: Array<{ label: string; theme: Theme; className: string }> = [
 
-    { label: 'Flow', theme: 'theme-studio-grad-purple-pink-orange', className: 'tp-grad-purple-pink-orange' },
+    { label: 'Flow', theme: 'theme-studio-grad-logo-flow', className: 'tp-grad-logo-flow' },
+    { label: 'Party', theme: 'theme-studio-grad-purple-pink-orange', className: 'tp-grad-purple-pink-orange' },
     { label: 'Prism', theme: 'theme-studio-grad-red-purple-blue', className: 'tp-grad-red-purple-blue' },
     { label: 'Synthwave', theme: 'theme-studio-grad-sunset-laser', className: 'tp-grad-sunset-laser' },
     { label: 'Cyber Pulse', theme: 'theme-studio-grad-neon-studio', className: 'tp-grad-neon-studio' },
@@ -92,9 +93,8 @@ const studioPalettes: Array<{ label: string; theme: Theme; className: string }> 
     { label: 'Solstice', theme: 'theme-studio-grad-yellow-orange-red', className: 'tp-grad-yellow-orange-red' },
     { label: 'Ultraviolet', theme: 'theme-studio-grad-electric-violet', className: 'tp-grad-electric-violet' },
     { label: 'Infrared', theme: 'theme-studio-grad-infrared', className: 'tp-grad-infrared' },
-    { label: 'Gold Rush', theme: 'theme-studio-grad-cinematic-gold', className: 'tp-grad-cinematic-gold' },
 
-    { label: 'Steel Blue', theme: 'theme-studio', className: 'tp-studio-balanced' },
+    { label: 'Blue Steel', theme: 'theme-studio-blue-steel', className: 'tp-studio-balanced' },
     { label: 'Graphite', theme: 'theme-studio-slate', className: 'tp-studio-slate' },
     { label: 'Deep Sea', theme: 'theme-studio-ocean', className: 'tp-studio-ocean' },
     { label: 'Titanium', theme: 'theme-studio-grad-chrome', className: 'tp-grad-chrome' },
@@ -237,6 +237,7 @@ function selectTheme(theme: Theme) {
 .tp-studio-ocean:hover { background: linear-gradient(135deg, #153242, #31596D 50%, #5890A8); }
 
 .tp-grad-purple-orange       { background: linear-gradient(135deg, #6F58B8, #C96E36); }
+.tp-grad-logo-flow           { background: linear-gradient(135deg, #2EA8FF 0%, #7A4DFF 30%, #D02BD6 56%, #F1578A 76%, #FF9A2A 100%); }
 /* .tp-grad-purple-pink-orange {
     background: linear-gradient(135deg, #7A4FD8, #D95AA5 52%, #E57A4A);
 } */
@@ -255,7 +256,6 @@ function selectTheme(theme: Theme) {
 .tp-grad-yellow-orange-red   { background: linear-gradient(135deg, #EAB308, #F97316 50%, #EF4444); }
 .tp-grad-orange-pink         { background: linear-gradient(135deg, #F97316, #EC4899); }
 .tp-grad-electric-violet     { background: linear-gradient(135deg, #7C3AED, #06B6D4); }
-.tp-grad-cinematic-gold      { background: linear-gradient(135deg, #92400E, #D97706 45%, #F59E0B); }
 .tp-grad-infrared            { background: linear-gradient(135deg, #F43F7F, #E11D48 50%, #9F1239); }
 .tp-grad-chrome              { background: linear-gradient(135deg, #64748B, #94A3B8 50%, #475569); }
 .tp-grad-aurora              { background: linear-gradient(135deg, #10B981, #0891B2 50%, #7C3AED); }

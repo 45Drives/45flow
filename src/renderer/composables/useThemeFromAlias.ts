@@ -7,6 +7,8 @@ export type Theme =
   | 'theme-default'
   | 'theme-studio'
   | 'theme-studio-original-purple'
+  | 'theme-studio-blue-steel'
+  | 'theme-studio-grad-logo-flow'
   | 'theme-studio-grad-purple-orange'
   | 'theme-studio-grad-purple-pink-orange'
   | 'theme-studio-grad-purple-pink-blue'
@@ -23,7 +25,6 @@ export type Theme =
   | 'theme-studio-grad-yellow-orange-red'
   | 'theme-studio-grad-orange-pink'
   | 'theme-studio-grad-electric-violet'
-  | 'theme-studio-grad-cinematic-gold'
   | 'theme-studio-grad-infrared'
   | 'theme-studio-grad-chrome'
   | 'theme-studio-grad-aurora'
@@ -44,8 +45,10 @@ const aliasToTheme: Record<string, Theme> = {
 const themeToDivision: Record<Theme, Division> = {
   'theme-homelab': 'homelab',
   'theme-professional': 'professional',
+  'theme-studio-blue-steel': 'studio',
   'theme-studio': 'studio',
   'theme-studio-original-purple': 'studio',
+  'theme-studio-grad-logo-flow': 'studio',
   'theme-studio-grad-purple-orange': 'studio',
   'theme-studio-grad-purple-pink-orange': 'studio',
   'theme-studio-grad-purple-pink-blue': 'studio',
@@ -62,7 +65,6 @@ const themeToDivision: Record<Theme, Division> = {
   'theme-studio-grad-yellow-orange-red': 'studio',
   'theme-studio-grad-orange-pink': 'studio',
   'theme-studio-grad-electric-violet': 'studio',
-  'theme-studio-grad-cinematic-gold': 'studio',
   'theme-studio-grad-infrared': 'studio',
   'theme-studio-grad-chrome': 'studio',
   'theme-studio-grad-aurora': 'studio',
@@ -76,15 +78,17 @@ const themeToDivision: Record<Theme, Division> = {
 
 const STORAGE_KEY = '45flow-theme-v1'
 const THEME_UNLOCK_KEY = '45flow-theme-unlock-v1'
-const FORCED_THEME: Theme = 'theme-studio-grad-purple-pink-orange'
-
+// const FORCED_THEME: Theme = 'theme-studio-grad-purple-pink-orange'
+const FORCED_THEME: Theme = 'theme-studio-grad-logo-flow'
 function isTheme(value: string): value is Theme {
   return [
     'theme-default',
     'theme-homelab',
     'theme-professional',
+    'theme-studio-blue-steel',
     'theme-studio',
     'theme-studio-original-purple',
+    'theme-studio-grad-logo-flow',
     'theme-studio-grad-purple-orange',
     'theme-studio-grad-purple-pink-orange',
     'theme-studio-grad-purple-pink-blue',
@@ -101,7 +105,6 @@ function isTheme(value: string): value is Theme {
     'theme-studio-grad-yellow-orange-red',
     'theme-studio-grad-orange-pink',
     'theme-studio-grad-electric-violet',
-    'theme-studio-grad-cinematic-gold',
     'theme-studio-grad-infrared',
     'theme-studio-grad-chrome',
     'theme-studio-grad-aurora',
@@ -157,8 +160,10 @@ function setHtmlThemeClass(theme: Theme) {
     'theme-default',
     'theme-homelab',
     'theme-professional',
+    'theme-studio-blue-steel',
     'theme-studio',
     'theme-studio-original-purple',
+    'theme-studio-grad-logo-flow',
     'theme-studio-grad-purple-orange',
     'theme-studio-grad-purple-pink-orange',
     'theme-studio-grad-purple-pink-blue',
@@ -175,7 +180,6 @@ function setHtmlThemeClass(theme: Theme) {
     'theme-studio-grad-yellow-orange-red',
     'theme-studio-grad-orange-pink',
     'theme-studio-grad-electric-violet',
-    'theme-studio-grad-cinematic-gold',
     'theme-studio-grad-infrared',
     'theme-studio-grad-chrome',
     'theme-studio-grad-aurora',

@@ -16,7 +16,6 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
    - [Manual Connection via IP](#manual-connection-via-ip)
    - [Custom Port Configuration](#custom-port-configuration)
    - [Logging In](#logging-in)
-   - [Activating Your License](#activating-your-license)
 4. [Dashboard Overview](#4-dashboard-overview)
 5. [Share Files Remotely (Generate a Share Link)](#5-share-files-remotely-generate-a-share-link)
    - [Step 1: Select a Project](#step-1-select-a-project)
@@ -174,17 +173,6 @@ The app will display status messages as it connects:
 On success, you'll be taken to the **Dashboard**.
 
 ![Connecting to server with status messages](images/login-connecting.png)
-
-### Activating Your License
-
-If this is the first time connecting to this server, a **License Required** popup will appear:
-
-1. Enter your 45Flow license key in the format `STUDIO-XXXX-XXXX-XXXX-XXXX`.
-2. Click **"Activate"**.
-
-Once activated, the server is licensed and you'll proceed to the Dashboard. Your license only needs to be activated once per server.
-
-![License activation dialog](images/license-activation.png)
 
 ---
 
@@ -842,9 +830,6 @@ Port forwarding tells your router to direct incoming traffic on a specific port 
 ---
 
 ## 17. Frequently Asked Questions
-
-**Q: Can I use 45Flow without a license?**  
-A: A license is required to connect the desktop client to a server. Contact your 45Drives representative to obtain a license key.
 
 **Q: My server doesn't appear in the auto-discovery dropdown. What do I do?**  
 A: The `houston-broadcaster` service must be running on the server. Try connecting manually using the server's IP address via the **"Connect manually via IP"** field.
