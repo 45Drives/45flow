@@ -394,6 +394,7 @@ import {
   pruneOldTransfers, isPidAlive, removeLogFile, makeLogPath, getAllTransfers,
   type PersistedTransfer,
 } from './transfers/transfer-store';
+import { initAutoUpdates } from './updates';
 
 let discoveredServers: Server[] = [];
 export let jsonLogger: ReturnType<typeof createLogger>;
@@ -2024,6 +2025,8 @@ app.whenReady().then(() => {
     jl('info', 'app.activate', { openWindows: BrowserWindow.getAllWindows().length });
   });
   jl('info', 'window.created');
+
+  initAutoUpdates(() => (mainWindowRef && !mainWindowRef.isDestroyed()) ? mainWindowRef : null);
 
   // ── Resume detached transfers from previous session ──────────────────────
   pruneOldTransfers()       // remove old completed/failed entries (>7 days)

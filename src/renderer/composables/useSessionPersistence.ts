@@ -83,3 +83,19 @@ export function clearLastSession() {
   try { localStorage.removeItem(LAST_SESSION_KEY) } catch { /* ignore */ }
   try { sessionStorage.removeItem('hb_token') } catch { /* ignore */ }
 }
+
+// ─── License-based registry discovery ────────────────────
+
+const REGISTRY_LICENSE_KEY = 'hb_registry_license_v1'
+
+export function loadRegistryLicenseId(): string | null {
+  try {
+    return localStorage.getItem(REGISTRY_LICENSE_KEY) || null
+  } catch {
+    return null
+  }
+}
+
+export function saveRegistryLicenseId(licenseId: string) {
+  try { localStorage.setItem(REGISTRY_LICENSE_KEY, licenseId) } catch { /* ignore */ }
+}
