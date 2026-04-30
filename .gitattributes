@@ -1,3 +1,6 @@
 # Keep our version of electron-builder.json when merging from upstream
 # This prevents conflicts when syncing from studio-share (Community Edition)
 electron-builder.json merge=ours
+
+# Preserve version field in package.json while allowing other changes to merge
+package.json merge=preserve-version
