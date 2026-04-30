@@ -18,55 +18,56 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
    - [Logging In](#logging-in)
    - [Activating Your License](#activating-your-license)
 4. [Dashboard Overview](#4-dashboard-overview)
-5. [Share Files Remotely (Generate a Share Link)](#5-share-files-remotely-generate-a-share-link)
+5. [Drag and Drop QuickShare](#5-drag-and-drop-quickshare)
+6. [Share Files Remotely (Generate a Share Link)](#6-share-files-remotely-generate-a-share-link)
    - [Step 1: Select a Project](#step-1-select-a-project)
    - [Step 2: Select Files & Configure Link](#step-2-select-files--configure-link)
    - [Link Access Modes](#link-access-modes)
    - [Advanced Video Options](#advanced-video-options)
    - [Generating the Link](#generating-the-link)
-6. [Upload Files Locally](#6-upload-files-locally)
+7. [Upload Files Locally](#7-upload-files-locally)
    - [Step 1: Select Local Files](#step-1-select-local-files)
    - [Step 2: Choose Destination](#step-2-choose-destination)
    - [Step 3: Upload & Monitor Progress](#step-3-upload--monitor-progress)
-7. [Create an Upload Link (Remote Upload)](#7-create-an-upload-link-remote-upload)
+8. [Create an Upload Link (Remote Upload)](#8-create-an-upload-link-remote-upload)
    - [Selecting a Destination Folder](#selecting-a-destination-folder)
    - [Configuring the Upload Link](#configuring-the-upload-link)
    - [Generating the Upload Link](#generating-the-upload-link)
-8. [Managing Links](#8-managing-links)
+9. [Managing Links](#9-managing-links)
    - [Searching & Filtering Links](#searching--filtering-links)
    - [Link Table Columns](#link-table-columns)
    - [Link Actions](#link-actions)
-9. [Link Details](#9-link-details)
+10. [Link Details](#10-link-details)
    - [Link Configuration Summary](#link-configuration-summary)
    - [Shared Files](#shared-files)
    - [Access Activity Log](#access-activity-log)
    - [File Versions](#file-versions)
-10. [Editing a Link](#10-editing-a-link)
-11. [Video Player & Comments](#11-video-player--comments)
+11. [Editing a Link](#11-editing-a-link)
+12. [Video Player & Comments](#12-video-player--comments)
     - [Playback Controls](#playback-controls)
     - [Quality Selection](#quality-selection)
     - [Timecoded Comments](#timecoded-comments)
-12. [User Management](#12-user-management)
+13. [User Management](#13-user-management)
     - [Viewing Existing Users](#viewing-existing-users)
     - [Creating a New User](#creating-a-new-user)
     - [Editing & Deleting Users](#editing--deleting-users)
-13. [Role Management](#13-role-management)
+14. [Role Management](#14-role-management)
     - [System Roles](#system-roles)
     - [Creating Custom Roles](#creating-custom-roles)
     - [Editing & Deleting Roles](#editing--deleting-roles)
-14. [Settings](#14-settings)
+15. [Settings](#15-settings)
     - [Default Link Access](#default-link-access)
     - [External Share URL (Public)](#external-share-url-public)
     - [Internal Share URL (LAN / VPN)](#internal-share-url-lan--vpn)
     - [Project Root](#project-root)
     - [Default Link Options](#default-link-options)
     - [Maintenance & Cleanup](#maintenance--cleanup)
-15. [View Logs (Client Log Viewer)](#15-view-logs-client-log-viewer)
+16. [View Logs (Client Log Viewer)](#16-view-logs-client-log-viewer)
     - [Log Summary](#log-summary)
     - [Searching & Filtering Logs](#searching--filtering-logs)
     - [Log Entry Details](#log-entry-details)
-16. [Port Forwarding for External Sharing](#16-port-forwarding-for-external-sharing)
-17. [Frequently Asked Questions](#17-frequently-asked-questions)
+17. [Port Forwarding for External Sharing](#17-port-forwarding-for-external-sharing)
+18. [Frequently Asked Questions](#18-frequently-asked-questions)
 
 ---
 
@@ -158,7 +159,7 @@ In most cases, the default ports work without changes. If your server uses non-s
 | **API** | 9095 | Server communication and link management |
 | **HTTPS** | 443 | Share links, upload links, external access |
 
-> **Important:** For external sharing the HTTPS port (443 by default) must be open/forwarded on your router. See [Port Forwarding](#16-port-forwarding-for-external-sharing) for details.
+> **Important:** For external sharing the HTTPS port (443 by default) must be open/forwarded on your router. See [Port Forwarding](#17-port-forwarding-for-external-sharing) for details.
 
 ### Logging In
 
@@ -225,7 +226,7 @@ Three large action buttons let you perform the core tasks:
 
 ### Active Links Table
 
-Below the action buttons, the Dashboard displays a table of **all links** you've created, with search/filter tools and at-a-glance status information. See [Managing Links](#8-managing-links) for full details.
+Below the action buttons, the Dashboard displays a table of **all links** you've created, with search/filter tools and at-a-glance status information. See [Managing Links](#9-managing-links) for full details.
 
 ### Logging Out
 
@@ -233,7 +234,47 @@ Click **"Log Out"** at the bottom of the Dashboard to disconnect from the server
 
 ---
 
-## 5. Share Files Remotely (Generate a Share Link)
+## 5. Drag and Drop QuickShare
+
+The **QuickShare** feature provides the fastest way to create a share link. Simply drag files from your desktop or file manager directly into 45Flow to instantly generate a shareable link with one click.
+
+![QuickShare drag and drop interface](images/quickshare-dragdrop.png)
+
+### How to Use QuickShare
+
+1. **Drag Files:** From anywhere on your computer, drag one or more files directly into the QuickShare drop zone.
+2. **Files Upload:** The selected files are automatically uploaded to your server.
+3. **One-Click Share:** Once uploaded, click the **"QuickShare"** button to instantly generate a shareable link with default settings.
+
+### QuickShare Link Settings
+
+QuickShare links are created with the following default settings:
+
+- **Expiration:** 7 days from creation
+- **Access Mode:** Anyone with the link (no password required)
+- **Network:** Local network access (LAN/VPN)
+- **Comments:** Enabled by default
+
+These defaults can be customized in [Settings](#15-settings) under **Default Link Options**.
+
+### After Creating a QuickShare Link
+
+Once generated, the share link is:
+- **Automatically copied to your clipboard** — ready to paste into email, chat, or wherever you need
+- **Displayed on screen** — for immediate viewing and verification
+- **Added to your Active Links table** on the Dashboard for management
+
+From the Dashboard, you can find your QuickShare link and:
+- Edit settings (change expiration, access mode, etc.)
+- Copy the link again
+- View access logs
+- Delete the link
+
+> **Tip:** QuickShare is perfect for ad-hoc file sharing when you don't need custom settings. For more control over link configuration, use the [full file share workflow](#6-share-files-remotely-generate-a-share-link) instead.
+
+---
+
+## 6. Share Files Remotely (Generate a Share Link)
 
 Use this feature to select files on your server and generate a secure link that others can use to view, download, and optionally comment on those files.
 
@@ -321,7 +362,7 @@ When sharing video files, expand the **"Advanced video options"** section for ad
 
 ---
 
-## 6. Upload Files Locally
+## 7. Upload Files Locally
 
 Use this feature to transfer files from your workstation directly to the server. This is ideal for getting new media onto the server for sharing later.
 
@@ -389,7 +430,7 @@ When all files are complete, click **"Finish"** to return to the Dashboard.
 
 ---
 
-## 7. Create an Upload Link (Remote Upload)
+## 8. Create an Upload Link (Remote Upload)
 
 Use this feature to create a link that allows external collaborators to upload files to a specific folder on your server — without giving them Dashboard access.
 
@@ -440,7 +481,7 @@ When someone opens the link, they'll see a drag-and-drop upload page where they 
 
 ---
 
-## 8. Managing Links
+## 9. Managing Links
 
 All links you create — both share and upload — appear on the Dashboard in the **links table**. This is your central view for monitoring and managing all active, expired, and disabled links.
 
@@ -482,7 +523,7 @@ Each link row provides these actions:
 
 ---
 
-## 9. Link Details
+## 10. Link Details
 
 Click **"Details"** on any link (or click its title) to view comprehensive information.
 
@@ -543,7 +584,7 @@ Click **"Edit"** at the top of the Link Details view to modify the link's settin
 
 ---
 
-## 10. Editing a Link
+## 11. Editing a Link
 
 From the Link Details view, click **"Edit"** to modify an existing link's configuration.
 
@@ -567,7 +608,7 @@ Click **"Cancel"** or **"Close"** to discard changes and return to Link Details.
 
 ---
 
-## 11. Video Player & Comments
+## 12. Video Player & Comments
 
 When someone opens a share link containing video files, they see the **45Flow Video Player** — a browser-based player with collaboration features.
 
@@ -612,7 +653,7 @@ For collection links (multiple files), a sidebar file browser appears on the lef
 
 ---
 
-## 12. User Management
+## 13. User Management
 
 Users are required for the **"Only invited users"** access mode and allow role-based permissions on restricted links. Access user management from the Dashboard by clicking **"Manage Users"**.
 
@@ -656,7 +697,7 @@ Click **"Create User"** to save. The user will appear in the existing users list
 
 ---
 
-## 13. Role Management
+## 14. Role Management
 
 Roles define what users can do when accessing restricted links. Access role management from **Manage Users → Manage Roles**.
 
@@ -697,7 +738,7 @@ Roles define what users can do when accessing restricted links. Access role mana
 
 ---
 
-## 14. Settings
+## 15. Settings
 
 Configure application-wide defaults and server settings. Access Settings from the Dashboard by clicking **"Settings"**.
 
@@ -775,7 +816,7 @@ For administrators to manage server health:
 
 ---
 
-## 15. View Logs (Client Log Viewer)
+## 16. View Logs (Client Log Viewer)
 
 The Client Log Viewer lets you inspect application activity, identify errors, and troubleshoot issues. Access it from the Dashboard by clicking **"View Logs"**.
 
@@ -824,7 +865,7 @@ Click on any entry to expand its **Details** section, which shows the full event
 
 ---
 
-## 16. Port Forwarding for External Sharing
+## 17. Port Forwarding for External Sharing
 
 To share files externally (over the internet), HTTPS port **443** (or your custom HTTPS port) must be forwarded from your router to your server.
 
@@ -848,7 +889,7 @@ Port forwarding tells your router to direct incoming traffic on a specific port 
 
 ---
 
-## 17. Frequently Asked Questions
+## 18. Frequently Asked Questions
 
 **Q: My server doesn't appear in the auto-discovery dropdown. What do I do?**  
 A: The `houston-broadcaster` service must be running on the server. Try connecting manually using the server's IP address via the **"Connect manually via IP"** field.
