@@ -23,6 +23,7 @@ export default defineConfig(({ command, mode }) => {
     base: BASE,
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),
+      __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
     },
     server: {
       port: PORT,

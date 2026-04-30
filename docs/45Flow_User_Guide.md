@@ -16,6 +16,7 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
    - [Manual Connection via IP](#manual-connection-via-ip)
    - [Custom Port Configuration](#custom-port-configuration)
    - [Logging In](#logging-in)
+   - [Activating Your License](#activating-your-license)
 4. [Dashboard Overview](#4-dashboard-overview)
 5. [Share Files Remotely (Generate a Share Link)](#5-share-files-remotely-generate-a-share-link)
    - [Step 1: Select a Project](#step-1-select-a-project)
@@ -173,6 +174,24 @@ The app will display status messages as it connects:
 On success, you'll be taken to the **Dashboard**.
 
 ![Connecting to server with status messages](images/login-connecting.png)
+
+### Activating Your License
+
+After successfully connecting to your server for the first time, you'll need to activate your 45Flow license. **This is a one-time activation per server.**
+
+![License activation screen](images/license-activation.png)
+
+1. When prompted, enter your **License Key** provided by 45Drives.
+2. Click **"Activate License"** to validate your key with the licensing server.
+3. Once validated, your license will be permanently associated with this server.
+
+> **Important Notes:**
+> - Each license key can only be activated on **one server**.
+> - The license is tied to the server, not to individual user accounts.
+> - If you need to transfer a license to a different server, contact 45Drives support.
+> - Once activated, all users connecting to this server will have full access to 45Flow features.
+
+After activation is complete, you'll be automatically directed to the **Dashboard** to begin using 45Flow.
 
 ---
 

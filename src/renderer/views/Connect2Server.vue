@@ -778,10 +778,31 @@ async function connectToServer() {
         const res = await fetch(`${apiBase}/api/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: username.value, password: password.value }),
+            body: JSON.stringify({
+                username: username.value,
+                password: password.value,
+                clientBuildDate: typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : undefined,
+            }),
         });
-        if (!res.ok) throw new Error(await readHttpError(res));
-        const { token } = await res.json();
+
+        // Handle entitlement expiry specifically
+        if (!res.ok) {
+            let errorData: any = null;
+            const raw = await res.text().catch(() => '');
+            try { errorData = raw ? JSON.parse(raw) : null; } catch {}
+
+            if (res.status === 403 && errorData?.error === 'entitlement_expired') {
+                throw new Error(
+                    errorData?.message ||
+                    'This version of 45Flow was released after your update entitlement expired. Please renew your license or use an earlier version.'
+                );
+            }
+            const errMsg = errorData?.error || errorData?.message || raw || `HTTP ${res.status}`;
+            throw new Error(errMsg);
+        }
+
+        const loginData = await res.json();
+        const token = loginData.token;
 
         connectionMeta.value = {
             ...connectionMeta.value,
@@ -972,6 +993,18 @@ async function checkBroadcasterUpdateInBackground(apiBase: string, token: string
 
         const data = await res.json();
         window.appLog?.info('broadcaster-update-check.result', data);
+
+        // Entitlement expired — server won't offer updates
+        if (data.entitlementExpired) {
+            window.appLog?.info('broadcaster-update-check.entitlement-expired', { expiresAt: data.expiresAt });
+            pushNotification(new Notification(
+                'Update Entitlement Expired',
+                `Your update entitlement expired on ${data.expiresAt ? new Date(data.expiresAt).toLocaleDateString() : 'N/A'}. Renew your license to receive server updates.`,
+                'warning',
+                15000,
+            ));
+            return;
+        }
 
         if (!data.updateAvailable) return;
 
