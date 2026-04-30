@@ -237,7 +237,7 @@ const dashboardTourSteps: TourStep[] = [
 	},
 	{
 		target: '[data-tour="settings"]',
-		message: 'Settings lets you configure external/internal URLs, default link options, project roots, and maintenance cleanup.\n\nYou can also re-enable all guided tours from Settings.',
+		message: 'Settings lets you configure external/internal URLs, default link options, project roots, and maintenance cleanup.\n\nYou can also re-enable all guided tours from Settings → Guides.',
 	},
 	{
 		target: '[data-tour="manage-links"]',

@@ -220,19 +220,6 @@
                                 </SettingRow>
                             </div>
 
-                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Guided Tours</p>
-                            <div class="divide-y divide-default">
-                                <SettingRow label="Re-enable guided tours" description="Reset onboarding walkthroughs so they show again on each page.">
-                                    <button
-                                        class="btn btn-secondary text-sm px-3 py-1"
-                                        type="button"
-                                        :disabled="busy || !anyOnboardingDone"
-                                        @click="handleResetOnboarding"
-                                    >
-                                        Reset Tours
-                                    </button>
-                                </SettingRow>
-                            </div>
                         </template>
 
                         <!-- ═══ Help ══════════════════════════════════════════ -->
@@ -245,6 +232,20 @@
                                         @click="openUserGuide"
                                     >
                                         Open User Guide
+                                    </button>
+                                </SettingRow>
+                            </div>
+
+                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Guided Tours</p>
+                            <div class="divide-y divide-default">
+                                <SettingRow label="Re-enable guided tours" description="Reset onboarding walkthroughs so they show again on each page.">
+                                    <button
+                                        class="btn btn-secondary text-sm px-3 py-1"
+                                        type="button"
+                                        :disabled="busy || !anyOnboardingDone"
+                                        @click="handleResetOnboarding"
+                                    >
+                                        Reset Tours
                                     </button>
                                 </SettingRow>
                             </div>
@@ -550,7 +551,7 @@ const settingsTourSteps: TourStep[] = [
 	},
 	{
 		target: '[data-tour="settings-modal-nav"]',
-		message: 'Use the sidebar to navigate between sections.\n\n• URLs & Access — configure external/internal share URLs.\n• Project Root — set the default directory root.\n• Link Options — default access, comments, and review copy settings.\n• Preferences — time format and guided tour settings.\n• Maintenance — clean up orphaned files and metadata.',
+		message: 'Use the sidebar to navigate between sections.\n\n• URLs & Access — configure external/internal share URLs.\n• Project Root — set the default directory root.\n• Link Options — default access, comments, and review copy settings.\n• Preferences — time format settings.\n• Guides — user guide and guided tour settings.\n• Maintenance — clean up orphaned files and metadata.',
 	},
 	{
 		target: '[data-tour="settings-modal-urls"]',
@@ -583,7 +584,7 @@ const navGroups = [
     {
         label: 'Help',
         items: [
-            { key: 'help' as Section, label: 'User Guide' },
+            { key: 'help' as Section, label: 'Guides' },
         ],
     },
 ];
