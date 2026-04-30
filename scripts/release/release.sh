@@ -99,9 +99,11 @@ bump_version() {
   
   echo "✓ Version bumped to $new_version"
   
-  # Git add the change
+  # Commit and push so remote build machines can pull the new version
   git add package.json
-  echo "✓ Staged package.json for commit"
+  git commit -m "Bump version to $new_version"
+  git push
+  echo "✓ Committed and pushed v$new_version"
 }
 
 parse_args() {
@@ -268,15 +270,14 @@ main() {
   echo "  Release Complete!"
   echo "========================================="
   
-  # If we bumped version, remind about committing
+  # Tag the release now that the build succeeded
   if [[ -n "$BUMP_TYPE" ]]; then
     local new_version
     new_version="$(node -p "require('./package.json').version")"
+    git tag -a "v$new_version" -m "Release v$new_version"
+    git push --tags
     echo ""
-    echo "Don't forget to commit and tag the version bump:"
-    echo "  git commit -m 'Bump version to $new_version'"
-    echo "  git tag -a v$new_version -m 'Release v$new_version'"
-    echo "  git push && git push --tags"
+    echo "Released and tagged v$new_version"
   fi
 }
 
