@@ -1,6 +1,6 @@
 {
   "appId": "com.45studio.flow",
-  "productName": "45Flow",
+  "productName": "45Flow-Pro-Edition",
   "directories": { "output": "dist" },
   "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
   "publish": { "provider": "github", "owner": "45Drives", "repo": "45Flow" },
@@ -10,7 +10,7 @@
     "oneClick": false,
     "perMachine": false,
     "allowToChangeInstallationDirectory": false,
-    "shortcutName": "45Flow"
+    "shortcutName": "45Flow - Pro Edition"
   },
 
   "linux": {
