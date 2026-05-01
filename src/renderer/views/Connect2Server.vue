@@ -661,6 +661,35 @@ async function ensureLicenseActivated(apiBase: string) {
     pushNotification(new Notification('License Activated', 'This server is now licensed for perpetual use.', 'success', 6000))
 }
 
+function translateSshError(errorMsg: string): string {
+    const msg = String(errorMsg || '').toLowerCase();
+    
+    // SSH authentication failures
+    if (msg.includes('all configured authentication methods failed')) {
+        return 'Authentication failed. Please check your username and password.';
+    }
+    if (msg.includes('permission denied')) {
+        return 'Permission denied. Please check your username and password.';
+    }
+    if (msg.includes('password authentication failed')) {
+        return 'Incorrect password. Please try again.';
+    }
+    
+    // SSH connection failures
+    if (msg.includes('connect etimedout') || msg.includes('connect timeout')) {
+        return 'Connection timed out. Please check the server IP address and ensure SSH is enabled.';
+    }
+    if (msg.includes('connect econnrefused') || msg.includes('connection refused')) {
+        return 'Connection refused. Please check the SSH port (default 22) and ensure SSH is enabled.';
+    }
+    if (msg.includes('network unreachable') || msg.includes('host unreachable')) {
+        return 'Network unreachable. Please check your network connection and the server IP address.';
+    }
+    
+    // Return original message if no translation found
+    return errorMsg;
+}
+
 async function connectToServer() {
     if (!selectedServer.value && !manualIp.value) {
         pushNotification(new Notification('Error', `Please select or enter a server before connecting.`, 'error', 8000));
@@ -736,13 +765,15 @@ async function connectToServer() {
                 // If this fails, SSH preflight/bootstrap will probably fail too, so treat as fatal.
                 window.appLog?.error('ensure-ssh-ready.failed', { error: r?.error });
                 statusLine.value = '';
-                pushNotification(new Notification('Error', r?.error || 'SSH setup failed', 'error', 12000));
+                const userMsg = translateSshError(r?.error || 'SSH setup failed');
+                pushNotification(new Notification('Error', userMsg, 'error', 12000));
                 return;
             }
         } catch (e: any) {
             statusLine.value = '';
             window.appLog?.error('ensure-ssh-ready.failed', { error: e?.message });
-            pushNotification(new Notification('Error', e?.message || 'SSH setup failed', 'error', 12000));
+            const userMsg = translateSshError(e?.message || 'SSH setup failed');
+            pushNotification(new Notification('Error', userMsg, 'error', 12000));
             return;
         }
 
@@ -837,7 +868,8 @@ async function connectToServer() {
                 statusLine.value = '';
                 isBootstrapping.value = false;
                 unlistenProgress?.(); unlistenProgress = null;
-                pushNotification(new Notification('Error', result?.error || 'Bootstrap failed', 'error', 12000));
+                const userMsg = translateSshError(result?.error || 'Bootstrap failed');
+                pushNotification(new Notification('Error', userMsg, 'error', 12000));
                 return;
             }
 

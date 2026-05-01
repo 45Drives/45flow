@@ -23,18 +23,24 @@ export function checkSSH(host: string, timeout = 3000, port = 22): Promise<boole
 export async function connectWithPassword(args: { host: string; username: string; password: string; port?: number }) {
   const { host, username, password, port } = args;
   const ssh = new NodeSSH();
-  await ssh.connect({
-    host,
-    username,
-    password,
-    port: port ?? 22,
-    tryKeyboard: true,
-    onKeyboardInteractive(_n, _i, _l, prompts, finish) {
-      finish(prompts.map(() => password));
-    },
-    readyTimeout: 20_000,
-  });
-  return ssh;
+  try {
+    await ssh.connect({
+      host,
+      username,
+      password,
+      port: port ?? 22,
+      tryKeyboard: true,
+      onKeyboardInteractive(_n, _i, _l, prompts, finish) {
+        finish(prompts.map(() => password));
+      },
+      readyTimeout: 20_000,
+    });
+    return ssh;
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    console.error(`[SSH] Password auth failed for ${username}@${host}:${port ?? 22} - ${msg}`);
+    throw err;
+  }
 }
 
 
@@ -74,19 +80,26 @@ export async function setupSshKey(
   const pub = pubPath ?? path.join(keyDir, 'id_ed25519.pub');
 
   const publicKeyLine = (fs.readFileSync(pub, 'utf8').trim().replace(/["`]/g, '') + ` ${comment}`).trim();
-  const ssh = await connectWithPassword({ host, username, password, port });
+  
+  try {
+    const ssh = await connectWithPassword({ host, username, password, port });
 
-  const cmd = [
-    'mkdir -p ~/.ssh',
-    'chmod 700 ~/.ssh',
-    `grep -v ' ${comment}$' ~/.ssh/authorized_keys 2>/dev/null > ~/.ssh/authorized_keys.tmp || true`,
-    'mv ~/.ssh/authorized_keys.tmp ~/.ssh/authorized_keys 2>/dev/null || true',
-    `echo "${publicKeyLine}" >> ~/.ssh/authorized_keys`,
-    'chmod 600 ~/.ssh/authorized_keys',
-  ].join(' && ');
+    const cmd = [
+      'mkdir -p ~/.ssh',
+      'chmod 700 ~/.ssh',
+      `grep -v ' ${comment}$' ~/.ssh/authorized_keys 2>/dev/null > ~/.ssh/authorized_keys.tmp || true`,
+      'mv ~/.ssh/authorized_keys.tmp ~/.ssh/authorized_keys 2>/dev/null || true',
+      `echo "${publicKeyLine}" >> ~/.ssh/authorized_keys`,
+      'chmod 600 ~/.ssh/authorized_keys',
+    ].join(' && ');
 
-  await ssh.execCommand(cmd);
-  ssh.dispose();
+    await ssh.execCommand(cmd);
+    ssh.dispose();
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    console.error(`[SSH] setupSshKey failed for ${username}@${host}:${port} - ${msg}`);
+    throw err;
+  }
 }
 
 
