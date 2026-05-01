@@ -13,7 +13,7 @@
       <!-- Center (title) -->
       <div class="justify-self-center text-center items-center text-2xl font-semibold whitespace-nowrap">
         <!-- {{ headerTitle || (route.meta.title as string) || '45Flow' }} -->
-        <div class="flow-logo-gradient mx-auto my-auto" role="img" aria-label="45Flow" data-tour="flow-logo" :style="{
+        <div class="flow-logo-gradient mx-auto my-auto ml-4" role="img" aria-label="45Flow" data-tour="flow-logo" :style="{
           '--flow-logo-src': `url(${flowLogo})`,
         }" />
       </div>

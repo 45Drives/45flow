@@ -1300,7 +1300,8 @@ async function checkBroadcasterUpdateInBackground(apiBase: string, token: string
 
 .connect-main-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
+    /* grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr); */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.65rem;
 }
 
