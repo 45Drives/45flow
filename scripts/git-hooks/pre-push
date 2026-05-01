@@ -23,7 +23,7 @@ set -euo pipefail
 
 UPSTREAM_REMOTE="upstream"
 UPSTREAM_URL="git@github.com:45Drives/studio-share.git"
-UPSTREAM_BRANCH="main"
+UPSTREAM_BRANCH="community-edition"
 SYNC_PREFIX="downstream:"
 # File that tracks the last upstream commit we've scanned up to
 SYNC_MARKER=".git/upstream-sync-marker"
