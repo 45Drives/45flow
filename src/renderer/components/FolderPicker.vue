@@ -75,6 +75,11 @@
 
         <div class="ml-auto flex items-center" v-if="browseMode !== 'roots'">
           <button type="button" class="btn btn-secondary text-xs mr-2 flex items-center gap-1 px-2"
+            @click="refreshBrowser" title="Refresh file listing">
+            <FontAwesomeIcon :icon="faRotateRight" />
+          </button>
+
+          <button type="button" class="btn btn-secondary text-xs mr-2 flex items-center gap-1 px-2"
             @click="createNewFolder" title="Create a new folder in current directory">
             <FontAwesomeIcon :icon="faFolderPlus" />
             <span>New Folder</span>
@@ -178,7 +183,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { faArrowLeft, faList, faGrip, faFolderPlus } from '@fortawesome/free-solid-svg-icons'
+import { faArrowLeft, faList, faGrip, faFolderPlus, faRotateRight } from '@fortawesome/free-solid-svg-icons'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import PathInput from './PathInput.vue'
 import TreeNode from './TreeNode.vue'
@@ -270,6 +275,11 @@ const internalSelected = ref<Set<string>>(new Set())
 const selectedVersion = ref(0)
 const expandCache = new Map<string, string[]>()
 const refreshKey = ref(0)
+
+function refreshBrowser() {
+  expandCache.clear()
+  refreshKey.value++
+}
 const pickerReady = ref(false)
 const rememberProjectAsDefault = ref(true)
 const savingDefaultRoot = ref(false)

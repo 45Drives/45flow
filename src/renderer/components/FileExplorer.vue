@@ -31,6 +31,11 @@
         </label>
 
         <div class="ml-auto flex items-center" data-tour="file-browser-view-toggle">
+          <button type="button" class="btn btn-secondary text-xs mr-2 flex items-center gap-1 px-2"
+            @click="refreshBrowser" title="Refresh file listing">
+            <FontAwesomeIcon :icon="faRotateRight" />
+          </button>
+
           <button type="button" class="px-2 py-1 text-xs flex items-center justify-center hover:bg-white/5 rounded-l-md"
             :class="viewMode === 'list' ? 'bg-white/10' : ''" :aria-pressed="viewMode === 'list'" aria-label="List view"
             title="List view" @click="viewMode = 'list'">
@@ -52,14 +57,14 @@
       <div class="rounded-md">
         <!-- List view -->
         <template v-if="viewMode === 'list'">
-          <TreeNode :key="'list-'+cwd" :apiFetch="apiFetch" :selected="selectedSet"
+          <TreeNode :key="'list-'+cwd+refreshKey" :apiFetch="apiFetch" :selected="selectedSet"
             :getFilesFor="getFilesForFolder" :relPath="rootRel" :depth="0" :isRoot="true" useCase="share"
             @toggle="togglePath" @navigate="navigateTo" @select-range="onSelectRange" />
         </template>
 
         <!-- Grid view -->
         <template v-else>
-          <IconMode :key="'grid-'+cwd" :apiFetch="apiFetch" :selected="selectedSet"
+          <IconMode :key="'grid-'+cwd+refreshKey" :apiFetch="apiFetch" :selected="selectedSet"
             :getFilesFor="getFilesForFolder" :relPath="rootRel" :depth="0" :isRoot="true" useCase="share"
             @toggle="togglePath" @navigate="navigateTo" @select-range="onSelectRange" />
         </template>
@@ -74,7 +79,7 @@ import { ref, computed, onMounted, watch } from 'vue'
   import TreeNode from './TreeNode.vue'
   import IconMode from './IconMode.vue'
   import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-  import { faArrowLeft, faList, faGrip } from '@fortawesome/free-solid-svg-icons'
+  import { faArrowLeft, faList, faGrip, faRotateRight } from '@fortawesome/free-solid-svg-icons'
   
   const props = defineProps<{
     apiFetch: (url: string, init?: any) => Promise<any>,
@@ -148,6 +153,7 @@ function isSelected(path: string) {
   
   // ---------- Expand cache ----------
   const expandCache = new Map<string, string[]>()
+  const refreshKey = ref(0)
   
   async function getFilesForFolder(folder: string): Promise<string[]> {
     if (expandCache.has(folder)) return expandCache.get(folder)!
@@ -244,6 +250,12 @@ async function togglePath({ path, isDir }: TogglePayload) {
 
   watch(cwd, () => { void loadAllCwdFiles() })
   onMounted(() => { void loadAllCwdFiles() })
+
+  function refreshBrowser() {
+    expandCache.clear()
+    refreshKey.value++
+    void loadAllCwdFiles()
+  }
 
   const selectAllChecked = computed(() => {
     if (!allCwdFiles.value.length) return false
