@@ -28,7 +28,7 @@ SYNC_PREFIX="downstream:"
 # File that tracks the last upstream commit we've scanned up to
 SYNC_MARKER=".git/upstream-sync-marker"
 
-echo "🔄 Checking studio-share upstream for downstream: commits..."
+echo "🔄 Checking studio-share upstream for 'downstream:' commits..."
 
 # ── Ensure upstream remote exists ───────────────────────────────────────────
 if ! git remote get-url "$UPSTREAM_REMOTE" >/dev/null 2>&1; then
@@ -104,29 +104,37 @@ for entry in "${CANDIDATES[@]}"; do
   SUBJECT="${entry#* }"
   SHORT=$(git rev-parse --short "$HASH")
 
+  # Check if this commit was already cherry-picked manually (by subject match)
+  if git log --oneline -20 --grep="^${SUBJECT}$" | grep -q .; then
+    echo "  [$((APPLIED + 1))/$TOTAL] $SHORT: Already applied, skipping"
+    APPLIED=$((APPLIED + 1))
+    echo "$HASH" > "$SYNC_MARKER"
+    continue
+  fi
+
   echo "  [$((APPLIED + 1))/$TOTAL] $SHORT: $SUBJECT"
 
   if ! git cherry-pick "$HASH" --no-edit 2>/dev/null; then
     echo ""
     echo "  ✖ Cherry-pick conflict on $SHORT!"
     echo ""
-    echo "  Resolve the conflict, then:"
-    echo "    git cherry-pick --continue"
-    echo "    git push"
+    echo "  To resolve:"
+    echo "    1. Fix conflicts in your editor (VS Code)"
+    echo "    2. Stage files: git add <resolved-files>  (or click + in VS Code)"
+    echo "    3. DON'T COMMIT! Run: git cherry-pick --continue"
+    echo "    4. git push  (hook will skip already-picked commits)"
     echo ""
-    echo "  Or abort everything:"
+    echo "  Or abort:"
     echo "    git cherry-pick --abort"
     echo ""
-    # Save progress — the marker points to the commit BEFORE the failed one
-    # so next run will retry from here
-    if [[ $APPLIED -gt 0 ]]; then
-      LAST_GOOD="${CANDIDATES[$((APPLIED - 1))]%% *}"
-      echo "$LAST_GOOD" > "$SYNC_MARKER"
-    fi
     exit 1
   fi
 
   APPLIED=$((APPLIED + 1))
+  
+  # Update marker after each successful cherry-pick
+  # This way manual conflict resolutions won't be retried
+  echo "$HASH" > "$SYNC_MARKER"
 done
 
 # ── Update marker and report ────────────────────────────────────────────────
