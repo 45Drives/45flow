@@ -1906,7 +1906,7 @@ async function generateLink() {
                             proxyQualities: transcodeProxy.value ? proxyQualities.value.slice() : [],
                         }
                         const fileId = Number(rec?.id ?? rec?.fileId ?? rec?.file_id ?? rec?.file?.id)
-                        const canUsePlayback = !!token && Number.isFinite(fileId) && fileId > 0
+                        const canUsePlayback = !!token && Number.isFinite(fileId) && fileId > 0 && accessMode.value === 'open'
                         const playbackPath = canUsePlayback
                             ? `/api/token/${encodeURIComponent(token)}/files/${encodeURIComponent(String(fileId))}/playback/${encodeURIComponent(String(assetVersionId))}?prefer=auto&audit=0`
                             : ''
