@@ -220,6 +220,71 @@
                                 </SettingRow>
                             </div>
 
+                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Performance</p>
+                            <div class="divide-y divide-default">
+                                <SettingRow 
+                                    label="Client-side transcoding" 
+                                    description="Transcode videos on your machine before upload using local CPU/GPU. Reduces server load and speeds up review copy generation. When disabled, the server handles transcoding after upload."
+                                >
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-sm" :class="!clientTranscodeEnabled ? 'opacity-60' : 'font-semibold'">
+                                            {{ clientTranscodeEnabled ? 'Enabled' : 'Disabled' }}
+                                        </span>
+                                        <Switch v-model="clientTranscodeEnabled" :class="[
+                                            clientTranscodeEnabled ? 'bg-primary' : 'bg-well',
+                                            'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
+                                        ]">
+                                            <span class="sr-only">Toggle client-side transcoding</span>
+                                            <span :class="[
+                                                clientTranscodeEnabled ? 'translate-x-4' : 'translate-x-0',
+                                                'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
+                                            ]" />
+                                        </Switch>
+                                    </div>
+                                </SettingRow>
+                                <SettingRow 
+                                    label="Hardware Acceleration" 
+                                    :description="`${hardwareCapabilities?.hardwareDescription || 'Detecting...'}`"
+                                >
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-sm" :class="!hwAccelEnabled ? 'opacity-60' : 'font-semibold'">
+                                            {{ hwAccelEnabled ? '✓ GPU' : '⚠ CPU only' }}
+                                        </span>
+                                        <Switch v-model="hwAccelEnabled" :class="[
+                                            hwAccelEnabled ? 'bg-primary' : 'bg-well',
+                                            'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
+                                        ]" :disabled="!hardwareCapabilities?.hasHardwareAccel">
+                                            <span class="sr-only">Toggle hardware acceleration</span>
+                                            <span :class="[
+                                                hwAccelEnabled ? 'translate-x-4' : 'translate-x-0',
+                                                'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
+                                            ]" />
+                                        </Switch>
+                                    </div>
+                                </SettingRow>
+                                <SettingRow 
+                                    label="Encode Quality" 
+                                    description="Fast: quicker encode, larger file. Balanced: good tradeoff. Quality: slower encode, best visual fidelity."
+                                >
+                                    <select v-model="transcodePreset" class="text-sm bg-well border border-default rounded px-2 py-1">
+                                        <option value="fast">Fast</option>
+                                        <option value="balanced">Balanced</option>
+                                        <option value="quality">Quality</option>
+                                    </select>
+                                </SettingRow>
+                                <SettingRow v-if="hardwareCapabilities?.probeResults"
+                                    label="Detected Encoders"
+                                    description="Encoders verified by test-encoding one frame on your hardware."
+                                >
+                                    <div class="flex flex-wrap gap-1.5">
+                                        <span v-for="(ok, codec) in hardwareCapabilities.probeResults" :key="codec"
+                                            class="text-xs px-1.5 py-0.5 rounded"
+                                            :class="ok ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-default text-muted line-through opacity-50'"
+                                        >{{ codec }}</span>
+                                    </div>
+                                </SettingRow>
+                            </div>
+
                         </template>
 
                         <!-- ═══ Help ══════════════════════════════════════════ -->
@@ -519,6 +584,7 @@ import { pushNotification, Notification } from '@45drives/houston-common-ui';
 import PathInput from "../PathInput.vue";
 import { useOnboarding } from "../../composables/useOnboarding";
 import { useTimeFormat } from "../../composables/useTimeFormat";
+import { useClientTranscode } from "../../composables/useClientTranscode";
 import { useTourManager, type TourStep } from "../../composables/useTourManager";
 import { appLog } from "../../composables/useLog";
 
@@ -542,7 +608,22 @@ const emit = defineEmits<{
 const { apiFetch } = useApi();
 const { onboarding, resetAll: resetOnboarding, markDone } = useOnboarding();
 const { hour12 } = useTimeFormat();
+const { enabled: clientTranscodeEnabled, preset: transcodePreset, hwAccel: hwAccelEnabled } = useClientTranscode();
 const { requestTour } = useTourManager();
+
+const hardwareCapabilities = ref<any>(null);
+
+onMounted(async () => {
+	try {
+		hardwareCapabilities.value = await window.electron.getTranscodeCapabilities();
+	} catch (e) {
+		console.warn('Failed to detect hardware capabilities:', e);
+		hardwareCapabilities.value = {
+			hasHardwareAccel: false,
+			hardwareDescription: 'Detection failed',
+		};
+	}
+});
 
 const settingsTourSteps: TourStep[] = [
 	{

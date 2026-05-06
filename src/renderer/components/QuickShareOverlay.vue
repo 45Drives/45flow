@@ -222,7 +222,7 @@
                     <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" class="proxy-quality-checkbox" value="1080p" v-model="proxyQualities" /> 1080p</label>
                     <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" class="proxy-quality-checkbox" value="original" v-model="proxyQualities" /> Full Res</label>
                   </div>
-                  <p class="text-xs text-slate-400 mt-1">Streamable copies for review.</p>
+                  <p class="text-xs text-slate-400 mt-1">Lightweight MP4s for downloading &amp; offline review. A browser stream is always generated separately.</p>
                 </div>
 
                 <div class="col-span-2 min-w-0">
@@ -287,13 +287,21 @@
       <!-- ===== STEP 3: Upload & Share Progress ===== -->
       <section v-show="wizardStep === 3" data-tour="qs-step-upload">
         <div v-if="uploadPhase === 'uploading'" class="flex flex-col gap-3">
-          <div class="text-sm font-semibold">Uploading files…</div>
+          <div class="text-sm font-semibold">{{ currentPhaseLabel }}</div>
           <div v-for="f in droppedFiles" :key="f.path" class="flex flex-col gap-1">
             <div class="flex items-center justify-between text-sm">
               <span class="truncate min-w-0 flex-1">{{ f.name }}</span>
               <span class="text-muted ml-2 shrink-0">{{ (perFileProgress[f.path] ?? 0).toFixed(0) }}%</span>
             </div>
-            <progress class="w-full h-2 rounded-lg overflow-hidden" :value="perFileProgress[f.path] ?? 0" max="100"></progress>
+            <div v-if="perFileDetail[f.path]" class="text-xs text-muted">{{ perFileDetail[f.path] }}</div>
+            <progress
+              class="w-full h-2 rounded-lg overflow-hidden"
+              :class="{
+                '[&::-webkit-progress-value]:bg-amber-500 [&::-moz-progress-bar]:bg-amber-500': perFileStatus[f.path] === 'transcoding',
+                '[&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary': perFileStatus[f.path] === 'uploading',
+              }"
+              :value="perFileProgress[f.path] ?? 0" max="100"
+            ></progress>
           </div>
         </div>
 
@@ -351,6 +359,7 @@ import { appLog } from '../composables/useLog'
 import { connectionMetaInjectionKey, currentServerInjectionKey } from '../keys/injection-keys'
 import { useApi } from '../composables/useApi'
 import { useTransferProgress } from '../composables/useTransferProgress'
+import { useClientTranscode } from '../composables/useClientTranscode'
 import { signalLinkCreated } from '../composables/useLinkRefresh'
 import { tourQuickShareOpen, tourQuickShareStep, tourQuickShareShowDone } from '../composables/useQuickShareTour'
 import FolderPicker from './FolderPicker.vue'
@@ -521,8 +530,17 @@ const existingWatermarkPreviewUrl = ref<string | null>(null)
 type UploadPhase = 'idle' | 'uploading' | 'generating' | 'done' | 'error'
 const uploadPhase = ref<UploadPhase>('idle')
 const perFileProgress = ref<Record<string, number>>({})
+const perFileStatus = ref<Record<string, 'waiting' | 'transcoding' | 'uploading' | 'done' | 'error'>>({})
+const perFileDetail = ref<Record<string, string>>({})
 const viewUrl = ref('')
 const errorMsg = ref('')
+
+const currentPhaseLabel = computed(() => {
+  const statuses = Object.values(perFileStatus.value)
+  if (statuses.includes('transcoding')) return 'Transcoding locally…'
+  if (statuses.includes('uploading')) return 'Uploading files…'
+  return 'Processing files…'
+})
 
 const videoExts = new Set([
   'mp4', 'mov', 'm4v', 'mkv', 'webm', 'avi', 'wmv', 'flv',
@@ -587,6 +605,8 @@ function resetWizard() {
   existingWatermarkPreviewUrl.value = null
   uploadPhase.value = 'idle'
   perFileProgress.value = {}
+  perFileStatus.value = {}
+  perFileDetail.value = {}
   viewUrl.value = ''
   errorMsg.value = ''
   busy.value = false
@@ -808,6 +828,8 @@ async function startUploadAndShare() {
   wizardStep.value = 3
   uploadPhase.value = 'uploading'
   perFileProgress.value = Object.fromEntries(droppedFiles.value.map(f => [f.path, 0]))
+  perFileStatus.value = Object.fromEntries(droppedFiles.value.map(f => [f.path, 'waiting']))
+  perFileDetail.value = {}
 
   const host = ssh.value?.server
   const user = ssh.value?.username
@@ -828,12 +850,16 @@ async function startUploadAndShare() {
 
     // Upload all files sequentially
     const serverPaths: string[] = []
+    const { enabled: clientTranscodeEnabled, preset: transcodePreset, hwAccel: hwAccelSetting } = useClientTranscode()
+    
     for (let i = 0; i < droppedFiles.value.length; i++) {
       const f = droppedFiles.value[i]
+      let uploadedFileName = f.name  // Track actual uploaded filename
       const fileDestAbs = joinPath(destDir, f.name)
-      serverPaths.push(fileDestAbs)
 
       perFileProgress.value[f.path] = 0
+      perFileStatus.value[f.path] = 'waiting'
+      perFileDetail.value[f.path] = ''
 
       const taskId = transfer.createUploadTask({
         title: `Quick share: ${f.name}`,
@@ -842,17 +868,95 @@ async function startUploadAndShare() {
         context: { source: 'upload', destDir, file: fileDestAbs },
       })
 
+      // Determine if this is a video file and if we should transcode client-side
+      const videoExts = new Set(['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv', 'wmv', 'mxf', 'mts', 'm2ts', 'mod', 'tod', 'vob', 'f4v', 'asf', 'rm', 'rmvb', 'ts', 'ogv', '3gp', '3g2', 'mj2', 'm4v', 'qt', 'dv', 'divx', 'hevc', 'h264', 'h265', 'vp8', 'vp9', 'av1', 'dnxhd', 'prores', 'r3d', 'braw', 'ari', 'cine', 'dav'])
+      const fileExt = String(f.name || '').toLowerCase().split('.').pop() || ''
+      const isVideo = videoExts.has(fileExt)
+      const shouldTranscodeClient = isVideo && clientTranscodeEnabled.value && hasVideo.value
+
+      let fileToUpload = f.path
+      let clientTranscoded = false
+
+      // Transcode if needed
+      if (shouldTranscodeClient) {
+        const transcodeQuality = proxyQualities.value.includes('original') ? 'original' : proxyQualities.value[0] || '720p'
+        perFileStatus.value[f.path] = 'transcoding'
+        perFileDetail.value[f.path] = 'Preparing transcode…'
+        
+        try {
+          transfer.updateUpload(taskId, {
+            detail: 'Transcoding locally…',
+          })
+
+          const { jobId, done } = await window.electron.transcodeStart(
+            {
+              inputPath: f.path,
+              quality: transcodeQuality as 'original' | '1080p' | '720p',
+              outputFormat: 'mp4',
+              useHardwareAccel: hwAccelSetting.value,
+              preset: transcodePreset.value,
+            },
+            (progress) => {
+              perFileProgress.value[f.path] = progress.percent
+              perFileDetail.value[f.path] = `Transcoding: ${progress.fps} fps @ ${progress.speed} — ETA ${progress.eta}`
+              transfer.updateUpload(taskId, {
+                progress: progress.percent,
+                detail: `Transcoding: ${progress.fps}fps @ ${progress.speed} - ETA ${progress.eta}`,
+              })
+            }
+          )
+
+          const result = await done
+          if (result?.ok && result?.outputPath) {
+            fileToUpload = result.outputPath
+            clientTranscoded = true
+            // Update filename to match transcoded output (always .mp4)
+            uploadedFileName = f.name.replace(/\.[^.]+$/, '.mp4')
+            perFileProgress.value[f.path] = 0
+            perFileStatus.value[f.path] = 'uploading'
+            perFileDetail.value[f.path] = 'Uploading…'
+            transfer.updateUpload(taskId, {
+              detail: 'Uploading…',
+              progress: 0,
+            })
+          } else {
+            const errorMsg = result?.error || 'Transcode failed'
+            perFileStatus.value[f.path] = 'error'
+            perFileDetail.value[f.path] = `Error: ${errorMsg}`
+            transfer.finishUpload(taskId, false, `Transcode error: ${errorMsg}`)
+            throw new Error(errorMsg)
+          }
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : String(err)
+          perFileStatus.value[f.path] = 'error'
+          perFileDetail.value[f.path] = `Error: ${errorMsg}`
+          pushNotification(
+            new Notification(
+              'Transcode Failed',
+              `${f.name}: ${errorMsg}`,
+              'error',
+              10000
+            )
+          )
+          throw err
+        }
+      } else {
+        perFileStatus.value[f.path] = 'uploading'
+        perFileDetail.value[f.path] = 'Uploading…'
+      }
+
       const { done } = await electron.rsyncStart(
         {
           host,
           user,
-          src: f.path,
+          src: fileToUpload,
           destDir,
           port,
           keyPath: undefined,
-          transcodeProxy: hasVideo.value,
-          proxyQualities: hasVideo.value ? proxyQualities.value.slice() : undefined,
+          transcodeProxy: hasVideo.value && !clientTranscoded, // Skip server transcode if we transcoded client-side
+          proxyQualities: hasVideo.value && !clientTranscoded ? proxyQualities.value.slice() : undefined,
           apiToken: connectionMeta.value.token || undefined,
+          clientTranscoded, // Tell server we transcoded client-side
         },
         (p: { percent?: number; bytesTransferred?: number; raw?: string; rate?: string; eta?: string }) => {
           let pct: number | undefined =
@@ -866,6 +970,7 @@ async function startUploadAndShare() {
           }
           const filePct = pct ?? 0
           perFileProgress.value[f.path] = filePct
+          perFileDetail.value[f.path] = p.rate ? `Uploading: ${p.rate}${p.eta ? ' — ETA ' + p.eta : ''}` : 'Uploading…'
           transfer.updateUpload(taskId, {
             status: 'uploading',
             progress: filePct,
@@ -877,11 +982,18 @@ async function startUploadAndShare() {
 
       const res = await done
       if (!res?.ok) {
+        perFileStatus.value[f.path] = 'error'
+        perFileDetail.value[f.path] = res?.error || 'Upload failed'
         transfer.finishUpload(taskId, false, res?.error || 'Upload failed')
         throw new Error(res?.error || `Upload failed for ${f.name}`)
       }
       transfer.finishUpload(taskId, true)
       perFileProgress.value[f.path] = 100
+      perFileStatus.value[f.path] = 'done'
+      perFileDetail.value[f.path] = 'Complete'
+
+      // Add server path using the actual uploaded filename
+      serverPaths.push(joinPath(destDir, uploadedFileName))
     }
 
     // Upload watermark if needed

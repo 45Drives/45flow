@@ -354,8 +354,8 @@
                                                     <div class="min-w-0">
                                                         <p class="font-semibold">Video options</p>
                                                         <p class="text-xs text-muted truncate">
-                                                            <span v-if="usingExistingProxy">Existing review copies will be used for streaming.</span>
-                                                            <span v-else>Review copies will be generated for streaming.</span>
+                                                            <span v-if="usingExistingProxy">Existing review copies found.</span>
+                                                            <span v-else>Review copies will be generated after upload.</span>
                                                             <span v-if="watermarkEnabled"> · Watermark enabled.</span>
                                                         </p>
                                                     </div>
@@ -391,7 +391,7 @@
                                                                 </label>
                                                             </div>
                                                             <div class="text-xs text-slate-400 mt-2">
-                                                                Streamable copies for review. The original file is always preserved.
+                                                                Lightweight MP4s for downloading &amp; offline review. A browser stream is always generated separately. The original file is always preserved.
                                                             </div>
                                                         </div>
 
@@ -611,7 +611,7 @@ const shareFilesTourSteps: TourStep[] = [
 	},
 	{
 		target: '[data-tour="share-advanced-video"]',
-		message: 'When video files are selected, these advanced options appear.\n\n• Review Copies — generate 720p, 1080p, or full-res streamable copies for review.\n• Watermark — overlay a logo or image on review copies to brand or protect your content.\n\nExpand this section to fine-tune quality and watermark settings.',
+		message: 'When video files are selected, these advanced options appear.\n\n• Review Copies — generate 720p, 1080p, or full-res MP4s that recipients can download for offline review.\n• Watermark — overlay a logo or image on review copies to brand or protect your content.\n\nA browser-playable stream is always created automatically so recipients can watch immediately.',
 		beforeShow: () => { tourSpoofing.value = true },
 		cleanup: () => { tourSpoofing.value = false },
 	},
@@ -1924,6 +1924,8 @@ async function generateLink() {
                                     return {
                                         status: j?.status ?? payload?.hlsStatus ?? payload?.status,
                                         progress: j?.progress ?? payload?.hlsProgress ?? 0,
+                                        etaSeconds: j?.eta_seconds ?? null,
+                                        speedX: j?.speed_x ?? null,
                                     }
                                 }
                             })
@@ -1953,6 +1955,8 @@ async function generateLink() {
                                         return {
                                             status: j?.status ?? payload?.proxyStatus ?? payload?.status,
                                             progress: j?.progress ?? payload?.proxyProgress ?? 0,
+                                            etaSeconds: j?.eta_seconds ?? null,
+                                            speedX: j?.speed_x ?? null,
                                             qualityOrder: j?.quality_order ?? j?.qualityOrder ?? payload?.quality_order ?? payload?.qualityOrder,
                                             activeQuality: j?.active_quality ?? j?.activeQuality ?? payload?.active_quality ?? payload?.activeQuality,
                                             perQualityProgress: j?.per_quality_progress ?? j?.perQualityProgress ?? payload?.per_quality_progress ?? payload?.perQualityProgress,

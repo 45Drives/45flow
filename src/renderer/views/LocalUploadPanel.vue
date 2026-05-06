@@ -352,6 +352,7 @@ import { pushNotification, Notification, CardContainer } from '@45drives/houston
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
+import { useClientTranscode } from '../composables/useClientTranscode'
 const { to } = useResilientNav()
 useHeader('Upload Files')
 const transfer = useTransferProgress()
@@ -1251,46 +1252,124 @@ function uploadOneFile(
 
 	const enableWatermark = watermarkAfterUpload.value && !!watermarkRelPathForIngest
 
-	window.electron.rsyncStart(
-		{
-			host: ssh?.server,
-			user: ssh?.username,
-			src: row.path,
-			destDir: row.dest,
-			port: serverPort,
-			keyPath: privateKeyPath,
-			transcodeProxy: transcodeProxyAfterUpload.value,
-			proxyQualities: proxyQualities.value.slice(),
-			watermark: enableWatermark,
-			watermarkFileName: enableWatermark ? watermarkRelPathForIngest : undefined,
-			watermarkProxyQualities: enableWatermark ? proxyQualities.value.slice() : undefined,
-			apiToken: connectionMeta.value.token || undefined,
-		},
-		p => {
-			if (row.status === 'canceled' || row.status === 'done' || row.status === 'error') return
+	// Determine if this is a video file and if we should transcode client-side
+	const ext = String(row.name || '').toLowerCase().split('.').pop() || ''
+	const isVideo = videoExts.has(ext)
+	const { enabled: clientTranscodeEnabled, preset: transcodePreset, hwAccel: hwAccelSetting } = useClientTranscode()
+	const shouldTranscodeClient = isVideo && clientTranscodeEnabled.value && transcodeProxyAfterUpload.value
 
-			let pct: number | undefined =
-				typeof p.percent === 'number' && !Number.isNaN(p.percent) ? p.percent : undefined;
+	const doUpload = async (filePathToUpload: string, clientTranscoded: boolean = false) => {
+		return window.electron.rsyncStart(
+			{
+				host: ssh?.server,
+				user: ssh?.username,
+				src: filePathToUpload,
+				destDir: row.dest,
+				port: serverPort,
+				keyPath: privateKeyPath,
+				transcodeProxy: transcodeProxyAfterUpload.value && !clientTranscoded, // Skip server transcode if we transcoded client-side
+				proxyQualities: proxyQualities.value.slice(),
+				watermark: enableWatermark,
+				watermarkFileName: enableWatermark ? watermarkRelPathForIngest : undefined,
+				watermarkProxyQualities: enableWatermark ? proxyQualities.value.slice() : undefined,
+				apiToken: connectionMeta.value.token || undefined,
+				clientTranscoded, // Tell server we transcoded client-side
+			},
+			p => {
+				if (row.status === 'canceled' || row.status === 'done' || row.status === 'error') return
 
-			if (pct === undefined && typeof p.bytesTransferred === 'number' && row.size > 0) {
-				pct = (p.bytesTransferred / row.size) * 100;
+				let pct: number | undefined =
+					typeof p.percent === 'number' && !Number.isNaN(p.percent) ? p.percent : undefined;
+
+				if (pct === undefined && typeof p.bytesTransferred === 'number' && row.size > 0) {
+					pct = (p.bytesTransferred / row.size) * 100;
+				}
+
+				if (pct === undefined && typeof p.raw === 'string') {
+					const m = p.raw.match(/(\d+(?:\.\d+)?)%/);
+					if (m) pct = parseFloat(m[1]);
+				}
+
+				updateRowProgress(row, pct, p.rate, p.eta);
+
+				transfer.updateUpload(taskId, {
+					status: 'uploading',
+					progress: typeof pct === 'number' ? pct : row.progress,
+					speed: p.rate ?? null,
+					eta: p.eta ?? null,
+				});
 			}
+		);
+	}
 
-			if (pct === undefined && typeof p.raw === 'string') {
-				const m = p.raw.match(/(\d+(?:\.\d+)?)%/);
-				if (m) pct = parseFloat(m[1]);
+	// Handle transcode and upload workflow
+	const startUploadWorkflow = async () => {
+		if (shouldTranscodeClient) {
+			const transcodeQuality = proxyQualities.value.includes('original') ? 'original' : proxyQualities.value[0] || '720p'
+			
+			try {
+				transfer.updateUpload(taskId, {
+					detail: 'Transcoding locally…',
+				})
+
+				const { jobId, done } = await window.electron.transcodeStart(
+					{
+						inputPath: row.path,
+						quality: transcodeQuality as 'original' | '1080p' | '720p',
+						outputFormat: 'mp4',
+						useHardwareAccel: hwAccelSetting.value,
+						preset: transcodePreset.value,
+					},
+					(progress) => {
+						row.progress = progress.percent
+						transfer.updateUpload(taskId, {
+							progress: progress.percent,
+							speed: progress.speed || null,
+							eta: progress.eta || null,
+							detail: `Transcoding: ${progress.fps}fps @ ${progress.speed} - ETA ${progress.eta}`,
+						})
+					}
+				)
+
+				const result = await done
+				if (result?.ok && result?.outputPath) {
+					transfer.updateUpload(taskId, {
+						detail: 'Uploading…',
+						progress: 0,
+					})
+					return doUpload(result.outputPath, true)
+				} else {
+					const errorMsg = result?.error || 'Transcode failed'
+					throw new Error(errorMsg)
+				}
+			} catch (err) {
+				const errorMsg = err instanceof Error ? err.message : String(err)
+				row.status = 'error'
+				row.error = `Transcode error: ${errorMsg}`
+				transfer.updateUpload(taskId, {
+					status: 'error',
+				})
+				pushNotification(
+					new Notification(
+						'Transcode Failed',
+						`${row.name}: ${errorMsg}`,
+						'error',
+						10000
+					)
+				)
+				activeUploads.value = Math.max(0, activeUploads.value - 1)
+				onDone()
+				throw err // Re-throw to prevent upload
 			}
-
-			updateRowProgress(row, pct, p.rate, p.eta);
-
-			transfer.updateUpload(taskId, {
-				status: 'uploading',
-				progress: typeof pct === 'number' ? pct : row.progress,
-				speed: p.rate ?? null,
-				eta: p.eta ?? null,
-			});
+		} else {
+			// No client transcode needed, upload directly
+			return doUpload(row.path, false)
 		}
-	).then(({ id, done }) => {
+	}
+
+	startUploadWorkflow()
+		.then(uploadPromise => uploadPromise)
+		.then(({ id, done }) => {
 		row.rsyncId = id;
 		if (row.status === 'canceled') {
 			window.electron.rsyncCancel(id)

@@ -42,9 +42,29 @@ export type RsyncOpts = {
   noIngest?: boolean
   /** JWT token for authenticated ingest/register calls */
   apiToken?: string
+  /** file was transcoded on client side, skip server transcode */
+  clientTranscoded?: boolean
 }
 
 export type RsyncResult = { ok?: boolean; error?: string }
+
+export type TranscodeOptions = {
+  inputPath: string
+  quality: 'original' | '1080p' | '720p'
+  outputFormat: 'mp4' | 'hevc'
+  useHardwareAccel: boolean
+  preset?: 'fast' | 'balanced' | 'quality'
+}
+
+export type TranscodeProgress = {
+  percent: number
+  fps: number
+  speed: string
+  eta: string
+  message: string
+}
+
+export type TranscodeResult = { ok?: boolean; outputPath?: string; error?: string }
 
 /** Shape exposed on window.electron */
 export type ElectronApi = {
@@ -88,6 +108,27 @@ export type ElectronApi = {
 
   /** Subscribe to progress for an already-running detached rsync */
   listenUploadProgress: (id: string, onProgress: (p: RsyncProgress) => void) => () => void
+
+  /** ========== Client-side Transcoding ========== */
+  /** Transcode a video file on the client machine (using local hardware acceleration) */
+  transcodeStart: (
+    options: TranscodeOptions,
+    onProgress?: (p: TranscodeProgress) => void
+  ) => Promise<{ jobId: string; done: Promise<TranscodeResult> }>
+
+  /** Cancel an active transcode job */
+  transcodeCancel: (jobId: string) => void
+
+  /** Get hardware acceleration capabilities for transcode */
+  getTranscodeCapabilities: () => Promise<{
+    hasHardwareAccel: boolean
+    bestCodecH264: string
+    bestCodecHevc: string
+    hardwareDescription: string
+    ffmpegSource: 'system' | 'bundled'
+    ffmpegVersion: string
+    probeResults: Record<string, boolean>
+  }>
 
   /** Get the real filesystem path for a File from drag-and-drop */
   getPathForFile: (file: File) => string
@@ -172,6 +213,46 @@ const api: ElectronApi = {
     ipcRenderer.on(ch, handler)
     return () => ipcRenderer.removeListener(ch, handler)
   },
+
+  /** ========== Client-side Transcoding ========== */
+  transcodeStart: (options: TranscodeOptions, onProgress?: (p: TranscodeProgress) => void) => {
+    const jobId = genId()
+    const pch = `transcode:progress:${jobId}`
+    const dch = `transcode:done:${jobId}`
+    const fch = `transcode:failed:${jobId}`
+
+    if (onProgress) {
+      const ph = (_: IpcRendererEvent, payload: TranscodeProgress) => {
+        try { onProgress(payload) } catch {}
+      }
+      ipcRenderer.on(pch, ph)
+    }
+
+    const done: Promise<TranscodeResult> = new Promise((resolve) => {
+      ipcRenderer.once(dch, (_ev, res: TranscodeResult) => {
+        ipcRenderer.removeAllListeners(pch)
+        ipcRenderer.removeAllListeners(fch)
+        resolve(res)
+      })
+      ipcRenderer.once(fch, (_ev, res: TranscodeResult) => {
+        ipcRenderer.removeAllListeners(pch)
+        ipcRenderer.removeAllListeners(dch)
+        resolve(res)
+      })
+    })
+
+    ipcRenderer.invoke('transcode:start', { jobId, options }).catch((err: any) => {
+      // If invoke rejects AND the failed event wasn't already sent,
+      // resolve done with the error so the caller handles it.
+      console.error('[transcode] invoke rejected:', err?.message || err)
+    })
+
+    return Promise.resolve({ jobId, done })
+  },
+
+  transcodeCancel: (jobId: string) => ipcRenderer.invoke('transcode:cancel', { jobId }),
+
+  getTranscodeCapabilities: () => ipcRenderer.invoke('transcode:get-capabilities'),
 
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
 }

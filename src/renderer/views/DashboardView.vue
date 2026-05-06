@@ -187,7 +187,7 @@ const dashboardTourSteps: TourStep[] = [
 	// ── Quick Share Step 2: Video Options ──
 	{
 		target: '[data-tour="qs-video-options"]',
-		message: 'When sharing video files, you can generate streamable review copies at 720p, 1080p, or full resolution.\n\nYou can also overlay a watermark image onto the review copies to protect your content.',
+		message: 'When sharing video files, two things happen automatically:\n\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Review copies (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nWith client-side transcoding enabled (Settings → Performance), review copies are generated on your machine before upload — using your CPU or GPU.\n\nYou can also overlay a watermark on review copies to protect your content.',
 		beforeShow: async () => {
 			tourQuickShareOpen.value = true
 			tourQuickShareStep.value = 2

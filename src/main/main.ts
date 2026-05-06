@@ -394,6 +394,7 @@ import {
   pruneOldTransfers, isPidAlive, removeLogFile, makeLogPath, getAllTransfers,
   type PersistedTransfer,
 } from './transfers/transfer-store';
+import { TranscodeManager } from './transcoding/TranscodeManager';
 import { initAutoUpdates } from './updates';
 
 let discoveredServers: Server[] = [];
@@ -2191,6 +2192,7 @@ export type RsyncStartOpts = {
   watermarkProxyQualities?: string[]
   noIngest?: boolean
   apiToken?: string
+  clientTranscoded?: boolean  // file was transcoded on client side
 }
 
 const inflightRsync = new Map<string, ChildProcessWithoutNullStreams | null>()
@@ -2908,6 +2910,7 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
             params.set('watermarkProxyQualities', watermarkProxyQualities.join(','))
           }
         }
+        if (opts.clientTranscoded) params.set('clientTranscoded', '1')
 
         const url = `${base}/api/ingest/register?${params.toString()}`
         const ingestHeaders: Record<string, string> = {}
@@ -3029,3 +3032,48 @@ ipcMain.on('upload:cancel', (_event, { id }) => {
     jl('info', 'upload.cancel.queued', { id })
   }
 })
+
+// ── Client-side transcoding ──────────────────────────────────────────────────
+const transcodeManager = new TranscodeManager();
+
+ipcMain.handle('transcode:start', async (event, { jobId, options }) => {
+  jl('info', 'transcode.start', { jobId, options });
+  
+  try {
+    const outputPath = await transcodeManager.transcode(
+      jobId,
+      options,
+      (progress) => {
+        event.sender.send(`transcode:progress:${jobId}`, progress);
+      }
+    );
+    
+    event.sender.send(`transcode:done:${jobId}`, { ok: true, outputPath });
+    return { ok: true, outputPath };
+  } catch (error: any) {
+    const errorMsg = error?.message || String(error);
+    jl('error', 'transcode.failed', { jobId, error: errorMsg });
+    event.sender.send(`transcode:failed:${jobId}`, { error: errorMsg });
+    throw error;
+  }
+});
+
+ipcMain.handle('transcode:cancel', async (_event, { jobId }) => {
+  const canceled = transcodeManager.cancel(jobId);
+  jl('info', 'transcode.cancel', { jobId, canceled });
+  return { canceled };
+});
+
+ipcMain.handle('transcode:get-capabilities', async () => {
+  const { detectHardwareCapabilities, hasHardwareAcceleration, describeHardware } = await import('./transcoding/hardware-detect');
+  const caps = detectHardwareCapabilities();
+  return {
+    hasHardwareAccel: hasHardwareAcceleration(),
+    bestCodecH264: caps.bestCodecH264,
+    bestCodecHevc: caps.bestCodecHevc,
+    hardwareDescription: describeHardware(),
+    ffmpegSource: caps.ffmpegSource,
+    ffmpegVersion: caps.ffmpegVersion,
+    probeResults: caps.probeResults,
+  };
+});
