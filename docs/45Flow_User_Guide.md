@@ -415,10 +415,16 @@ The upload table shows each file with real-time status:
 | **Name** | File name with upload percentage |
 | **Size** | File size |
 | **Speed / Time** | Transfer speed during upload, or total time after completion |
-| **Status** | Current state — **Queued**, **Uploading**, **Done**, **Canceled**, or **Error** |
-| **Action** | Cancel button (available during active upload) |
+| **Status** | Current state — **Queued**, **Transcoding** (local), **Uploading**, **Done**, **Canceled**, or **Error** |
+| **Action** | Cancel button (available during active transcode or upload) |
 
 A progress bar at the top shows overall completion across all files.
+
+When **client-side transcoding** is enabled (Settings → Performance), video files go through a two-phase workflow:
+1. **Transcode** — The video is processed on your machine (shown as "Transcode XX%")
+2. **Upload** — The processed file is transferred to the server (shown as "Upload XX%")
+
+This offloads video processing from the server to your workstation. If you don't have client-side transcoding enabled, the server handles video processing after upload.
 
 ![Upload table with file statuses](images/upload-local-table.png)
 
@@ -794,6 +800,24 @@ These defaults are applied automatically when creating new links, but can be cha
 | **Restrict access to users** | New links default to restricted (invited users only) mode. |
 | **Allow comments on open links** | Enable comments by default on open (unauthenticated) links. |
 | **Generate review copies by default** | Automatically enable review copy generation for new links. |
+
+### Performance
+
+Settings for video processing performance. Found under **Settings → Performance**.
+
+| Option | Description |
+|--------|-------------|
+| **Client-side transcoding** | When enabled, videos are processed on your computer before upload — using your local CPU or GPU. This creates review copies faster and reduces load on the server. When disabled, the server handles all video processing after files are uploaded. |
+| **Hardware Acceleration** | Uses your GPU (NVIDIA NVENC, Intel Quick Sync, etc.) for faster transcoding. Falls back to CPU-only when no compatible GPU is detected. |
+
+#### Hardware Requirements for Client-side Transcoding
+
+- **Minimum:** Any modern multi-core CPU (4+ cores recommended)
+- **Recommended:** Dedicated GPU with hardware encoding support (NVIDIA GTX 1060+ / Intel 6th-gen+ / Apple Silicon)
+- **Storage:** Temporary disk space equal to ~1.5× the size of the source video during transcode
+- **FFmpeg** is bundled with 45Flow — no separate installation is needed
+
+> **Tip:** If client-side transcoding fails (e.g., insufficient GPU memory or unsupported codec), you can disable it in Settings → Performance. The server will handle transcoding instead — it just takes longer.
 
 ### Maintenance & Cleanup
 

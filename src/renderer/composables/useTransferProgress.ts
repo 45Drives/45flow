@@ -1091,7 +1091,7 @@ export function useTransferProgress() {
 
                 if (cur.status === 'failed') {
                     const snapError = String((snap as any)?.error || '').trim()
-                    cur.error = snapError || cur.error || 'transcode failed'
+                    cur.error = snapError || cur.error || 'Transcode failed — check server logs or try disabling client-side transcoding'
                 } else if (cur.status === 'running' || cur.status === 'done') {
                     cur.error = null
                 }
@@ -1322,7 +1322,7 @@ export function useTransferProgress() {
                     // Skip if we already have an active task for this version+kind
                     if (hasActiveTranscode({ assetVersionIds: [assetVersionId], file: filePath, jobKind })) continue
 
-                    const label = kind === 'hls' ? 'Generating adaptive stream'
+                    const label = kind === 'hls' ? 'Generating browser stream'
                         : kind === 'proxy_mp4' ? 'Generating review copies'
                         : 'Generating transcodes'
 

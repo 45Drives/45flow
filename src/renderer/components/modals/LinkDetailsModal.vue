@@ -2003,7 +2003,7 @@ function startLinkTranscodeTracking(opts: {
               const detailLabel = fileLabelById.get(fileId) || fallbackFileLabel(assetVersionId)
               const playbackPath = `/api/token/${encodeURIComponent(detailsToken.value)}/files/${encodeURIComponent(String(fileId))}/playback/${encodeURIComponent(String(assetVersionId))}?prefer=auto&audit=0`
               transfer.startPlaybackTranscodeTask({
-                title: 'Generating adaptive stream',
+                title: 'Generating browser stream',
                 detail: `Tracking ${detailLabel}`,
                 intervalMs: 1500,
                 jobKind: 'hls',
@@ -2027,7 +2027,7 @@ function startLinkTranscodeTracking(opts: {
             transfer.startAssetVersionTranscodeTask({
               apiFetch: props.apiFetch,
               assetVersionIds: [assetVersionId],
-              title: 'Generating adaptive stream',
+              title: 'Generating browser stream',
               detail: `Tracking ${fallbackFileLabel(assetVersionId)}`,
               intervalMs: 1500,
               jobKind: 'hls',
@@ -2046,7 +2046,7 @@ function startLinkTranscodeTracking(opts: {
         pushNotification(
           new Notification(
             'Stream Already In Progress',
-            `Adaptive stream generation is already in progress for ${hlsInProgressIds.length} item(s).`,
+            `Browser stream generation is already in progress for ${hlsInProgressIds.length} item(s).`,
             'info',
             6000
           )
@@ -2055,7 +2055,7 @@ function startLinkTranscodeTracking(opts: {
         pushNotification(
           new Notification(
             'Stream Already Available',
-            `Adaptive stream generation was skipped for ${hlsSplit.skipped.length} item(s) (already exists).`,
+            `Browser stream generation was skipped for ${hlsSplit.skipped.length} item(s) (already exists).`,
             'info',
             6000
           )
@@ -2145,7 +2145,7 @@ function startLinkTranscodeTracking(opts: {
 
       if (opts.wantsHls) {
         transfer.startPlaybackTranscodeTask({
-          title: 'Generating adaptive stream',
+          title: 'Generating browser stream',
           detail: filePath ? `Tracking ${filePath}` : `Tracking file ${fileId}`,
           intervalMs: 1500,
           jobKind: 'hls',
@@ -2173,7 +2173,7 @@ function startLinkTranscodeTracking(opts: {
     fileIds,
     title: jobKind === 'proxy_mp4'
       ? 'Generating review copies'
-      : (jobKind === 'hls' ? 'Generating adaptive stream' : 'Generating transcodes'),
+      : (jobKind === 'hls' ? 'Generating browser stream' : 'Generating transcodes'),
     detail: `Tracking ${fileIds.length} file(s)`,
     intervalMs: 1500,
     jobKind,

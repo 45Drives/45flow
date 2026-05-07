@@ -226,7 +226,11 @@ function statusClass(t: any): string {
 }
 
 function taskRowLabel(t: any) {
-    if (t?.kind === 'upload') return 'Upload'
+    if (t?.kind === 'upload') {
+        const detail = String(t?.detail || '')
+        if (detail.startsWith('Transcoding')) return 'Transcode'
+        return 'Upload'
+    }
     if (t?.kind === 'transcode') {
         const jk = String(t?.jobKind || '').toLowerCase()
         if (jk === 'proxy_mp4') {

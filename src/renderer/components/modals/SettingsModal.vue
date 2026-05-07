@@ -224,7 +224,7 @@
                             <div class="divide-y divide-default">
                                 <SettingRow 
                                     label="Client-side transcoding" 
-                                    description="Transcode videos on your machine before upload using local CPU/GPU. Reduces server load and speeds up review copy generation. When disabled, the server handles transcoding after upload."
+                                    description="Process videos on this computer before uploading (uses your local CPU or GPU). This creates review copies faster and reduces load on the server. When disabled, the server handles all video processing after files are uploaded. Requires FFmpeg — works best with a modern GPU."
                                 >
                                     <div class="flex items-center gap-3">
                                         <span class="text-sm" :class="!clientTranscodeEnabled ? 'opacity-60' : 'font-semibold'">

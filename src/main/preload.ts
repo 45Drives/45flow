@@ -44,6 +44,7 @@ export type RsyncOpts = {
   apiToken?: string
   /** file was transcoded on client side, skip server transcode */
   clientTranscoded?: boolean
+  clientWatermarked?: boolean
 }
 
 export type RsyncResult = { ok?: boolean; error?: string }
@@ -54,6 +55,7 @@ export type TranscodeOptions = {
   outputFormat: 'mp4' | 'hevc'
   useHardwareAccel: boolean
   preset?: 'fast' | 'balanced' | 'quality'
+  watermarkPath?: string
 }
 
 export type TranscodeProgress = {
@@ -118,6 +120,9 @@ export type ElectronApi = {
 
   /** Cancel an active transcode job */
   transcodeCancel: (jobId: string) => void
+
+  /** Download a watermark image from the server to a local temp file */
+  downloadWatermark: (opts: { apiBase: string; token: string; relPath: string }) => Promise<string | null>
 
   /** Get hardware acceleration capabilities for transcode */
   getTranscodeCapabilities: () => Promise<{
@@ -251,6 +256,9 @@ const api: ElectronApi = {
   },
 
   transcodeCancel: (jobId: string) => ipcRenderer.invoke('transcode:cancel', { jobId }),
+
+  downloadWatermark: (opts: { apiBase: string; token: string; relPath: string }) =>
+    ipcRenderer.invoke('watermark:download', opts),
 
   getTranscodeCapabilities: () => ipcRenderer.invoke('transcode:get-capabilities'),
 

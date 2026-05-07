@@ -12,6 +12,7 @@ export interface TranscodeOptions {
   outputFormat: 'mp4' | 'hevc';
   useHardwareAccel: boolean;
   preset?: 'fast' | 'balanced' | 'quality';
+  watermarkPath?: string; // Absolute path to watermark image (PNG with alpha)
 }
 
 export interface TranscodeProgress {
@@ -198,30 +199,59 @@ export class TranscodeManager {
 
     args.push('-i', options.inputPath);
 
-    // VAAPI needs pixel format upload filter
-    if (codec.includes('vaapi')) {
-      const scaleFilter = options.quality === '1080p'
-        ? 'scale_vaapi=w=-2:h=1080'
-        : options.quality === '720p'
-          ? 'scale_vaapi=w=-2:h=720'
-          : '';
-      const filterChain = scaleFilter
-        ? `format=nv12,hwupload,${scaleFilter}`
-        : 'format=nv12,hwupload';
-      args.push('-vf', filterChain);
+    // If watermark is provided, add as second input
+    const hasWatermark = !!options.watermarkPath;
+    if (hasWatermark) {
+      args.push('-i', options.watermarkPath!);
     }
 
-    // QSV needs pixel format upload filter
-    if (codec.includes('qsv')) {
-      const scaleFilter = options.quality === '1080p'
-        ? 'scale_qsv=w=-2:h=1080'
-        : options.quality === '720p'
-          ? 'scale_qsv=w=-2:h=720'
-          : '';
-      const filterChain = scaleFilter
-        ? `hwupload=extra_hw_frames=64,${scaleFilter}`
-        : 'hwupload=extra_hw_frames=64';
-      args.push('-vf', filterChain);
+    // Determine target height for scaling
+    const targetHeight = options.quality === '1080p' ? 1080
+      : options.quality === '720p' ? 720
+      : 0; // 0 = no scale (original)
+
+    if (hasWatermark) {
+      // --- Watermark path: use -filter_complex for overlay ---
+      // Build filter: scale source → overlay watermark → [hwupload if needed]
+      const scaleExpr = targetHeight > 0 ? `scale=-2:${targetHeight}:flags=lanczos,` : '';
+      let filterComplex: string;
+
+      if (codec.includes('vaapi')) {
+        // VAAPI: overlay in system memory, then hwupload for encoding
+        filterComplex =
+          `[0:v]${scaleExpr}format=yuv420p[base];` +
+          `[1:v]scale=iw*0.2:-1,colorchannelmixer=aa=1[wm];` +
+          `[base][wm]overlay=W-w-24:H-h-24,format=nv12,hwupload[outv]`;
+      } else if (codec.includes('qsv')) {
+        // QSV: overlay in system memory, then hwupload for encoding
+        filterComplex =
+          `[0:v]${scaleExpr}format=yuv420p[base];` +
+          `[1:v]scale=iw*0.2:-1,colorchannelmixer=aa=1[wm];` +
+          `[base][wm]overlay=W-w-24:H-h-24,hwupload=extra_hw_frames=64[outv]`;
+      } else {
+        // Software / NVENC / VideoToolbox / AMF: overlay in system memory, encoder reads it directly
+        filterComplex =
+          `[0:v]${scaleExpr}format=yuv420p[base];` +
+          `[1:v]scale=iw*0.2:-1,colorchannelmixer=aa=1[wm];` +
+          `[base][wm]overlay=W-w-24:H-h-24[outv]`;
+      }
+
+      args.push('-filter_complex', filterComplex);
+      args.push('-map', '[outv]');
+      args.push('-map', '0:a?');
+    } else {
+      // --- No watermark: original simple filter path ---
+      if (codec.includes('vaapi')) {
+        const scaleFilter = targetHeight > 0
+          ? `format=nv12,hwupload,scale_vaapi=w=-2:h=${targetHeight}`
+          : 'format=nv12,hwupload';
+        args.push('-vf', scaleFilter);
+      } else if (codec.includes('qsv')) {
+        const scaleFilter = targetHeight > 0
+          ? `hwupload=extra_hw_frames=64,scale_qsv=w=-2:h=${targetHeight}`
+          : 'hwupload=extra_hw_frames=64';
+        args.push('-vf', scaleFilter);
+      }
     }
 
     args.push('-c:v', codec);
@@ -278,8 +308,9 @@ export class TranscodeManager {
       }
     }
 
-    // Scaling (only for non-VAAPI/QSV which handle it in -vf above)
-    if (!codec.includes('vaapi') && !codec.includes('qsv')) {
+    // Scaling (only for non-VAAPI/QSV which handle it in -vf above, and only when no watermark
+    // since the watermark filter_complex already handles scaling)
+    if (!hasWatermark && !codec.includes('vaapi') && !codec.includes('qsv')) {
       if (options.quality === '1080p') {
         args.push('-vf', 'scale=-2:1080');
       } else if (options.quality === '720p') {
@@ -291,8 +322,9 @@ export class TranscodeManager {
     args.push('-c:a', 'aac');
     args.push('-b:a', '320k');
 
-    // Browser compatibility
-    if (!codec.includes('vaapi')) {
+    // Browser compatibility (not needed when filter_complex already sets pix_fmt,
+    // and VAAPI handles it in the filter chain)
+    if (!codec.includes('vaapi') && !hasWatermark) {
       args.push('-pix_fmt', 'yuv420p');
     }
     

@@ -181,13 +181,17 @@
 														class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold"
 														:class="{
 															'bg-default dark:bg-well/75 text-zinc-600 dark:text-zinc-300': u.status === 'queued',
+															'bg-default dark:bg-well/75 text-purple-600 dark:text-purple-300': u.status === 'transcoding',
 															'bg-default dark:bg-well/75 text-blue-600 dark:text-blue-300': u.status === 'uploading',
 															'bg-default dark:bg-well/75 text-green-600 dark:text-green-300': u.status === 'done',
 															'bg-default dark:bg-well/75 text-amber-600 dark:text-amber-300': u.status === 'canceled',
 															'bg-default dark:bg-well/75 text-red-600 dark:text-red-300': u.status === 'error',
 														}">
-														<template v-if="u.status === 'uploading'">
-															{{ Number.isFinite(u.progress) ? u.progress.toFixed(0) : 0 }}%
+														<template v-if="u.status === 'transcoding'">
+															Transcode {{ Number.isFinite(u.progress) ? u.progress.toFixed(0) : 0 }}%
+														</template>
+														<template v-else-if="u.status === 'uploading'">
+															Upload {{ Number.isFinite(u.progress) ? u.progress.toFixed(0) : 0 }}%
 														</template>
 														<template v-else>
 															<span v-if="u.alreadyUploaded && u.status === 'done'">
@@ -200,14 +204,14 @@
 												<td class="px-4 py-2 border border-default">
 													<div class="flex justify-end">
 														<button class="btn btn-secondary" @click="cancelOne(u)"
-															:disabled="u.status !== 'uploading'" title="Cancel this upload">
+															:disabled="u.status !== 'uploading' && u.status !== 'transcoding'" title="Cancel this upload">
 															Cancel
 														</button>
 													</div>
 												</td>
 											</tr>
 
-											<tr v-if="u.status === 'uploading' && uploads.length > 1">
+											<tr v-if="(u.status === 'uploading' || u.status === 'transcoding') && uploads.length > 1">
 												<td colspan="5" class="px-4 py-2 border border-default">
 													<progress class="w-full h-2 rounded-lg overflow-hidden" :value="Number.isFinite(u.progress) ? u.progress : 0" max="100">
 													</progress>
@@ -384,7 +388,7 @@ const localUploadTourSteps: TourStep[] = [
 	},
 	{
 		target: '[data-tour="upload-step-3"]',
-		message: 'Step 3: Review your files and start the upload.\n\nThe overall progress bar at the top tracks all files. When uploading multiple files, each file also shows its own inline progress bar with speed and ETA.',
+		message: 'Step 3: Review your files and start the upload.\n\nThe overall progress bar at the top tracks all files. When client-side transcoding is enabled, video files show a two-phase workflow: Transcode → Upload. Each file shows its own inline progress bar with speed and ETA.',
 		placement: 'top',
 	},
 	{
@@ -1066,7 +1070,7 @@ type UploadRow = {
 	size: number
 	dest: string
 	rsyncId?: string | null
-	status: 'queued' | 'uploading' | 'done' | 'canceled' | 'error'
+	status: 'queued' | 'transcoding' | 'uploading' | 'done' | 'canceled' | 'error'
 	error: string | null
 	progress: number
 	speed: string | null
@@ -1207,6 +1211,7 @@ function scheduleBatchNotification() {
 function uploadOneFile(
 	row: UploadRow,
 	watermarkRelPathForIngest: string,
+	localWatermarkPath: string | null,
 	onDone: () => void
 ) {
 	row.status = 'uploading'
@@ -1258,7 +1263,7 @@ function uploadOneFile(
 	const { enabled: clientTranscodeEnabled, preset: transcodePreset, hwAccel: hwAccelSetting } = useClientTranscode()
 	const shouldTranscodeClient = isVideo && clientTranscodeEnabled.value && transcodeProxyAfterUpload.value
 
-	const doUpload = async (filePathToUpload: string, clientTranscoded: boolean = false) => {
+	const doUpload = async (filePathToUpload: string, clientTranscoded: boolean = false, clientWatermarked: boolean = false) => {
 		return window.electron.rsyncStart(
 			{
 				host: ssh?.server,
@@ -1269,11 +1274,12 @@ function uploadOneFile(
 				keyPath: privateKeyPath,
 				transcodeProxy: transcodeProxyAfterUpload.value && !clientTranscoded, // Skip server transcode if we transcoded client-side
 				proxyQualities: proxyQualities.value.slice(),
-				watermark: enableWatermark,
+				watermark: enableWatermark && !clientWatermarked,
 				watermarkFileName: enableWatermark ? watermarkRelPathForIngest : undefined,
 				watermarkProxyQualities: enableWatermark ? proxyQualities.value.slice() : undefined,
 				apiToken: connectionMeta.value.token || undefined,
 				clientTranscoded, // Tell server we transcoded client-side
+				clientWatermarked, // Tell server watermark was applied client-side
 			},
 			p => {
 				if (row.status === 'canceled' || row.status === 'done' || row.status === 'error') return
@@ -1308,6 +1314,7 @@ function uploadOneFile(
 			const transcodeQuality = proxyQualities.value.includes('original') ? 'original' : proxyQualities.value[0] || '720p'
 			
 			try {
+				row.status = 'transcoding'
 				transfer.updateUpload(taskId, {
 					detail: 'Transcoding locally…',
 				})
@@ -1319,6 +1326,7 @@ function uploadOneFile(
 						outputFormat: 'mp4',
 						useHardwareAccel: hwAccelSetting.value,
 						preset: transcodePreset.value,
+						watermarkPath: (enableWatermark && localWatermarkPath) ? localWatermarkPath : undefined,
 					},
 					(progress) => {
 						row.progress = progress.percent
@@ -1333,13 +1341,18 @@ function uploadOneFile(
 
 				const result = await done
 				if (result?.ok && result?.outputPath) {
+					row.status = 'uploading'
+					row.progress = 0
 					transfer.updateUpload(taskId, {
 						detail: 'Uploading…',
 						progress: 0,
+						speed: null,
+						eta: null,
 					})
-					return doUpload(result.outputPath, true)
+					const clientWatermarked = !!(enableWatermark && localWatermarkPath)
+					return doUpload(result.outputPath, true, clientWatermarked)
 				} else {
-					const errorMsg = result?.error || 'Transcode failed'
+					const errorMsg = result?.error || 'Transcode failed — try disabling client-side transcoding in Settings to let the server handle it.'
 					throw new Error(errorMsg)
 				}
 			} catch (err) {
@@ -1352,9 +1365,9 @@ function uploadOneFile(
 				pushNotification(
 					new Notification(
 						'Transcode Failed',
-						`${row.name}: ${errorMsg}`,
+						`${row.name}: ${errorMsg}\n\nTip: You can disable client-side transcoding in Settings → Performance to let the server handle it instead.`,
 						'error',
-						10000
+						12000
 					)
 				)
 				activeUploads.value = Math.max(0, activeUploads.value - 1)
@@ -1525,6 +1538,24 @@ async function startUploads() {
 		return
 	}
 
+	// Resolve local watermark path for client-side transcode watermarking
+	let localWatermarkPath: string | null = null
+	if (watermarkAfterUpload.value) {
+		if (watermarkFile.value?.path) {
+			localWatermarkPath = watermarkFile.value.path
+		} else if (selectedExistingWatermark.value) {
+			try {
+				localWatermarkPath = await window.electron.downloadWatermark({
+					apiBase: connectionMeta.value.apiBase || '',
+					token: connectionMeta.value.token || '',
+					relPath: selectedExistingWatermark.value,
+				})
+			} catch (e) {
+				console.warn('Failed to download watermark for client transcode, server will apply it:', e)
+			}
+		}
+	}
+
 	// Pre-create dock tasks for ALL queued items so they're visible immediately
 	for (const row of queue) {
 		if (!row.dockTaskId) {
@@ -1579,7 +1610,7 @@ async function startUploads() {
 		while (activeUploads.value < MAX_CONCURRENT_UPLOADS && queueIdx < queue.length) {
 			const row = queue[queueIdx++]
 			if (row.status !== 'queued') continue // may have been canceled while waiting
-			uploadOneFile(row, watermarkRelPathForIngest, () => {
+			uploadOneFile(row, watermarkRelPathForIngest, localWatermarkPath, () => {
 				// When a file finishes, try to start the next queued one
 				drainQueue()
 				// Check if everything is finished
@@ -1615,7 +1646,7 @@ const uploadSummary = computed(() => {
 	const rows = uploads.value
 	const total = rows.length
 	const done = rows.filter(u => u.status === 'done').length
-	const active = rows.filter(u => u.status === 'uploading').length
+	const active = rows.filter(u => u.status === 'uploading' || u.status === 'transcoding').length
 	const queued = rows.filter(u => u.status === 'queued').length
 	const errors = rows.filter(u => u.status === 'error').length
 	const canceled = rows.filter(u => u.status === 'canceled').length
@@ -1624,7 +1655,7 @@ const uploadSummary = computed(() => {
 	let weightedPct = 0
 	for (const u of rows) {
 		if (u.status === 'done' || u.status === 'canceled') weightedPct += 100
-		else if (u.status === 'uploading') weightedPct += (u.progress || 0)
+		else if (u.status === 'uploading' || u.status === 'transcoding') weightedPct += (u.progress || 0)
 		// queued/error = 0
 	}
 	const overallPct = total > 0 ? weightedPct / total : 0

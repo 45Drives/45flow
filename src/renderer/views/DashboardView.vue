@@ -187,7 +187,7 @@ const dashboardTourSteps: TourStep[] = [
 	// ── Quick Share Step 2: Video Options ──
 	{
 		target: '[data-tour="qs-video-options"]',
-		message: 'When sharing video files, two things happen automatically:\n\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Review copies (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nWith client-side transcoding enabled (Settings → Performance), review copies are generated on your machine before upload — using your CPU or GPU.\n\nYou can also overlay a watermark on review copies to protect your content.',
+		message: 'When sharing video files, two things happen automatically:\n\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Review copies (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nWith client-side transcoding enabled (Settings → Performance), video processing happens on your machine before upload — using your local CPU or GPU. This is faster for most workstations and reduces server load. If disabled, the server processes videos after upload.\n\nYou can also overlay a watermark on review copies to protect your content.',
 		beforeShow: async () => {
 			tourQuickShareOpen.value = true
 			tourQuickShareStep.value = 2
@@ -221,7 +221,7 @@ const dashboardTourSteps: TourStep[] = [
 	},
 	{
 		target: '[data-tour="upload-files"]',
-		message: 'Upload Files Locally lets you transfer files from this computer directly to the server.\n\nA step-by-step wizard walks you through selecting files (or drag-and-drop them), choosing a destination folder, and monitoring the upload.',
+		message: 'Upload Files Locally lets you transfer files from this computer directly to the server.\n\nA step-by-step wizard walks you through selecting files (or drag-and-drop them), choosing a destination folder, and monitoring the upload. When client-side transcoding is enabled, video files are processed on your machine first (Transcode → Upload).',
 	},
 	{
 		target: '[data-tour="new-upload-link"]',

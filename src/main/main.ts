@@ -628,7 +628,7 @@ async function tryAttach(ip: string) {
     // We cannot reliably get HTTP status from EventSource errors.
     // We rely on preflight to catch 404s before we open.
     s.lastErr = normalizeErrorText(err) || 'EventSource connection error';
-    jl('warn', 'sse.error', {
+    jl('debug', 'sse.error', {
       ip,
       error: s.lastErr,
       errorType: err?.type || err?.name || err?.constructor?.name || undefined,
@@ -2193,6 +2193,7 @@ export type RsyncStartOpts = {
   noIngest?: boolean
   apiToken?: string
   clientTranscoded?: boolean  // file was transcoded on client side
+  clientWatermarked?: boolean  // watermark was applied on client side
 }
 
 const inflightRsync = new Map<string, ChildProcessWithoutNullStreams | null>()
@@ -2911,6 +2912,7 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
           }
         }
         if (opts.clientTranscoded) params.set('clientTranscoded', '1')
+        if (opts.clientWatermarked) params.set('clientWatermarked', '1')
 
         const url = `${base}/api/ingest/register?${params.toString()}`
         const ingestHeaders: Record<string, string> = {}
@@ -3076,4 +3078,31 @@ ipcMain.handle('transcode:get-capabilities', async () => {
     ffmpegVersion: caps.ffmpegVersion,
     probeResults: caps.probeResults,
   };
+});
+
+// ── Download watermark from server to local temp file ────────────────────────
+ipcMain.handle('watermark:download', async (_event, opts: { apiBase: string; token: string; relPath: string }) => {
+  const { apiBase, token, relPath } = opts;
+  if (!apiBase || !relPath) return null;
+  try {
+    const url = `${apiBase}/api/files/watermark-preview?path=${encodeURIComponent(relPath)}`;
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      jl('warn', 'watermark.download.failed', { status: res.status, relPath });
+      return null;
+    }
+    const arrayBuf = await res.arrayBuffer();
+    const ext = path.extname(relPath) || '.png';
+    const tmpDir = path.join(app.getPath('temp'), '45flow-watermarks');
+    fs.mkdirSync(tmpDir, { recursive: true });
+    const tmpFile = path.join(tmpDir, `watermark-${Date.now()}${ext}`);
+    fs.writeFileSync(tmpFile, Buffer.from(arrayBuf));
+    jl('info', 'watermark.download.ok', { relPath, tmpFile });
+    return tmpFile;
+  } catch (err: any) {
+    jl('error', 'watermark.download.error', { relPath, error: err?.message || String(err) });
+    return null;
+  }
 });

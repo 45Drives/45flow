@@ -11,6 +11,7 @@
 - **Share files via secure links** — Generate expiring, access-controlled links for viewing, downloading, and commenting on files
 - **Upload portals** — Create links that let external collaborators upload files directly to your server
 - **Local uploads** — Transfer files from your workstation to the server with optional review copy generation and watermarking
+- **Client-side transcoding** — Process videos on your workstation before upload using local CPU/GPU, reducing server load and speeding up review copy availability
 - **Video review with timecoded comments** — Browser-based HLS player with threaded, frame-accurate commenting
 - **Role-based access control** — System and custom roles (View, Comment, Download, Upload) enforced per link
 - **review copy generation & watermarking** — Generate 720p/1080p review copies and apply watermark overlays to protect original media

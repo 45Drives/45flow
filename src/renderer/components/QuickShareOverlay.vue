@@ -537,7 +537,7 @@ const errorMsg = ref('')
 
 const currentPhaseLabel = computed(() => {
   const statuses = Object.values(perFileStatus.value)
-  if (statuses.includes('transcoding')) return 'Transcoding locally…'
+  if (statuses.includes('transcoding')) return 'Transcoding on your machine…'
   if (statuses.includes('uploading')) return 'Uploading files…'
   return 'Processing files…'
 })
@@ -850,8 +850,27 @@ async function startUploadAndShare() {
 
     // Upload all files sequentially
     const serverPaths: string[] = []
+    let anyClientTranscoded = false
+    let clientAppliedWatermark = false
     const { enabled: clientTranscodeEnabled, preset: transcodePreset, hwAccel: hwAccelSetting } = useClientTranscode()
     
+    // Resolve watermark image path for client-side transcoding
+    let localWatermarkPath: string | null = null
+    if (watermarkEnabled.value && clientTranscodeEnabled.value) {
+      if (watermarkFile.value?.path) {
+        // User picked a local watermark image
+        localWatermarkPath = watermarkFile.value.path
+      } else if (selectedExistingWatermark.value) {
+        // Download the server-side watermark to a local temp file
+        const downloaded = await window.electron.downloadWatermark({
+          apiBase: connectionMeta.value.apiBase || '',
+          token: connectionMeta.value.token || '',
+          relPath: selectedExistingWatermark.value,
+        })
+        localWatermarkPath = downloaded || null
+      }
+    }
+
     for (let i = 0; i < droppedFiles.value.length; i++) {
       const f = droppedFiles.value[i]
       let uploadedFileName = f.name  // Track actual uploaded filename
@@ -895,6 +914,7 @@ async function startUploadAndShare() {
               outputFormat: 'mp4',
               useHardwareAccel: hwAccelSetting.value,
               preset: transcodePreset.value,
+              watermarkPath: localWatermarkPath || undefined,
             },
             (progress) => {
               perFileProgress.value[f.path] = progress.percent
@@ -910,6 +930,8 @@ async function startUploadAndShare() {
           if (result?.ok && result?.outputPath) {
             fileToUpload = result.outputPath
             clientTranscoded = true
+            anyClientTranscoded = true
+            if (localWatermarkPath) clientAppliedWatermark = true
             // Update filename to match transcoded output (always .mp4)
             uploadedFileName = f.name.replace(/\.[^.]+$/, '.mp4')
             perFileProgress.value[f.path] = 0
@@ -920,7 +942,7 @@ async function startUploadAndShare() {
               progress: 0,
             })
           } else {
-            const errorMsg = result?.error || 'Transcode failed'
+            const errorMsg = result?.error || 'Transcode failed — try disabling client-side transcoding in Settings to let the server handle it.'
             perFileStatus.value[f.path] = 'error'
             perFileDetail.value[f.path] = `Error: ${errorMsg}`
             transfer.finishUpload(taskId, false, `Transcode error: ${errorMsg}`)
@@ -933,9 +955,9 @@ async function startUploadAndShare() {
           pushNotification(
             new Notification(
               'Transcode Failed',
-              `${f.name}: ${errorMsg}`,
+              `${f.name}: ${errorMsg}\n\nTip: You can disable client-side transcoding in Settings → Performance to let the server handle it instead.`,
               'error',
-              10000
+              12000
             )
           )
           throw err
@@ -1022,8 +1044,9 @@ async function startUploadAndShare() {
       projectBase: projectBase.value || undefined,
       baseMode: usePublicBase.value ? 'externalPreferred' : 'local',
       title: linkTitle.value || undefined,
-      generateReviewProxy: hasVideo.value,
+      generateReviewProxy: hasVideo.value && !anyClientTranscoded,
       hls: hasVideo.value,
+      clientTranscoded: anyClientTranscoded || undefined,
     }
 
     if (serverPaths.length === 1) body.filePath = serverPaths[0]
@@ -1057,10 +1080,15 @@ async function startUploadAndShare() {
       body.proxyQualities = proxyQualities.value.length > 0 ? proxyQualities.value.slice() : ['original']
     }
 
-    if (watermarkEnabled.value && watermarkRelPath) {
+    if (watermarkEnabled.value && watermarkRelPath && !clientAppliedWatermark) {
       body.watermark = true
       body.watermarkFile = watermarkRelPath
       body.watermarkProxyQualities = proxyQualities.value.slice()
+    }
+
+    // If client applied the watermark, tell the server so it doesn't re-watermark
+    if (clientAppliedWatermark) {
+      body.clientWatermarked = true
     }
 
     // Reuse existing transcodes instead of failing with outputs_exist;

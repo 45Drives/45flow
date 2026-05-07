@@ -934,23 +934,36 @@ async function connectToServer() {
         
         try { sessionStorage.setItem('hb_token', token); } catch { /* ignore */ }
 
-        // Seed internal/external base on the server for later link generation
+        // Seed initial settings only if not already configured
         try {
             const hdrs = {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
             };
 
-            // One shot: let the server detect both. Internal = LAN IP, External = WAN IP.
-            await fetch(`${apiBase}/api/settings`, {
-                method: 'POST',
+            // Check if settings already exist
+            const existingSettings = await fetch(`${apiBase}/api/settings`, {
+                method: 'GET',
                 headers: hdrs,
-                body: JSON.stringify({
-                    internalBase: 'auto',
-                    externalBase: 'auto',
-                    externalHttpsPort: httpsPort.value ?? 443
-                }),
             });
+            const settings = await existingSettings.json();
+
+            // Only seed defaults if external mode is not configured yet (first-time setup)
+            // Don't overwrite if user has set custom mode or if auto mode has a detected effective base
+            const needsInitialSetup = !settings.externalMode || 
+                                    (settings.externalMode === 'auto' && !settings.externalBaseEffective);
+            
+            if (needsInitialSetup) {
+                await fetch(`${apiBase}/api/settings`, {
+                    method: 'POST',
+                    headers: hdrs,
+                    body: JSON.stringify({
+                        internalBase: 'auto',
+                        externalBase: 'auto',
+                        externalHttpsPort: httpsPort.value ?? 443
+                    }),
+                });
+            }
         } catch (e: any) {
             window.appLog?.warn('settings.seed.failed', { message: e?.message });
         }
