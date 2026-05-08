@@ -234,12 +234,19 @@ function taskRowLabel(t: any) {
     if (t?.kind === 'transcode') {
         const jk = String(t?.jobKind || '').toLowerCase()
         if (jk === 'proxy_mp4') {
+            const qualities = Array.isArray(t?.context?.proxyQualities) ? t.context.proxyQualities : []
+            const multiRes = qualities.length > 1
+            const status = String(t?.status || '').toLowerCase()
             const m = String(t?.detail || '').match(/\(([^)]+)\)/)
-            const baseLabel = m ? `Review Copy (${m[1]})` : 'Review Copy'
-            if (String(t?.status || '').toLowerCase() === 'queued') {
+            // While running, show the active quality; when queued/done show "Multiple Resolutions" if applicable
+            const qualitySuffix = (status === 'running' && m)
+                ? ` (${m[1]})`
+                : multiRes ? ' (Multiple Resolutions)' : (m ? ` (${m[1]})` : '')
+            const baseLabel = `Review Copy${qualitySuffix}`
+            if (status === 'queued') {
                 return `${baseLabel} (Queued)`
             }
-            if (String(t?.status || '').toLowerCase() === 'running' && Number(t?.progress || 0) === 0) {
+            if (status === 'running' && Number(t?.progress || 0) === 0) {
                 return `${baseLabel} (Starting…)`
             }
             return baseLabel
