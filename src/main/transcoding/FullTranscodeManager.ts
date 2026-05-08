@@ -6,7 +6,7 @@ import { spawn, ChildProcess, execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { app } from 'electron';
-import { getFfmpegPath } from './ffmpeg-paths';
+import { getFfmpegPath, getFfprobePath } from './ffmpeg-paths';
 import { detectHardwareCapabilities } from './hardware-detect';
 import type { FullTranscodeOptions, FullTranscodeProgress, FullTranscodeResult } from '../preload';
 
@@ -34,9 +34,7 @@ interface ProbeInfo {
 }
 
 function probeSource(ffmpegPath: string, inputPath: string): ProbeInfo {
-  // Derive ffprobe path from ffmpeg path
-  const ffprobePath = ffmpegPath.replace(/ffmpeg(\.exe)?$/, 'ffprobe$1');
-  const probeCmd = fs.existsSync(ffprobePath) ? ffprobePath : 'ffprobe';
+  const probeCmd = getFfprobePath();
 
   const raw = execSync(
     `"${probeCmd}" -v quiet -print_format json -show_format -show_streams "${inputPath}"`,

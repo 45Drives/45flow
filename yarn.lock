@@ -13,6 +13,7 @@ __metadata:
     "@45drives/houston-common-lib": "workspace:*"
     "@45drives/houston-common-ui": "workspace:*"
     "@ffmpeg-installer/ffmpeg": "npm:^1.1.0"
+    "@ffprobe-installer/ffprobe": "npm:^2.1.2"
     "@floating-ui/dom": "npm:^1.7.6"
     "@fontsource/red-hat-text": "npm:^5.0.18"
     "@fortawesome/fontawesome-svg-core": "npm:^7.1.0"
@@ -1392,6 +1393,95 @@ __metadata:
 "@ffmpeg-installer/win32-x64@npm:4.1.0":
   version: 4.1.0
   resolution: "@ffmpeg-installer/win32-x64@npm:4.1.0"
+  conditions: os=win32 & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@ffprobe-installer/darwin-arm64@npm:5.0.1":
+  version: 5.0.1
+  resolution: "@ffprobe-installer/darwin-arm64@npm:5.0.1"
+  conditions: os=darwin & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@ffprobe-installer/darwin-x64@npm:5.1.0":
+  version: 5.1.0
+  resolution: "@ffprobe-installer/darwin-x64@npm:5.1.0"
+  conditions: os=darwin & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@ffprobe-installer/ffprobe@npm:^2.1.2":
+  version: 2.1.2
+  resolution: "@ffprobe-installer/ffprobe@npm:2.1.2"
+  dependencies:
+    "@ffprobe-installer/darwin-arm64": "npm:5.0.1"
+    "@ffprobe-installer/darwin-x64": "npm:5.1.0"
+    "@ffprobe-installer/linux-arm": "npm:5.2.0"
+    "@ffprobe-installer/linux-arm64": "npm:5.2.0"
+    "@ffprobe-installer/linux-ia32": "npm:5.2.0"
+    "@ffprobe-installer/linux-x64": "npm:5.2.0"
+    "@ffprobe-installer/win32-ia32": "npm:5.1.0"
+    "@ffprobe-installer/win32-x64": "npm:5.1.0"
+  dependenciesMeta:
+    "@ffprobe-installer/darwin-arm64":
+      optional: true
+    "@ffprobe-installer/darwin-x64":
+      optional: true
+    "@ffprobe-installer/linux-arm":
+      optional: true
+    "@ffprobe-installer/linux-arm64":
+      optional: true
+    "@ffprobe-installer/linux-ia32":
+      optional: true
+    "@ffprobe-installer/linux-x64":
+      optional: true
+    "@ffprobe-installer/win32-ia32":
+      optional: true
+    "@ffprobe-installer/win32-x64":
+      optional: true
+  checksum: 10c0/d3a0e472c9a31bffe10facf6ee0ce4520b4df13d1cf3fdcf7e6ead367f895a348633481c6010c0d9f30a950fe89f791aade9755360047c8dd48d098dccd8414b
+  languageName: node
+  linkType: hard
+
+"@ffprobe-installer/linux-arm64@npm:5.2.0":
+  version: 5.2.0
+  resolution: "@ffprobe-installer/linux-arm64@npm:5.2.0"
+  conditions: os=linux & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@ffprobe-installer/linux-arm@npm:5.2.0":
+  version: 5.2.0
+  resolution: "@ffprobe-installer/linux-arm@npm:5.2.0"
+  conditions: os=linux & cpu=arm
+  languageName: node
+  linkType: hard
+
+"@ffprobe-installer/linux-ia32@npm:5.2.0":
+  version: 5.2.0
+  resolution: "@ffprobe-installer/linux-ia32@npm:5.2.0"
+  conditions: os=linux & cpu=ia32
+  languageName: node
+  linkType: hard
+
+"@ffprobe-installer/linux-x64@npm:5.2.0":
+  version: 5.2.0
+  resolution: "@ffprobe-installer/linux-x64@npm:5.2.0"
+  conditions: os=linux & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@ffprobe-installer/win32-ia32@npm:5.1.0":
+  version: 5.1.0
+  resolution: "@ffprobe-installer/win32-ia32@npm:5.1.0"
+  conditions: os=win32 & cpu=ia32
+  languageName: node
+  linkType: hard
+
+"@ffprobe-installer/win32-x64@npm:5.1.0":
+  version: 5.1.0
+  resolution: "@ffprobe-installer/win32-x64@npm:5.1.0"
   conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard

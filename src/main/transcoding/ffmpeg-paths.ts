@@ -1,5 +1,6 @@
 // src/main/transcoding/ffmpeg-paths.ts
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
+import ffprobeInstaller from '@ffprobe-installer/ffprobe';
 import { app } from 'electron';
 import path from 'path';
 import fs from 'fs';
@@ -7,6 +8,8 @@ import { execSync } from 'child_process';
 
 let resolvedPath: string | null = null;
 let resolvedSource: 'system' | 'bundled' | null = null;
+
+let resolvedProbePath: string | null = null;
 
 /**
  * Try to find a working system FFmpeg.
@@ -138,6 +141,56 @@ export function getFfmpegPath(): string {
 export function getFfmpegSource(): 'system' | 'bundled' {
   getFfmpegPath(); // ensure resolved
   return resolvedSource ?? 'bundled';
+}
+
+/**
+ * Get the best available ffprobe path.
+ *
+ * Strategy (mirrors getFfmpegPath):
+ * 1. Derive from the resolved FFmpeg path (system installs ship both)
+ * 2. Try system `which ffprobe`
+ * 3. Fall back to bundled @ffprobe-installer binary
+ *
+ * Result is cached after first call.
+ */
+export function getFfprobePath(): string {
+  if (resolvedProbePath) return resolvedProbePath;
+
+  // 1. Derive from the resolved ffmpeg path (works for system installs)
+  const ffmpeg = getFfmpegPath();
+  const derived = ffmpeg.replace(/ffmpeg(\.exe)?$/, 'ffprobe$1');
+  if (derived !== ffmpeg && fs.existsSync(derived)) {
+    resolvedProbePath = derived;
+    console.log(`[ffprobe] Using derived path: ${resolvedProbePath}`);
+    return resolvedProbePath;
+  }
+
+  // 2. Try system ffprobe
+  try {
+    const cmd = process.platform === 'win32' ? 'where ffprobe' : 'which ffprobe';
+    const result = execSync(cmd, { timeout: 3000, encoding: 'utf-8' }).trim();
+    if (result && fs.existsSync(result.split('\n')[0])) {
+      resolvedProbePath = result.split('\n')[0];
+      console.log(`[ffprobe] Using system ffprobe: ${resolvedProbePath}`);
+      return resolvedProbePath;
+    }
+  } catch {}
+
+  // 3. Fall back to bundled @ffprobe-installer
+  let bundled = ffprobeInstaller.path;
+  if (app.isPackaged) {
+    const appPath = app.getAppPath();
+    const unpackedPath = appPath.replace('app.asar', 'app.asar.unpacked');
+    const binary = process.platform === 'win32' ? 'ffprobe.exe' : 'ffprobe';
+    const candidate = path.join(
+      unpackedPath, 'node_modules', '@ffprobe-installer',
+      `${process.platform}-${process.arch}`, binary,
+    );
+    if (fs.existsSync(candidate)) bundled = candidate;
+  }
+  resolvedProbePath = bundled;
+  console.log(`[ffprobe] Using bundled ffprobe: ${resolvedProbePath}`);
+  return resolvedProbePath;
 }
 
 /**
