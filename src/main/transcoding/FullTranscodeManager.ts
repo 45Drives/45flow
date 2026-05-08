@@ -335,18 +335,21 @@ export class FullTranscodeManager {
       if (opts.codec.includes('vaapi')) {
         filterComplex =
           `[0:v]${scaleExpr}format=yuv420p[base];` +
-          `[1:v]scale=iw*0.2:-1,colorchannelmixer=aa=1[wm];` +
-          `[base][wm]overlay=W-w-24:H-h-24,format=nv12,hwupload[outv]`;
+          `[1:v][base]scale2ref=iw/5:-1[wm][base2];` +
+          `[wm]colorchannelmixer=aa=1[wmf];` +
+          `[base2][wmf]overlay=W-w-24:H-h-24,format=nv12,hwupload[outv]`;
       } else if (opts.codec.includes('qsv')) {
         filterComplex =
           `[0:v]${scaleExpr}format=yuv420p[base];` +
-          `[1:v]scale=iw*0.2:-1,colorchannelmixer=aa=1[wm];` +
-          `[base][wm]overlay=W-w-24:H-h-24,hwupload=extra_hw_frames=64[outv]`;
+          `[1:v][base]scale2ref=iw/5:-1[wm][base2];` +
+          `[wm]colorchannelmixer=aa=1[wmf];` +
+          `[base2][wmf]overlay=W-w-24:H-h-24,hwupload=extra_hw_frames=64[outv]`;
       } else {
         filterComplex =
           `[0:v]${scaleExpr}format=yuv420p[base];` +
-          `[1:v]scale=iw*0.2:-1,colorchannelmixer=aa=1[wm];` +
-          `[base][wm]overlay=W-w-24:H-h-24[outv]`;
+          `[1:v][base]scale2ref=iw/5:-1[wm][base2];` +
+          `[wm]colorchannelmixer=aa=1[wmf];` +
+          `[base2][wmf]overlay=W-w-24:H-h-24[outv]`;
       }
 
       args.push('-i', opts.watermarkPath);
@@ -434,7 +437,7 @@ export class FullTranscodeManager {
 
     if (useWatermark) {
       filterParts.push(
-        `[1:v]scale=iw*0.2:-1,colorchannelmixer=aa=1,split=${n}${vLabels.map((_, i) => `[wm${i}]`).join('')};`,
+        `[1:v]split=${n}${vLabels.map((_, i) => `[wm_raw${i}]`).join('')};`,
       );
     }
 
@@ -443,7 +446,9 @@ export class FullTranscodeManager {
       const out = oLabels[i];
       if (useWatermark) {
         filterParts.push(`[${v}]scale=-2:${h}:flags=lanczos,format=yuv420p[${v}s];`);
-        filterParts.push(`[${v}s][wm${i}]overlay=W-w-24:H-h-24[${out}];`);
+        filterParts.push(`[wm_raw${i}][${v}s]scale2ref=iw/5:-1[wm${i}][${v}s2];`);
+        filterParts.push(`[wm${i}]colorchannelmixer=aa=1[wm${i}f];`);
+        filterParts.push(`[${v}s2][wm${i}f]overlay=W-w-24:H-h-24[${out}];`);
       } else {
         filterParts.push(`[${v}]scale=-2:${h}:flags=lanczos,format=yuv420p[${out}];`);
       }
