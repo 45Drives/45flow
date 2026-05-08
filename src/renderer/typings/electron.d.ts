@@ -134,6 +134,54 @@ export type ExistingUser = {
   default_role?: Role | null
 }
 
+export type TranscodeOptions = {
+  inputPath: string
+  quality: 'original' | '1080p' | '720p'
+  outputFormat: 'mp4' | 'hevc'
+  useHardwareAccel: boolean
+  preset?: 'fast' | 'balanced' | 'quality'
+  watermarkPath?: string
+}
+
+export type TranscodeProgress = {
+  percent: number
+  fps: number
+  speed: string
+  eta: string
+  message: string
+}
+
+export type TranscodeResult = { ok?: boolean; outputPath?: string; error?: string }
+
+export type FullTranscodeOptions = {
+  inputPath: string
+  proxyQualities: ('720p' | '1080p' | 'original')[]
+  generateHls: boolean
+  watermarkPath?: string
+  useHardwareAccel: boolean
+  preset?: 'fast' | 'balanced' | 'quality'
+}
+
+export type FullTranscodeProgress = {
+  phase: 'probe' | 'proxy' | 'hls'
+  activeQuality?: string
+  perQualityProgress: Record<string, number>
+  overallPercent: number
+  fps: number
+  speed: string
+  eta: string
+  message: string
+}
+
+export type FullTranscodeResult = {
+  ok?: boolean
+  outputDir?: string
+  proxyFiles?: Record<string, string>
+  hlsDir?: string | null
+  hlsMaster?: string | null
+  error?: string
+}
+
 export interface ElectronApi {
   ipcRenderer: {
     send: (channel: string, data?: any) => void
@@ -167,6 +215,39 @@ export interface ElectronApi {
   ) => Promise<{ id: string; done: Promise<RsyncResult> }>
 
   rsyncCancel: (id: string) => void
+
+  /** -------- Client-side Transcoding -------- */
+  transcodeStart: (
+    options: TranscodeOptions,
+    onProgress?: (p: TranscodeProgress) => void
+  ) => Promise<{ jobId: string; done: Promise<TranscodeResult> }>
+
+  transcodeCancel: (jobId: string) => void
+
+  /** Full multi-output transcode (proxies + HLS) */
+  fullTranscodeStart: (
+    options: FullTranscodeOptions,
+    onProgress?: (p: FullTranscodeProgress) => void
+  ) => Promise<{ jobId: string; done: Promise<FullTranscodeResult> }>
+
+  fullTranscodeCancel: (jobId: string) => void
+
+  /** Download a watermark image from the server to a local temp file */
+  downloadWatermark: (opts: { apiBase: string; token: string; relPath: string }) => Promise<string | null>
+
+  /** Get hardware acceleration capabilities */
+  getTranscodeCapabilities: () => Promise<{
+    hasHardwareAccel: boolean
+    bestCodecH264: string
+    bestCodecHevc: string
+    hardwareDescription: string
+    ffmpegSource: 'system' | 'bundled'
+    ffmpegVersion: string
+    probeResults: Record<string, boolean>
+  }>
+
+  /** Persist the upload queue for crash recovery */
+  persistUploadQueue: (items: any[]) => Promise<void>
 
   /** Get the real filesystem path for a File from drag-and-drop (replaces deprecated File.path) */
   getPathForFile: (file: File) => string

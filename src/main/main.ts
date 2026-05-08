@@ -395,6 +395,7 @@ import {
   type PersistedTransfer,
 } from './transfers/transfer-store';
 import { TranscodeManager } from './transcoding/TranscodeManager';
+import { FullTranscodeManager } from './transcoding/FullTranscodeManager';
 import { initAutoUpdates } from './updates';
 
 let discoveredServers: Server[] = [];
@@ -3078,6 +3079,49 @@ ipcMain.handle('transcode:get-capabilities', async () => {
     ffmpegVersion: caps.ffmpegVersion,
     probeResults: caps.probeResults,
   };
+});
+
+// ── Full client-side transcoding (proxies + HLS) ─────────────────────────────
+const fullTranscodeManager = new FullTranscodeManager();
+
+ipcMain.handle('transcode:full-start', async (event, { jobId, options }) => {
+  jl('info', 'transcode.full.start', {
+    jobId,
+    inputPath: options.inputPath,
+    proxyQualities: options.proxyQualities,
+    hls: options.generateHls,
+    watermark: options.watermarkPath || 'none',
+    hwAccel: options.useHardwareAccel,
+    preset: options.preset,
+  });
+  console.log(`[transcode:full-start] jobId=${jobId} input=${options.inputPath} qualities=${options.proxyQualities} hls=${options.generateHls} watermark=${options.watermarkPath || 'none'} hwAccel=${options.useHardwareAccel} preset=${options.preset}`);
+
+  try {
+    const result = await fullTranscodeManager.transcode(
+      jobId,
+      options,
+      (progress) => {
+        event.sender.send(`transcode:full-progress:${jobId}`, progress);
+      }
+    );
+
+    jl('info', 'transcode.full.done', { jobId, outputDir: result.outputDir, proxyFiles: Object.keys(result.proxyFiles || {}), hlsDir: result.hlsDir || null });
+    console.log(`[transcode:full-done] jobId=${jobId} outputDir=${result.outputDir} proxies=${Object.keys(result.proxyFiles || {}).join(',')} hlsDir=${result.hlsDir || 'none'}`);
+    event.sender.send(`transcode:full-done:${jobId}`, { ok: true, ...result });
+    return { ok: true, ...result };
+  } catch (error: any) {
+    const errorMsg = error?.message || String(error);
+    jl('error', 'transcode.full.failed', { jobId, error: errorMsg });
+    console.error(`[transcode:full-failed] jobId=${jobId} error=${errorMsg}`);
+    event.sender.send(`transcode:full-failed:${jobId}`, { error: errorMsg });
+    throw error;
+  }
+});
+
+ipcMain.handle('transcode:full-cancel', async (_event, { jobId }) => {
+  fullTranscodeManager.cancel();
+  jl('info', 'transcode.full.cancel', { jobId });
+  return { canceled: true };
 });
 
 // ── Download watermark from server to local temp file ────────────────────────

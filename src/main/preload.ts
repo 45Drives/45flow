@@ -68,6 +68,35 @@ export type TranscodeProgress = {
 
 export type TranscodeResult = { ok?: boolean; outputPath?: string; error?: string }
 
+export type FullTranscodeOptions = {
+  inputPath: string
+  proxyQualities: ('720p' | '1080p' | 'original')[]
+  generateHls: boolean
+  watermarkPath?: string
+  useHardwareAccel: boolean
+  preset?: 'fast' | 'balanced' | 'quality'
+}
+
+export type FullTranscodeProgress = {
+  phase: 'probe' | 'proxy' | 'hls'
+  activeQuality?: string
+  perQualityProgress: Record<string, number>
+  overallPercent: number
+  fps: number
+  speed: string
+  eta: string
+  message: string
+}
+
+export type FullTranscodeResult = {
+  ok?: boolean
+  outputDir?: string
+  proxyFiles?: Record<string, string>
+  hlsDir?: string | null
+  hlsMaster?: string | null
+  error?: string
+}
+
 /** Shape exposed on window.electron */
 export type ElectronApi = {
   ipcRenderer: {
@@ -120,6 +149,15 @@ export type ElectronApi = {
 
   /** Cancel an active transcode job */
   transcodeCancel: (jobId: string) => void
+
+  /** Full transcode: generate all proxy variants + HLS from one source */
+  fullTranscodeStart: (
+    options: FullTranscodeOptions,
+    onProgress?: (p: FullTranscodeProgress) => void
+  ) => Promise<{ jobId: string; done: Promise<FullTranscodeResult> }>
+
+  /** Cancel an active full transcode */
+  fullTranscodeCancel: (jobId: string) => void
 
   /** Download a watermark image from the server to a local temp file */
   downloadWatermark: (opts: { apiBase: string; token: string; relPath: string }) => Promise<string | null>
@@ -256,6 +294,41 @@ const api: ElectronApi = {
   },
 
   transcodeCancel: (jobId: string) => ipcRenderer.invoke('transcode:cancel', { jobId }),
+
+  fullTranscodeStart: (options: FullTranscodeOptions, onProgress?: (p: FullTranscodeProgress) => void) => {
+    const jobId = genId()
+    const pch = `transcode:full-progress:${jobId}`
+    const dch = `transcode:full-done:${jobId}`
+    const fch = `transcode:full-failed:${jobId}`
+
+    if (onProgress) {
+      const ph = (_: IpcRendererEvent, payload: FullTranscodeProgress) => {
+        try { onProgress(payload) } catch {}
+      }
+      ipcRenderer.on(pch, ph)
+    }
+
+    const done: Promise<FullTranscodeResult> = new Promise((resolve) => {
+      ipcRenderer.once(dch, (_ev, res: FullTranscodeResult) => {
+        ipcRenderer.removeAllListeners(pch)
+        ipcRenderer.removeAllListeners(fch)
+        resolve(res)
+      })
+      ipcRenderer.once(fch, (_ev, res: FullTranscodeResult) => {
+        ipcRenderer.removeAllListeners(pch)
+        ipcRenderer.removeAllListeners(dch)
+        resolve(res)
+      })
+    })
+
+    ipcRenderer.invoke('transcode:full-start', { jobId, options }).catch((err: any) => {
+      console.error('[full-transcode] invoke rejected:', err?.message || err)
+    })
+
+    return Promise.resolve({ jobId, done })
+  },
+
+  fullTranscodeCancel: (jobId: string) => ipcRenderer.invoke('transcode:full-cancel', { jobId }),
 
   downloadWatermark: (opts: { apiBase: string; token: string; relPath: string }) =>
     ipcRenderer.invoke('watermark:download', opts),

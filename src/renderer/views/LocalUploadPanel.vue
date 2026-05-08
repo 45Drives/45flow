@@ -357,6 +357,7 @@ import { useTransferProgress } from '../composables/useTransferProgress'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
 import { useClientTranscode } from '../composables/useClientTranscode'
+import { useUploadTranscode } from '../composables/useUploadTranscode'
 const { to } = useResilientNav()
 useHeader('Upload Files')
 const transfer = useTransferProgress()
@@ -640,6 +641,56 @@ function extractJobInfoByVersion(data: any): Record<number, { queuedKinds: strin
 	return map;
 }
 
+/** Parse ETA string like "00:05:23" or "5m 23s" to seconds */
+function parseEta(eta: string): number | null {
+	if (!eta || eta === 'N/A' || eta === '—') return null
+	// HH:MM:SS or MM:SS
+	const hms = eta.match(/^(\d+):(\d+):(\d+)$/)
+	if (hms) return Number(hms[1]) * 3600 + Number(hms[2]) * 60 + Number(hms[3])
+	const ms = eta.match(/^(\d+):(\d+)$/)
+	if (ms) return Number(ms[1]) * 60 + Number(ms[2])
+	// "5m 23s" style
+	let secs = 0
+	const hm = eta.match(/(\d+)\s*h/); if (hm) secs += Number(hm[1]) * 3600
+	const mm = eta.match(/(\d+)\s*m/); if (mm) secs += Number(mm[1]) * 60
+	const sm = eta.match(/(\d+)\s*s/); if (sm) secs += Number(sm[1])
+	return secs > 0 ? secs : null
+}
+
+/**
+ * Run full client-side transcode via the unified composable.
+ */
+async function runClientFullTranscode(opts: {
+	assetVersionId: number
+	sourceFilePath: string
+	rowName: string
+	groupId: string
+	destDir: string
+	destFileAbs: string
+	wantProxy: boolean
+	localWatermarkPath: string | null
+	taskId?: string
+}) {
+	const { runClientTranscode } = useUploadTranscode()
+
+	await runClientTranscode({
+		assetVersionId: opts.assetVersionId,
+		sourceFilePath: opts.sourceFilePath,
+		filename: opts.rowName,
+		proxyQualities: opts.wantProxy ? proxyQualities.value.slice() : ['720p'],
+		generateHls: true,
+		watermarkPath: opts.localWatermarkPath,
+		ssh: {
+			host: ssh?.server || '',
+			user: ssh?.username || '',
+			port: serverPort,
+			keyPath: privateKeyPath,
+		},
+		apiFetch,
+	})
+	// If this fails, server-side jobs remain queued as fallback
+}
+
 function waitForIngestAndStartTranscode(opts: {
 	uploadId: string
 	rowName: string
@@ -649,6 +700,11 @@ function waitForIngestAndStartTranscode(opts: {
 	destDir: string
 	destFileAbs: string
 	watermarkRelPath?: string
+	// Client-side full transcode opts
+	clientTranscode?: boolean
+	sourceFilePath?: string
+	localWatermarkPath?: string | null
+	taskId?: string
 }) {
 	const chan = `upload:ingest:${opts.uploadId}`
 
@@ -657,6 +713,25 @@ function waitForIngestAndStartTranscode(opts: {
 		const assetVersionId = Number(payload.assetVersionId);
 
 		if (!Number.isFinite(fileId) || fileId <= 0) return;
+
+		// ── Client-side full transcode path ──────────────────────────────────────
+		if (opts.clientTranscode && opts.sourceFilePath && Number.isFinite(assetVersionId) && assetVersionId > 0) {
+			runClientFullTranscode({
+				assetVersionId,
+				sourceFilePath: opts.sourceFilePath,
+				rowName: opts.rowName,
+				groupId: opts.groupId,
+				destDir: opts.destDir,
+				destFileAbs: opts.destFileAbs,
+				wantProxy: opts.wantProxy,
+				localWatermarkPath: opts.localWatermarkPath ?? null,
+				taskId: opts.taskId,
+			});
+			// Don't return — fall through to create per-kind polling tasks
+			// which will show separate progress bars from the client's progress pushes
+		}
+
+		// ── Server-side transcode tracking (also used to display client progress) ──
 
 		const jobInfo = extractJobInfoByVersion(payload);
 		const rec = Number.isFinite(assetVersionId) && assetVersionId > 0 ? jobInfo[assetVersionId] : null;
@@ -1261,7 +1336,9 @@ function uploadOneFile(
 	const ext = String(row.name || '').toLowerCase().split('.').pop() || ''
 	const isVideo = videoExts.has(ext)
 	const { enabled: clientTranscodeEnabled, preset: transcodePreset, hwAccel: hwAccelSetting } = useClientTranscode()
-	const shouldTranscodeClient = isVideo && clientTranscodeEnabled.value && transcodeProxyAfterUpload.value
+	// Old single-quality client transcode is replaced by full multi-output transcode
+	// that runs after ingest (via runClientFullTranscode). Always upload the raw file.
+	const shouldTranscodeClient = false
 
 	const doUpload = async (filePathToUpload: string, clientTranscoded: boolean = false, clientWatermarked: boolean = false) => {
 		return window.electron.rsyncStart(
@@ -1272,9 +1349,9 @@ function uploadOneFile(
 				destDir: row.dest,
 				port: serverPort,
 				keyPath: privateKeyPath,
-				transcodeProxy: transcodeProxyAfterUpload.value && !clientTranscoded, // Skip server transcode if we transcoded client-side
+				transcodeProxy: transcodeProxyAfterUpload.value, // Server generates proxy variants (scaling) even when client transcoded
 				proxyQualities: proxyQualities.value.slice(),
-				watermark: enableWatermark && !clientWatermarked,
+				watermark: enableWatermark,
 				watermarkFileName: enableWatermark ? watermarkRelPathForIngest : undefined,
 				watermarkProxyQualities: enableWatermark ? proxyQualities.value.slice() : undefined,
 				apiToken: connectionMeta.value.token || undefined,
@@ -1398,6 +1475,11 @@ function uploadOneFile(
 			destDir: destDirAbs,
 			destFileAbs,
 			watermarkRelPath: watermarkRelPathForIngest,
+			// Client-side full transcode
+			clientTranscode: clientTranscodeEnabled.value && videoExts.has(String(row.name || '').toLowerCase().split('.').pop() || ''),
+			sourceFilePath: row.path,
+			localWatermarkPath: localWatermarkPath,
+			taskId,
 		})
 		row.ingestUnsub = stopIngestListener
 

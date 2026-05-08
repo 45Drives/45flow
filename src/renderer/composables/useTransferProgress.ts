@@ -649,6 +649,12 @@ export function useTransferProgress() {
         // Stop polling first
         try { t.stop?.() } catch { }
 
+        // Cancel client-side FFmpeg if running
+        const clientJobId = (t as any).context?.clientTranscodeJobId
+        if (clientJobId) {
+            try { window.electron?.fullTranscodeCancel?.(clientJobId) } catch { }
+        }
+
         // Cancel on the server for each tracked asset version
         const apiFetch = t._apiFetch
         if (apiFetch) {
@@ -947,7 +953,41 @@ export function useTransferProgress() {
                     }
                 }
                 if ((cur.jobKind ?? 'any') === 'proxy_mp4') {
-                    cur.detail = proxyDetailFromProgress(cur.progress, cur.context?.proxyQualities)
+                    // Extract per-quality progress from the proxy_mp4 job (sent by client-side transcode)
+                    const proxyJob = (castItems as any[]).flatMap((it: any) => it.jobs || [])
+                        .find((j: any) => String(j?.kind || '').toLowerCase() === 'proxy_mp4')
+                    const perQ = proxyJob?.per_quality_progress
+                    const activeQ = proxyJob?.active_quality
+                    const qOrder = proxyJob?.quality_order
+
+                    if (perQ && typeof perQ === 'object') {
+                        const qualityOrder = normalizeQualityList(
+                            (Array.isArray(qOrder) && qOrder.length) ? qOrder : Object.keys(perQ)
+                        )
+                        if (qualityOrder.length) {
+                            if (!cur.context) cur.context = { source: 'upload' }
+                            cur.context.proxyQualities = qualityOrder
+                        }
+                        // Build per-quality sub-items for display
+                        const jobs = qualityOrder.map((q: string) => {
+                            const pct = normalizeProgressPercent(perQ[q])
+                            return {
+                                kind: `proxy_mp4:${q}`,
+                                status: pct >= 100 ? 'done' : (pct > 0 ? 'running' : 'queued'),
+                                progress: pct,
+                                quality: q,
+                            }
+                        })
+                        cur.items = [{ assetVersionId: 0, jobs, summary: { queued: 0, running: 1, done: 0, failed: 0 } }] as any
+                        // Show per-quality progress on the active quality
+                        const activePct = proxyActiveQualityProgress(activeQ, perQ)
+                        if (typeof activePct === 'number') {
+                            cur.progress = activePct
+                        }
+                        cur.detail = proxyDetailFromActiveQuality(activeQ, cur.progress, cur.context?.proxyQualities)
+                    } else {
+                        cur.detail = proxyDetailFromProgress(cur.progress, cur.context?.proxyQualities)
+                    }
                 }
 
                 if (nextStatus === 'done' || nextStatus === 'failed') {

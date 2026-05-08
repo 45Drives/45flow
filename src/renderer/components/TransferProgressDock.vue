@@ -235,7 +235,14 @@ function taskRowLabel(t: any) {
         const jk = String(t?.jobKind || '').toLowerCase()
         if (jk === 'proxy_mp4') {
             const m = String(t?.detail || '').match(/\(([^)]+)\)/)
-            return m ? `Review Copy (${m[1]})` : 'Review Copy'
+            const baseLabel = m ? `Review Copy (${m[1]})` : 'Review Copy'
+            if (String(t?.status || '').toLowerCase() === 'queued') {
+                return `${baseLabel} (Queued)`
+            }
+            if (String(t?.status || '').toLowerCase() === 'running' && Number(t?.progress || 0) === 0) {
+                return `${baseLabel} (Starting…)`
+            }
+            return baseLabel
         }
         if (jk === 'hls') return 'Stream'
         return 'Transcode'

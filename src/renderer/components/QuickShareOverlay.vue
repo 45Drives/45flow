@@ -9,8 +9,22 @@
     </div>
   </Transition>
 
+  <!-- Minimized floating bar -->
+  <Transition name="qs-fade">
+    <div v-if="showModal && minimized" class="fixed bottom-4 right-4 z-[2200] flex items-center gap-3 bg-accent border border-default rounded-lg shadow-xl px-4 py-3 cursor-pointer select-none hover:bg-well/40 transition" @click="minimized = false">
+      <ArrowUpTrayIcon class="w-5 h-5 text-primary shrink-0" />
+      <div class="flex flex-col min-w-0">
+        <span class="text-sm font-semibold truncate">Quick Share</span>
+        <span class="text-xs text-muted truncate">
+          {{ uploadPhase === 'uploading' ? 'Uploading…' : uploadPhase === 'generating' ? 'Generating link…' : uploadPhase === 'done' ? 'Done — click to view link' : uploadPhase === 'error' ? 'Error' : `${droppedFiles.length} file(s)` }}
+        </span>
+      </div>
+      <progress v-if="uploadPhase === 'uploading'" class="w-24 h-1.5 rounded-lg overflow-hidden [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary" :value="overallProgress" max="100" />
+    </div>
+  </Transition>
+
   <!-- Modal: shown after files are dropped -->
-  <div v-if="showModal" class="fixed inset-0 z-[2100] flex items-center justify-center">
+  <div v-if="showModal && !minimized" class="fixed inset-0 z-[2100] flex items-center justify-center">
     <div class="absolute inset-0 bg-black/50" @click="cancel" />
     <div
       class="relative w-full max-w-6xl h-[85vh] flex flex-col bg-accent rounded-lg shadow-xl p-5"
@@ -24,7 +38,12 @@
         <h2 class="text-lg font-semibold">
           Upload {{ droppedFiles.length === 1 ? `"${droppedFiles[0].name}"` : `${droppedFiles.length} files` }} to server?
         </h2>
-        <button class="btn btn-secondary" @click="cancel" :disabled="busy">Close</button>
+        <div class="flex items-center gap-2">
+          <button class="btn btn-secondary flex items-center gap-1" @click="minimized = true" title="Minimize">
+            <MinusIcon class="w-4 h-4" />
+          </button>
+          <button class="btn btn-secondary" @click="cancel" :disabled="busy">Close</button>
+        </div>
       </div>
 
       <!-- Step indicator -->
@@ -351,7 +370,7 @@
 <script setup lang="ts">
 import { ref, computed, inject, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowUpTrayIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
+import { ArrowUpTrayIcon, ChevronDownIcon, MinusIcon } from '@heroicons/vue/24/outline'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/vue/20/solid'
 import { Switch, Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
@@ -360,6 +379,7 @@ import { connectionMetaInjectionKey, currentServerInjectionKey } from '../keys/i
 import { useApi } from '../composables/useApi'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { useClientTranscode } from '../composables/useClientTranscode'
+import { useUploadTranscode } from '../composables/useUploadTranscode'
 import { signalLinkCreated } from '../composables/useLinkRefresh'
 import { tourQuickShareOpen, tourQuickShareStep, tourQuickShareShowDone } from '../composables/useQuickShareTour'
 import FolderPicker from './FolderPicker.vue'
@@ -453,6 +473,7 @@ onBeforeUnmount(() => {
 
 // ── Modal state ──
 const showModal = ref(false)
+const minimized = ref(false)
 const droppedFiles = ref<DroppedFile[]>([])
 const wizardStep = ref<1 | 2 | 3>(1)
 const busy = ref(false)
@@ -542,6 +563,12 @@ const currentPhaseLabel = computed(() => {
   return 'Processing files…'
 })
 
+const overallProgress = computed(() => {
+  const vals = Object.values(perFileProgress.value)
+  if (!vals.length) return 0
+  return vals.reduce((a, b) => a + b, 0) / vals.length
+})
+
 const videoExts = new Set([
   'mp4', 'mov', 'm4v', 'mkv', 'webm', 'avi', 'wmv', 'flv',
   'mpg', 'mpeg', 'm2v', '3gp', '3g2', 'mxf', 'ts', 'm2ts', 'mts',
@@ -584,6 +611,7 @@ function setNever() {
 
 function resetWizard() {
   wizardStep.value = 1
+  minimized.value = false
   destFolder.value = ''
   projectBase.value = ''
   expiresValue.value = 1
@@ -617,6 +645,7 @@ function cancel() {
   if (isTourMode.value) return // don't close during guided tour
   if (busy.value && uploadPhase.value === 'uploading') return // don't close during upload
   showModal.value = false
+  minimized.value = false
   droppedFiles.value = []
 }
 
@@ -821,6 +850,19 @@ function joinPath(dir: string, name: string) {
   return (d || '/') + '/' + n
 }
 
+function parseEtaToSeconds(eta: string): number | null {
+  if (!eta || eta === 'N/A' || eta === '—') return null
+  const hms = eta.match(/^(\d+):(\d+):(\d+)$/)
+  if (hms) return Number(hms[1]) * 3600 + Number(hms[2]) * 60 + Number(hms[3])
+  const ms = eta.match(/^(\d+):(\d+)$/)
+  if (ms) return Number(ms[1]) * 60 + Number(ms[2])
+  let secs = 0
+  const hm = eta.match(/(\d+)\s*h/); if (hm) secs += Number(hm[1]) * 3600
+  const mm = eta.match(/(\d+)\s*m/); if (mm) secs += Number(mm[1]) * 60
+  const sm = eta.match(/(\d+)\s*s/); if (sm) secs += Number(sm[1])
+  return secs > 0 ? secs : null
+}
+
 // ── Upload & Share ──
 async function startUploadAndShare() {
   if (!canProceed.value) return
@@ -871,6 +913,9 @@ async function startUploadAndShare() {
       }
     }
 
+    // Shared groupId ensures upload + transcode tasks render in one dock section
+    const groupId = crypto.randomUUID?.() || Math.random().toString(36).slice(2)
+
     for (let i = 0; i < droppedFiles.value.length; i++) {
       const f = droppedFiles.value[i]
       let uploadedFileName = f.name  // Track actual uploaded filename
@@ -884,14 +929,15 @@ async function startUploadAndShare() {
         title: `Quick share: ${f.name}`,
         detail: destDir,
         cancel: () => {},
-        context: { source: 'upload', destDir, file: fileDestAbs },
+        context: { source: 'upload', groupId, destDir, file: fileDestAbs },
       })
 
       // Determine if this is a video file and if we should transcode client-side
       const videoExts = new Set(['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv', 'wmv', 'mxf', 'mts', 'm2ts', 'mod', 'tod', 'vob', 'f4v', 'asf', 'rm', 'rmvb', 'ts', 'ogv', '3gp', '3g2', 'mj2', 'm4v', 'qt', 'dv', 'divx', 'hevc', 'h264', 'h265', 'vp8', 'vp9', 'av1', 'dnxhd', 'prores', 'r3d', 'braw', 'ari', 'cine', 'dav'])
       const fileExt = String(f.name || '').toLowerCase().split('.').pop() || ''
       const isVideo = videoExts.has(fileExt)
-      const shouldTranscodeClient = isVideo && clientTranscodeEnabled.value && hasVideo.value
+      // Old single-quality client transcode replaced by full multi-output post-upload transcode
+      const shouldTranscodeClient = false
 
       let fileToUpload = f.path
       let clientTranscoded = false
@@ -916,7 +962,7 @@ async function startUploadAndShare() {
               preset: transcodePreset.value,
               watermarkPath: localWatermarkPath || undefined,
             },
-            (progress) => {
+            (progress: { percent: number; fps: any; speed: any; eta: any }) => {
               perFileProgress.value[f.path] = progress.percent
               perFileDetail.value[f.path] = `Transcoding: ${progress.fps} fps @ ${progress.speed} — ETA ${progress.eta}`
               transfer.updateUpload(taskId, {
@@ -975,10 +1021,11 @@ async function startUploadAndShare() {
           destDir,
           port,
           keyPath: undefined,
-          transcodeProxy: hasVideo.value && !clientTranscoded, // Skip server transcode if we transcoded client-side
-          proxyQualities: hasVideo.value && !clientTranscoded ? proxyQualities.value.slice() : undefined,
+          transcodeProxy: hasVideo.value,
+          proxyQualities: hasVideo.value ? proxyQualities.value.slice() : undefined,
           apiToken: connectionMeta.value.token || undefined,
-          clientTranscoded, // Tell server we transcoded client-side
+          clientTranscoded,
+          clientWatermarked: clientAppliedWatermark,
         },
         (p: { percent?: number; bytesTransferred?: number; raw?: string; rate?: string; eta?: string }) => {
           let pct: number | undefined =
@@ -1044,7 +1091,7 @@ async function startUploadAndShare() {
       projectBase: projectBase.value || undefined,
       baseMode: usePublicBase.value ? 'externalPreferred' : 'local',
       title: linkTitle.value || undefined,
-      generateReviewProxy: hasVideo.value && !anyClientTranscoded,
+      generateReviewProxy: hasVideo.value, // Server generates proxy variants even when client transcoded
       hls: hasVideo.value,
       clientTranscoded: anyClientTranscoded || undefined,
     }
@@ -1080,7 +1127,7 @@ async function startUploadAndShare() {
       body.proxyQualities = proxyQualities.value.length > 0 ? proxyQualities.value.slice() : ['original']
     }
 
-    if (watermarkEnabled.value && watermarkRelPath && !clientAppliedWatermark) {
+    if (watermarkEnabled.value && watermarkRelPath) {
       body.watermark = true
       body.watermarkFile = watermarkRelPath
       body.watermarkProxyQualities = proxyQualities.value.slice()
@@ -1089,6 +1136,12 @@ async function startUploadAndShare() {
     // If client applied the watermark, tell the server so it doesn't re-watermark
     if (clientAppliedWatermark) {
       body.clientWatermarked = true
+    }
+
+    // Tell the server to pre-claim transcode jobs so the server worker
+    // doesn't pick them up before the client can start transcoding.
+    if (hasVideo.value && clientTranscodeEnabled.value) {
+      body.clientTranscode = true
     }
 
     // Reuse existing transcodes instead of failing with outputs_exist;
@@ -1106,7 +1159,11 @@ async function startUploadAndShare() {
     signalLinkCreated()
 
     // ── Start transcode tracking in the TransferDock ──
-    if (hasVideo.value) {
+    // When client transcoding is enabled, the FFmpeg onProgress callback
+    // updates the TransferDock directly — polling tasks would fight it
+    // and cause progress oscillation.  Only create polling tasks for
+    // server-side transcoding.
+    if (hasVideo.value && !clientTranscodeEnabled.value) {
       const token = extractLinkToken(data)
       const fileRecords: any[] = Array.isArray(data?.files) ? data.files : []
       const transcodeRecords: any[] = Array.isArray(data?.transcodes) ? data.transcodes : []
@@ -1136,7 +1193,7 @@ async function startUploadAndShare() {
           : ''
         const filePath = rec?.path || rec?.name || 'File'
         const displayName = rec?.name || rec?.path || 'File'
-        const context = { source: 'upload' as const, linkUrl: data.viewUrl, file: filePath }
+        const context = { source: 'upload' as const, groupId, file: filePath }
 
         const alreadyTrackingHls = transfer.hasActiveTranscode({
           assetVersionIds: [assetVersionId],
@@ -1191,6 +1248,67 @@ async function startUploadAndShare() {
             }
           })
         }
+      }
+    }
+
+    // ── Client-side full transcode for video files ───────────────────────────
+    if (hasVideo.value && clientTranscodeEnabled.value) {
+      const { createTranscodePollingTasks, runClientTranscode } = useUploadTranscode()
+      const fileRecordsForTranscode: any[] = Array.isArray(data?.files) ? data.files : []
+      const videoExtsSet = new Set(['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv', 'wmv', 'mxf', 'mts', 'm2ts', 'mod', 'tod', 'vob', 'f4v', 'asf', 'rm', 'rmvb', 'ts', 'ogv', '3gp', '3g2', 'mj2', 'm4v', 'qt', 'dv', 'divx', 'hevc', 'h264', 'h265', 'vp8', 'vp9', 'av1', 'dnxhd', 'prores', 'r3d', 'braw', 'ari', 'cine', 'dav'])
+
+      for (let fi = 0; fi < fileRecordsForTranscode.length; fi++) {
+        const rec = fileRecordsForTranscode[fi]
+        const avId = Number(rec?.assetVersionId ?? 0)
+        if (!Number.isFinite(avId) || avId <= 0) continue
+
+        const localFile = droppedFiles.value[fi]
+        if (!localFile) continue
+
+        const ext = String(localFile.name || '').toLowerCase().split('.').pop() || ''
+        if (!videoExtsSet.has(ext)) continue
+
+        const filePath = rec?.path || rec?.name || localFile.name
+        const pQualities = proxyQualities.value.length > 0 ? proxyQualities.value.slice() : ['original']
+
+        // Create polling tasks — same composable as LocalUploadPanel
+        createTranscodePollingTasks({
+          assetVersionId: avId,
+          filename: localFile.name,
+          proxyQualities: pQualities,
+          generateHls: true,
+          apiFetch,
+          context: {
+            source: 'upload' as const,
+            groupId,
+            file: filePath,
+            proxyQualities: pQualities,
+          },
+        })
+
+        // Run transcode async — same composable as LocalUploadPanel
+        ;(async () => {
+          const result = await runClientTranscode({
+            assetVersionId: avId,
+            sourceFilePath: localFile.path,
+            filename: localFile.name,
+            proxyQualities: pQualities,
+            generateHls: true,
+            watermarkPath: localWatermarkPath,
+            ssh: {
+              host: host || '',
+              user: user || '',
+              port,
+              keyPath: undefined,
+            },
+            apiFetch,
+          })
+          if (result.ok) {
+            console.log(`[quick-share] ✓ client transcode done: ${localFile.name}`)
+          } else {
+            console.warn(`[quick-share] client transcode failed for ${localFile.name}: ${result.error}`)
+          }
+        })()
       }
     }
 
