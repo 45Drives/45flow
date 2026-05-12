@@ -232,6 +232,7 @@ export class FullTranscodeManager {
         ? this.buildFastRemuxArgs(options.inputPath, outAbs)
         : this.buildProxyArgs(options.inputPath, outAbs, {
             height,
+            sourceHeight: probe.height,
             codec: proxyCodec,
             watermarkPath: useWatermark ? options.watermarkPath! : null,
             gopSize,
@@ -306,6 +307,7 @@ export class FullTranscodeManager {
     outputPath: string,
     opts: {
       height: number | null;
+      sourceHeight: number;
       codec: string;
       watermarkPath: string | null;
       gopSize: number;
@@ -330,28 +332,24 @@ export class FullTranscodeManager {
     if (opts.watermarkPath) {
       // Watermark filter_complex path
       const scaleExpr = opts.height ? `scale=-2:${opts.height}:flags=lanczos,` : '';
+      const wmW = Math.round((opts.height || opts.sourceHeight) / 2);
       let filterComplex: string;
-
-      const wmScale = `scale2ref=main_w/5:(main_w*ih)/(5*iw)`;
 
       if (opts.codec.includes('vaapi')) {
         filterComplex =
           `[0:v]${scaleExpr}format=yuv420p[base];` +
-          `[1:v][base]${wmScale}[wm][base2];` +
-          `[wm]colorchannelmixer=aa=1[wmf];` +
-          `[base2][wmf]overlay=W-w-24:H-h-24,format=nv12,hwupload[outv]`;
+          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
+          `[base][wm]overlay=W-w-24:H-h-24,format=nv12,hwupload[outv]`;
       } else if (opts.codec.includes('qsv')) {
         filterComplex =
           `[0:v]${scaleExpr}format=yuv420p[base];` +
-          `[1:v][base]${wmScale}[wm][base2];` +
-          `[wm]colorchannelmixer=aa=1[wmf];` +
-          `[base2][wmf]overlay=W-w-24:H-h-24,hwupload=extra_hw_frames=64[outv]`;
+          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
+          `[base][wm]overlay=W-w-24:H-h-24,hwupload=extra_hw_frames=64[outv]`;
       } else {
         filterComplex =
           `[0:v]${scaleExpr}format=yuv420p[base];` +
-          `[1:v][base]${wmScale}[wm][base2];` +
-          `[wm]colorchannelmixer=aa=1[wmf];` +
-          `[base2][wmf]overlay=W-w-24:H-h-24[outv]`;
+          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
+          `[base][wm]overlay=W-w-24:H-h-24[outv]`;
       }
 
       args.push('-i', opts.watermarkPath);
@@ -447,10 +445,10 @@ export class FullTranscodeManager {
       const v = vLabels[i];
       const out = oLabels[i];
       if (useWatermark) {
+        const wmW = Math.round(h / 2);
         filterParts.push(`[${v}]scale=-2:${h}:flags=lanczos,format=yuv420p[${v}s];`);
-        filterParts.push(`[wm_raw${i}][${v}s]scale2ref=main_w/5:(main_w*ih)/(5*iw)[wm${i}][${v}s2];`);
-        filterParts.push(`[wm${i}]colorchannelmixer=aa=1[wm${i}f];`);
-        filterParts.push(`[${v}s2][wm${i}f]overlay=W-w-24:H-h-24[${out}];`);
+        filterParts.push(`[wm_raw${i}]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm${i}];`);
+        filterParts.push(`[${v}s][wm${i}]overlay=W-w-24:H-h-24[${out}];`);
       } else {
         filterParts.push(`[${v}]scale=-2:${h}:flags=lanczos,format=yuv420p[${out}];`);
       }
