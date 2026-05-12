@@ -332,7 +332,7 @@ export class FullTranscodeManager {
     if (opts.watermarkPath) {
       // Watermark filter_complex path
       const scaleExpr = opts.height ? `scale=-2:${opts.height}:flags=lanczos,` : '';
-      const wmW = Math.round((opts.height || opts.sourceHeight) / 2);
+      const wmW = Math.round((opts.height || opts.sourceHeight) / 5);
       let filterComplex: string;
 
       if (opts.codec.includes('vaapi')) {
@@ -445,7 +445,7 @@ export class FullTranscodeManager {
       const v = vLabels[i];
       const out = oLabels[i];
       if (useWatermark) {
-        const wmW = Math.round(h / 2);
+        const wmW = Math.round(h / 5);
         filterParts.push(`[${v}]scale=-2:${h}:flags=lanczos,format=yuv420p[${v}s];`);
         filterParts.push(`[wm_raw${i}]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm${i}];`);
         filterParts.push(`[${v}s][wm${i}]overlay=W-w-24:H-h-24[${out}];`);
