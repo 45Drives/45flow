@@ -542,7 +542,9 @@ export class FullTranscodeManager {
     switch (codec) {
       case 'h264_nvenc':
       case 'hevc_nvenc': {
-        const nvPreset = p === 'fast' ? 'p2' : p === 'quality' ? 'p6' : 'p4';
+        // Use legacy preset names (fast/medium/slow) for broad FFmpeg compatibility.
+        // Newer FFmpeg (5.0+) maps these internally to p1-p7; older builds only know these names.
+        const nvPreset = p === 'fast' ? 'fast' : p === 'quality' ? 'slow' : 'medium';
         const cq = p === 'fast' ? '28' : p === 'quality' ? '18' : '23';
         args.push('-preset', nvPreset, '-rc', 'vbr', '-cq', cq, '-b:v', '0');
         break;
