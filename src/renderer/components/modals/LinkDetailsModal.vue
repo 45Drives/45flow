@@ -358,6 +358,15 @@
                   <p v-if="draftWatermarkLocalFile" class="text-xs opacity-70">
                     Selected local file will be uploaded on save and used as watermark.
                   </p>
+                  <div v-if="watermarkPreviewUrl" class="mt-2">
+                    <span class="text-xs text-slate-400">Preview</span>
+                    <div class="relative aspect-video w-full max-w-[14rem] rounded-md border border-default bg-default/60 overflow-hidden mt-1">
+                      <div class="absolute inset-0 bg-gradient-to-br from-slate-700/40 via-slate-800/40 to-slate-900/60"></div>
+                      <img :src="watermarkPreviewUrl" alt="Watermark preview"
+                        class="absolute opacity-70 drop-shadow-md"
+                        style="bottom: 2%; right: 1.5%; max-height: 20%; max-width: 20%;" />
+                    </div>
+                  </div>
                 </div>
               </div>
               <div v-else-if="!editMode && currentWatermarkFile" class="text-xs opacity-70">
@@ -834,6 +843,11 @@ const draftWatermarkFile = ref('')
 type LocalFile = { path: string; name: string; size: number; dataUrl?: string | null }
 const draftWatermarkLocalFile = ref<LocalFile | null>(null)
 const existingWatermarkFilesForEdit = ref<string[]>([])
+const existingWatermarkPreviewUrlForEdit = ref<string | null>(null)
+
+const watermarkPreviewUrl = computed(() =>
+  draftWatermarkLocalFile.value?.dataUrl || existingWatermarkPreviewUrlForEdit.value || null
+)
 
 const filesEditorOpen = ref(false)
 const draftFilePaths = ref<string[]>([])
@@ -1160,6 +1174,33 @@ function pickLocalWatermark() {
 function clearLocalWatermark() {
   draftWatermarkLocalFile.value = null
 }
+
+async function fetchWatermarkPreviewForEdit(relPath: string) {
+  try {
+    const base = connectionMeta?.value?.apiBase ?? ''
+    const token = connectionMeta?.value?.token ?? ''
+    const url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(relPath)}`
+    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } })
+    if (!res.ok) { existingWatermarkPreviewUrlForEdit.value = null; return }
+    const blob = await res.blob()
+    existingWatermarkPreviewUrlForEdit.value = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    existingWatermarkPreviewUrlForEdit.value = null
+  }
+}
+
+watch(() => draftWatermarkFile.value, (v) => {
+  if (!v || draftWatermarkLocalFile.value) {
+    existingWatermarkPreviewUrlForEdit.value = null
+    return
+  }
+  fetchWatermarkPreviewForEdit(v)
+})
 
 async function loadExistingWatermarkFilesForEdit() {
   try {

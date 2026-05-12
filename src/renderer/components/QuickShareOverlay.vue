@@ -282,7 +282,8 @@
                     <div class="relative aspect-video w-full max-w-[14rem] rounded-md border border-default bg-default/60 overflow-hidden">
                       <div class="absolute inset-0 bg-gradient-to-br from-slate-700/40 via-slate-800/40 to-slate-900/60"></div>
                       <img :src="watermarkPreviewUrl" alt="Watermark preview"
-                        class="absolute bottom-3 right-3 max-h-[35%] max-w-[35%] opacity-70 drop-shadow-md" />
+                        class="absolute opacity-70 drop-shadow-md"
+                        style="bottom: 2%; right: 1.5%; max-height: 20%; max-width: 20%;" />
                     </div>
                   </div>
                 </div>

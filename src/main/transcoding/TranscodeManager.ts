@@ -1,9 +1,9 @@
 // src/main/transcoding/TranscodeManager.ts
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, ChildProcess, execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { app } from 'electron';
-import { getFfmpegPath } from './ffmpeg-paths';
+import { getFfmpegPath, getFfprobePath } from './ffmpeg-paths';
 import { detectHardwareCapabilities, hasHardwareAcceleration } from './hardware-detect';
 
 export interface TranscodeOptions {
@@ -43,8 +43,20 @@ export class TranscodeManager {
     const outputName = path.basename(options.inputPath).replace(/\.[^.]+$/, '.mp4');
     const outputPath = path.join(outputDir, outputName);
 
+    // Probe source height for consistent watermark sizing
+    let sourceHeight = 720;
+    try {
+      const probeCmd = getFfprobePath();
+      const raw = execSync(
+        `"${probeCmd}" -v quiet -select_streams v:0 -show_entries stream=height -of csv=p=0 "${options.inputPath}"`,
+        { timeout: 15000, encoding: 'utf-8' }
+      );
+      const parsed = parseInt(raw.trim(), 10);
+      if (parsed > 0) sourceHeight = parsed;
+    } catch {}
+
     // Build FFmpeg args
-    const args = this.buildFfmpegArgs(options, outputPath);
+    const args = this.buildFfmpegArgs(options, outputPath, sourceHeight);
     
     const ffmpegPath = getFfmpegPath();
     console.log(`[transcode] Job ${jobId}: spawning ${ffmpegPath}`);
@@ -64,7 +76,7 @@ export class TranscodeManager {
         onProgress({ percent: 0, fps: 0, speed: '0x', eta: '--:--:--', message: 'Hardware failed, retrying with CPU…' });
         
         const softwareOptions = { ...options, useHardwareAccel: false };
-        const softwareArgs = this.buildFfmpegArgs(softwareOptions, outputPath);
+        const softwareArgs = this.buildFfmpegArgs(softwareOptions, outputPath, sourceHeight);
         console.log(`[transcode] Job ${jobId}: software fallback args =`, softwareArgs.join(' '));
         
         await this.runFfmpeg(jobId, ffmpegPath, softwareArgs, outputPath, onProgress);
@@ -172,7 +184,7 @@ export class TranscodeManager {
     });
   }
 
-  private buildFfmpegArgs(options: TranscodeOptions, outputPath: string): string[] {
+  private buildFfmpegArgs(options: TranscodeOptions, outputPath: string, sourceHeight: number): string[] {
     const args: string[] = [];
 
     // Detect available hardware
@@ -212,27 +224,29 @@ export class TranscodeManager {
 
     if (hasWatermark) {
       // --- Watermark path: use -filter_complex for overlay ---
-      // Build filter: scale source → overlay watermark → [hwupload if needed]
+      // Scale watermark to 1/5 of the output height (matches server & FullTranscodeManager)
       const scaleExpr = targetHeight > 0 ? `scale=-2:${targetHeight}:flags=lanczos,` : '';
+      const effectiveHeight = targetHeight || sourceHeight;
+      const wmW = Math.round(effectiveHeight / 5);
       let filterComplex: string;
 
       if (codec.includes('vaapi')) {
         // VAAPI: overlay in system memory, then hwupload for encoding
         filterComplex =
           `[0:v]${scaleExpr}format=yuv420p[base];` +
-          `[1:v]scale=iw*0.2:-1,colorchannelmixer=aa=1[wm];` +
+          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
           `[base][wm]overlay=W-w-24:H-h-24,format=nv12,hwupload[outv]`;
       } else if (codec.includes('qsv')) {
         // QSV: overlay in system memory, then hwupload for encoding
         filterComplex =
           `[0:v]${scaleExpr}format=yuv420p[base];` +
-          `[1:v]scale=iw*0.2:-1,colorchannelmixer=aa=1[wm];` +
+          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
           `[base][wm]overlay=W-w-24:H-h-24,hwupload=extra_hw_frames=64[outv]`;
       } else {
         // Software / NVENC / VideoToolbox / AMF: overlay in system memory, encoder reads it directly
         filterComplex =
           `[0:v]${scaleExpr}format=yuv420p[base];` +
-          `[1:v]scale=iw*0.2:-1,colorchannelmixer=aa=1[wm];` +
+          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
           `[base][wm]overlay=W-w-24:H-h-24[outv]`;
       }
 
