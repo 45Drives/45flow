@@ -120,117 +120,20 @@
 							<!-- Link Access row -->
 							<template #after class="">
 								<div data-tour="upload-link-access-mode" class="border-t border-default mt-2 pt-2 min-w-0 text-left">
-									<div class="ss-toned-panel min-w-0 p-3">
-										<div class="font-semibold mb-2">Link Access Mode</div>
-										<div class="grid grid-cols-3 gap-2 min-w-0">
-											<div>
-												<label
-													class="flex items-start gap-2 p-1 rounded-md border border-default cursor-pointer">
-													<input type="radio" name="access-mode" value="open"
-														v-model="accessMode" class="mt-1" />
-													<span class="min-w-0">
-														<span class="font-semibold block">Anyone with the
-															link</span>
-														<span class="text-xs text-muted block">No sign-in
-															required.</span>
-													</span>
-												</label>
-
-												<label
-													class="flex items-start gap-2 p-1 rounded-md border border-default cursor-pointer">
-													<input type="radio" name="access-mode" value="open_password"
-														v-model="accessMode" class="mt-1" />
-													<span class="min-w-0">
-														<span class="font-semibold block">Anyone with the link +
-															password</span>
-														<span class="text-xs text-muted block">One shared
-															password for everyone.</span>
-													</span>
-												</label>
-
-												<label
-													class="flex items-start gap-2 p-1 rounded-md border border-default cursor-pointer">
-													<input type="radio" name="access-mode" value="restricted"
-														v-model="accessMode" class="mt-1" />
-													<span class="min-w-0">
-														<span class="font-semibold block">Only invited
-															users</span>
-														<span class="text-xs text-muted block">Sign in with a
-															user account. Permissions come from roles.</span>
-													</span>
-												</label>
-											</div>
-											<div
-												class="col-span-2 border-default min-w-0 p-3 border border-default rounded-md gap-2">
-												<div v-if="accessMode === 'open_password'"
-													class="flex flex-col gap-2 min-w-0 mt-1">
-													<div class="flex flex-row gap-6 items-center text-center">
-														<label
-															class="text-default font-semibold sm:whitespace-nowrap">Link
-															password</label>
-														<p class="text-xs text-muted">Share this password with
-															anyone
-															you want to access the link.</p>
-													</div>
-
-													<div class="relative flex items-center min-w-0 w-full">
-														<input :type="showPassword ? 'text' : 'password'"
-															v-model.trim="password"
-															placeholder="Enter a password"
-															class="input-textlike border rounded px-3 py-2 w-full pr-10 min-w-0" />
-														<button type="button"
-															@click="showPassword = !showPassword"
-															class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted">
-															<EyeIcon v-if="!showPassword" class="w-5 h-5" />
-															<EyeSlashIcon v-else class="w-5 h-5" />
-														</button>
-													</div>
-													
-													<p v-if="!password" class="text-sm text-red-500">
-														Password is required when protection is enabled.
-													</p>
-												</div>
-
-												<div v-if="accessMode === 'restricted'"
-													class="flex flex-col gap-2 min-w-0">
-													<p class="text-xs text-muted">
-														Invited users sign in with their own username and
-														password.
-														Roles control download permissions.
-													</p>
-													<button type="button" class="btn btn-primary"
-														@click="openUserModal()">
-														{{ accessCount ? 'Manage invited users' : 'Invite users…' }}
-														<span v-if="accessCount"
-															class="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-default text-default">
-															{{ accessCount }}
-														</span>
-													</button>
-													<p class="text-xs opacity-70">Roles control permissions.</p>
-													<p v-if="!accessSatisfied" class="text-sm text-red-500">
-														Add at least one user to continue.
-													</p>
-												</div>
-												<div v-if="accessMode === 'open'">
-													<p class="text-2xl text-center text-warning items-center">
-														WARNING! Anybody with the link can upload a file to your server!
-													</p>
-												</div>
-											</div>
-											<div class="col-span-3 grid grid-cols-3">
-												<p class="mx-auto text-xs text-success">
-													Access:
-													{{
-														accessMode === 'open'
-															? 'Anyone with the link'
-															: accessMode === 'open_password'
-																? 'Anyone with the link + password'
-																: 'Invited users only'
-													}}
-												</p>
-											</div>
-										</div>
-									</div>
+									<LinkAccessMode
+										v-model="accessMode"
+										v-model:password="password"
+										v-model:showPassword="showPassword"
+										:accessCount="accessCount"
+										:accessSatisfied="accessSatisfied"
+										dataTour=""
+										radioName="upload-access-mode"
+										:showComments="false"
+										openWarning="WARNING! Anybody with the link can upload a file to your server!"
+										restrictedHelpText="Invited users sign in with their own username and password. Roles control download permissions."
+										wrapperClass="ss-toned-panel min-w-0 p-3"
+										@openUserModal="openUserModal()"
+									/>
 								</div>
 							</template>
 							</CommonLinkControls>
@@ -304,13 +207,13 @@ import { useApi } from '../composables/useApi'
 import FolderPicker from '../components/FolderPicker.vue'
 import CommonLinkControls from '../components/CommonLinkControls.vue'
 import CheckPortForwarding from '../components/CheckPortForwarding.vue'
+import LinkAccessMode from '../components/LinkAccessMode.vue'
 import AddUsersModal from '../components/modals/AddUsersModal.vue'
 import { useHeader } from '../composables/useHeader'
 import { pushNotification, Notification, CardContainer } from '@45drives/houston-common-ui'
 import { appLog } from '../composables/useLog'
 import { useResilientNav } from '../composables/useResilientNav'
-import { Switch } from '@headlessui/vue'
-import { EyeIcon, EyeSlashIcon } from '@heroicons/vue/20/solid'
+
 import type { Commenter } from '../typings/electron'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'

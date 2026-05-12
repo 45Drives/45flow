@@ -358,15 +358,13 @@
                   <p v-if="draftWatermarkLocalFile" class="text-xs opacity-70">
                     Selected local file will be uploaded on save and used as watermark.
                   </p>
-                  <div v-if="watermarkPreviewUrl" class="mt-2">
-                    <span class="text-xs text-slate-400">Preview</span>
-                    <div class="relative aspect-video w-full max-w-[14rem] rounded-md border border-default bg-default/60 overflow-hidden mt-1">
-                      <div class="absolute inset-0 bg-gradient-to-br from-slate-700/40 via-slate-800/40 to-slate-900/60"></div>
-                      <img :src="watermarkPreviewUrl" alt="Watermark preview"
-                        class="absolute opacity-70 drop-shadow-md"
-                        style="bottom: 2%; right: 1.5%; max-height: 20%; max-width: 20%;" />
-                    </div>
-                  </div>
+                  <WatermarkPreview
+                    v-if="watermarkPreviewUrl"
+                    :previewUrl="watermarkPreviewUrl"
+                    label="Preview"
+                    maxWidth="14rem"
+                    size="small"
+                  />
                 </div>
               </div>
               <div v-else-if="!editMode && currentWatermarkFile" class="text-xs opacity-70">
@@ -714,6 +712,7 @@ import { computed, inject, ref, watch } from 'vue'
 import AddUsersModal from './AddUsersModal.vue'
 import EditLinkFilesModal from './EditLinkFilesModal.vue'
 import PathInput from '../PathInput.vue'
+import WatermarkPreview from '../WatermarkPreview.vue'
 import type { LinkItem, LinkType, AccessRow, Status, ExistingUser } from '../../typings/electron'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { Switch } from '@headlessui/vue'

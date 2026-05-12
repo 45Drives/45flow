@@ -158,137 +158,38 @@
             </div>
 
             <!-- Access mode -->
-            <div class="flex flex-col gap-2" data-tour="qs-access-mode">
-              <span class="font-semibold text-sm">Link Access Mode</span>
-              <div class="grid grid-cols-3 gap-2 min-w-0">
-                <div class="flex flex-col gap-1">
-                  <label class="flex items-start gap-2 p-1.5 rounded-md border border-default cursor-pointer">
-                    <input type="radio" name="qs-access-mode" value="open" v-model="accessMode" class="mt-0.5" />
-                    <span class="min-w-0">
-                      <span class="font-semibold block text-sm">Anyone with the link</span>
-                      <span class="text-xs text-muted block">No sign-in required.</span>
-                    </span>
-                  </label>
-                  <label class="flex items-start gap-2 p-1.5 rounded-md border border-default cursor-pointer">
-                    <input type="radio" name="qs-access-mode" value="open_password" v-model="accessMode" class="mt-0.5" />
-                    <span class="min-w-0">
-                      <span class="font-semibold block text-sm">Password protected</span>
-                      <span class="text-xs text-muted block">One shared password.</span>
-                    </span>
-                  </label>
-                  <label class="flex items-start gap-2 p-1.5 rounded-md border border-default cursor-pointer">
-                    <input type="radio" name="qs-access-mode" value="restricted" v-model="accessMode" class="mt-0.5" />
-                    <span class="min-w-0">
-                      <span class="font-semibold block text-sm">Invited users only</span>
-                      <span class="text-xs text-muted block">Sign in with user account.</span>
-                    </span>
-                  </label>
-                </div>
-
-                <div class="col-span-2 border border-default rounded-md p-3 min-w-0">
-                  <div v-if="accessMode !== 'restricted'" class="flex flex-wrap items-center gap-3 min-w-0">
-                    <label class="font-semibold text-sm whitespace-nowrap">Allow comments</label>
-                    <Switch id="qs-allow-comments-switch" v-model="allowOpenComments" :class="[
-                      allowOpenComments ? 'bg-secondary' : 'bg-well',
-                      'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-600 focus:ring-offset-2'
-                    ]">
-                      <span class="sr-only">Toggle comments</span>
-                      <span aria-hidden="true" :class="[
-                        allowOpenComments ? 'translate-x-5' : 'translate-x-0',
-                        'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-default shadow ring-0 transition duration-200 ease-in-out'
-                      ]" />
-                    </Switch>
-                    <span class="text-xs text-muted">{{ allowOpenComments ? 'Visitors can comment.' : 'Comments disabled.' }}</span>
-                  </div>
-
-                  <div v-if="accessMode === 'open_password'" class="flex flex-col gap-2 min-w-0 mt-2">
-                    <div class="relative flex items-center min-w-0 w-full">
-                      <input :type="showPassword ? 'text' : 'password'" v-model.trim="password"
-                        placeholder="Enter a password"
-                        class="input-textlike border rounded px-3 py-2 w-full pr-10 min-w-0" />
-                      <button type="button" @click="showPassword = !showPassword"
-                        class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted">
-                        <EyeIcon v-if="!showPassword" class="w-5 h-5" />
-                        <EyeSlashIcon v-else class="w-5 h-5" />
-                      </button>
-                    </div>
-                    <p v-if="!password" class="text-sm text-red-500">Password is required.</p>
-                  </div>
-
-                  <div v-if="accessMode === 'restricted'" class="flex flex-col gap-2 min-w-0">
-                    <p class="text-xs text-muted">Users sign in with their own credentials. Roles control permissions.</p>
-                    <button type="button" class="btn btn-primary" @click="userModalOpen = true">
-                      {{ accessUsers.length ? 'Manage invited users' : 'Invite users…' }}
-                      <span v-if="accessUsers.length"
-                        class="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-default text-default">
-                        {{ accessUsers.length }}
-                      </span>
-                    </button>
-                    <p v-if="!accessUsers.length" class="text-sm text-red-500">Add at least one user.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <LinkAccessMode
+              v-model="accessMode"
+              v-model:password="password"
+              v-model:showPassword="showPassword"
+              v-model:allowOpenComments="allowOpenComments"
+              :accessCount="accessUsers.length"
+              :accessSatisfied="accessUsers.length > 0"
+              dataTour="qs-access-mode"
+              radioName="qs-access-mode"
+              :compact="true"
+              :showSummary="false"
+              @openUserModal="userModalOpen = true"
+            />
 
             <!-- Video options (only shown for video files) -->
-            <div v-if="hasVideo" class="flex flex-col gap-3" data-tour="qs-video-options">
-              <span class="font-semibold text-sm">Video Options</span>
-              <div class="grid grid-cols-3 gap-4 items-start">
-                <div class="min-w-0">
-                  <label class="font-semibold text-sm block mb-1">Review Copies</label>
-                  <div class="flex flex-wrap gap-x-3 gap-y-1">
-                    <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" class="proxy-quality-checkbox" value="720p" v-model="proxyQualities" /> 720p</label>
-                    <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" class="proxy-quality-checkbox" value="1080p" v-model="proxyQualities" /> 1080p</label>
-                    <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" class="proxy-quality-checkbox" value="original" v-model="proxyQualities" /> Full Res</label>
-                  </div>
-                  <p class="text-xs text-slate-400 mt-1">Lightweight MP4s for downloading &amp; offline review. A browser stream is always generated separately.</p>
-                </div>
-
-                <div class="col-span-2 min-w-0">
-                  <div class="flex items-center gap-2 mb-2">
-                    <label class="font-semibold text-sm whitespace-nowrap">Watermark:</label>
-                    <Switch v-model="watermarkEnabled" :class="[
-                      watermarkEnabled ? 'bg-secondary' : 'bg-well',
-                      'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-600 focus:ring-offset-2'
-                    ]">
-                      <span class="sr-only">Toggle watermark</span>
-                      <span aria-hidden="true" :class="[
-                        watermarkEnabled ? 'translate-x-5' : 'translate-x-0',
-                        'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-default shadow ring-0 transition duration-200 ease-in-out'
-                      ]" />
-                    </Switch>
-                    <span class="text-xs text-muted">{{ watermarkEnabled ? 'On' : 'Off' }}</span>
-                  </div>
-
-                  <div v-if="watermarkEnabled" class="flex flex-wrap items-center gap-2 mb-2">
-                    <button class="btn btn-secondary text-xs" @click="pickWatermark">Choose Image</button>
-                    <span class="text-sm truncate min-w-0" :title="watermarkFile ? watermarkFile.name : 'No image'">
-                      {{ watermarkFile ? watermarkFile.name : (selectedExistingWatermark ? selectedExistingWatermark.split('/').pop() : 'No image') }}
-                    </span>
-                    <select v-model="selectedExistingWatermark" class="input-textlike border rounded px-2 py-1 text-xs min-w-[14rem]">
-                      <option value="">Existing watermark…</option>
-                      <option v-for="wm in existingWatermarkFiles" :key="wm" :value="wm">{{ wm }}</option>
-                    </select>
-                    <button class="btn btn-secondary px-2 py-0.5 text-xs" @click="loadExistingWatermarkFiles">Refresh</button>
-                  </div>
-                  <p v-if="watermarkEnabled && !watermarkFile && !selectedExistingWatermark"
-                    class="text-xs text-amber-700 dark:text-amber-300">Select a watermark image to continue.</p>
-
-                  <div v-if="watermarkEnabled && watermarkPreviewUrl" class="mt-2">
-                    <div class="flex items-center justify-between gap-2 mb-1">
-                      <span class="text-xs text-slate-400">Preview</span>
-                      <button v-if="watermarkFile" class="btn btn-danger text-xs px-2 py-0.5" @click="clearWatermark">Clear</button>
-                    </div>
-                    <div class="relative aspect-video w-full max-w-[14rem] rounded-md border border-default bg-default/60 overflow-hidden">
-                      <div class="absolute inset-0 bg-gradient-to-br from-slate-700/40 via-slate-800/40 to-slate-900/60"></div>
-                      <img :src="watermarkPreviewUrl" alt="Watermark preview"
-                        class="absolute opacity-70 drop-shadow-md"
-                        style="bottom: 2%; right: 1.5%; max-height: 20%; max-width: 20%;" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <VideoOptionsPanel
+              v-if="hasVideo"
+              v-model:proxyQualities="proxyQualities"
+              v-model:watermarkEnabled="watermarkEnabled"
+              v-model:selectedExistingWatermark="selectedExistingWatermark"
+              :watermarkFile="watermarkFile"
+              :existingWatermarkFiles="existingWatermarkFiles"
+              :effectiveWatermarkPreviewUrl="watermarkPreviewUrl"
+              :effectiveWatermarkName="watermarkFile ? watermarkFile.name : (selectedExistingWatermark ? selectedExistingWatermark.split('/').pop() || '' : '')"
+              dataTour="qs-video-options"
+              :compact="true"
+              watermarkLabel="Watermark"
+              :watermarkStatusText="watermarkEnabled ? 'On' : 'Off'"
+              @pickWatermark="pickWatermark"
+              @clearWatermark="clearWatermark"
+              @refreshWatermarks="loadExistingWatermarkFiles"
+            />
           </DisclosurePanel>
         </Disclosure>
 
@@ -372,8 +273,7 @@
 import { ref, computed, inject, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowUpTrayIcon, ChevronDownIcon, MinusIcon } from '@heroicons/vue/24/outline'
-import { EyeIcon, EyeSlashIcon } from '@heroicons/vue/20/solid'
-import { Switch, Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
+import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { appLog } from '../composables/useLog'
 import { connectionMetaInjectionKey, currentServerInjectionKey } from '../keys/injection-keys'
@@ -385,6 +285,8 @@ import { signalLinkCreated } from '../composables/useLinkRefresh'
 import { tourQuickShareOpen, tourQuickShareStep, tourQuickShareShowDone } from '../composables/useQuickShareTour'
 import FolderPicker from './FolderPicker.vue'
 import AddUsersModal from './modals/AddUsersModal.vue'
+import LinkAccessMode from './LinkAccessMode.vue'
+import VideoOptionsPanel from './VideoOptionsPanel.vue'
 import type { Commenter, RsyncProgress } from '../typings/electron'
 
 // Cast to avoid TS plugin resolution issues with global Window augmentation

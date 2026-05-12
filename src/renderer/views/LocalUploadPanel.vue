@@ -237,81 +237,22 @@
 									</p>
 								</div>
 
-								<div class="advanced-video-grid">
-									<div class="advanced-col">
-										<label class="font-semibold block mb-1">Review Copies</label>
-										<div class="flex flex-wrap gap-x-3 gap-y-2">
-											<label class="inline-flex items-center gap-2 text-sm">
-												<input type="checkbox" class="proxy-quality-checkbox" value="720p" v-model="proxyQualities" />
-												<span>720p</span>
-											</label>
-											<label class="inline-flex items-center gap-2 text-sm">
-												<input type="checkbox" class="proxy-quality-checkbox" value="1080p" v-model="proxyQualities" />
-												<span>1080p</span>
-											</label>
-											<label class="inline-flex items-center gap-2 text-sm">
-												<input type="checkbox" class="proxy-quality-checkbox" value="original" v-model="proxyQualities" />
-												<span>Full Res</span>
-											</label>
-										</div>
-										<div class="text-xs text-slate-400 mt-2">
-											Streamable copies for review. The original file is always preserved.
-										</div>
-									</div>
-
-									<div class="advanced-col col-span-2">
-										<div class="space-y-2">
-											<div class="flex flex-wrap items-center gap-2">
-												<label class="font-semibold whitespace-nowrap">Watermark Videos:</label>
-												<Switch v-model="watermarkAfterUpload" :class="[
-													watermarkAfterUpload ? 'bg-secondary' : 'bg-well',
-													'relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-600 focus:ring-offset-2'
-												]">
-													<span class="sr-only">Toggle video watermarking</span>
-													<span aria-hidden="true" :class="[
-														watermarkAfterUpload ? 'translate-x-5' : 'translate-x-0',
-														'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-default shadow ring-0 transition duration-200 ease-in-out'
-													]" />
-												</Switch>
-												<span class="text-sm text-muted">{{ watermarkAfterUpload ? 'Apply watermark' : 'No watermark' }}</span>
-											</div>
-
-											<div v-if="watermarkAfterUpload" class="flex flex-wrap items-center gap-2">
-												<button class="btn btn-secondary" @click="pickWatermark">Choose Image</button>
-												<span class="text-sm truncate min-w-0" :title="watermarkFile ? watermarkFile.name : 'No image selected'">
-													{{ watermarkFile ? watermarkFile.name : 'No image selected' }}
-												</span>
-												<select
-													v-model="selectedExistingWatermark"
-													class="input-textlike border rounded px-2 py-1 text-sm min-w-[16rem]"
-												>
-													<option value="">Select existing watermark file…</option>
-													<option v-for="wm in existingWatermarkFiles" :key="wm" :value="wm">
-														{{ wm }}
-													</option>
-												</select>
-												<button class="btn btn-secondary px-2 py-1 text-xs" @click="loadExistingWatermarkFiles">Refresh</button>
-											</div>
-
-											<div v-if="watermarkAfterUpload && !watermarkFile && !selectedExistingWatermark" class="watermark-warning">
-												Select a watermark image to continue.
-											</div>
-
-											<!-- Watermark preview -->
-											<div v-if="watermarkAfterUpload && watermarkFile?.dataUrl" class="mt-2">
-												<div class="flex items-center justify-between gap-2 mb-1">
-													<div class="text-xs text-slate-400">Preview (approximate)</div>
-													<button v-if="watermarkFile" class="btn btn-danger" @click="clearWatermark">Clear Image</button>
-												</div>
-												<div class="relative aspect-video w-full max-w-[18rem] rounded-md border border-default bg-default/60 overflow-hidden">
-													<div class="absolute inset-0 bg-gradient-to-br from-slate-700/40 via-slate-800/40 to-slate-900/60"></div>
-													<img :src="watermarkFile.dataUrl" alt="Watermark preview"
-														class="absolute bottom-3 right-3 max-h-[35%] max-w-[35%] opacity-70 drop-shadow-md" />
-												</div>
-											</div>
-										</div>
-									</div>
-								</div>
+								<VideoOptionsPanel
+									v-model:proxyQualities="proxyQualities"
+									v-model:watermarkEnabled="watermarkAfterUpload"
+									v-model:selectedExistingWatermark="selectedExistingWatermark"
+									:watermarkFile="watermarkFile"
+									:existingWatermarkFiles="existingWatermarkFiles"
+									:effectiveWatermarkPreviewUrl="watermarkFile?.dataUrl || null"
+									:effectiveWatermarkName="watermarkFile ? watermarkFile.name : ''"
+									:showHeading="false"
+									watermarkLabel="Watermark Videos"
+									:watermarkStatusText="watermarkAfterUpload ? 'Apply watermark' : 'No watermark'"
+									reviewCopyHelpText="Streamable copies for review. The original file is always preserved."
+									@pickWatermark="pickWatermark"
+									@clearWatermark="clearWatermark"
+									@refreshWatermarks="loadExistingWatermarkFiles"
+								/>
 							</div>
 						</div>
 					</section>
@@ -347,7 +288,7 @@
 import { ref, computed, inject, watch, onMounted, nextTick } from 'vue'
 import { useApi } from '../composables/useApi'
 import FolderPicker from '../components/FolderPicker.vue'
-import { Switch } from '@headlessui/vue';
+import VideoOptionsPanel from '../components/VideoOptionsPanel.vue'
 import { connectionMetaInjectionKey } from '../keys/injection-keys';
 import { useHeader } from '../composables/useHeader';
 import { useResilientNav } from '../composables/useResilientNav'
