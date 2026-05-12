@@ -262,7 +262,7 @@
                                                         :usingExistingWatermark="usingExistingWatermark"
                                                         :showHeading="false"
                                                         watermarkLabel="Watermark Videos"
-                                                        :pickButtonLabel="usingExistingWatermark ? 'Choose New Image' : 'Choose Image'"
+                                                        :pickButtonLabel="usingExistingWatermark ? 'Replace...' : 'Browse...'"
                                                         :watermarkSwitchDisabled="watermarkSwitchDisabled"
                                                         :watermarkSwitchTitle="watermarkSwitchTitle"
                                                         :watermarkStatusText="watermarkEnabled ? (usingExistingWatermark ? 'Use existing watermark' : 'Apply watermark') : 'No watermark'"

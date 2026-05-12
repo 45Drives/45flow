@@ -68,7 +68,7 @@
           {{ watermarkBlockReason }}
         </div>
 
-        <div v-if="watermarkEnabled" class="flex flex-wrap items-center gap-2 mb-2">
+        <div v-if="watermarkEnabled" class="flex flex-row items-center gap-2 mb-2">
           <button class="btn btn-secondary" :class="compact ? 'text-xs' : ''" @click="$emit('pickWatermark')">
             {{ pickButtonLabel }}
           </button>
@@ -155,7 +155,7 @@ const props = withDefaults(defineProps<{
   effectiveWatermarkName: '',
   usingExistingWatermark: false,
   watermarkLabel: 'Watermark',
-  pickButtonLabel: 'Choose Image',
+  pickButtonLabel: 'Browse…',
   watermarkSwitchDisabled: false,
   watermarkSwitchTitle: '',
   watermarkStatusText: '',

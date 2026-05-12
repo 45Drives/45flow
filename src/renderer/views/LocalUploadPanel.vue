@@ -243,8 +243,8 @@
 									v-model:selectedExistingWatermark="selectedExistingWatermark"
 									:watermarkFile="watermarkFile"
 									:existingWatermarkFiles="existingWatermarkFiles"
-									:effectiveWatermarkPreviewUrl="watermarkFile?.dataUrl || null"
-									:effectiveWatermarkName="watermarkFile ? watermarkFile.name : ''"
+									:effectiveWatermarkPreviewUrl="watermarkFile?.dataUrl || existingWatermarkPreviewUrl || null"
+									:effectiveWatermarkName="watermarkFile ? watermarkFile.name : (selectedExistingWatermark ? selectedExistingWatermark.split('/').pop() || '' : '')"
 									:showHeading="false"
 									watermarkLabel="Watermark Videos"
 									:watermarkStatusText="watermarkAfterUpload ? 'Apply watermark' : 'No watermark'"
@@ -887,7 +887,11 @@ function pickWatermark() {
 		}
 	});
 }
-function clearWatermark() { watermarkFile.value = null }
+function clearWatermark() {
+	watermarkFile.value = null
+	existingWatermarkPreviewUrl.value = null
+	selectedExistingWatermark.value = ''
+}
 
 async function loadExistingWatermarkFiles() {
 	try {
@@ -900,6 +904,25 @@ async function loadExistingWatermarkFiles() {
 			.sort((a: string, b: string) => a.localeCompare(b))
 	} catch {
 		existingWatermarkFiles.value = []
+	}
+}
+
+async function fetchExistingWatermarkPreview(relPath: string) {
+	try {
+		const base = connectionMeta.value.apiBase ?? ''
+		const token = connectionMeta.value.token ?? ''
+		const url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(relPath)}`
+		const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } })
+		if (!res.ok) { existingWatermarkPreviewUrl.value = null; return }
+		const blob = await res.blob()
+		existingWatermarkPreviewUrl.value = await new Promise<string>((resolve, reject) => {
+			const reader = new FileReader()
+			reader.onloadend = () => resolve(reader.result as string)
+			reader.onerror = reject
+			reader.readAsDataURL(blob)
+		})
+	} catch {
+		existingWatermarkPreviewUrl.value = null
 	}
 }
 
@@ -997,6 +1020,7 @@ const watermarkAfterUpload = ref(false)
 const watermarkFile = ref<LocalFile | null>(null)
 const existingWatermarkFiles = ref<string[]>([])
 const selectedExistingWatermark = ref('')
+const existingWatermarkPreviewUrl = ref<string | null>(null)
 const adaptiveHls = ref(false);
 
 watch(transcodeProxyAfterUpload, (v) => {
@@ -1012,12 +1036,18 @@ watch(transcodeProxyAfterUpload, (v) => {
 })
 
 watch(selectedExistingWatermark, (v) => {
-	if (String(v || '').trim()) watermarkFile.value = null
+	if (String(v || '').trim()) {
+		watermarkFile.value = null
+		void fetchExistingWatermarkPreview(v)
+	}
 })
 
 watch(watermarkAfterUpload, (enabled) => {
 	if (enabled) void loadExistingWatermarkFiles()
-	else selectedExistingWatermark.value = ''
+	else {
+		selectedExistingWatermark.value = ''
+		existingWatermarkPreviewUrl.value = null
+	}
 })
 
 function finish() {
