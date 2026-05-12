@@ -83,8 +83,12 @@ export class FullTranscodeManager {
     const ffmpegPath = getFfmpegPath();
     const caps = detectHardwareCapabilities();
 
-    // Select best H.264 codec — HW for proxies, always libx264 for HLS
-    const proxyCodec = options.useHardwareAccel ? caps.bestCodecH264 : 'libx264';
+    // Select best H.264 codec for HW-accelerated phases
+    const hwCodec = options.useHardwareAccel ? caps.bestCodecH264 : 'libx264';
+    const proxyCodec = hwCodec;
+    // HLS can use NVENC/VideoToolbox (software filters pipe directly to encoder).
+    // VAAPI/QSV need hwupload inside filter_complex which is too complex for split→scale, so fall back to libx264.
+    const hlsCodec = (hwCodec === 'h264_nvenc' || hwCodec === 'h264_videotoolbox') ? hwCodec : 'libx264';
     console.log(`[full-transcode] ${jobId}: hardware detection:`, {
       platform: process.platform,
       ffmpegSource: caps.ffmpegSource,
@@ -97,6 +101,7 @@ export class FullTranscodeManager {
       bestCodecHevc: caps.bestCodecHevc,
       useHardwareAccel: options.useHardwareAccel,
       selectedProxyCodec: proxyCodec,
+      selectedHlsCodec: hlsCodec,
       probeResults: caps.probeResults,
     });
 
@@ -176,6 +181,7 @@ export class FullTranscodeManager {
         audioChannels: probe.audioChannels,
         hasAudio: probe.hasAudio,
         preset: options.preset,
+        codec: hlsCodec,
       });
 
       console.log(`[full-transcode] ${jobId}: HLS → ${hlsOutDir}`);
@@ -192,7 +198,7 @@ export class FullTranscodeManager {
           speed,
           eta,
           message: `HLS streaming — ${Math.round(pct)}%`,
-          encoder: 'libx264',
+          encoder: hlsCodec,
         });
       });
 
@@ -433,6 +439,7 @@ export class FullTranscodeManager {
       audioChannels: number;
       hasAudio: boolean;
       preset?: string;
+      codec?: string;
     },
   ): string[] {
     const args: string[] = ['-y', '-i', inputPath];
@@ -479,17 +486,22 @@ export class FullTranscodeManager {
       if (opts.hasAudio) args.push('-map', '0:a');
     }
 
-    // HLS always uses libx264
-    args.push('-c:v', 'libx264');
-    const crf = opts.preset === 'quality' ? '18' : opts.preset === 'fast' ? '28' : '20';
-    const preset = opts.preset === 'quality' ? 'slow' : opts.preset === 'fast' ? 'faster' : 'fast';
-    args.push('-preset', preset, '-crf', crf);
-    args.push('-profile:v', 'high', '-level', '4.1');
+    // HLS codec: NVENC/VideoToolbox when available, otherwise libx264
+    const hlsCodec = opts.codec || 'libx264';
+    args.push('-c:v', hlsCodec);
+    this.addCodecParams(args, hlsCodec, opts.preset);
+    const isHwHls = hlsCodec.includes('nvenc') || hlsCodec.includes('videotoolbox');
+    if (!isHwHls) {
+      args.push('-profile:v', 'high', '-level', '4.1');
+    }
 
     args.push('-g', String(opts.gopSize));
     args.push('-keyint_min', String(opts.gopSize));
     args.push('-sc_threshold', '0');
-    args.push('-pix_fmt', 'yuv420p');
+    // HW codecs get pix_fmt from filter output; only set explicitly for software
+    if (!isHwHls) {
+      args.push('-pix_fmt', 'yuv420p');
+    }
 
     // BT.709 SDR color metadata for consistent web playback
     args.push('-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv');

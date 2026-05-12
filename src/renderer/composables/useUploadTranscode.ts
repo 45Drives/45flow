@@ -119,6 +119,15 @@ export function useUploadTranscode() {
             watermark: opts.watermarkPath || 'none',
             ssh: { host: opts.ssh.host, user: opts.ssh.user, port: opts.ssh.port },
         })
+
+        // Log hardware detection results to renderer console for debugging
+        try {
+            const caps = await (window as any).electron.getTranscodeCapabilities()
+            console.log('[client-transcode] hardware capabilities:', caps)
+        } catch (e) {
+            console.warn('[client-transcode] could not fetch hardware capabilities:', e)
+        }
+
         // Heartbeat runs throughout ALL phases (probe, gap between phases, etc.)
         let heartbeatTimer: ReturnType<typeof setInterval> | null = setInterval(() => {
             pushHeartbeat(opts.apiFetch, opts.assetVersionId)
