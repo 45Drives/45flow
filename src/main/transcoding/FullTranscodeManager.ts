@@ -31,6 +31,7 @@ interface ProbeInfo {
   audioChannels: number;
   format: string;
   hasAudio: boolean;
+  rotation: number; // 0, 90, 180, 270
 }
 
 function probeSource(ffmpegPath: string, inputPath: string): ProbeInfo {
@@ -54,6 +55,22 @@ function probeSource(ffmpegPath: string, inputPath: string): ProbeInfo {
   const [num, den] = fpsRaw.split('/').map(Number);
   const fps = den > 0 ? num / den : 24;
 
+  // Detect rotation from tags or side_data display matrix
+  let rotation = 0;
+  const tagRotate = Number(videoStream?.tags?.rotate);
+  if (Number.isFinite(tagRotate) && tagRotate !== 0) {
+    rotation = ((tagRotate % 360) + 360) % 360;
+  } else {
+    // FFmpeg 5+ puts rotation in side_data_list display matrix
+    const sideData = Array.isArray(videoStream?.side_data_list) ? videoStream.side_data_list : [];
+    for (const sd of sideData) {
+      if (sd?.side_data_type === 'Display Matrix' && Number.isFinite(Number(sd?.rotation))) {
+        rotation = (((-Math.round(Number(sd.rotation))) % 360) + 360) % 360;
+        break;
+      }
+    }
+  }
+
   return {
     durationSeconds,
     fps,
@@ -64,6 +81,7 @@ function probeSource(ffmpegPath: string, inputPath: string): ProbeInfo {
     audioChannels: Number(audioStream?.channels) || 2,
     format: String(info.format?.format_name || '').toLowerCase(),
     hasAudio: !!audioStream,
+    rotation,
   };
 }
 
@@ -111,6 +129,7 @@ export class FullTranscodeManager {
       audioChannels: probe.audioChannels,
       format: probe.format,
       hasAudio: probe.hasAudio,
+      rotation: probe.rotation,
     });
     if (probe.durationSeconds <= 0) {
       throw new Error('Could not determine source duration');
@@ -162,6 +181,7 @@ export class FullTranscodeManager {
         audioChannels: probe.audioChannels,
         hasAudio: probe.hasAudio,
         preset: options.preset,
+        rotation: probe.rotation,
       });
 
       console.log(`[full-transcode] ${jobId}: HLS → ${hlsOutDir}`);
@@ -238,6 +258,7 @@ export class FullTranscodeManager {
             canCopyAudio,
             audioChannels: probe.audioChannels,
             preset: options.preset,
+            rotation: probe.rotation,
           });
 
       console.log(`[full-transcode] ${jobId}: proxy ${quality} → ${outAbs}`);
@@ -312,6 +333,7 @@ export class FullTranscodeManager {
       canCopyAudio: boolean;
       audioChannels: number;
       preset?: string;
+      rotation?: number;
     },
   ): string[] {
     const args: string[] = ['-y'];
@@ -329,24 +351,27 @@ export class FullTranscodeManager {
 
     if (opts.watermarkPath) {
       // Watermark filter_complex path
+      // filter_complex disables auto-rotation; apply transpose manually
+      const rot = opts.rotation || 0;
+      const transposeExpr = rot === 90 ? 'transpose=1,' : rot === 270 ? 'transpose=2,' : rot === 180 ? 'hflip,vflip,' : '';
       const scaleExpr = opts.height ? `scale=-2:${opts.height}:flags=lanczos,` : '';
       let filterComplex: string;
 
       if (opts.codec.includes('vaapi')) {
         filterComplex =
-          `[0:v]${scaleExpr}format=yuv420p[base];` +
+          `[0:v]${transposeExpr}${scaleExpr}format=yuv420p[base];` +
           `[1:v][base]scale2ref=iw/5:-1[wm][base2];` +
           `[wm]colorchannelmixer=aa=1[wmf];` +
           `[base2][wmf]overlay=W-w-24:H-h-24,format=nv12,hwupload[outv]`;
       } else if (opts.codec.includes('qsv')) {
         filterComplex =
-          `[0:v]${scaleExpr}format=yuv420p[base];` +
+          `[0:v]${transposeExpr}${scaleExpr}format=yuv420p[base];` +
           `[1:v][base]scale2ref=iw/5:-1[wm][base2];` +
           `[wm]colorchannelmixer=aa=1[wmf];` +
           `[base2][wmf]overlay=W-w-24:H-h-24,hwupload=extra_hw_frames=64[outv]`;
       } else {
         filterComplex =
-          `[0:v]${scaleExpr}format=yuv420p[base];` +
+          `[0:v]${transposeExpr}${scaleExpr}format=yuv420p[base];` +
           `[1:v][base]scale2ref=iw/5:-1[wm][base2];` +
           `[wm]colorchannelmixer=aa=1[wmf];` +
           `[base2][wmf]overlay=W-w-24:H-h-24[outv]`;
@@ -417,6 +442,7 @@ export class FullTranscodeManager {
       audioChannels: number;
       hasAudio: boolean;
       preset?: string;
+      rotation?: number;
     },
   ): string[] {
     const args: string[] = ['-y', '-i', inputPath];
@@ -433,7 +459,11 @@ export class FullTranscodeManager {
     const oLabels = Array.from({ length: n }, (_, i) => `v${i}o`);
     const filterParts: string[] = [];
 
-    filterParts.push(`[0:v]split=${n}${vLabels.map((l) => `[${l}]`).join('')};`);
+    // filter_complex disables auto-rotation; apply transpose manually
+    const rot = opts.rotation || 0;
+    const transposeExpr = rot === 90 ? 'transpose=1,' : rot === 270 ? 'transpose=2,' : rot === 180 ? 'hflip,vflip,' : '';
+
+    filterParts.push(`[0:v]${transposeExpr}split=${n}${vLabels.map((l) => `[${l}]`).join('')};`);
 
     if (useWatermark) {
       filterParts.push(
