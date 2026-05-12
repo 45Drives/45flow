@@ -12,6 +12,16 @@ import type { FullTranscodeOptions, FullTranscodeProgress, FullTranscodeResult }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * Normalize a file path for FFmpeg CLI arguments.
+ * On Windows, path.join() produces backslashes which confuse FFmpeg's
+ * relative path resolution (e.g. init.mp4 ends up in CWD instead of
+ * alongside the playlist). FFmpeg handles forward slashes fine on all platforms.
+ */
+function ffp(p: string): string {
+  return process.platform === 'win32' ? p.replace(/\\/g, '/') : p;
+}
+
 function heightForQuality(q: string): number | null {
   if (q === 'original') return null;
   if (q.endsWith('p')) {
@@ -321,7 +331,7 @@ export class FullTranscodeManager {
   // ── FFmpeg arg builders ────────────────────────────────────────────────────
 
   private buildFastRemuxArgs(inputPath: string, outputPath: string): string[] {
-    return ['-y', '-i', inputPath, '-c', 'copy', '-movflags', '+faststart', outputPath];
+    return ['-y', '-i', ffp(inputPath), '-c', 'copy', '-movflags', '+faststart', ffp(outputPath)];
   }
 
   private buildProxyArgs(
@@ -349,7 +359,7 @@ export class FullTranscodeManager {
       args.push('-init_hw_device', 'qsv=hw', '-filter_hw_device', 'hw');
     }
 
-    args.push('-i', inputPath);
+    args.push('-i', ffp(inputPath));
 
     if (opts.watermarkPath) {
       // Watermark filter_complex path
@@ -374,7 +384,7 @@ export class FullTranscodeManager {
           `[base][wm]overlay=W-w-24:H-h-24[outv]`;
       }
 
-      args.push('-i', opts.watermarkPath);
+      args.push('-i', ffp(opts.watermarkPath));
       args.push('-filter_complex', filterComplex);
       args.push('-map', '[outv]');
       args.push('-map', '0:a?');
@@ -423,7 +433,7 @@ export class FullTranscodeManager {
     }
 
     args.push('-movflags', '+faststart');
-    args.push(outputPath);
+    args.push(ffp(outputPath));
 
     return args;
   }
@@ -442,13 +452,13 @@ export class FullTranscodeManager {
       codec?: string;
     },
   ): string[] {
-    const args: string[] = ['-y', '-i', inputPath];
+    const args: string[] = ['-y', '-i', ffp(inputPath)];
 
     const n = opts.renditions.length;
     const useWatermark = !!opts.watermarkPath;
 
     if (useWatermark) {
-      args.push('-i', opts.watermarkPath!);
+      args.push('-i', ffp(opts.watermarkPath!));
     }
 
     // Build filter_complex: split → scale per rendition → optional watermark overlay
@@ -524,12 +534,12 @@ export class FullTranscodeManager {
       '-hls_segment_type', 'fmp4',
       '-hls_fmp4_init_filename', 'init.mp4',
       '-hls_flags', 'independent_segments',
-      '-hls_segment_filename', path.join(hlsOutDir, 'v%v', 'seg_%05d.m4s'),
+      '-hls_segment_filename', ffp(path.join(hlsOutDir, 'v%v', 'seg_%05d.m4s')),
       '-master_pl_name', 'master.m3u8',
       '-var_stream_map', opts.hasAudio
         ? Array.from({ length: n }, (_, i) => `v:${i},a:${i}`).join(' ')
         : Array.from({ length: n }, (_, i) => `v:${i}`).join(' '),
-      path.join(hlsOutDir, 'v%v', 'index.m3u8'),
+      ffp(path.join(hlsOutDir, 'v%v', 'index.m3u8')),
     );
 
     return args;
