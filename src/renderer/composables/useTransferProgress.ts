@@ -982,9 +982,12 @@ export function useTransferProgress() {
                         })
                         cur.items = [{ assetVersionId: 0, jobs, summary: { queued: 0, running: 1, done: 0, failed: 0 } }] as any
                         // Show per-quality progress on the active quality
-                        const activePct = proxyActiveQualityProgress(activeQ, perQ)
-                        if (typeof activePct === 'number') {
-                            cur.progress = activePct
+                        // Skip override when done — progress was already set to 100
+                        if (nextStatus !== 'done') {
+                            const activePct = proxyActiveQualityProgress(activeQ, perQ)
+                            if (typeof activePct === 'number') {
+                                cur.progress = activePct
+                            }
                         }
                         cur.detail = proxyDetailFromActiveQuality(activeQ, cur.progress, cur.context?.proxyQualities)
                     } else {
@@ -1129,7 +1132,7 @@ export function useTransferProgress() {
 
                 cur.items = Array.isArray(snap.items) ? (snap.items as any) : cur.items
                 cur.status = normalizePlaybackStatus(snap.status)
-                cur.progress = normalizeProgressPercent(snap.progress)
+                cur.progress = cur.status === 'done' ? 100 : normalizeProgressPercent(snap.progress)
 
                 // ETA & speed from server snapshot
                 if (cur.status === 'running') {
@@ -1172,10 +1175,13 @@ export function useTransferProgress() {
                         })
                         cur.items = [{ assetVersionId: 0, jobs, summary: { queued: 0, running: 1, done: 0, failed: 0 } }] as any
                     }
-                    const activePct = proxyActiveQualityProgress(snap.activeQuality, perQ)
-                    if (typeof activePct === 'number') {
-                        // Keep bar/percentage aligned with "Tracking proxy (<quality>)" label.
-                        cur.progress = activePct
+                    // Skip override when done — progress should stay at 100
+                    if (cur.status !== 'done') {
+                        const activePct = proxyActiveQualityProgress(snap.activeQuality, perQ)
+                        if (typeof activePct === 'number') {
+                            // Keep bar/percentage aligned with "Tracking proxy (<quality>)" label.
+                            cur.progress = activePct
+                        }
                     }
                     cur.detail = proxyDetailFromActiveQuality(snap.activeQuality, cur.progress, cur.context?.proxyQualities)
                 }

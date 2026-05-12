@@ -1155,6 +1155,12 @@ async function startUploadAndShare() {
     }
 
     // ── Client-side full transcode for video files ───────────────────────────
+    console.log('[quick-share] client transcode decision:', {
+      hasVideo: hasVideo.value,
+      clientTranscodeEnabled: clientTranscodeEnabled.value,
+      hwAccel: hwAccelSetting.value,
+      preset: transcodePreset.value,
+    })
     if (hasVideo.value && clientTranscodeEnabled.value) {
       const { createTranscodePollingTasks, runClientTranscode } = useUploadTranscode()
       const fileRecordsForTranscode: any[] = Array.isArray(data?.files) ? data.files : []

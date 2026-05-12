@@ -85,6 +85,20 @@ export class FullTranscodeManager {
 
     // Select best H.264 codec — HW for proxies, always libx264 for HLS
     const proxyCodec = options.useHardwareAccel ? caps.bestCodecH264 : 'libx264';
+    console.log(`[full-transcode] ${jobId}: hardware detection:`, {
+      platform: process.platform,
+      ffmpegSource: caps.ffmpegSource,
+      ffmpegVersion: caps.ffmpegVersion,
+      hasNvenc: caps.hasNvenc,
+      hasVideoToolbox: caps.hasVideoToolbox,
+      hasQsv: caps.hasQsv,
+      hasVaapi: caps.hasVaapi,
+      bestCodecH264: caps.bestCodecH264,
+      bestCodecHevc: caps.bestCodecHevc,
+      useHardwareAccel: options.useHardwareAccel,
+      selectedProxyCodec: proxyCodec,
+      probeResults: caps.probeResults,
+    });
 
     // Output directory: temp/<jobId>/
     const outputDir = path.join(app.getPath('temp'), `45flow-full-transcode-${jobId}`);

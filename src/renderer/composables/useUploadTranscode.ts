@@ -109,6 +109,16 @@ export function useUploadTranscode() {
      *   - No complex overallPercent math — each phase is 0-100 on its own
      */
     async function runClientTranscode(opts: ClientTranscodeOpts): Promise<ClientTranscodeResult> {
+        console.log('[client-transcode] starting:', {
+            assetVersionId: opts.assetVersionId,
+            filename: opts.filename,
+            proxyQualities: opts.proxyQualities,
+            generateHls: opts.generateHls,
+            hwAccel: hwAccelSetting.value,
+            preset: transcodePreset.value,
+            watermark: opts.watermarkPath || 'none',
+            ssh: { host: opts.ssh.host, user: opts.ssh.user, port: opts.ssh.port },
+        })
         // Heartbeat runs throughout ALL phases (probe, gap between phases, etc.)
         let heartbeatTimer: ReturnType<typeof setInterval> | null = setInterval(() => {
             pushHeartbeat(opts.apiFetch, opts.assetVersionId)
