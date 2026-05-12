@@ -56,6 +56,8 @@ export type TransferTask =
         _apiFetch?: (path: string, init?: any) => Promise<any>
         jobKind?: 'proxy_mp4' | 'hls' | 'any'
         context?: TransferContext
+        transcoder?: 'client' | 'server'
+        encoder?: string
     }
 
 type PlaybackProgressSnapshot = {
@@ -989,6 +991,18 @@ export function useTransferProgress() {
                         cur.detail = proxyDetailFromProgress(cur.progress, cur.context?.proxyQualities)
                     }
                 }
+
+                // Extract transcoder and encoder from the matching job
+                const matchingJob = (castItems as any[]).flatMap((it: any) => it.jobs || [])
+                    .find((j: any) => {
+                        const jk = String(j?.kind || '').toLowerCase()
+                        const wantKind = (cur.jobKind ?? 'any').toLowerCase()
+                        if (wantKind === 'any') return true
+                        if (wantKind === 'proxy_mp4') return jk === 'proxy_mp4' || jk.startsWith('proxy')
+                        return jk === wantKind
+                    })
+                if (matchingJob?.transcoder) cur.transcoder = matchingJob.transcoder
+                if (matchingJob?.encoder) cur.encoder = matchingJob.encoder
 
                 if (nextStatus === 'done' || nextStatus === 'failed') {
                     cur.completedAt = now()

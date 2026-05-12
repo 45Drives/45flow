@@ -178,6 +178,7 @@ export class FullTranscodeManager {
           speed,
           eta,
           message: `HLS streaming — ${Math.round(pct)}%`,
+          encoder: 'libx264',
         });
       });
 
@@ -256,6 +257,7 @@ export class FullTranscodeManager {
           speed,
           eta,
           message: `Review copy ${quality}${canFastRemux ? ' (remux)' : ''} — ${Math.round(pct)}%`,
+          encoder: canFastRemux ? 'copy' : proxyCodec,
         });
       });
 

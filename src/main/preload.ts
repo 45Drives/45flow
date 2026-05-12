@@ -86,6 +86,7 @@ export type FullTranscodeProgress = {
   speed: string
   eta: string
   message: string
+  encoder?: string
 }
 
 export type FullTranscodeResult = {

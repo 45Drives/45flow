@@ -9,6 +9,8 @@ export type ProgressJob = {
     error: string | null
     created_at: string | null
     updated_at: string | null
+    transcoder?: 'client' | 'server'
+    encoder?: string
 }
 
 export type ProgressItem = {

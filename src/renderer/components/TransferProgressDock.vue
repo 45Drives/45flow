@@ -83,6 +83,7 @@
                                 <div class="flex items-center justify-between gap-2">
                                     <div class="flex items-center gap-1.5 min-w-0">
                                         <span class="text-[11px] font-semibold opacity-80">{{ taskRowLabel(t) }}</span>
+                                        <span v-if="t.kind === 'transcode' && transcodeMethodLabel(t)" class="text-[9px] opacity-50 whitespace-nowrap">{{ transcodeMethodLabel(t) }}</span>
                                         <button
                                             v-if="t.kind === 'upload' && (t.status === 'uploading' || t.status === 'queued')"
                                             class="btn btn-danger px-1.5 py-0 text-[9px] leading-tight"
@@ -223,6 +224,27 @@ function statusClass(t: any): string {
     if (s === 'failed' || s === 'error') return 'drawer-status--error'
     if (s === 'canceled') return 'drawer-status--canceled'
     return ''
+}
+
+function encoderDisplayName(encoder?: string): string {
+    if (!encoder) return ''
+    const e = encoder.toLowerCase()
+    if (e === 'h264_videotoolbox') return 'GPU (VideoToolbox)'
+    if (e === 'h264_vaapi' || e === 'hevc_vaapi') return 'GPU (VAAPI)'
+    if (e === 'h264_nvenc' || e === 'hevc_nvenc') return 'GPU (NVENC)'
+    if (e === 'h264_qsv' || e === 'hevc_qsv') return 'GPU (QSV)'
+    if (e === 'libx264' || e === 'libx265') return 'CPU'
+    if (e === 'copy') return 'Remux'
+    return encoder
+}
+
+function transcodeMethodLabel(t: any): string {
+    if (!t?.transcoder && !t?.encoder) return ''
+    const parts: string[] = []
+    if (t.transcoder) parts.push(t.transcoder === 'client' ? 'Client' : 'Server')
+    const enc = encoderDisplayName(t.encoder)
+    if (enc) parts.push(enc)
+    return parts.join(' · ')
 }
 
 function taskRowLabel(t: any) {

@@ -135,7 +135,7 @@ export function useUploadTranscode() {
                 console.error('[client-transcode] transcode-plan failed:', plan)
                 return { ok: false, error: 'Transcode plan failed — server will handle' }
             }
-            console.log('[client-transcode] plan:', { dir: plan.transcodesDir, jobs: plan.jobs })
+            // console.log('[client-transcode] plan:', { dir: plan.transcodesDir, jobs: plan.jobs })
 
             // Initial heartbeat to keep claims alive
             await pushHeartbeat(opts.apiFetch, opts.assetVersionId)
@@ -169,6 +169,7 @@ export function useUploadTranscode() {
                         progress: Math.round(Math.min(99, kindPercent)),
                         speed: speedNum,
                         etaSeconds: etaNum,
+                        encoder: progress.encoder || undefined,
                         ...extra,
                     }),
                 }).catch(() => {})
@@ -185,13 +186,13 @@ export function useUploadTranscode() {
                     keyPath: opts.ssh.keyPath,
                     noIngest: true,
                 }
-                console.log('[client-transcode] rsync starting:', JSON.stringify(rsyncOpts, null, 2))
+                // console.log('[client-transcode] rsync starting:', JSON.stringify(rsyncOpts, null, 2))
                 const { done: rsyncDone } = await (window as any).electron.rsyncStart(
                     rsyncOpts,
-                    (p: any) => { console.log('[client-transcode] rsync progress:', p) }
+                    (p: any) => { /* console.log('[client-transcode] rsync progress:', p) */ }
                 )
                 const res = await rsyncDone
-                console.log('[client-transcode] rsync result:', JSON.stringify(res))
+                // console.log('[client-transcode] rsync result:', JSON.stringify(res))
                 return !!res?.ok
             }
 
@@ -199,7 +200,7 @@ export function useUploadTranscode() {
             let hlsOk = false
             if (opts.generateHls) {
                 try {
-                    console.log('[client-transcode] starting HLS phase…')
+                    // console.log('[client-transcode] starting HLS phase…')
                     const { done } = await (window as any).electron.fullTranscodeStart(
                         {
                             inputPath: opts.sourceFilePath,
@@ -224,7 +225,7 @@ export function useUploadTranscode() {
                         lastReport['hls'] = 0
                         reportProgress('hls', { speed: '0' }, 99)
 
-                        console.log('[client-transcode] HLS done, rsyncing…')
+                        // console.log('[client-transcode] HLS done, rsyncing…')
                         const rsynced = await rsyncToServer(result.outputDir)
                         if (rsynced) {
                             await opts.apiFetch('/api/ingest/transcode-complete', {
@@ -238,7 +239,7 @@ export function useUploadTranscode() {
                                 }),
                             }).catch((e: any) => console.error('[client-transcode] HLS complete failed:', e))
                             hlsOk = true
-                            console.log('[client-transcode] ✓ HLS done + rsynced + marked complete')
+                            // console.log('[client-transcode] ✓ HLS done + rsynced + marked complete')
                         } else {
                             console.error('[client-transcode] HLS rsync failed')
                         }
@@ -266,7 +267,7 @@ export function useUploadTranscode() {
                         }),
                     }).catch(() => {})
 
-                    console.log('[client-transcode] starting proxy phase…')
+                    // console.log('[client-transcode] starting proxy phase…')
                     const { done } = await (window as any).electron.fullTranscodeStart(
                         {
                             inputPath: opts.sourceFilePath,
@@ -293,7 +294,7 @@ export function useUploadTranscode() {
 
                     const result = await done
                     if (result?.ok && result?.proxyFiles && Object.keys(result.proxyFiles).length > 0) {
-                        console.log('[client-transcode] proxy done, rsyncing…')
+                        // console.log('[client-transcode] proxy done, rsyncing…')
                         const rsynced = await rsyncToServer(result.outputDir)
                         if (rsynced) {
                             await opts.apiFetch('/api/ingest/transcode-complete', {
@@ -307,7 +308,7 @@ export function useUploadTranscode() {
                                 }),
                             }).catch((e: any) => console.error('[client-transcode] proxy complete failed:', e))
                             proxyOk = true
-                            console.log('[client-transcode] ✓ proxy done + rsynced + marked complete')
+                            // console.log('[client-transcode] ✓ proxy done + rsynced + marked complete')
                         } else {
                             console.error('[client-transcode] proxy rsync failed')
                         }
@@ -328,7 +329,7 @@ export function useUploadTranscode() {
                 ...(proxyOk ? ['proxy_mp4'] : []),
             ]
             if (parts.length > 0) {
-                console.log(`[client-transcode] ✓ ${opts.filename} — ${parts.join(', ')}`)
+                // console.log(`[client-transcode] ✓ ${opts.filename} — ${parts.join(', ')}`)
             }
             return {
                 ok: allOk,
