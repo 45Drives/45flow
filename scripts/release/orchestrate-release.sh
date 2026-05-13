@@ -437,6 +437,14 @@ run_windows_flow() {
   if [[ "$WIN_PHASE" != "finalize" ]]; then
     ssh_run "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" "$WIN_BUILD_GIT_PULL_CMD"
 
+    # Clean old Windows exe files from dist directory before building
+    WIN_CLEAN_OUTPUTS="${WIN_CLEAN_OUTPUTS:-1}"
+    if truthy "$WIN_CLEAN_OUTPUTS"; then
+      echo "Cleaning old Windows exe files from dist directory..."
+      ssh_run "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" \
+        "powershell -NoProfile -Command \"if (Test-Path '${WIN_BUILD_DIST_DIR_WIN}') { Get-ChildItem -Path '${WIN_BUILD_DIST_DIR_WIN}' -Filter *.exe -File | Remove-Item -Force }\""
+    fi
+
     if [[ "$WIN_BUILD_MODE" == "rsync" ]]; then
       if [[ -n "${WIN_BUILD_PREPARE_CMD:-}" ]]; then
         ssh_run "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" "$WIN_BUILD_PREPARE_CMD"
