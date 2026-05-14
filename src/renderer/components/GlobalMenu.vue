@@ -26,6 +26,15 @@
                             @click="selectTheme(palette.theme)">
                             {{ palette.label }}
                         </button>
+                        <!-- Custom theme swatch (only when branding enables it) -->
+                        <button v-if="customThemeEnabled"
+                            class="tp-swatch"
+                            :class="[currentTheme === 'theme-custom' ? 'tp-swatch-active' : '']"
+                            :style="{ background: customGradient }"
+                            title="Custom"
+                            @click="selectTheme('theme-custom')">
+                            Custom
+                        </button>
                     </div>
                 </div>
             </transition>
@@ -35,7 +44,7 @@
 
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, nextTick, onMounted, onBeforeUnmount, computed } from 'vue'
 import { SwatchIcon } from '@heroicons/vue/24/outline'
 import { useThemeFromAlias, type Theme } from '../composables/useThemeFromAlias'
 
@@ -75,7 +84,11 @@ onBeforeUnmount(() => {
     document.removeEventListener('keydown', handleKeydown)
 })
 
-const { setTheme, currentTheme } = useThemeFromAlias()
+const { setTheme, currentTheme, customThemeColors, customThemeEnabled } = useThemeFromAlias()
+
+const customGradient = computed(() =>
+    `linear-gradient(135deg, ${customThemeColors.value.primary} 0%, ${customThemeColors.value.secondary} 100%)`
+)
 
 const studioPalettes: Array<{ label: string; theme: Theme; className: string }> = [
 

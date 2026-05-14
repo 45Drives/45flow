@@ -62,7 +62,7 @@ export function useApi() {
         if (!baseUrl.value) throw new Error('API base URL is not set')
 
         const headers = new Headers(init.headers || {})
-        if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+        if (init.body && !headers.has('Content-Type') && !(init.body instanceof FormData)) headers.set('Content-Type', 'application/json')
         if (meta.value.token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${meta.value.token}`)
 
         const urlPath = path.startsWith('/') ? path : `/${path}`

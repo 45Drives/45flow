@@ -529,6 +529,282 @@
                             </div>
                         </template>
 
+                        <!-- ═══ White Label / Branding ═══════════════════════ -->
+                        <template v-if="activeSection === 'branding'">
+                            <div class="divide-y divide-default">
+                                <SettingRow label="Enable custom branding" description="Apply your company name, logo, and brand colors to share and upload pages.">
+                                    <Switch v-model="brandingEnabled" :disabled="brandingBusy" :class="[
+                                        brandingEnabled ? 'bg-primary' : 'bg-well',
+                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
+                                    ]">
+                                        <span class="sr-only">Toggle custom branding</span>
+                                        <span :class="[
+                                            brandingEnabled ? 'translate-x-4' : 'translate-x-0',
+                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
+                                        ]" />
+                                    </Switch>
+                                </SettingRow>
+                            </div>
+
+                            <template v-if="brandingEnabled">
+                                <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Company Identity</p>
+                                <div class="divide-y divide-default">
+                                    <SettingRow label="Company name" description="Used in headers and link previews. Max 200 characters.">
+                                        <input v-model="brandingCompanyName" type="text" :disabled="brandingBusy"
+                                            class="input-textlike border border-default px-2 py-1 rounded text-sm w-56"
+                                            placeholder="Your Company" maxlength="200" />
+                                    </SettingRow>
+                                </div>
+
+                                <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Recipient Experience</p>
+                                <p class="text-xs text-accent mb-3">Choose what recipients see on share and upload pages. When set, the theme picker will be hidden from them.</p>
+                                <div class="divide-y divide-default">
+                                    <SettingRow label="Recipient theme" description="Theme shown to recipients on link pages.">
+                                        <div class="flex flex-col gap-2">
+                                            <select v-model="brandingEnforcedTheme" :disabled="brandingBusy"
+                                                class="text-sm bg-well border border-default rounded px-2 py-1 w-56">
+                                                <option v-for="opt in brandingThemeOptions" :key="opt.id" :value="opt.id">
+                                                    {{ opt.label }}
+                                                </option>
+                                            </select>
+                                            <div v-if="brandingEnforcedTheme && brandingEnforcedTheme !== 'custom'" class="flex items-center gap-2">
+                                                <span class="inline-block w-32 h-5 rounded-md border border-default"
+                                                    :style="{ background: brandingThemeOptions.find(t => t.id === brandingEnforcedTheme)?.preview || '#888' }" />
+                                                <span class="text-xs text-accent">{{ brandingSelectedThemeLabel }}</span>
+                                            </div>
+                                        </div>
+                                    </SettingRow>
+                                </div>
+                                <p class="text-xs text-accent mt-2">When custom branding is enabled, recipients see your company branding with a small "Powered by 45Flow" attribution.</p>
+
+                                <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Brand Colors</p>
+                                <p class="text-xs text-accent mb-3">Define your brand colors. These will be available as a "Custom" theme in your palette and can be shown to recipients.</p>
+                                <div class="divide-y divide-default">
+                                    <SettingRow label="Primary brand color" description="Used for primary branded actions, highlights, and gradient start.">
+                                        <div class="flex flex-col gap-1.5">
+                                            <div class="flex items-center gap-2">
+                                                <input :value="sanitizeHex(brandingCustomPrimary)" type="color" :disabled="brandingBusy"
+                                                    class="w-8 h-8 rounded cursor-pointer border border-default"
+                                                    @input="brandingCustomPrimary = ($event.target as HTMLInputElement).value" />
+                                                <input v-model="brandingCustomPrimary" type="text" :disabled="brandingBusy"
+                                                    class="input-textlike border border-default px-2 py-1 rounded text-sm w-24 font-mono"
+                                                    placeholder="#D92B2F" maxlength="7" />
+                                            </div>
+                                            <div v-if="brandingPrimaryContrastWarning" class="text-xs text-warning flex items-start gap-1.5">
+                                                <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                                </svg>
+                                                <span>{{ brandingPrimaryContrastWarning }}</span>
+                                            </div>
+                                        </div>
+                                    </SettingRow>
+                                    <SettingRow label="Secondary brand color" description="Used for gradient end, borders, and supporting accents.">
+                                        <div class="flex flex-col gap-1.5">
+                                            <div class="flex items-center gap-2">
+                                                <input :value="sanitizeHex(brandingCustomSecondary)" type="color" :disabled="brandingBusy"
+                                                    class="w-8 h-8 rounded cursor-pointer border border-default"
+                                                    @input="brandingCustomSecondary = ($event.target as HTMLInputElement).value" />
+                                                <input v-model="brandingCustomSecondary" type="text" :disabled="brandingBusy"
+                                                    class="input-textlike border border-default px-2 py-1 rounded text-sm w-24 font-mono"
+                                                    placeholder="#b02428" maxlength="7" />
+                                            </div>
+                                            <div v-if="brandingSecondaryContrastWarning" class="text-xs text-warning flex items-start gap-1.5">
+                                                <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                                </svg>
+                                                <span>{{ brandingSecondaryContrastWarning }}</span>
+                                            </div>
+                                        </div>
+                                    </SettingRow>
+                                    <SettingRow label="Preview" description="Gradient from your two colors.">
+                                        <span class="inline-block w-48 h-6 rounded-md border border-default"
+                                            :style="{ background: brandingCustomPreview }" />
+                                    </SettingRow>
+                                </div>
+
+                                <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Company Logo</p>
+                                <p class="text-xs text-accent mb-3">Replaces the 45Studio logo on link pages. Supports PNG, JPEG, SVG, and WebP. Max 2 MB. Recommended: transparent background, at least 200px tall.</p>
+                                <div class="divide-y divide-default">
+                                    <SettingRow label="Default logo" description="Shown on share and upload pages.">
+                                        <div class="flex flex-col gap-2">
+                                            <div class="flex items-center gap-2">
+                                                <input ref="brandingLogoLightInput" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" class="hidden"
+                                                    @change="(e: Event) => onBrandingFileSelected('logo_light', e)" />
+                                                <button class="btn btn-secondary text-xs px-2 py-1" type="button" :disabled="brandingBusy"
+                                                    @click="brandingLogoLightInput?.click()">
+                                                    {{ brandingLogoLight ? 'Replace' : 'Upload' }}
+                                                </button>
+                                                <button v-if="brandingLogoLight" class="btn btn-danger text-xs px-2 py-1" type="button" :disabled="brandingBusy"
+                                                    @click="deleteBrandingLogo('logo_light')">
+                                                    Remove
+                                                </button>
+                                            </div>
+                                            <div v-if="brandingLogoLight && brandingLogoLightPreview" class="flex items-start gap-3 p-2 border border-default rounded bg-well/30">
+                                                <img :src="brandingLogoLightPreview" alt="Logo preview" class="w-16 h-16 object-contain rounded border border-default bg-default" />
+                                                <div class="flex-1 min-w-0 text-xs space-y-0.5">
+                                                    <div v-if="brandingLogoLightInfo?.name" class="font-medium text-fg truncate">{{ brandingLogoLightInfo.name }}</div>
+                                                    <div class="text-accent">
+                                                        <span v-if="brandingLogoLightInfo?.width && brandingLogoLightInfo?.height">{{ brandingLogoLightInfo.width }} × {{ brandingLogoLightInfo.height }}px</span>
+                                                        <span v-if="brandingLogoLightInfo?.size" class="ml-2">{{ (brandingLogoLightInfo.size / 1024).toFixed(1) }} KB</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div v-else-if="!brandingLogoLight" class="text-xs text-accent">No logo uploaded</div>
+                                        </div>
+                                    </SettingRow>
+                                    <SettingRow label="Use separate logo for dark backgrounds" description="Recommended if your default logo has poor contrast on dark backgrounds.">
+                                        <Switch v-model="brandingSplitLogos" :disabled="brandingBusy" :class="[
+                                            brandingSplitLogos ? 'bg-primary' : 'bg-well',
+                                            'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
+                                        ]">
+                                            <span class="sr-only">Toggle split logos</span>
+                                            <span :class="[
+                                                brandingSplitLogos ? 'translate-x-4' : 'translate-x-0',
+                                                'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
+                                            ]" />
+                                        </Switch>
+                                    </SettingRow>
+                                    <SettingRow v-if="brandingSplitLogos" label="Dark background logo" description="Shown when recipients use dark mode or dark themes.">
+                                        <div class="flex flex-col gap-2">
+                                            <div class="flex items-center gap-2">
+                                                <input ref="brandingLogoDarkInput" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" class="hidden"
+                                                    @change="(e: Event) => onBrandingFileSelected('logo_dark', e)" />
+                                                <button class="btn btn-secondary text-xs px-2 py-1" type="button" :disabled="brandingBusy"
+                                                    @click="brandingLogoDarkInput?.click()">
+                                                    {{ brandingLogoDark ? 'Replace' : 'Upload' }}
+                                                </button>
+                                                <button v-if="brandingLogoDark" class="btn btn-danger text-xs px-2 py-1" type="button" :disabled="brandingBusy"
+                                                    @click="deleteBrandingLogo('logo_dark')">
+                                                    Remove
+                                                </button>
+                                            </div>
+                                            <div v-if="brandingLogoDark && brandingLogoDarkPreview" class="flex items-start gap-3 p-2 border border-default rounded bg-well/30">
+                                                <img :src="brandingLogoDarkPreview" alt="Logo preview" class="w-16 h-16 object-contain rounded border border-default bg-default" />
+                                                <div class="flex-1 min-w-0 text-xs space-y-0.5">
+                                                    <div v-if="brandingLogoDarkInfo?.name" class="font-medium text-fg truncate">{{ brandingLogoDarkInfo.name }}</div>
+                                                    <div class="text-accent">
+                                                        <span v-if="brandingLogoDarkInfo?.width && brandingLogoDarkInfo?.height">{{ brandingLogoDarkInfo.width }} × {{ brandingLogoDarkInfo.height }}px</span>
+                                                        <span v-if="brandingLogoDarkInfo?.size" class="ml-2">{{ (brandingLogoDarkInfo.size / 1024).toFixed(1) }} KB</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div v-else-if="!brandingLogoDark" class="text-xs text-accent">No dark logo uploaded</div>
+                                        </div>
+                                    </SettingRow>
+                                </div>
+
+                                <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Support & Contact</p>
+                                <p class="text-xs text-accent mb-3">Optional. Provide help resources for recipients viewing share and upload pages.</p>
+                                <div class="divide-y divide-default">
+                                    <SettingRow label="Support email" description="Shown on link pages and error states for recipient assistance.">
+                                        <input v-model="brandingSupportEmail" type="email" :disabled="brandingBusy"
+                                            class="input-textlike border border-default px-2 py-1 rounded text-sm w-56"
+                                            placeholder="support@example.com" maxlength="200" />
+                                    </SettingRow>
+                                    <SettingRow label="Support URL" description="Link to help documentation or support portal.">
+                                        <input v-model="brandingSupportUrl" type="url" :disabled="brandingBusy"
+                                            class="input-textlike border border-default px-2 py-1 rounded text-sm w-56"
+                                            placeholder="https://support.example.com" maxlength="500" />
+                                    </SettingRow>
+                                </div>
+
+                                <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Link Previews</p>
+                                <p class="text-xs text-accent mb-3">Customize how share links appear when pasted in Slack, Teams, or social media.</p>
+                                <div class="divide-y divide-default">
+                                    <SettingRow label="Link preview title" description="Defaults to company name if not set.">
+                                        <input v-model="brandingLinkPreviewTitle" type="text" :disabled="brandingBusy"
+                                            class="input-textlike border border-default px-2 py-1 rounded text-sm w-56"
+                                            placeholder="Your Company - Secure File Sharing" maxlength="200" />
+                                    </SettingRow>
+                                    <SettingRow label="Link preview description" description="Short text shown in previews.">
+                                        <input v-model="brandingLinkPreviewDescription" type="text" :disabled="brandingBusy"
+                                            class="input-textlike border border-default px-2 py-1 rounded text-sm w-56"
+                                            placeholder="Secure file review and collaboration" maxlength="500" />
+                                    </SettingRow>
+                                </div>
+
+                                <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Preview</p>
+                                <p class="text-xs text-accent mb-3">How your branding will appear on recipient pages.</p>
+                                <div class="flex gap-3 p-3 border border-default rounded bg-well/30">
+                                    <!-- Protected Page Preview -->
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-xs font-medium text-accent mb-2">Protected Link</div>
+                                        <div class="border border-default rounded bg-default p-2 text-xs space-y-1.5">
+                                            <div class="flex items-center gap-1.5">
+                                                <div v-if="brandingLogoLight && brandingLogoLightPreview" class="w-6 h-6 shrink-0">
+                                                    <img :src="brandingLogoLightPreview" class="w-full h-full object-contain" alt="Logo" />
+                                                </div>
+                                                <div v-else class="w-6 h-6 shrink-0 bg-accent/20 rounded" />
+                                                <div v-if="brandingCompanyName" class="font-medium truncate">{{ brandingCompanyName }}</div>
+                                            </div>
+                                            <div class="h-px bg-default" />
+                                            <div class="text-[0.65rem] text-accent">This link is protected</div>
+                                            <div class="h-4 bg-well rounded" />
+                                            <div class="h-6 rounded" :style="{ background: brandingCustomPrimary }">
+                                                <div class="text-[0.65rem] text-white/90 text-center leading-6">Unlock</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Review Page Preview -->
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-xs font-medium text-accent mb-2">Review Page</div>
+                                        <div class="border border-default rounded bg-default p-2 text-xs space-y-1.5">
+                                            <div class="flex items-center justify-between gap-1.5">
+                                                <div class="flex items-center gap-1.5 min-w-0">
+                                                    <div v-if="brandingLogoLight && brandingLogoLightPreview" class="w-5 h-5 shrink-0">
+                                                        <img :src="brandingLogoLightPreview" class="w-full h-full object-contain" alt="Logo" />
+                                                    </div>
+                                                    <div v-else class="w-5 h-5 shrink-0 bg-accent/20 rounded" />
+                                                    <div v-if="brandingCompanyName" class="text-[0.65rem] truncate">{{ brandingCompanyName }}</div>
+                                                </div>
+                                                <div class="w-3 h-3 bg-accent/20 rounded-full shrink-0" />
+                                            </div>
+                                            <div class="aspect-video bg-well/50 rounded flex items-center justify-center">
+                                                <div class="w-6 h-6 border-2 border-accent/30 rounded-full" />
+                                            </div>
+                                            <div class="h-5 rounded" :style="{ background: brandingCustomPrimary }">
+                                                <div class="text-[0.65rem] text-white/90 text-center leading-5">Download</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Upload Page Preview -->
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-xs font-medium text-accent mb-2">Upload Page</div>
+                                        <div class="border border-default rounded bg-default p-2 text-xs space-y-1.5">
+                                            <div class="flex items-center gap-1.5">
+                                                <div v-if="brandingLogoLight && brandingLogoLightPreview" class="w-6 h-6 shrink-0">
+                                                    <img :src="brandingLogoLightPreview" class="w-full h-full object-contain" alt="Logo" />
+                                                </div>
+                                                <div v-else class="w-6 h-6 shrink-0 bg-accent/20 rounded" />
+                                                <div v-if="brandingCompanyName" class="font-medium truncate">{{ brandingCompanyName }}</div>
+                                            </div>
+                                            <div class="h-px bg-default" />
+                                            <div class="border-2 border-dashed border-accent/30 rounded p-2 bg-well/30">
+                                                <div class="text-[0.65rem] text-accent text-center">Drop files here</div>
+                                            </div>
+                                            <div class="h-5 rounded" :style="{ background: brandingCustomPrimary }">
+                                                <div class="text-[0.65rem] text-white/90 text-center leading-5">Browse</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-2 mt-4">
+                                    <button class="btn btn-danger text-sm" type="button" :disabled="brandingBusy" @click="clearBranding">
+                                        <span v-if="brandingBusy">Clearing…</span>
+                                        <span v-else>Clear Custom Branding</span>
+                                    </button>
+                                    <div class="text-xs text-accent">
+                                        Reset all branding settings to 45Flow defaults and remove uploaded logos.
+                                    </div>
+                                </div>
+
+                                <p class="text-xs text-accent mt-3">
+                                    Changes apply immediately to all share and upload link pages. 45Flow attribution remains visible on link pages.
+                                </p>
+                            </template>
+                        </template>
+
                     </div>
                 </div>
 
@@ -587,6 +863,7 @@ import { useTimeFormat } from "../../composables/useTimeFormat";
 import { useClientTranscode } from "../../composables/useClientTranscode";
 import { useTourManager, type TourStep } from "../../composables/useTourManager";
 import { appLog } from "../../composables/useLog";
+import { useThemeFromAlias } from "../../composables/useThemeFromAlias";
 
 const emit = defineEmits<{
     (e: "close"): void;
@@ -605,11 +882,12 @@ const emit = defineEmits<{
     }): void;
 }>();
 
-const { apiFetch } = useApi();
+const { apiFetch, baseUrl } = useApi();
 const { onboarding, resetAll: resetOnboarding, markDone } = useOnboarding();
 const { hour12 } = useTimeFormat();
 const { enabled: clientTranscodeEnabled, preset: transcodePreset, hwAccel: hwAccelEnabled } = useClientTranscode();
 const { requestTour } = useTourManager();
+const { setCustomThemeColors, setCustomThemeEnabled } = useThemeFromAlias();
 
 const hardwareCapabilities = ref<any>(null);
 
@@ -642,7 +920,7 @@ const settingsTourSteps: TourStep[] = [
 ]
 
 // ── Section navigation ──────────────────────────────────────────────────
-type Section = 'sharing' | 'project' | 'app' | 'maintenance' | 'help' | 'certificate' | 'linkOptions';
+type Section = 'sharing' | 'project' | 'app' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding';
 const activeSection = ref<Section>('sharing');
 
 const navGroups = [
@@ -653,6 +931,12 @@ const navGroups = [
             { key: 'certificate' as Section, label: 'Certificate' },
             { key: 'linkOptions' as Section, label: 'Link Options' },
             { key: 'project' as Section, label: 'Project Root' },
+        ],
+    },
+    {
+        label: 'Branding',
+        items: [
+            { key: 'branding' as Section, label: 'White Label' },
         ],
     },
     {
@@ -753,6 +1037,353 @@ const externalBaseEffective = ref<string | null>(null);
 // Read-only server-reported custom base (what’s stored)
 const externalBaseCustom = ref<string | null>(null);
 
+// ── White Label / Branding ────────────────────────────────────────────────────
+const brandingEnabled = ref(false);
+const brandingCompanyName = ref('');
+const brandingEnforcedTheme = ref('');
+const brandingSplitLogos = ref(false);
+const brandingLogoLight = ref<string | null>(null);
+const brandingLogoDark = ref<string | null>(null);
+const brandingCustomPrimary = ref('#D92B2F');
+const brandingCustomSecondary = ref('#b02428');
+const brandingBusy = ref(false);
+const brandingError = ref<string | null>(null);
+const brandingOk = ref(false);
+
+// Logo preview URLs and metadata
+const brandingLogoLightPreview = ref<string | null>(null);
+const brandingLogoDarkPreview = ref<string | null>(null);
+const brandingLogoLightInfo = ref<{ name?: string; size?: number; width?: number; height?: number } | null>(null);
+const brandingLogoDarkInfo = ref<{ name?: string; size?: number; width?: number; height?: number } | null>(null);
+
+// Support contact and link preview fields
+const brandingSupportEmail = ref('');
+const brandingSupportUrl = ref('');
+const brandingLinkPreviewTitle = ref('');
+const brandingLinkPreviewDescription = ref('');
+
+const brandingLogoLightInput = ref<HTMLInputElement | null>(null);
+const brandingLogoDarkInput = ref<HTMLInputElement | null>(null);
+
+const brandingThemeOptions = [
+    { id: '', label: 'User\'s choice (no override)' },
+    { id: 'custom', label: 'Custom', preview: '' },
+    { id: 'theme-studio-grad-logo-flow', label: 'Flow', preview: 'linear-gradient(135deg, #2EA8FF 0%, #7A4DFF 30%, #D02BD6 56%, #F1578A 76%, #FF9A2A 100%)' },
+    { id: 'theme-studio-grad-purple-pink-orange', label: 'Party', preview: 'linear-gradient(135deg, #9A24E4 0%, #CF20AE 32%, #F6336E 64%, #FE774F 100%)' },
+    { id: 'theme-studio-grad-red-purple-blue', label: 'Prism', preview: 'linear-gradient(135deg, #F43F5E 0%, #8B5CF6 52%, #3B82F6 100%)' },
+    { id: 'theme-studio-grad-sunset-laser', label: 'Synthwave', preview: 'linear-gradient(135deg, #FF6A00 0%, #FF2D95 48%, #2CF3E9 100%)' },
+    { id: 'theme-studio-grad-neon-studio', label: 'Cyber Pulse', preview: 'linear-gradient(135deg, #14B8A6 0%, #6D28D9 45%, #F43F5E 100%)' },
+    { id: 'theme-studio-grad-moon-mist', label: 'Moon Mist', preview: 'linear-gradient(135deg, #7A2CFF 0%, #2EA8FF 52%, #FFE44D 100%)' },
+    { id: 'theme-studio-grad-pink-orange', label: 'Flamingo', preview: 'linear-gradient(135deg, #E84393 0%, #F39C12 100%)' },
+    { id: 'theme-studio-grad-red-blue-green', label: 'Spectrum', preview: 'linear-gradient(135deg, #EF4444 0%, #3B82F6 50%, #22C55E 100%)' },
+    { id: 'theme-studio-grad-red-orange-yellow', label: 'Fire', preview: 'linear-gradient(135deg, #EF4444 0%, #F97316 50%, #EAB308 100%)' },
+    { id: 'theme-studio-grad-orange-pink', label: 'Sunset', preview: 'linear-gradient(135deg, #F97316 0%, #EC4899 100%)' },
+    { id: 'theme-studio-grad-aurora', label: 'Borealis', preview: 'linear-gradient(135deg, #10B981 0%, #0891B2 50%, #7C3AED 100%)' },
+    { id: 'theme-studio-grad-yellow-orange-red', label: 'Solstice', preview: 'linear-gradient(135deg, #EAB308 0%, #F97316 50%, #EF4444 100%)' },
+    { id: 'theme-studio-grad-electric-violet', label: 'Ultraviolet', preview: 'linear-gradient(135deg, #7C3AED 0%, #06B6D4 100%)' },
+    { id: 'theme-studio-grad-infrared', label: 'Infrared', preview: 'linear-gradient(135deg, #F43F7F 0%, #E11D48 50%, #9F1239 100%)' },
+    { id: 'theme-studio-blue-steel', label: 'Blue Steel', preview: 'linear-gradient(135deg, #2C3E5A 0%, #4E6B93 50%, #7A9BC0 100%)' },
+    { id: 'theme-studio-slate', label: 'Graphite', preview: 'linear-gradient(135deg, #374151 0%, #5F6E82 50%, #8B9DB3 100%)' },
+    { id: 'theme-studio-ocean', label: 'Deep Sea', preview: 'linear-gradient(135deg, #1B3D4F 0%, #3E6D84 50%, #6BA4BE 100%)' },
+    { id: 'theme-studio-grad-chrome', label: 'Titanium', preview: 'linear-gradient(135deg, #64748B 0%, #94A3B8 50%, #475569 100%)' },
+    { id: 'theme-studio-grad-enterprise', label: 'Enterprise', preview: 'linear-gradient(135deg, #8B1A1E 0%, #D92B2F 50%, #FF6B6B 100%)' },
+    { id: 'theme-studio-grad-homelab', label: 'Homelab', preview: 'linear-gradient(135deg, #1E3A8A 0%, #2563EB 50%, #60A5FA 100%)' },
+    { id: 'theme-studio-grad-professional', label: 'Professional', preview: 'linear-gradient(135deg, #2D6A1E 0%, #65A443 50%, #A8E063 100%)' },
+    { id: 'theme-studio', label: 'Studio', preview: 'linear-gradient(135deg, #3D2D78 0%, #6557A5 50%, #9B8ADB 100%)' },
+];
+
+const brandingSelectedThemeLabel = computed(() =>
+    brandingThemeOptions.find(t => t.id === brandingEnforcedTheme.value)?.label || 'User\'s choice'
+);
+
+const brandingCustomPreview = computed(() =>
+    `linear-gradient(135deg, ${brandingCustomPrimary.value} 0%, ${brandingCustomSecondary.value} 100%)`
+);
+
+// Color contrast validation helpers
+function sanitizeHex(val: string): string {
+    // type="color" inputs require a valid 7-char hex (#rrggbb).
+    // If the text input has a partial value, fall back to black.
+    return /^#[0-9a-fA-F]{6}$/.test(val) ? val : '#000000';
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+    } : null;
+}
+
+function getLuminance(r: number, g: number, b: number): number {
+    const [rs, gs, bs] = [r, g, b].map(c => {
+        c = c / 255;
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+}
+
+function getContrastRatio(hex1: string, hex2: string): number {
+    const rgb1 = hexToRgb(hex1);
+    const rgb2 = hexToRgb(hex2);
+    if (!rgb1 || !rgb2) return 1;
+    
+    const lum1 = getLuminance(rgb1.r, rgb1.g, rgb1.b);
+    const lum2 = getLuminance(rgb2.r, rgb2.g, rgb2.b);
+    const lighter = Math.max(lum1, lum2);
+    const darker = Math.min(lum1, lum2);
+    
+    return (lighter + 0.05) / (darker + 0.05);
+}
+
+const brandingPrimaryContrastWarning = computed(() => {
+    const onWhite = getContrastRatio(brandingCustomPrimary.value, '#ffffff');
+    const onDark = getContrastRatio(brandingCustomPrimary.value, '#1a1a1a');
+    
+    if (onWhite < 3 && onDark < 3) {
+        return 'This color may be hard to read on both light and dark backgrounds.';
+    }
+    if (onWhite < 3) {
+        return 'This color may be hard to read on light backgrounds.';
+    }
+    if (onDark < 3) {
+        return 'This color may be hard to read on dark backgrounds.';
+    }
+    return null;
+});
+
+const brandingSecondaryContrastWarning = computed(() => {
+    const onWhite = getContrastRatio(brandingCustomSecondary.value, '#ffffff');
+    const onDark = getContrastRatio(brandingCustomSecondary.value, '#1a1a1a');
+    
+    if (onWhite < 3 && onDark < 3) {
+        return 'This color may be hard to read on both light and dark backgrounds.';
+    }
+    if (onWhite < 3) {
+        return 'This color may be hard to read on light backgrounds.';
+    }
+    if (onDark < 3) {
+        return 'This color may be hard to read on dark backgrounds.';
+    }
+    return null;
+});
+
+async function loadBranding() {
+    try {
+        const data = await apiFetch('/api/branding');
+        brandingEnabled.value = !!data.enabled;
+        brandingCompanyName.value = data.companyName || '';
+        brandingEnforcedTheme.value = data.enforcedTheme || '';
+        brandingSplitLogos.value = !!data.splitLogos;
+        brandingLogoLight.value = data.logoLight || null;
+        brandingLogoDark.value = data.logoDark || null;
+        // Build preview URLs from server-stored filenames
+        if (data.logoLight && baseUrl.value) {
+            brandingLogoLightPreview.value = `${baseUrl.value}/branding/logos/${encodeURIComponent(data.logoLight)}`;
+        }
+        if (data.logoDark && baseUrl.value) {
+            brandingLogoDarkPreview.value = `${baseUrl.value}/branding/logos/${encodeURIComponent(data.logoDark)}`;
+        }
+        if (data.customPrimary) brandingCustomPrimary.value = data.customPrimary;
+        if (data.customSecondary) brandingCustomSecondary.value = data.customSecondary;
+        brandingSupportEmail.value = data.supportEmail || '';
+        brandingSupportUrl.value = data.supportUrl || '';
+        brandingLinkPreviewTitle.value = data.linkPreviewTitle || '';
+        brandingLinkPreviewDescription.value = data.linkPreviewDescription || '';
+        // Sync custom theme to palette
+        setCustomThemeEnabled(!!data.enabled);
+        if (data.customPrimary || data.customSecondary) {
+            setCustomThemeColors({
+                primary: data.customPrimary || brandingCustomPrimary.value,
+                secondary: data.customSecondary || brandingCustomSecondary.value,
+            });
+        }
+    } catch {
+        // Non-critical
+    }
+}
+
+async function saveBranding() {
+    brandingError.value = null;
+    brandingOk.value = false;
+    brandingBusy.value = true;
+
+    try {
+        await apiFetch('/api/branding', {
+            method: 'POST',
+            body: JSON.stringify({
+                enabled: brandingEnabled.value,
+                companyName: brandingCompanyName.value,
+                enforcedTheme: brandingEnforcedTheme.value,
+                splitLogos: brandingSplitLogos.value,
+                customPrimary: brandingCustomPrimary.value,
+                customSecondary: brandingCustomSecondary.value,
+                supportEmail: brandingSupportEmail.value,
+                supportUrl: brandingSupportUrl.value,
+                linkPreviewTitle: brandingLinkPreviewTitle.value,
+                linkPreviewDescription: brandingLinkPreviewDescription.value,
+            }),
+        });
+        brandingOk.value = true;
+        // Sync custom theme to palette
+        setCustomThemeEnabled(brandingEnabled.value);
+        setCustomThemeColors({
+            primary: brandingCustomPrimary.value,
+            secondary: brandingCustomSecondary.value,
+        });
+        pushNotification(
+            new Notification('Branding Saved', 'White-label branding settings updated.', 'success', 5000)
+        );
+    } catch (e: any) {
+        brandingError.value = e?.message || 'Failed to save branding settings.';
+    } finally {
+        brandingBusy.value = false;
+        setTimeout(() => { brandingOk.value = false; }, 2000);
+    }
+}
+
+function setBrandingLogoRef(slot: 'logo_light' | 'logo_dark', filename: string | null) {
+    if (slot === 'logo_light') brandingLogoLight.value = filename;
+    else if (slot === 'logo_dark') brandingLogoDark.value = filename;
+}
+
+function setBrandingLogoPreview(slot: 'logo_light' | 'logo_dark', url: string | null, info: any = null) {
+    if (slot === 'logo_light') {
+        if (brandingLogoLightPreview.value) URL.revokeObjectURL(brandingLogoLightPreview.value);
+        brandingLogoLightPreview.value = url;
+        brandingLogoLightInfo.value = info;
+    } else {
+        if (brandingLogoDarkPreview.value) URL.revokeObjectURL(brandingLogoDarkPreview.value);
+        brandingLogoDarkPreview.value = url;
+        brandingLogoDarkInfo.value = info;
+    }
+}
+
+async function loadImageDimensions(file: File): Promise<{ width: number; height: number }> {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve({ width: img.width, height: img.height });
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error('Failed to load image'));
+        };
+        img.src = url;
+    });
+}
+
+async function uploadBrandingLogo(slot: 'logo_light' | 'logo_dark', file: File) {
+    brandingError.value = null;
+    brandingBusy.value = true;
+
+    try {
+        // Capture file metadata and generate preview
+        const previewUrl = URL.createObjectURL(file);
+        let dimensions = { width: 0, height: 0 };
+        try {
+            dimensions = await loadImageDimensions(file);
+        } catch {}
+
+        const info = {
+            name: file.name,
+            size: file.size,
+            width: dimensions.width,
+            height: dimensions.height,
+        };
+
+        setBrandingLogoPreview(slot, previewUrl, info);
+
+        const formData = new FormData();
+        formData.append('logo', file);
+
+        const result = await apiFetch(`/api/branding/logo/${slot}`, {
+            method: 'POST',
+            body: formData,
+        });
+
+        setBrandingLogoRef(slot, result?.filename || slot);
+        pushNotification(
+            new Notification('Logo Uploaded', `${slot.replace(/_/g, ' ')} logo has been updated.`, 'success', 4000)
+        );
+    } catch (e: any) {
+        brandingError.value = e?.message || 'Logo upload failed.';
+    } finally {
+        brandingBusy.value = false;
+    }
+}
+
+async function deleteBrandingLogo(slot: 'logo_light' | 'logo_dark') {
+    brandingBusy.value = true;
+    try {
+        await apiFetch(`/api/branding/logo/${slot}`, { method: 'DELETE' });
+        setBrandingLogoRef(slot, null);
+        setBrandingLogoPreview(slot, null, null);
+    } catch (e: any) {
+        brandingError.value = e?.message || 'Failed to remove logo.';
+    } finally {
+        brandingBusy.value = false;
+    }
+}
+
+function onBrandingFileSelected(slot: 'logo_light' | 'logo_dark', event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) uploadBrandingLogo(slot, file);
+    input.value = '';
+}
+
+
+async function clearBranding() {
+    if (!confirm('Clear all custom branding? This will reset everything to 45Flow defaults and remove uploaded logos.')) {
+        return;
+    }
+    
+    brandingError.value = null;
+    brandingBusy.value = true;
+    
+    try {
+        // Delete logos if they exist
+        if (brandingLogoLight.value) {
+            await deleteBrandingLogo('logo_light');
+        }
+        if (brandingLogoDark.value) {
+            await deleteBrandingLogo('logo_dark');
+        }
+        
+        // Reset all local state to defaults
+        brandingEnabled.value = false;
+        brandingCompanyName.value = '';
+        brandingEnforcedTheme.value = '';
+        brandingSplitLogos.value = false;
+        brandingLogoLight.value = null;
+        brandingLogoDark.value = null;
+        brandingCustomPrimary.value = '#D92B2F';
+        brandingCustomSecondary.value = '#b02428';
+        brandingSupportEmail.value = '';
+        brandingSupportUrl.value = '';
+        brandingLinkPreviewTitle.value = '';
+        brandingLinkPreviewDescription.value = '';
+        
+        // Clear previews
+        setBrandingLogoPreview('logo_light', null, null);
+        setBrandingLogoPreview('logo_dark', null, null);
+        
+        // Save cleared state to server
+        await saveBranding();
+        
+        pushNotification(
+            new Notification('Branding Cleared', 'All custom branding has been reset to defaults.', 'success', 5000)
+        );
+    } catch (e: any) {
+        brandingError.value = e?.message || 'Failed to clear branding.';
+    } finally {
+        brandingBusy.value = false;
+    }
+}
 // ── Certificate / Let’s Encrypt ───────────────────────────────────────────────────────
 const certBusy = ref(false);
 const certStep = ref<'verify' | 'setup' | 'revert' | null>(null);
@@ -1046,6 +1677,7 @@ async function reload() {
 
     // Load cert status in parallel (non-blocking)
     loadCertStatus();
+    loadBranding();
 }
 
 async function save() {
@@ -1140,6 +1772,11 @@ async function save() {
                     )
                 );
             }
+        }
+
+        // Save branding first if we're on that section (before reload overwrites refs)
+        if (activeSection.value === 'branding') {
+            await saveBranding();
         }
 
         await reload();
