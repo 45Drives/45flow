@@ -210,52 +210,89 @@
 
                 <div v-if="effectiveAccessMode === 'restricted'" class="space-y-2">
                   <div v-if="!accessSatisfied" class="text-sm text-red-500">
-                    At least one user is required when access is restricted.
+                    At least one user or group is required when access is restricted.
                   </div>
 
-                  <div v-if="accessLoading" class="text-sm opacity-70">Loading…</div>
-                  <div v-else-if="!access.length" class="text-sm opacity-70">No users currently have access.</div>
+                  <div v-if="accessLoading && !unifiedAccessList.length && !accessGroupRows.length" class="text-sm opacity-70">Loading…</div>
+                  <div v-else-if="!accessLoading && !unifiedAccessList.length && !accessGroupRows.length" class="text-sm opacity-70">No users or groups currently have access.</div>
 
-                  <div v-else class="overflow-x-auto rounded-lg border border-default">
+                  <!-- Unified users table -->
+                  <div v-if="unifiedAccessList.length" class="overflow-x-auto rounded-lg border border-default">
                     <table class="min-w-full text-sm border-separate border-spacing-0">
                       <thead>
                         <tr class="bg-default text-gray-300">
-                          <th class="text-left px-3 py-2 border border-default">Name</th>
-                          <th class="text-left px-3 py-2 border border-default">Username</th>
+                          <th class="text-left px-3 py-2 border border-default">User</th>
+                          <th class="text-left px-3 py-2 border border-default">Access Via</th>
                           <th class="text-left px-3 py-2 border border-default">Role</th>
-                          <th class="text-left px-3 py-2 border border-default">Granted</th>
-                          <th class="text-right px-3 py-2 border border-default">Actions</th>
+                          <th class="text-right px-3 py-2 border border-default" v-if="editMode">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        <tr v-for="u in access" :key="u.user_id" class="border-t border-default">
+                        <tr v-for="u in unifiedAccessList" :key="u.user_id" class="border-t border-default">
                           <td class="px-3 py-2 border border-default">
                             <div class="flex items-center gap-2">
-                              <span>{{ u.name || '—' }}</span>
+                              <span class="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
+                                :style="{ backgroundColor: u.display_color || '#999' }"></span>
+                              <div class="flex flex-col">
+                                <span class="font-medium">{{ u.name || u.user_name || '—' }}</span>
+                                <span v-if="u.user_name && u.name" class="text-xs opacity-60">@{{ u.user_name }}</span>
+                              </div>
                               <span v-if="u.is_disabled"
                                 class="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-default/70 text-amber-400 border border-amber-500/30"
                                 title="This user account is disabled">
-                                Deleted
+                                Disabled
                               </span>
                             </div>
                           </td>
-                          <td class="px-3 py-2 border border-default">{{ u.user_name || '—' }}</td>
                           <td class="px-3 py-2 border border-default">
-                            {{ u.role_name || u.role?.name || '—' }}
+                            <span v-if="u.source === 'direct'"
+                              class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                              Direct
+                            </span>
+                            <span v-else
+                              class="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border"
+                              :style="{
+                                backgroundColor: (u.source_color || '#999') + '18',
+                                borderColor: (u.source_color || '#999') + '50',
+                                color: u.source_color || '#999',
+                              }">
+                              <span class="inline-block h-2 w-2 rounded-full"
+                                :style="{ backgroundColor: u.source_color || '#999' }"></span>
+                              {{ u.source_label }}
+                            </span>
                           </td>
                           <td class="px-3 py-2 border border-default">
-                            {{ u.granted_at ? new Date(u.granted_at).toLocaleString() : '—' }}
+                            {{ u.role_name || '—' }}
                           </td>
-                          <td class="px-3 py-2 border border-default text-right">
-                            <button v-if="editMode" class="btn btn-danger px-2 py-1 text-xs"
+                          <td v-if="editMode" class="px-3 py-2 border border-default text-right">
+                            <button v-if="u.source === 'direct'" class="btn btn-danger px-2 py-1 text-xs"
                               @click="removeAccess(u.user_id)">
                               Remove
                             </button>
-                            <span v-else class="text-xs opacity-60">—</span>
+                            <span v-else class="text-xs opacity-40" title="Remove via group settings">—</span>
                           </td>
                         </tr>
                       </tbody>
                     </table>
+                  </div>
+
+                  <!-- Groups summary -->
+                  <div v-if="accessGroupRows.length" class="mt-2">
+                    <div class="font-semibold text-xs opacity-70 mb-1 uppercase tracking-wide">Groups on this link</div>
+                    <div class="flex flex-wrap gap-2">
+                      <div v-for="g in accessGroupRows" :key="g.group_id"
+                        class="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border border-default bg-default/40">
+                        <span class="inline-block h-3 w-3 rounded-full flex-shrink-0"
+                          :style="{ backgroundColor: g.group_color || '#999' }"></span>
+                        <span class="font-medium">{{ g.group_name }}</span>
+                        <span class="text-xs opacity-50">{{ g.member_count ?? 0 }} member{{ (g.member_count ?? 0) === 1 ? '' : 's' }}</span>
+                        <span class="text-xs opacity-50">· {{ g.role_name || g.role?.name || 'viewer' }}</span>
+                        <button v-if="editMode" class="text-red-400 hover:text-red-300 ml-1"
+                          @click="removeGroupAccess(g.group_id)" title="Remove group">
+                          <FontAwesomeIcon :icon="faTrash" class="text-xs" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -426,6 +463,11 @@
               display_color: a.display_color || '',
               role_id: a.role_id ?? a.role?.id ?? undefined,
               role_name: a.role_name ?? a.role?.name ?? undefined,
+            }))"
+            :preselectedGroups="accessGroupRows.map((g: any) => ({
+              id: g.group_id,
+              role_id: g.role_id ?? g.role?.id ?? null,
+              role_name: g.role_name ?? g.role?.name ?? null,
             }))"
             @apply="mergeAccessFromModal"
           />
@@ -709,6 +751,8 @@
 
 <script setup lang="ts">
 import { computed, inject, ref, watch } from 'vue'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { faTrash } from '@fortawesome/free-solid-svg-icons'
 import AddUsersModal from './AddUsersModal.vue'
 import EditLinkFilesModal from './EditLinkFilesModal.vue'
 import PathInput from '../PathInput.vue'
@@ -800,6 +844,7 @@ const auditActivity = ref<AuditActivityRow[]>([])
 const activityTypeFilter = ref('all')
 const activitySearch = ref('')
 const access = ref<AccessRow[]>([])
+const accessGroupRows = ref<any[]>([])
 const accessLoading = ref(false)
 const accessModalOpen = ref(false)
 const versionsLoading = ref(false)
@@ -868,7 +913,68 @@ const restrictAccess = computed({
     draftAccessMode.value = v ? 'restricted' : 'open'
   },
 })
-const accessSatisfied = computed(() => effectiveAccessMode.value !== 'restricted' || access.value.length > 0)
+const accessSatisfied = computed(() => effectiveAccessMode.value !== 'restricted' || access.value.length > 0 || accessGroupRows.value.length > 0)
+
+// Unified access list: direct users + group members (deduped, direct takes priority)
+const unifiedAccessList = computed(() => {
+  const rows: Array<{
+    user_id: number
+    user_name: string
+    name: string
+    display_color: string | null
+    role_name: string | null
+    granted_at: string | null
+    is_disabled: boolean
+    source: 'direct' | 'group'
+    source_label: string
+    source_color: string | null
+    group_id?: number
+  }> = []
+
+  const seen = new Set<number>()
+
+  // Direct users first
+  for (const u of access.value) {
+    seen.add(u.user_id)
+    rows.push({
+      user_id: u.user_id,
+      user_name: u.user_name || '',
+      name: u.name || '',
+      display_color: u.display_color ?? null,
+      role_name: u.role_name || u.role?.name || null,
+      granted_at: u.granted_at ?? null,
+      is_disabled: !!u.is_disabled,
+      source: 'direct',
+      source_label: 'Direct',
+      source_color: null,
+    })
+  }
+
+  // Group members (skip if already direct)
+  for (const g of accessGroupRows.value) {
+    const members = g.members || []
+    for (const m of members) {
+      if (seen.has(m.user_id)) continue
+      seen.add(m.user_id)
+      rows.push({
+        user_id: m.user_id,
+        user_name: m.user_name || '',
+        name: m.name || '',
+        display_color: m.display_color ?? null,
+        role_name: g.role_name || g.role?.name || null,
+        granted_at: g.granted_at ?? null,
+        is_disabled: false,
+        source: 'group',
+        source_label: g.group_name || 'Group',
+        source_color: g.group_color ?? null,
+        group_id: g.group_id,
+      })
+    }
+  }
+
+  return rows
+})
+
 const openPasswordRequired = computed(() =>
   effectiveAccessMode.value === 'open' &&
   ((props.link?.auth_mode || '') === 'password' || !!props.link?.passwordRequired)
@@ -886,11 +992,16 @@ const openPasswordEnabled = computed(() =>
 )
 const accessModeOpenLabel = computed(() => (openPasswordEnabled.value ? 'Open (password required)' : 'Open'))
 const accessModeSummary = computed(() => {
-  if (effectiveAccessMode.value === 'restricted') return 'Restricted (users only)'
+  if (effectiveAccessMode.value === 'restricted') return 'Restricted (users & groups)'
   return accessModeOpenLabel.value
 })
 const currentAccessSummary = computed(() => {
-  if (currentAccessMode.value === 'restricted') return 'Only invited users'
+  if (currentAccessMode.value === 'restricted') {
+    const parts: string[] = []
+    if (access.value.length) parts.push(`${access.value.length} user(s)`)
+    if (accessGroupRows.value.length) parts.push(`${accessGroupRows.value.length} group(s)`)
+    return parts.length ? parts.join(', ') : 'Only invited users'
+  }
   if ((props.link?.auth_mode || '') === 'password' || !!props.link?.passwordRequired) {
     return 'Anyone with the link + password'
   }
@@ -2245,6 +2356,7 @@ function setAccessFromResponse(resp: any) {
     Array.isArray(resp?.items) ? resp.items :
     []
   access.value = rows.map(normalizeAccessRow)
+  accessGroupRows.value = Array.isArray(resp?.groups) ? resp.groups : []
 }
 
 function selectDefaultVersionFile() {
@@ -2569,10 +2681,25 @@ async function mergeAccess(users: Array<{ id?: number; username?: string; name?:
   await loadAccess()
 }
 
-async function mergeAccessFromModal(users: Array<{ username: string; name?: string; user_email?: string; display_color?: string; role_id?: number | null; role_name?: string | null }>) {
+async function mergeAccessFromModal(
+  users: Array<{ username: string; name?: string; user_email?: string; display_color?: string; role_id?: number | null; role_name?: string | null }>,
+  groups?: Array<{ id: number; name?: string; role_id: number | null; role_name: string | null }>
+) {
   try {
-    await mergeAccess(users)
-    await loadAccess()
+    if (!props.link) return
+    const payload: any = { users: buildUsersPayload(users) }
+    if (groups !== undefined) {
+      payload.groups = (groups || []).map(g => ({
+        groupId: g.id,
+        roleId: g.role_id,
+        roleName: g.role_name,
+      }))
+    }
+    const resp = await props.apiFetch(`/api/links/${props.link.id}/access/merge`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+    setAccessFromResponse(resp)
     accessModalOpen.value = false
   } catch { }
 }
@@ -2582,6 +2709,28 @@ async function removeAccess(userId: number) {
   if (!confirm('Remove access for this user?')) return
   await props.apiFetch(`/api/links/${props.link.id}/access/${userId}`, { method: 'DELETE' })
   await loadAccess()
+}
+
+async function removeGroupAccess(groupId: number) {
+  if (!props.link) return
+  if (!confirm('Remove group access?')) return
+  // Remove group access by re-merging without this group
+  const remainingGroups = accessGroupRows.value
+    .filter((g: any) => g.group_id !== groupId)
+    .map((g: any) => ({ groupId: g.group_id, roleId: g.role_id, roleName: g.role_name }))
+  const usersPayload = buildUsersPayload(access.value.map(a => ({
+    id: a.user_id,
+    username: a.user_name,
+    name: a.name,
+    user_email: a.user_email,
+    role_id: a.role_id,
+    role_name: a.role_name,
+  })))
+  const resp = await props.apiFetch(`/api/links/${props.link.id}/access/merge`, {
+    method: 'POST',
+    body: JSON.stringify({ users: usersPayload, groups: remainingGroups }),
+  })
+  setAccessFromResponse(resp)
 }
 
 function beginEdit() {

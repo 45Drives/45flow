@@ -130,7 +130,7 @@
 										radioName="upload-access-mode"
 										:showComments="false"
 										openWarning="WARNING! Anybody with the link can upload a file to your server!"
-										restrictedHelpText="Invited users sign in with their own username and password. Roles control download permissions."
+										restrictedHelpText="Invited users and groups sign in with their own credentials. Roles control permissions."
 										wrapperClass="ss-toned-panel min-w-0 p-3"
 										@openUserModal="openUserModal()"
 									/>
@@ -154,6 +154,7 @@
 							role_id: c.role_id ?? undefined,
 							role_name: c.role_name ?? undefined,
 						}))"
+						:preselectedGroups="accessGroups"
 						@apply="onApplyUsers"
 					/>
 
@@ -248,7 +249,7 @@ const uploadLinkTourSteps: TourStep[] = [
 	},
 	{
 		target: '[data-tour="upload-link-access-mode"]',
-		message: 'Control who can upload through this link.\n\n• "Anyone with the link" — WARNING: anyone can upload files to your server!\n• "Anyone + password" — one shared password for all uploaders.\n• "Only invited users" — each user signs in with their own account.',
+		message: 'Control who can upload through this link.\n\n• "Anyone with the link" — WARNING: anyone can upload files to your server!\n• "Anyone + password" — one shared password for all uploaders.\n• "Only invited users and groups" — each user signs in with their own account. Groups let you manage access for multiple users at once.',
 	},
 	{
 		target: '[data-tour="upload-link-generate-btn"]',
@@ -266,6 +267,7 @@ const password = ref('')
 const showPassword = ref(false)
 const linkTitle = ref('')
 const accessUsers = ref<Commenter[]>([])
+const accessGroups = ref<{ id: number; name: string; member_count?: number; display_color?: string | null; role_id: number | null; role_name: string | null }[]>([])
 const usePublicBase = ref(false)
 const defaultUsePublicBase = ref(false)
 const externalHttpsPort = ref(443)
@@ -274,7 +276,7 @@ type AccessMode = 'open' | 'open_password' | 'restricted'
 const accessMode = ref<AccessMode>('open')
 const defaultAccessMode = ref<AccessMode>('open')
 
-const accessCount = computed(() => accessUsers.value.length)
+const accessCount = computed(() => accessUsers.value.length + accessGroups.value.length)
 const accessSatisfied = computed(() => accessMode.value !== 'restricted' || accessCount.value > 0)
 const passwordRequired = computed(() => accessMode.value === 'open_password' && !password.value.trim())
 
@@ -413,6 +415,14 @@ async function generateLink() {
 			})
 		}
 
+		if (accessMode.value === 'restricted' && accessGroups.value.length) {
+			body.groups = accessGroups.value.map(g => ({
+				groupId: g.id,
+				roleId: g.role_id,
+				rolleName: g.role_name,
+			}))
+		}
+
 		// console.log('[create-upload-link] request body', JSON.stringify(body))
 		const resp = await apiFetch('/api/create-upload-link', {
 			method: 'POST',
@@ -459,6 +469,7 @@ function resetAll() {
 	showPassword.value = false
 	linkTitle.value = ''
 	accessUsers.value = []
+	accessGroups.value = []
 	accessMode.value = defaultAccessMode.value
 	result.value = null
 	error.value = null
@@ -510,7 +521,7 @@ function makeKey(name?: string, user_email?: string, username?: string) {
 	return (u || n) + '|' + e
 }
 
-function onApplyUsers(users: any[]) {
+function onApplyUsers(users: any[], groups?: any[]) {
 	const next = users.map((u: any) => {
 		const username = (u.username || '').trim()
 		const name = (u.name || username).trim()
@@ -538,5 +549,6 @@ function onApplyUsers(users: any[]) {
 	}
 
 	accessUsers.value = dedup
+	accessGroups.value = groups || []
 }
 </script>

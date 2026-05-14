@@ -134,6 +134,50 @@ export type ExistingUser = {
   default_role?: Role | null
 }
 
+export type Group = {
+  id: number
+  name: string
+  description?: string | null
+  display_color?: string | null
+  member_count?: number
+  members?: GroupMember[]
+  created_at?: string
+  updated_at?: string
+}
+
+export type GroupMember = {
+  membership_id?: number
+  user_id: number
+  user_name?: string
+  name?: string
+  user_email?: string
+  display_color?: string | null
+  company?: string | null
+  tags_json?: string | null
+  joined_at?: string
+}
+
+export type GroupAccessRow = {
+  group_id: number
+  group_name: string
+  group_description?: string | null
+  group_color?: string | null
+  member_count?: number
+  role_id?: number | null
+  role_name?: string | null
+  role?: {
+    id: number
+    name: string
+    permissions: {
+      view: boolean
+      comment: boolean
+      download: boolean
+      upload: boolean
+    }
+  } | null
+  granted_at?: string | null
+}
+
 export type TranscodeOptions = {
   inputPath: string
   quality: 'original' | '1080p' | '720p'

@@ -8,7 +8,7 @@
 				</div>
 
 				<div class="dashboard-utility button-group-row">
-					<button @click="goToManageUsers" data-tour="manage-users" class="btn btn-secondary px-5 py-2.5">Manage Users</button>
+					<button @click="goToManageUsers" data-tour="manage-users" class="btn btn-secondary px-5 py-2.5">Manage Access</button>
 					<button @click="goToLogs" data-tour="view-logs" class="btn btn-secondary px-5 py-2.5">View Logs</button>
 					<button @click="goToSettings" data-tour="settings" class="btn btn-secondary px-5 py-2.5">Settings</button>
 					<!-- <button @click="openUserGuide" class="btn btn-secondary px-5 py-2.5">User Guide</button> -->
@@ -64,7 +64,6 @@ import { useTransferProgress } from '../composables/useTransferProgress'
 import { clearLastSession } from '../composables/useSessionPersistence'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
-import { tourQuickShareOpen, tourQuickShareStep, tourQuickShareShowDone } from '../composables/useQuickShareTour'
 
 useHeader('Dashboard')
 const { to } = useResilientNav()
@@ -76,145 +75,17 @@ const { onboarding, markDone } = useOnboarding()
 /** When true, ManageLinks shows demo rows so the tour can highlight them */
 const tourShowDemoLinks = ref(false)
 
-/** Cleanup helper — reset all Quick Share tour state */
-function cleanupQuickShareTour() {
-	tourQuickShareShowDone.value = false
-	tourQuickShareStep.value = 1
-	tourQuickShareOpen.value = false
-}
-
 const dashboardTourSteps: TourStep[] = [
-	// ── Welcome + Quick Share introduction ──────────────────────
+	// ── Welcome ──────────────────────
 	{
 		target: '[data-tour="flow-logo"]',
-		message: 'Welcome to 45Flow!\n\nTip: You can drag and drop files anywhere onto the app to open Quick Share — the fastest way to upload and share files. (Drag-and-drop is disabled while the Local Upload Wizard is open — drop files directly into its file table instead.)\n\nLet\'s walk through Quick Share first, then explore the rest of the dashboard.',
+		message: 'Welcome to 45Flow!\n\nTip: You can drag and drop files anywhere onto the app to open Quick Share — the fastest way to upload and share files. A guided tour of Quick Share will appear the first time you drop a file.\n\nLet\'s explore the dashboard.',
 	},
-	// ── Quick Share Step 1: Modal overview ──
-	{
-		target: '[data-tour="qs-modal"]',
-		message: 'This is the Quick Share screen.\n\nWhen you drop files onto 45Flow from most screens, this wizard opens automatically. It walks you through uploading files to the server and generating a share link — all in three quick steps.\n\nThe file list at the top shows what you dropped. Here we\'re using a sample file for the tour.',
-		beforeShow: () => {
-			tourQuickShareStep.value = 1
-			tourQuickShareShowDone.value = false
-			tourQuickShareOpen.value = true
-		},
-	},
-	// ── Quick Share Step 1: Step indicator ──
-	{
-		target: '[data-tour="qs-steps"]',
-		message: 'The step indicator shows your progress.\n\nStep 1 is Destination — choose where on the server to upload. Step 2 is Link Options — set expiry, access, and video settings. Step 3 is Upload & Share — monitor the upload and grab your link.',
-		beforeShow: () => {
-			tourQuickShareStep.value = 1
-			tourQuickShareOpen.value = true
-		},
-	},
-	// ── Quick Share Step 1: Destination picker ──
-	{
-		target: '[data-tour="qs-step-destination"]',
-		message: 'In Step 1, you pick a destination folder on the server.\n\nUse the folder browser to navigate your project directories. Once you\'ve selected a folder, click Next to continue.',
-		beforeShow: () => {
-			tourQuickShareStep.value = 1
-			tourQuickShareOpen.value = true
-		},
-	},
-	// ── Quick Share Step 2: Link Options overview ──
-	{
-		target: '[data-tour="qs-step-options"]',
-		message: 'Step 2 is where you configure your share link before uploading.\n\nLet\'s walk through each option.',
-		beforeShow: () => {
-			tourQuickShareOpen.value = true
-			tourQuickShareStep.value = 2
-		},
-	},
-	// ── Quick Share Step 2: Expiry ──
-	{
-		target: '[data-tour="qs-expiry"]',
-		message: 'Set how long the link stays active.\n\nType a custom value or use the quick presets — 1 hour, 1 day, 1 week, or Never for a permanent link.',
-		beforeShow: () => {
-			tourQuickShareOpen.value = true
-			tourQuickShareStep.value = 2
-		},
-	},
-	// ── Quick Share Step 2: Network ──
-	{
-		target: '[data-tour="qs-network"]',
-		message: 'Choose the network for your share link.\n\nLocal (LAN) generates an internal URL for your network. External (Internet) uses your public domain or IP so anyone outside your network can access it.',
-		beforeShow: () => {
-			tourQuickShareOpen.value = true
-			tourQuickShareStep.value = 2
-		},
-	},
-	// ── Quick Share Step 2: Advanced Options ──
-	{
-		target: '[data-tour="qs-advanced-panel"]',
-		message: 'The Advanced Options panel gives you finer control over your link.\n\nLet\'s go through each setting.',
-		beforeShow: async () => {
-			tourQuickShareOpen.value = true
-			tourQuickShareStep.value = 2
-			// Open the disclosure if it's closed
-			await new Promise(r => setTimeout(r, 100))
-			const btn = document.querySelector<HTMLElement>('[data-tour="qs-advanced-btn"]')
-			const panel = document.querySelector('[data-tour="qs-advanced-panel"]')
-			if (btn && !panel) btn.click()
-		},
-	},
-	// ── Quick Share Step 2: Link Title ──
-	{
-		target: '[data-tour="qs-link-title"]',
-		message: 'Give your link a descriptive title.\n\nThis is optional but helps you identify the link later in the dashboard.',
-		beforeShow: async () => {
-			tourQuickShareOpen.value = true
-			tourQuickShareStep.value = 2
-			await new Promise(r => setTimeout(r, 100))
-			const btn = document.querySelector<HTMLElement>('[data-tour="qs-advanced-btn"]')
-			const panel = document.querySelector('[data-tour="qs-advanced-panel"]')
-			if (btn && !panel) btn.click()
-		},
-	},
-	// ── Quick Share Step 2: Access Mode ──
-	{
-		target: '[data-tour="qs-access-mode"]',
-		message: 'Control who can access your shared files.\n\n• Anyone with the link — no sign-in needed.\n• Password protected — recipients enter a shared password.\n• Invited users only — only specific user accounts can access it.\n\nComments can be toggled for open and password-protected links.',
-		beforeShow: async () => {
-			tourQuickShareOpen.value = true
-			tourQuickShareStep.value = 2
-			await new Promise(r => setTimeout(r, 100))
-			const btn = document.querySelector<HTMLElement>('[data-tour="qs-advanced-btn"]')
-			const panel = document.querySelector('[data-tour="qs-advanced-panel"]')
-			if (btn && !panel) btn.click()
-		},
-	},
-	// ── Quick Share Step 2: Video Options ──
-	{
-		target: '[data-tour="qs-video-options"]',
-		message: 'When sharing video files, two things happen automatically:\n\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Review copies (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nWith client-side transcoding enabled (Settings → Performance), video processing happens on your machine before upload — using your local CPU or GPU. This is faster for most workstations and reduces server load. If disabled, the server processes videos after upload.\n\nYou can also overlay a watermark on review copies to protect your content.',
-		beforeShow: async () => {
-			tourQuickShareOpen.value = true
-			tourQuickShareStep.value = 2
-			await new Promise(r => setTimeout(r, 100))
-			const btn = document.querySelector<HTMLElement>('[data-tour="qs-advanced-btn"]')
-			const panel = document.querySelector('[data-tour="qs-advanced-panel"]')
-			if (btn && !panel) btn.click()
-		},
-	},
-	// ── Quick Share Step 3: Upload & Share (done state) ──
-	{
-		target: '[data-tour="qs-step-upload"]',
-		message: 'Step 3 handles the upload and link generation.\n\nYou\'ll see per-file progress bars while files transfer, then your share link appears with Copy and Open buttons. That\'s it — Quick Share in three steps!',
-		beforeShow: () => {
-			tourQuickShareOpen.value = true
-			tourQuickShareStep.value = 3
-			tourQuickShareShowDone.value = true
-		},
-	},
-	// ── Close Quick Share, return to dashboard ──
+	// ── Dashboard actions ──────────────────────
 	{
 		target: '[data-tour="action-cards"]',
-		message: 'Now let\'s explore the rest of the dashboard.\n\nThese are your three main actions: create a File Share Link for review, upload files directly from your workstation, or generate an Upload Link for collaborators.',
-		beforeShow: () => { cleanupQuickShareTour() },
-		cleanup: () => { cleanupQuickShareTour() },
+		message: 'These are your three main actions: create a File Share Link for review, upload files directly from your workstation, or generate an Upload Link for collaborators.',
 	},
-	// ── Normal dashboard tour continues ──────────────────────
 	{
 		target: '[data-tour="new-share-link"]',
 		message: 'Click here to create a new File Share Link.\n\nYou\'ll select files from your server, set an expiry, and choose access controls. Recipients get a secure link to view and download the files.',
@@ -229,7 +100,7 @@ const dashboardTourSteps: TourStep[] = [
 	},
 	{
 		target: '[data-tour="manage-users"]',
-		message: 'Manage Users lets you create and manage collaborator accounts.\n\nYou can assign roles, set passwords, and control which users have access to your shared links. A detailed tour will appear when you first open it.',
+		message: 'Manage Users lets you create and manage collaborator accounts and groups.\n\nYou can assign roles, set passwords, and control which users and groups have access to your shared links. A detailed tour will appear when you first open it.',
 	},
 	{
 		target: '[data-tour="view-logs"]',
@@ -258,12 +129,6 @@ const dashboardTourSteps: TourStep[] = [
 		target: '[data-tour="manage-links-actions"]',
 		message: 'Each link has three action buttons:\n\n• Details — opens a full modal with all link settings, access logs, file lists, and version management.\n• Open — opens the link in a new browser tab (disabled when the link is disabled).\n• Disable/Enable — toggles the link on or off without deleting it.',
 		beforeShow: () => { tourShowDemoLinks.value = true },
-		cleanup: () => { tourShowDemoLinks.value = false },
-	},
-	{
-		target: '[data-tour="logout"]',
-		message: 'When you\'re done, click Log Out to disconnect from the server.\n\nThat\'s the tour! You\'re all set to start using 45Flow.',
-		placement: 'top',
 		cleanup: () => { tourShowDemoLinks.value = false },
 	},
 ]

@@ -7,6 +7,7 @@
         <h3 class="text-lg font-semibold">{{ linkMode ? 'Manage link access' : 'Manage users' }}</h3>
 
         <div class="flex items-center gap-2">
+          <button class="btn btn-secondary" @click="openGroups()">Manage groups</button>
           <button class="btn btn-secondary" @click="openRoles()">Manage roles</button>
           <button class="btn btn-secondary" @click="close()">Close</button>
         </div>
@@ -93,6 +94,58 @@
               <button class="btn btn-secondary" @click="clearSelected()" :disabled="!selectedKeys.length">
                 Clear
               </button>
+            </div>
+          </div>
+
+          <!-- Groups section (link mode) -->
+          <div v-if="linkMode && groups.length" class="border rounded p-3 bg-accent/60" data-tour="users-modal-groups">
+            <div class="font-semibold text-sm mb-2">Select groups</div>
+            <div class="max-h-[30vh] overflow-auto border rounded">
+              <div v-for="g in groups" :key="g.id"
+                class="border-b border-default text-sm">
+                <div class="flex items-center justify-between px-3 py-2">
+                  <label class="flex items-center gap-2 cursor-pointer flex-1" @click.stop>
+                    <input type="checkbox" :value="g.id" v-model="selectedGroupIds" />
+                    <span class="inline-block h-3 w-3 rounded-full"
+                      :style="{ backgroundColor: g.display_color || '#999' }"></span>
+                    <div class="flex flex-col">
+                      <span class="font-medium">{{ g.name }}</span>
+                      <span class="opacity-60 text-xs">
+                        {{ g.member_count ?? 0 }} member{{ (g.member_count ?? 0) === 1 ? '' : 's' }}
+                        <span v-if="g.description"> • {{ g.description }}</span>
+                      </span>
+                    </div>
+                  </label>
+                  <div class="flex items-center gap-2">
+                    <select v-model.number="groupRoleById[g.id]"
+                      :disabled="!selectedGroupIds.includes(g.id) || rolesLoading || !roles.length"
+                      class="input-textlike border rounded px-2 py-1 text-xs min-w-[140px]"
+                      title="Role for this group">
+                      <option v-if="rolesLoading" disabled value="">Loading roles…</option>
+                      <option v-else-if="!roles.length" disabled value="">No roles</option>
+                      <option v-else v-for="r in roles" :key="r.id" :value="r.id">
+                        {{ r.name }}
+                      </option>
+                    </select>
+                    <button class="px-2 py-1 text-xs border rounded hover:opacity-80"
+                      @click.stop="toggleGroupMembers(g.id)"
+                      :title="expandedGroupIds.has(g.id) ? 'Hide members' : 'Show members'">
+                      <FontAwesomeIcon :icon="expandedGroupIds.has(g.id) ? faChevronUp : faChevronDown" />
+                    </button>
+                  </div>
+                </div>
+                <div v-if="expandedGroupIds.has(g.id)" class="px-8 pb-2">
+                  <div v-if="groupMembersCache[g.id]?.length" class="flex flex-wrap gap-1">
+                    <span v-for="m in groupMembersCache[g.id]" :key="m.user_id"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border">
+                      <span class="inline-block h-2 w-2 rounded-full"
+                        :style="{ backgroundColor: m.display_color || '#999' }"></span>
+                      {{ m.name || m.user_name }}
+                    </span>
+                  </div>
+                  <div v-else class="text-xs opacity-60">No members</div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -204,6 +257,25 @@
                       </option>
                     </select>
                   </div>
+                  <div class="col-span-2">
+                    <div class="flex items-center justify-between">
+                      <label class="text-xs opacity-80">Groups (optional)</label>
+                      <button type="button" class="text-xs underline opacity-80 hover:opacity-100" @click="openGroups()">
+                        New group
+                      </button>
+                    </div>
+                    <div v-if="groups.length" class="mt-1 border rounded p-2 max-h-32 overflow-auto">
+                      <label v-for="g in groups" :key="g.id"
+                        class="flex items-center gap-2 py-0.5 cursor-pointer text-sm">
+                        <input type="checkbox" :value="g.id" v-model="newUserGroupIds" />
+                        <span class="inline-block h-2.5 w-2.5 rounded-full"
+                          :style="{ backgroundColor: g.display_color || '#999' }"></span>
+                        <span>{{ g.name }}</span>
+                        <span class="opacity-50 text-xs">({{ g.member_count ?? 0 }})</span>
+                      </label>
+                    </div>
+                    <div v-else class="mt-1 text-xs opacity-60">No groups yet.</div>
+                  </div>
                 </div>
              
                 <div class="col-span-2 text-left">
@@ -291,6 +363,25 @@
             </option>
           </select>
         </div>
+        <div>
+          <div class="flex items-center justify-between">
+            <label class="text-xs opacity-80">Groups</label>
+            <button type="button" class="text-xs underline opacity-80 hover:opacity-100" @click="openGroups()">
+              New group
+            </button>
+          </div>
+          <div v-if="groups.length" class="mt-1 border rounded p-2 max-h-32 overflow-auto">
+            <label v-for="g in groups" :key="g.id"
+              class="flex items-center gap-2 py-0.5 cursor-pointer text-sm">
+              <input type="checkbox" :value="g.id" v-model="editGroupIds" />
+              <span class="inline-block h-2.5 w-2.5 rounded-full"
+                :style="{ backgroundColor: g.display_color || '#999' }"></span>
+              <span>{{ g.name }}</span>
+              <span class="opacity-50 text-xs">({{ g.member_count ?? 0 }})</span>
+            </label>
+          </div>
+          <div v-else class="mt-1 text-xs opacity-60">No groups yet.</div>
+        </div>
         <div class="items-center text-center">
           <button class="btn btn-primary" @click="openReset(editing)" title="Reset password for this user">
             Reset Password
@@ -315,16 +406,19 @@
 
   <RolesModal v-model="rolesOpen" :apiFetch="apiFetch" @updated="fetchRoles" />
 
+  <GroupsModal v-model="groupsOpen" :apiFetch="apiFetch" @updated="fetchGroups" />
+
 </template>
 
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { faTrash, faEdit } from '@fortawesome/free-solid-svg-icons';
-import type { Role, LinkItem, ExistingUser } from '../../typings/electron'
+import { faTrash, faEdit, faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
+import type { Role, LinkItem, ExistingUser, Group, GroupMember } from '../../typings/electron'
 import ConfirmDeleteModal from './ConfirmDeleteModal.vue'
 import ResetPasswordModal from './ResetPasswordModal.vue';
 import RolesModal from './RolesModal.vue'
+import GroupsModal from './GroupsModal.vue'
 import { useTourManager, type TourStep } from '../../composables/useTourManager'
 import { useOnboarding } from '../../composables/useOnboarding'
 
@@ -356,13 +450,14 @@ const props = defineProps<{
   modelValue: boolean
   apiFetch: (url: string, opts?: any) => Promise<any>
   preselected?: ExistingUser[]
+  preselectedGroups?: { id: number; role_id?: number | null; role_name?: string | null }[]
   roleHint?: 'upload' | 'comment' | 'view'
   link?: Partial<LinkItem> | null
 }>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
-  (e: 'apply', users: ExistingUser[]): void
+  (e: 'apply', users: ExistingUser[], groups: { id: number; name: string; member_count?: number; display_color?: string | null; role_id: number | null; role_name: string | null }[]): void
 }>()
 
 // Tour: trigger on first open
@@ -389,8 +484,17 @@ const roleNameByKey = ref<Record<string, string>>({})
 const newUserRoleId = ref<number | null>(null)
 const newUserDefaultRoleId = ref<number | null>(null)
 
+// Groups state
+const groups = ref<Group[]>([])
+const groupsOpen = ref(false)
+const selectedGroupIds = ref<number[]>([])
+const groupRoleById = ref<Record<number, number>>({})
+const expandedGroupIds = new Set<number>()
+const groupMembersCache = ref<Record<number, GroupMember[]>>({})
+
 const newUser = ref<ExistingUser>({ username: '', name: '', user_email: '', company: '', display_color: randomPastel(), tags: [] })
 const newUserTagsInput = ref('')
+const newUserGroupIds = ref<number[]>([])
 const error = ref('')
 const tempPassword = ref('')
 const tempPasswordConfirm = ref('')
@@ -409,6 +513,8 @@ const pendingResetUserId = ref<number | string | null>(null)
 
 // Edit state
 const editing = ref<ExistingUser | null>(null)
+const editGroupIds = ref<number[]>([])
+const editGroupIdsOriginal = ref<number[]>([])
 const editForm = ref<{ name: string; user_email: string; company: string; tags_text: string; display_color: string; default_role_id: number | null }>({
   name: '',
   user_email: '',
@@ -443,7 +549,9 @@ const hasProfileEdits = computed(() => {
   const tagsChanged = !tagArraysEqual(currentTags, nextTags)
   const colorChanged = (normalizeHex(editForm.value.display_color) || null) !== (editing.value.display_color || null)
   const defaultRoleChanged = (editForm.value.default_role_id ?? null) !== (getDefaultRoleId(editing.value) ?? null)
-  return nameChanged || emailChanged || companyChanged || tagsChanged || colorChanged || defaultRoleChanged
+  const groupsSorted = (ids: number[]) => [...ids].sort((a, b) => a - b).join(',')
+  const groupsChanged = groupsSorted(editGroupIds.value) !== groupsSorted(editGroupIdsOriginal.value)
+  return nameChanged || emailChanged || companyChanged || tagsChanged || colorChanged || defaultRoleChanged || groupsChanged
 })
 
 const defaultRoleId = computed(() => {
@@ -479,6 +587,7 @@ onMounted(() => {
   if (props.modelValue) {
     fetchUsers()
     fetchRoles()
+    fetchGroups()
   }
 })
 
@@ -506,6 +615,16 @@ watch(
       }
       fetchUsers()
       fetchRoles()
+      fetchGroups()
+
+      // Restore preselected groups
+      selectedGroupIds.value = (props.preselectedGroups || [])
+        .map(g => g.id)
+        .filter(Boolean)
+      groupRoleById.value = {}
+      for (const g of (props.preselectedGroups || [])) {
+        if (g.role_id != null) groupRoleById.value[g.id] = Number(g.role_id)
+      }
     }
   }
 )
@@ -533,6 +652,15 @@ watch(
   (keys) => {
     if (!linkMode.value) return
     keys.forEach(k => ensureRoleForKey(k))
+  },
+  { deep: true }
+)
+
+watch(
+  selectedGroupIds,
+  (ids) => {
+    if (!linkMode.value) return
+    ids.forEach(id => ensureGroupRole(id))
   },
   { deep: true }
 )
@@ -631,6 +759,44 @@ function resolveRoleNames() {
   }
 }
 
+async function fetchGroups() {
+  try {
+    const data = await props.apiFetch('/api/groups', { method: 'GET' })
+    groups.value = Array.isArray(data?.groups) ? data.groups : []
+  } catch {
+    groups.value = []
+  }
+}
+
+async function fetchGroupMembersFor(groupId: number) {
+  try {
+    const data = await props.apiFetch(`/api/groups/${groupId}`, { method: 'GET' })
+    groupMembersCache.value[groupId] = Array.isArray(data?.members) ? data.members : []
+  } catch {
+    groupMembersCache.value[groupId] = []
+  }
+}
+
+function toggleGroupMembers(groupId: number) {
+  if (expandedGroupIds.has(groupId)) {
+    expandedGroupIds.delete(groupId)
+  } else {
+    expandedGroupIds.add(groupId)
+    if (!groupMembersCache.value[groupId]) {
+      fetchGroupMembersFor(groupId)
+    }
+  }
+}
+
+function openGroups() {
+  groupsOpen.value = true
+}
+
+function ensureGroupRole(groupId: number) {
+  if (groupRoleById.value[groupId]) return
+  if (defaultRoleId.value) groupRoleById.value[groupId] = defaultRoleId.value
+}
+
 function getDefaultRoleId(u?: ExistingUser | null) {
   const raw = u?.default_role_id ?? (u as any)?.defaultRoleId ?? u?.default_role?.id
   if (raw == null) return null
@@ -726,6 +892,17 @@ async function createUser() {
       })
     } catch { }
 
+    // Add to selected groups (best-effort)
+    if (newUserGroupIds.value.length && created.id) {
+      const groupOps = newUserGroupIds.value.map(gid =>
+        props.apiFetch(`/api/groups/${gid}/members`, {
+          method: 'POST',
+          body: JSON.stringify({ user_ids: [created.id], mode: 'add' }),
+        }).catch(() => {})
+      )
+      await Promise.all(groupOps)
+    }
+
     const u: ExistingUser = {
       id: created.id,
       username: created.username || payload.username,
@@ -754,6 +931,7 @@ async function createUser() {
       if (roleId) roleByKey.value[k] = roleId
     }
     await fetchUsers()
+    if (newUserGroupIds.value.length) fetchGroups()
     resetNewUser()
   } catch (e: any) {
     error.value = e?.message || 'Failed to create user.'
@@ -761,7 +939,7 @@ async function createUser() {
 }
 
 // Edit / Delete helpers
-function startEdit(u: ExistingUser) {
+async function startEdit(u: ExistingUser) {
   editing.value = u
   editForm.value = {
     name: u.name || '',
@@ -771,6 +949,18 @@ function startEdit(u: ExistingUser) {
     display_color: normalizeHex(u.display_color) || '#999999',
     default_role_id: getDefaultRoleId(u),
   }
+  // Fetch groups this user belongs to
+  editGroupIds.value = []
+  editGroupIdsOriginal.value = []
+  try {
+    const uid = u.id ?? u.username
+    if (uid != null) {
+      const resp = await props.apiFetch(`/api/users/${encodeURIComponent(String(uid))}/groups`)
+      const ids = (resp?.groups || []).map((g: any) => g.id).filter(Boolean)
+      editGroupIds.value = ids
+      editGroupIdsOriginal.value = [...ids]
+    }
+  } catch { }
 }
 
 async function saveEdit() {
@@ -841,18 +1031,46 @@ async function saveEdit() {
       )
     }
 
-    if (!ops.length) {
+    const groupsSorted = (ids: number[]) => [...ids].sort((a, b) => a - b).join(',')
+    const groupsChanged = groupsSorted(editGroupIds.value) !== groupsSorted(editGroupIdsOriginal.value)
+
+    if (!ops.length && !groupsChanged) {
       error.value = 'No changes to save.'
       return
     }
 
-    await Promise.all(ops)
+    if (ops.length) await Promise.all(ops)
+
+    // Sync group membership changes
+    const userId = editing.value.id
+    if (userId != null) {
+      const prevSet = new Set(editGroupIdsOriginal.value)
+      const nextSet = new Set(editGroupIds.value)
+      const toAdd = editGroupIds.value.filter(id => !prevSet.has(id))
+      const toRemove = editGroupIdsOriginal.value.filter(id => !nextSet.has(id))
+      const groupOps: Promise<any>[] = []
+      for (const gid of toAdd) {
+        groupOps.push(
+          props.apiFetch(`/api/groups/${gid}/members`, {
+            method: 'POST',
+            body: JSON.stringify({ user_ids: [userId], mode: 'add' }),
+          })
+        )
+      }
+      for (const gid of toRemove) {
+        groupOps.push(
+          props.apiFetch(`/api/groups/${gid}/members/${userId}`, { method: 'DELETE' })
+        )
+      }
+      if (groupOps.length) await Promise.all(groupOps)
+    }
 
     // Clear pending reset + refresh
     pendingResetPassword.value = null
     pendingResetUserId.value = null
 
     await fetchUsers()
+    if (groupsChanged) fetchGroups()
     editing.value = null
   } catch (e: any) {
     error.value = e?.message || 'Failed to update user.'
@@ -901,6 +1119,7 @@ function clearSelected() {
 function resetNewUser() {
   newUser.value = { username: '', name: '', user_email: '', company: '', display_color: randomPastel(), tags: [] }
   newUserTagsInput.value = ''
+  newUserGroupIds.value = []
   tempPassword.value = ''
   tempPasswordConfirm.value = ''
   showTempPassword.value = false
@@ -940,7 +1159,23 @@ function apply() {
       role_name: role?.name ?? base?.role_name ?? null,
     })
   }
-    emit('apply', chosen)
+
+  // Build chosen groups
+  const chosenGroups = selectedGroupIds.value.map(gid => {
+    const g = groups.value.find(gr => gr.id === gid)
+    const roleId = groupRoleById.value[gid] ?? defaultRoleId.value ?? null
+    const role = roleId ? roles.value.find(r => r.id === roleId) : null
+    return {
+      id: gid,
+      name: g?.name || '',
+      member_count: g?.member_count ?? 0,
+      display_color: g?.display_color ?? null,
+      role_id: roleId,
+      role_name: role?.name ?? null,
+    }
+  })
+
+  emit('apply', chosen, chosenGroups)
   close()
 }
 

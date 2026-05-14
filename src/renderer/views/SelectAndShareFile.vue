@@ -288,7 +288,9 @@
                                     display_color: c.display_color,
                                     role_id: c.role_id ?? undefined,
                                     role_name: c.role_name ?? undefined,
-                                }))" @apply="onApplyUsers" />
+                                }))"
+                                :preselectedGroups="accessGroups"
+                                @apply="onApplyUsers" />
                             <ConfirmDeleteModal
                                 v-model="outputsExistModalOpen"
                                 :title="outputsConflictTitle"
@@ -406,7 +408,7 @@ const shareFilesTourSteps: TourStep[] = [
 	},
 	{
 		target: '[data-tour="share-access-mode"]',
-		message: 'Control who can access the link.\n\n• "Anyone with the link" — no sign-in needed.\n• "Anyone + password" — one shared password for all visitors.\n• "Only invited users" — each user signs in with their own account. Roles control download and comment permissions.',
+		message: 'Control who can access the link.\n\n• "Anyone with the link" — no sign-in needed.\n• "Anyone + password" — one shared password for all visitors.\n• "Only invited users and groups" — each user signs in with their own account. Groups let you manage access for multiple users at once. Roles control download and comment permissions.',
 	},
 	{
 		target: '[data-tour="share-advanced-video"]',
@@ -448,13 +450,14 @@ const showDefaultRootOption = computed(
         !configuredProjectRoot.value,
 )
 const accessUsers = ref<Commenter[]>([])
+const accessGroups = ref<{ id: number; name: string; member_count?: number; display_color?: string | null; role_id: number | null; role_name: string | null }[]>([])
 type AccessMode = 'open' | 'open_password' | 'restricted'
 const accessMode = ref<AccessMode>('open')
 const allowOpenComments = ref(true)
 const defaultAccessMode = ref<AccessMode>('open')
 const defaultAllowOpenComments = ref(true)
 const defaultUseProxyFiles = ref(false)
-const accessCount = computed(() => accessUsers.value.length)
+const accessCount = computed(() => accessUsers.value.length + accessGroups.value.length)
 const protectWithPassword = computed({
     get: () => accessMode.value === 'open_password',
     set: (v: boolean) => {
@@ -475,6 +478,7 @@ function resetAll() {
     usePublicBase.value = defaultUsePublicBase.value
     linkTitle.value = ''
     accessUsers.value = []
+    accessGroups.value = []
     accessMode.value = defaultAccessMode.value
     allowOpenComments.value = defaultAllowOpenComments.value
     password.value = ''
@@ -1529,6 +1533,14 @@ async function generateLink() {
         })
     }
 
+    if (accessMode.value === 'restricted' && accessGroups.value.length) {
+        (body as any).groups = accessGroups.value.map(g => ({
+            groupId: g.id,
+            roleId: g.role_id,
+            roleName: g.role_name,
+        }))
+    }
+
     body.generateReviewProxy = hasVideoSelected.value
     body.hls = hasVideoSelected.value
     if (hasVideoSelected.value) {
@@ -1967,7 +1979,8 @@ function makeKey(name?: string, user_email?: string, username?: string) {
 }
 
 function onApplyUsers(
-    users: any[]
+    users: any[],
+    groups?: any[]
 ) {
     // Normalize the selection coming back from the modal
     const next = users.map(u => {
@@ -1999,6 +2012,7 @@ function onApplyUsers(
 
     // REPLACE (not merge): reflect exactly what's selected in the modal
     accessUsers.value = dedup
+    accessGroups.value = groups || []
 
     invalidateLink()
     scheduleAutoRegen()

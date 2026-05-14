@@ -133,7 +133,7 @@
 
         <!-- ── Summary of current settings ── -->
         <div class="text-xs text-muted flex flex-wrap gap-x-4 gap-y-1">
-          <span>Access: {{ accessMode === 'open' ? 'Anyone' : accessMode === 'open_password' ? 'Password' : `${accessUsers.length} invited user(s)` }}</span>
+          <span>Access: {{ accessMode === 'open' ? 'Anyone' : accessMode === 'open_password' ? 'Password' : `${accessUsers.length} user(s)${accessGroups.length ? `, ${accessGroups.length} group(s)` : ''}` }}</span>
           <span v-if="hasVideo">Review Copies: {{ proxyQualities.join(', ') || 'none' }}</span>
           <span v-if="hasVideo">Watermark: {{ watermarkEnabled ? 'on' : 'off' }}</span>
         </div>
@@ -202,7 +202,9 @@
             display_color: c.display_color,
             role_id: c.role_id ?? undefined,
             role_name: c.role_name ?? undefined,
-          }))" @apply="onApplyUsers" />
+          }))"
+          :preselectedGroups="accessGroups"
+          @apply="onApplyUsers" />
       </section>
 
       <!-- ===== STEP 3: Upload & Share Progress ===== -->
@@ -283,6 +285,8 @@ import { useClientTranscode } from '../composables/useClientTranscode'
 import { useUploadTranscode } from '../composables/useUploadTranscode'
 import { signalLinkCreated } from '../composables/useLinkRefresh'
 import { tourQuickShareOpen, tourQuickShareStep, tourQuickShareShowDone } from '../composables/useQuickShareTour'
+import { useTourManager, type TourStep } from '../composables/useTourManager'
+import { useOnboarding } from '../composables/useOnboarding'
 import FolderPicker from './FolderPicker.vue'
 import AddUsersModal from './modals/AddUsersModal.vue'
 import LinkAccessMode from './LinkAccessMode.vue'
@@ -300,6 +304,140 @@ const transfer = useTransferProgress()
 const currentServer = inject(currentServerInjectionKey)!
 const connectionMeta = inject(connectionMetaInjectionKey)!
 const ssh = computed(() => connectionMeta.value.ssh)
+
+// ── Tour ──
+const { requestTour } = useTourManager()
+const { onboarding, markDone } = useOnboarding()
+
+/** Cleanup helper — reset all Quick Share tour state */
+function cleanupQuickShareTour() {
+  tourQuickShareShowDone.value = false
+  tourQuickShareStep.value = 1
+  tourQuickShareOpen.value = false
+}
+
+const quickShareTourSteps: TourStep[] = [
+  // ── Quick Share Step 1: Modal overview ──
+  {
+    target: '[data-tour="qs-modal"]',
+    message: 'This is the Quick Share screen.\n\nWhen you drop files onto 45Flow from most screens, this wizard opens automatically. It walks you through uploading files to the server and generating a share link — all in three quick steps.\n\nThe file list at the top shows what you dropped. Here we\'re using a sample file for the tour.',
+    beforeShow: () => {
+      tourQuickShareStep.value = 1
+      tourQuickShareShowDone.value = false
+      tourQuickShareOpen.value = true
+    },
+  },
+  // ── Quick Share Step 1: Step indicator ──
+  {
+    target: '[data-tour="qs-steps"]',
+    message: 'The step indicator shows your progress.\n\nStep 1 is Destination — choose where on the server to upload. Step 2 is Link Options — set expiry, access, and video settings. Step 3 is Upload & Share — monitor the upload and grab your link.',
+    beforeShow: () => {
+      tourQuickShareStep.value = 1
+      tourQuickShareOpen.value = true
+    },
+  },
+  // ── Quick Share Step 1: Destination picker ──
+  {
+    target: '[data-tour="qs-step-destination"]',
+    message: 'In Step 1, you pick a destination folder on the server.\n\nUse the folder browser to navigate your project directories. Once you\'ve selected a folder, click Next to continue.',
+    beforeShow: () => {
+      tourQuickShareStep.value = 1
+      tourQuickShareOpen.value = true
+    },
+  },
+  // ── Quick Share Step 2: Link Options overview ──
+  {
+    target: '[data-tour="qs-step-options"]',
+    message: 'Step 2 is where you configure your share link before uploading.\n\nLet\'s walk through each option.',
+    beforeShow: () => {
+      tourQuickShareOpen.value = true
+      tourQuickShareStep.value = 2
+    },
+  },
+  // ── Quick Share Step 2: Expiry ──
+  {
+    target: '[data-tour="qs-expiry"]',
+    message: 'Set how long the link stays active.\n\nType a custom value or use the quick presets — 1 hour, 1 day, 1 week, or Never for a permanent link.',
+    beforeShow: () => {
+      tourQuickShareOpen.value = true
+      tourQuickShareStep.value = 2
+    },
+  },
+  // ── Quick Share Step 2: Network ──
+  {
+    target: '[data-tour="qs-network"]',
+    message: 'Choose the network for your share link.\n\nLocal (LAN) generates an internal URL for your network. External (Internet) uses your public domain or IP so anyone outside your network can access it.',
+    beforeShow: () => {
+      tourQuickShareOpen.value = true
+      tourQuickShareStep.value = 2
+    },
+  },
+  // ── Quick Share Step 2: Advanced Options ──
+  {
+    target: '[data-tour="qs-advanced-panel"]',
+    message: 'The Advanced Options panel gives you finer control over your link.\n\nLet\'s go through each setting.',
+    beforeShow: async () => {
+      tourQuickShareOpen.value = true
+      tourQuickShareStep.value = 2
+      await new Promise(r => setTimeout(r, 100))
+      const btn = document.querySelector<HTMLElement>('[data-tour="qs-advanced-btn"]')
+      const panel = document.querySelector('[data-tour="qs-advanced-panel"]')
+      if (btn && !panel) btn.click()
+    },
+  },
+  // ── Quick Share Step 2: Link Title ──
+  {
+    target: '[data-tour="qs-link-title"]',
+    message: 'Give your link a descriptive title.\n\nThis is optional but helps you identify the link later in the dashboard.',
+    beforeShow: async () => {
+      tourQuickShareOpen.value = true
+      tourQuickShareStep.value = 2
+      await new Promise(r => setTimeout(r, 100))
+      const btn = document.querySelector<HTMLElement>('[data-tour="qs-advanced-btn"]')
+      const panel = document.querySelector('[data-tour="qs-advanced-panel"]')
+      if (btn && !panel) btn.click()
+    },
+  },
+  // ── Quick Share Step 2: Access Mode ──
+  {
+    target: '[data-tour="qs-access-mode"]',
+    message: 'Control who can access your shared files.\n\n• Anyone with the link — no sign-in needed.\n• Password protected — recipients enter a shared password.\n• Invited users and groups only — only specific user accounts and groups can access it.\n\nComments can be toggled for open and password-protected links.',
+    beforeShow: async () => {
+      tourQuickShareOpen.value = true
+      tourQuickShareStep.value = 2
+      await new Promise(r => setTimeout(r, 100))
+      const btn = document.querySelector<HTMLElement>('[data-tour="qs-advanced-btn"]')
+      const panel = document.querySelector('[data-tour="qs-advanced-panel"]')
+      if (btn && !panel) btn.click()
+    },
+  },
+  // ── Quick Share Step 2: Video Options ──
+  {
+    target: '[data-tour="qs-video-options"]',
+    message: 'When sharing video files, two things happen automatically:\n\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Review copies (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nWith client-side transcoding enabled (Settings → Performance), video processing happens on your machine before upload — using your local CPU or GPU. This is faster for most workstations and reduces server load. If disabled, the server processes videos after upload.\n\nYou can also overlay a watermark on review copies to protect your content.',
+    beforeShow: async () => {
+      tourQuickShareOpen.value = true
+      tourQuickShareStep.value = 2
+      await new Promise(r => setTimeout(r, 100))
+      const btn = document.querySelector<HTMLElement>('[data-tour="qs-advanced-btn"]')
+      const panel = document.querySelector('[data-tour="qs-advanced-panel"]')
+      if (btn && !panel) btn.click()
+    },
+  },
+  // ── Quick Share Step 3: Upload & Share (done state) ──
+  {
+    target: '[data-tour="qs-step-upload"]',
+    message: 'Step 3 handles the upload and link generation.\n\nYou\'ll see per-file progress bars while files transfer, then your share link appears with Copy and Open buttons. That\'s it — Quick Share in three steps!',
+    beforeShow: () => {
+      tourQuickShareOpen.value = true
+      tourQuickShareStep.value = 3
+      tourQuickShareShowDone.value = true
+    },
+  },
+]
+
+/** Pending real files to open after the tour finishes */
+let pendingDropFiles: DroppedFile[] = []
 
 // ── Drag state ──
 const dragging = ref(false)
@@ -355,6 +493,28 @@ function onDocDrop(e: DragEvent) {
   }
 
   if (!files.length) return
+
+  if (!onboarding.value.quickShareTourDone) {
+    // First drop — run the Quick Share tour first, then open the real modal
+    pendingDropFiles = files
+    requestTour('quickShare', quickShareTourSteps, () => {
+      markDone('quickShareTourDone')
+      // Restore the user's real files before exiting tour mode
+      // so the watcher doesn't blank the modal.
+      const realFiles = pendingDropFiles
+      pendingDropFiles = []
+      tourQuickShareShowDone.value = false
+      tourQuickShareStep.value = 1
+      droppedFiles.value = realFiles.length ? realFiles : []
+      wizardStep.value = 1
+      uploadPhase.value = 'idle'
+      viewUrl.value = ''
+      tourQuickShareOpen.value = false
+      showModal.value = realFiles.length > 0
+    })
+    return
+  }
+
   droppedFiles.value = files
   resetWizard()
   showModal.value = true
@@ -395,9 +555,9 @@ watch(tourQuickShareOpen, (open) => {
     droppedFiles.value = MOCK_FILES
     wizardStep.value = tourQuickShareStep.value
     showModal.value = true
-  } else {
+  } else if (!droppedFiles.value.length) {
+    // Only reset if no real files were loaded (i.e. tour was cancelled, not completed)
     showModal.value = false
-    droppedFiles.value = []
     wizardStep.value = 1
     uploadPhase.value = 'idle'
   }
@@ -440,6 +600,7 @@ const proxyQualities = ref<string[]>(['original'])
 // Restricted users
 const userModalOpen = ref(false)
 const accessUsers = ref<Commenter[]>([])
+const accessGroups = ref<{ id: number; name: string; member_count?: number; display_color?: string | null; role_id: number | null; role_name: string | null }[]>([])
 const linkContext = { type: 'download' as const }
 
 // Watermark
@@ -496,7 +657,7 @@ const expiresSec = computed(() => {
 
 const canProceed = computed(() => {
   if (accessMode.value === 'open_password' && !password.value) return false
-  if (accessMode.value === 'restricted' && !accessUsers.value.length) return false
+  if (accessMode.value === 'restricted' && !accessUsers.value.length && !accessGroups.value.length) return false
   if (hasVideo.value && proxyQualities.value.length === 0) return false
   if (watermarkEnabled.value && !watermarkFile.value && !selectedExistingWatermark.value) return false
   return true
@@ -527,6 +688,7 @@ function resetWizard() {
   showPassword.value = false
   allowOpenComments.value = true
   accessUsers.value = []
+  accessGroups.value = []
   userModalOpen.value = false
   proxyQualities.value = ['original']
   watermarkEnabled.value = false
@@ -578,7 +740,7 @@ const watermarkPreviewUrl = computed(() =>
   watermarkFile.value?.dataUrl || existingWatermarkPreviewUrl.value || null
 )
 
-function onApplyUsers(users: any[]) {
+function onApplyUsers(users: any[], groups?: any[]) {
   const next = users.map((u: any) => {
     const username = (u.username || '').trim()
     const name = (u.name || username).trim()
@@ -595,6 +757,7 @@ function onApplyUsers(users: any[]) {
     dedup.push(c)
   }
   accessUsers.value = dedup
+  accessGroups.value = groups || []
 }
 
 function pickWatermark() {
@@ -1024,6 +1187,14 @@ async function startUploadAndShare() {
         if (c.role_name) out.roleName = c.role_name
         return out
       })
+    }
+
+    if (accessMode.value === 'restricted' && accessGroups.value.length) {
+      body.groups = accessGroups.value.map(g => ({
+        groupId: g.id,
+        roleId: g.role_id,
+        roleName: g.role_name,
+      }))
     }
 
     if (hasVideo.value) {

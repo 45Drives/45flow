@@ -26,7 +26,7 @@
           <input type="radio" :name="radioName" value="restricted" :checked="modelValue === 'restricted'"
             @change="$emit('update:modelValue', 'restricted')" :class="compact ? 'mt-0.5' : 'mt-1'" />
           <span class="min-w-0">
-            <span class="font-semibold block" :class="compact ? 'text-sm' : ''">{{ compact ? 'Invited users only' : 'Only invited users' }}</span>
+            <span class="font-semibold block" :class="compact ? 'text-sm' : ''">{{ compact ? 'Invited users & groups' : 'Only invited users & groups' }}</span>
             <span class="text-xs text-muted block">Sign in with {{ compact ? 'user account.' : 'a user account. Permissions come from roles.' }}</span>
           </span>
         </label>
@@ -77,10 +77,10 @@
         <!-- Restricted mode -->
         <div v-if="modelValue === 'restricted'" class="flex flex-col gap-2 min-w-0">
           <p class="text-xs text-muted">
-            {{ compact ? 'Users sign in with their own credentials. Roles control permissions.' : restrictedHelpText }}
+            {{ compact ? 'Users and groups sign in with their own credentials. Roles control permissions.' : restrictedHelpText }}
           </p>
           <button type="button" class="btn btn-primary" @click="$emit('openUserModal')">
-            {{ accessCount ? 'Manage invited users' : 'Invite users…' }}
+            {{ accessCount ? 'Manage access' : 'Invite users & groups…' }}
             <span v-if="accessCount"
               class="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-default text-default">
               {{ accessCount }}
@@ -88,7 +88,7 @@
           </button>
           <p class="text-xs opacity-70">Roles control permissions.</p>
           <p v-if="!accessSatisfied" class="text-sm text-red-500">
-            Add at least one user{{ compact ? '.' : ' to continue.' }}
+            Add at least one user or group{{ compact ? '.' : ' to continue.' }}
           </p>
         </div>
 
@@ -154,7 +154,7 @@ const props = withDefaults(defineProps<{
   showComments: true,
   showSummary: true,
   openWarning: '',
-  restrictedHelpText: 'Invited users sign in with their own username and password. Roles control download and comment permissions.',
+  restrictedHelpText: 'Invited users and groups sign in with their own credentials. Roles control download and comment permissions.',
   wrapperClass: '',
 })
 
