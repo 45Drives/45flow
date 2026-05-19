@@ -142,6 +142,13 @@ WIN_BUILD_NO_SIGN_PREFIX_POSIX="${WIN_BUILD_NO_SIGN_PREFIX_POSIX:-CSC_IDENTITY_A
 
 WIN_SIGN_WIN_DIR="${WIN_SIGN_WIN_DIR:-}"
 
+# Samba build mode vars
+WIN_SAMBA_LOCAL_DIR="${WIN_SAMBA_LOCAL_DIR:-}"
+WIN_SAMBA_UNSIGNED_WIN="${WIN_SAMBA_UNSIGNED_WIN:-J:\\Signing\\Unsigned}"
+WIN_SAMBA_SIGNED_WIN="${WIN_SAMBA_SIGNED_WIN:-J:\\Signing\\Signed}"
+WIN_SAMBA_UNSIGNED_LOCAL="${WIN_SAMBA_UNSIGNED_LOCAL:-}"
+WIN_SAMBA_SIGNED_LOCAL="${WIN_SAMBA_SIGNED_LOCAL:-}"
+
 truthy() {
   local v="${1:-}"
   [[ "$v" == "1" || "$v" == "true" || "$v" == "TRUE" || "$v" == "yes" || "$v" == "YES" ]]
@@ -416,7 +423,6 @@ run_windows_flow() {
 
   : "${WIN_BUILD_HOST:?WIN_BUILD_HOST is required when RUN_WINDOWS_BUILD=1}"
   : "${WIN_BUILD_USER:?WIN_BUILD_USER is required when RUN_WINDOWS_BUILD=1}"
-  : "${WIN_SIGN_WIN_DIR:?WIN_SIGN_WIN_DIR is required when RUN_WINDOWS_BUILD=1}"
 
   if [[ "$WIN_PHASE" == "stage" ]] && (truthy "${GH_UPLOAD_RELEASE:-0}" || truthy "${GH_PUBLISH_RELEASE:-0}"); then
     echo "WIN_PHASE=stage cannot run with GH upload/publish enabled." >&2
@@ -424,7 +430,7 @@ run_windows_flow() {
     exit 1
   fi
 
-  WIN_BUILD_MODE="${WIN_BUILD_MODE:-git}" # git | rsync
+  WIN_BUILD_MODE="${WIN_BUILD_MODE:-git}" # git | rsync | samba
   WIN_BUILD_GIT_PULL_CMD="${WIN_BUILD_GIT_PULL_CMD:-cd ${WIN_BUILD_REMOTE_DIR} && git pull --ff-only}"
   WIN_BUILD_CMD="${WIN_BUILD_CMD:-cd ${WIN_BUILD_REMOTE_DIR} && yarn install && yarn build:win}"
   WIN_BUILD_EXE_GLOB="${WIN_BUILD_EXE_GLOB:-${WIN_BUILD_REMOTE_DIR}/dist/*-win-*.exe}"
@@ -433,6 +439,110 @@ run_windows_flow() {
   WIN_BUILD_DIST_DIR_WIN="${WIN_BUILD_DIST_DIR_WIN%/}"
 
   mkdir -p "$STAGING_DIR/windows/unsigned" "$STAGING_DIR/windows/signed"
+
+  # ---- Samba build mode ----
+  if [[ "$WIN_BUILD_MODE" == "samba" ]]; then
+    : "${WIN_SAMBA_LOCAL_DIR:?WIN_SAMBA_LOCAL_DIR is required when WIN_BUILD_MODE=samba}"
+    # Derive Unsigned/Signed local paths from the samba mount if not explicitly set
+    WIN_SAMBA_UNSIGNED_LOCAL="${WIN_SAMBA_UNSIGNED_LOCAL:-${WIN_SAMBA_LOCAL_DIR%/}/Unsigned}"
+    WIN_SAMBA_SIGNED_LOCAL="${WIN_SAMBA_SIGNED_LOCAL:-${WIN_SAMBA_LOCAL_DIR%/}/Signed}"
+
+    if [[ "$WIN_PHASE" != "finalize" ]]; then
+      # SSH: git pull
+      ssh_run "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" "$WIN_BUILD_GIT_PULL_CMD"
+
+      # SSH: clean old exe files from dist
+      WIN_CLEAN_OUTPUTS="${WIN_CLEAN_OUTPUTS:-1}"
+      if truthy "$WIN_CLEAN_OUTPUTS"; then
+        echo "Cleaning old Windows exe files from dist directory..."
+        ssh_run "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" \
+          "powershell -NoProfile -Command \"if (Test-Path '${WIN_BUILD_DIST_DIR_WIN}') { Get-ChildItem -Path '${WIN_BUILD_DIST_DIR_WIN}' -Filter *.exe -File | Remove-Item -Force }\""
+      fi
+
+      # SSH: build
+      WIN_BUILD_CMD_EFFECTIVE="$WIN_BUILD_CMD"
+      if truthy "${WIN_BUILD_DISABLE_SIGN:-1}"; then
+        if [[ "$WIN_BUILD_CMD" =~ ^[[:space:]]*cmd\.exe[[:space:]]+/c[[:space:]]+\"(.*)\"[[:space:]]*$ ]]; then
+          WIN_BUILD_CMD_INNER="${BASH_REMATCH[1]}"
+          WIN_BUILD_CMD_EFFECTIVE="cmd.exe /c \"${WIN_BUILD_NO_SIGN_PREFIX}${WIN_BUILD_CMD_INNER}\""
+        else
+          WIN_BUILD_CMD_EFFECTIVE="${WIN_BUILD_NO_SIGN_PREFIX_POSIX}${WIN_BUILD_CMD}"
+        fi
+      fi
+      ssh_run "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" "$WIN_BUILD_CMD_EFFECTIVE"
+
+      # SSH: find the built exe and copy it to the samba Unsigned folder on Windows
+      WIN_UNSIGNED_EXE_REMOTE_WIN="$(ssh_run "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" \
+        "powershell -NoProfile -Command \"\$f = Get-ChildItem -LiteralPath '${WIN_BUILD_DIST_DIR_WIN}' -Filter *.exe -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if (-not \$f) { Write-Error 'No unsigned Windows EXE found'; exit 44 }; Write-Output \$f.FullName\"")"
+      WIN_UNSIGNED_EXE_REMOTE_WIN="$(printf '%s' "$WIN_UNSIGNED_EXE_REMOTE_WIN" | tr -d '\r')"
+      WIN_SIGN_BASENAME="$(printf '%s' "$WIN_UNSIGNED_EXE_REMOTE_WIN" | sed -E 's#.*[\\/]##')"
+
+      # SCP: pull unsigned exe from Windows dist to local samba Unsigned folder
+      mkdir -p "$WIN_SAMBA_UNSIGNED_LOCAL"
+      WIN_UNSIGNED_EXE_REMOTE_POSIX="${WIN_UNSIGNED_EXE_REMOTE_WIN//\\//}"
+      scp_from_file "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" "$WIN_UNSIGNED_EXE_REMOTE_POSIX" "${WIN_SAMBA_UNSIGNED_LOCAL}/${WIN_SIGN_BASENAME}"
+
+      echo ""
+      echo "Unsigned EXE pulled to samba share via SCP."
+      echo "  Windows source: ${WIN_UNSIGNED_EXE_REMOTE_WIN}"
+      echo "  Linux path:     ${WIN_SAMBA_UNSIGNED_LOCAL}/${WIN_SIGN_BASENAME}"
+      echo "  Windows path:   ${WIN_SAMBA_UNSIGNED_WIN}\\${WIN_SIGN_BASENAME}"
+    fi
+
+    if [[ "$WIN_PHASE" == "stage" ]]; then
+      echo ""
+      echo "Windows stage complete."
+      echo "Sign the EXE manually on Windows, then place the signed file in:"
+      echo "  Windows: ${WIN_SAMBA_SIGNED_WIN}"
+      echo "  Linux:   ${WIN_SAMBA_SIGNED_LOCAL}"
+      echo ""
+      echo "Resume command:"
+      echo "  WIN_PHASE=finalize bash scripts/release/orchestrate-release.sh '${ENV_FILE}'"
+      exit 0
+    fi
+
+    # ---- Finalize: read signed exe from samba mount (local filesystem) ----
+    if [[ "$WIN_PHASE" != "stage" ]]; then
+      echo "Reading signed artifacts from samba mount: ${WIN_SAMBA_SIGNED_LOCAL}"
+      shopt -s nullglob
+      signed_exes=("${WIN_SAMBA_SIGNED_LOCAL}/"*.exe)
+      shopt -u nullglob
+      if [[ "${#signed_exes[@]}" -eq 0 ]]; then
+        echo "No signed Windows EXE found in ${WIN_SAMBA_SIGNED_LOCAL}" >&2
+        echo "Expected to find the signed .exe in that directory." >&2
+        exit 1
+      fi
+      # Pick the most recently modified exe
+      WIN_SIGNED_EXE="$(ls -1t "${signed_exes[@]}" | head -n1)"
+      WIN_PRIMARY_EXE_NAME="$(basename "$WIN_SIGNED_EXE")"
+      WIN_PRIMARY_EXE_LOCAL="$STAGING_DIR/windows/signed/${WIN_PRIMARY_EXE_NAME}"
+      cp -f "$WIN_SIGNED_EXE" "$WIN_PRIMARY_EXE_LOCAL"
+      WIN_PRIMARY_EXE="$WIN_PRIMARY_EXE_LOCAL"
+      echo "Copied signed EXE: ${WIN_PRIMARY_EXE_NAME}"
+
+      # Check for blockmap
+      WIN_PRIMARY_BLOCKMAP=""
+      if [[ -f "${WIN_SIGNED_EXE}.blockmap" ]]; then
+        WIN_PRIMARY_BLOCKMAP="$STAGING_DIR/windows/signed/${WIN_PRIMARY_EXE_NAME}.blockmap"
+        cp -f "${WIN_SIGNED_EXE}.blockmap" "$WIN_PRIMARY_BLOCKMAP"
+        echo "Copied blockmap: ${WIN_PRIMARY_EXE_NAME}.blockmap"
+      fi
+
+      yarn release:gen-yml \
+        --version "$VERSION" \
+        --output "$STAGING_DIR/windows/latest.yml" \
+        --file "$WIN_PRIMARY_EXE"
+      copy_to_release_builds "$WIN_PRIMARY_EXE"
+      if [[ -n "${WIN_PRIMARY_BLOCKMAP:-}" ]]; then
+        copy_to_release_builds "$WIN_PRIMARY_BLOCKMAP"
+      fi
+      copy_to_release_builds "$STAGING_DIR/windows/latest.yml"
+    fi
+    return
+  fi
+
+  # ---- Legacy SSH-only build modes (git / rsync) ----
+  : "${WIN_SIGN_WIN_DIR:?WIN_SIGN_WIN_DIR is required when WIN_BUILD_MODE is git or rsync}"
 
   if [[ "$WIN_PHASE" != "finalize" ]]; then
     ssh_run "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" "$WIN_BUILD_GIT_PULL_CMD"
