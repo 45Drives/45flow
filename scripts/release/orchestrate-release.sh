@@ -448,9 +448,8 @@ run_windows_flow() {
     WIN_SAMBA_SIGNED_LOCAL="${WIN_SAMBA_SIGNED_LOCAL:-${WIN_SAMBA_LOCAL_DIR%/}/Signed}"
 
     if [[ "$WIN_PHASE" != "finalize" ]]; then
-      # Clean stale files from samba Unsigned/Signed before a new stage run
+      # Clean stale unsigned files before a new stage run (preserve Signed directory)
       find "$WIN_SAMBA_UNSIGNED_LOCAL" -maxdepth 1 -type f -name '*.exe' -delete 2>/dev/null || true
-      find "$WIN_SAMBA_SIGNED_LOCAL" -maxdepth 1 -type f \( -name '*.exe' -o -name '*.blockmap' \) -delete 2>/dev/null || true
 
       # SSH: git pull
       ssh_run "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" "$WIN_BUILD_GIT_PULL_CMD"
