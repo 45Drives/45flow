@@ -246,6 +246,10 @@ export function useUploadTranscode() {
 
                         // console.log('[client-transcode] HLS done, rsyncing…')
                         const rsynced = await rsyncToServer(result.outputDir)
+                        // Clean up HLS temp dir regardless of rsync outcome
+                        if (result.outputDir) {
+                            (window as any).electron.cleanupTranscodeTemp(result.outputDir).catch(() => {})
+                        }
                         if (rsynced) {
                             await opts.apiFetch('/api/ingest/transcode-complete', {
                                 method: 'POST',
@@ -315,6 +319,10 @@ export function useUploadTranscode() {
                     if (result?.ok && result?.proxyFiles && Object.keys(result.proxyFiles).length > 0) {
                         // console.log('[client-transcode] proxy done, rsyncing…')
                         const rsynced = await rsyncToServer(result.outputDir)
+                        // Clean up proxy temp dir regardless of rsync outcome
+                        if (result.outputDir) {
+                            (window as any).electron.cleanupTranscodeTemp(result.outputDir).catch(() => {})
+                        }
                         if (rsynced) {
                             await opts.apiFetch('/api/ingest/transcode-complete', {
                                 method: 'POST',
@@ -340,6 +348,11 @@ export function useUploadTranscode() {
             }
 
             stopHeartbeat()
+
+            // Clean up watermark temp file if one was downloaded
+            if (opts.watermarkPath) {
+                (window as any).electron.cleanupWatermarkTemp(opts.watermarkPath).catch(() => {})
+            }
 
             const allOk = (opts.generateHls ? hlsOk : true)
                 && (opts.proxyQualities.length > 0 ? proxyOk : true)

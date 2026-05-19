@@ -1923,6 +1923,23 @@ function createWindow() {
     }
     setupStreams.clear();
 
+    // Sweep leftover 45flow temp directories
+    try {
+      const tempBase = app.getPath('temp');
+      const entries = fs.readdirSync(tempBase);
+      for (const entry of entries) {
+        if (entry.startsWith('45flow-')) {
+          const fullPath = path.join(tempBase, entry);
+          try {
+            fs.rmSync(fullPath, { recursive: true, force: true });
+          } catch {}
+        }
+      }
+      jl('info', 'app.temp-cleanup.done');
+    } catch (err: any) {
+      jl('warn', 'app.temp-cleanup.error', { error: err?.message || String(err) });
+    }
+
     jl('info', 'app.window-all-closed', { platform: process.platform });
 
     if (process.platform !== 'darwin') {
@@ -3148,5 +3165,43 @@ ipcMain.handle('watermark:download', async (_event, opts: { apiBase: string; tok
   } catch (err: any) {
     jl('error', 'watermark.download.error', { relPath, error: err?.message || String(err) });
     return null;
+  }
+});
+
+// ── Cleanup: remove a specific temp directory (called after rsync) ───────────
+ipcMain.handle('transcode:cleanup-temp', async (_event, { dirPath }) => {
+  if (!dirPath || typeof dirPath !== 'string') return { ok: false, error: 'invalid path' };
+  const tempBase = app.getPath('temp');
+  const resolved = path.resolve(dirPath);
+  // Safety: only allow deletion within the OS temp directory and matching our prefix
+  if (!resolved.startsWith(tempBase) || !path.basename(resolved).startsWith('45flow-')) {
+    jl('warn', 'transcode.cleanup.rejected', { dirPath: resolved });
+    return { ok: false, error: 'path not within temp or missing prefix' };
+  }
+  try {
+    fs.rmSync(resolved, { recursive: true, force: true });
+    jl('info', 'transcode.cleanup.ok', { dirPath: resolved });
+    return { ok: true };
+  } catch (err: any) {
+    jl('error', 'transcode.cleanup.error', { dirPath: resolved, error: err?.message || String(err) });
+    return { ok: false, error: err?.message };
+  }
+});
+
+// ── Cleanup: remove a single watermark temp file ─────────────────────────────
+ipcMain.handle('transcode:cleanup-watermark', async (_event, { filePath: wmPath }) => {
+  if (!wmPath || typeof wmPath !== 'string') return { ok: false };
+  const tempBase = app.getPath('temp');
+  const resolved = path.resolve(wmPath);
+  if (!resolved.startsWith(path.join(tempBase, '45flow-watermarks'))) {
+    return { ok: false, error: 'path not within watermarks temp' };
+  }
+  try {
+    fs.unlinkSync(resolved);
+    jl('info', 'watermark.cleanup.ok', { filePath: resolved });
+    return { ok: true };
+  } catch (err: any) {
+    jl('error', 'watermark.cleanup.error', { filePath: resolved, error: err?.message || String(err) });
+    return { ok: false, error: err?.message };
   }
 });

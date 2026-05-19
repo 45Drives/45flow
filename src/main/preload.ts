@@ -160,6 +160,11 @@ export type ElectronApi = {
   /** Cancel an active full transcode */
   fullTranscodeCancel: (jobId: string) => void
 
+  /** Remove a transcode temp directory after rsync */
+  cleanupTranscodeTemp: (dirPath: string) => Promise<{ ok: boolean; error?: string }>
+  /** Remove a downloaded watermark temp file */
+  cleanupWatermarkTemp: (filePath: string) => Promise<{ ok: boolean; error?: string }>
+
   /** Download a watermark image from the server to a local temp file */
   downloadWatermark: (opts: { apiBase: string; token: string; relPath: string }) => Promise<string | null>
 
@@ -330,6 +335,9 @@ const api: ElectronApi = {
   },
 
   fullTranscodeCancel: (jobId: string) => ipcRenderer.invoke('transcode:full-cancel', { jobId }),
+
+  cleanupTranscodeTemp: (dirPath: string) => ipcRenderer.invoke('transcode:cleanup-temp', { dirPath }),
+  cleanupWatermarkTemp: (filePath: string) => ipcRenderer.invoke('transcode:cleanup-watermark', { filePath }),
 
   downloadWatermark: (opts: { apiBase: string; token: string; relPath: string }) =>
     ipcRenderer.invoke('watermark:download', opts),

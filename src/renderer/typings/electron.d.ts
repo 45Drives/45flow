@@ -276,6 +276,11 @@ export interface ElectronApi {
 
   fullTranscodeCancel: (jobId: string) => void
 
+  /** Remove a transcode temp directory after rsync */
+  cleanupTranscodeTemp: (dirPath: string) => Promise<{ ok: boolean; error?: string }>
+  /** Remove a downloaded watermark temp file */
+  cleanupWatermarkTemp: (filePath: string) => Promise<{ ok: boolean; error?: string }>
+
   /** Download a watermark image from the server to a local temp file */
   downloadWatermark: (opts: { apiBase: string; token: string; relPath: string }) => Promise<string | null>
 
