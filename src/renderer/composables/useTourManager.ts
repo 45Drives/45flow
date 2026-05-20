@@ -1,4 +1,5 @@
 import { ref, readonly, type Ref } from 'vue'
+import { useTourPreferences } from './useTourPreferences'
 
 export interface TourStep {
   /** CSS selector for the target element to highlight */
@@ -23,7 +24,12 @@ const _activeTour = ref<TourRegistration | null>(null)
 const _queue: TourRegistration[] = []
 
 export function useTourManager() {
+  const { toursDisabled } = useTourPreferences()
+
   function requestTour(id: string, steps: TourStep[], onDone: () => void | Promise<void>) {
+    // Don't show tours if globally disabled
+    if (toursDisabled.value) return
+    
     if (_activeTour.value?.id === id || _queue.some(t => t.id === id)) return
 
     const registration: TourRegistration = { id, steps, onDone }

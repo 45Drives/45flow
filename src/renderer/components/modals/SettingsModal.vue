@@ -303,6 +303,18 @@
 
                             <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Guided Tours</p>
                             <div class="divide-y divide-default">
+                                <SettingRow label="Disable guided tours" description="Turn off all onboarding walkthroughs and first-time guides.">
+                                    <Switch v-model="toursDisabled" :class="[
+                                        toursDisabled ? 'bg-primary' : 'bg-well',
+                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
+                                    ]">
+                                        <span class="sr-only">Toggle guided tours</span>
+                                        <span :class="[
+                                            toursDisabled ? 'translate-x-4' : 'translate-x-0',
+                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
+                                        ]" />
+                                    </Switch>
+                                </SettingRow>
                                 <SettingRow label="Re-enable guided tours" description="Reset onboarding walkthroughs so they show again on each page.">
                                     <button
                                         class="btn btn-secondary text-sm px-3 py-1"
@@ -862,6 +874,7 @@ import { useOnboarding } from "../../composables/useOnboarding";
 import { useTimeFormat } from "../../composables/useTimeFormat";
 import { useClientTranscode } from "../../composables/useClientTranscode";
 import { useTourManager, type TourStep } from "../../composables/useTourManager";
+import { useTourPreferences } from "../../composables/useTourPreferences";
 import { appLog } from "../../composables/useLog";
 import { useThemeFromAlias } from "../../composables/useThemeFromAlias";
 
@@ -888,6 +901,7 @@ const { hour12 } = useTimeFormat();
 const { enabled: clientTranscodeEnabled, preset: transcodePreset, hwAccel: hwAccelEnabled } = useClientTranscode();
 const { requestTour } = useTourManager();
 const { setCustomThemeColors, setCustomThemeEnabled } = useThemeFromAlias();
+const { toursDisabled } = useTourPreferences();
 
 const hardwareCapabilities = ref<any>(null);
 
