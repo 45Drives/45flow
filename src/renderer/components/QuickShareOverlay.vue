@@ -36,7 +36,10 @@
       <!-- Header -->
       <div class="flex items-center justify-between mb-4 shrink-0">
         <h2 class="text-lg font-semibold">
-          Upload {{ droppedFiles.length === 1 ? `"${droppedFiles[0].name}"` : `${droppedFiles.length} files` }} to server?
+          Upload {{ droppedFiles.length === 1 ? `"${droppedFiles[0].name}"` : `${droppedFiles.length} files` }} to server
+          <span v-if="activeConnection" class="text-sm text-muted font-normal ml-2">
+            ({{ activeConnection.name }})
+          </span>
         </h2>
         <div class="flex items-center gap-2">
           <button class="btn btn-secondary flex items-center gap-1" @click="minimized = true" title="Minimize">
@@ -280,6 +283,7 @@ import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { appLog } from '../composables/useLog'
 import { connectionMetaInjectionKey, currentServerInjectionKey } from '../keys/injection-keys'
 import { useApi } from '../composables/useApi'
+import { useConnections } from '../composables/useConnections'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { useClientTranscode } from '../composables/useClientTranscode'
 import { useUploadTranscode } from '../composables/useUploadTranscode'
@@ -300,6 +304,7 @@ type DroppedFile = { path: string; name: string; size: number }
 
 const route = useRoute()
 const { apiFetch } = useApi()
+const { activeConnection } = useConnections()
 const transfer = useTransferProgress()
 const currentServer = inject(currentServerInjectionKey)!
 const connectionMeta = inject(connectionMetaInjectionKey)!
@@ -496,11 +501,10 @@ function onDocDrop(e: DragEvent) {
 
   if (!onboarding.value.quickShareTourDone) {
     // First drop — run the Quick Share tour first, then open the real modal
+    // But only if tours are enabled; otherwise skip straight to modal
     pendingDropFiles = files
-    requestTour('quickShare', quickShareTourSteps, () => {
+    const tourShown = requestTour('quickShare', quickShareTourSteps, () => {
       markDone('quickShareTourDone')
-      // Restore the user's real files before exiting tour mode
-      // so the watcher doesn't blank the modal.
       const realFiles = pendingDropFiles
       pendingDropFiles = []
       tourQuickShareShowDone.value = false
@@ -512,7 +516,11 @@ function onDocDrop(e: DragEvent) {
       tourQuickShareOpen.value = false
       showModal.value = realFiles.length > 0
     })
-    return
+    // If requestTour actually started the tour, wait for it to finish
+    if (tourShown !== false) return
+    // Tours disabled — mark done and fall through
+    markDone('quickShareTourDone')
+    pendingDropFiles = []
   }
 
   droppedFiles.value = files
@@ -1287,6 +1295,7 @@ async function startUploadAndShare() {
             intervalMs: 1500,
             jobKind: 'hls',
             context,
+            assetVersionId,
             fetchSnapshot: async () => {
               const payload = await apiFetch(playbackPath, { suppressAuthRedirect: true })
               const j = payload?.transcodes?.hls || payload?.transcodes?.HLS || null
@@ -1307,6 +1316,7 @@ async function startUploadAndShare() {
             intervalMs: 1500,
             jobKind: 'proxy_mp4',
             context,
+            assetVersionId,
             fetchSnapshot: async () => {
               const payload = await apiFetch(playbackPath, { suppressAuthRedirect: true })
               const j = payload?.transcodes?.proxy_mp4 || payload?.transcodes?.proxy || null

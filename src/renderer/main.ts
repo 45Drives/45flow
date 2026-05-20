@@ -1,8 +1,8 @@
 import './ipc-web-shim';
 
 // capture originals
-const _origWarn = console.warn.bind(console)
-const _origError = console.error.bind(console)
+const origWarn = console.warn.bind(console)
+const origError = console.error.bind(console)
 
 // override warn & error
 console.warn = (...args: any[]) => {
@@ -11,13 +11,13 @@ console.warn = (...args: any[]) => {
         msg.includes('APPIMAGE env is not defined') ||
         msg.includes('NODE_TLS_REJECT_UNAUTHORIZED')
     ) return
-    _origWarn(...args)
+    origWarn(...args)
 }
 
 console.error = (...args: any[]) => {
     const msg = args.map(String).join(' ')
     if (msg.includes('NODE_TLS_REJECT_UNAUTHORIZED')) return
-    _origError(...args)
+    origError(...args)
 }
 
 import { IPCRouter } from '@45drives/houston-common-lib'

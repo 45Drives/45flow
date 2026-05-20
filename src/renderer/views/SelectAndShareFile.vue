@@ -1729,6 +1729,7 @@ async function generateLink() {
                                 intervalMs: 1500,
                                 jobKind: 'hls',
                                 context,
+                                assetVersionId,
                                 fetchSnapshot: async () => {
                                     const payload = await apiFetch(playbackPath, { suppressAuthRedirect: true })
                                     const j = payload?.transcodes?.hls || payload?.transcodes?.HLS || null
@@ -1760,6 +1761,7 @@ async function generateLink() {
                                     intervalMs: 1500,
                                     jobKind: 'proxy_mp4',
                                     context,
+                                    assetVersionId,
                                     fetchSnapshot: async () => {
                                         const payload = await apiFetch(playbackPath, { suppressAuthRedirect: true })
                                         const j = payload?.transcodes?.proxy_mp4 || payload?.transcodes?.proxy || null

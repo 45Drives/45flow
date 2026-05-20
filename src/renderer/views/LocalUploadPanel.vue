@@ -4,7 +4,12 @@
 			<CardContainer class="local-upload-card ss-surface bg-accent rounded-md shadow-xl h-[calc(100vh-10rem)] flex flex-col">
 				<template #header>
 					<div class="wizard-head" data-tour="upload-wizard-header">
-						<h2 class="wizard-main-title">Local Upload Wizard</h2>
+						<h2 class="wizard-main-title">
+							Local Upload Wizard
+							<span v-if="activeConnection" class="text-sm text-muted font-normal ml-2">
+								→ {{ activeConnection.name }}
+							</span>
+						</h2>
 						<ol class="wizard-stepper" aria-label="Upload steps">
 							<li class="wizard-step-item">
 								<div :class="stepClass(1)">1</div>
@@ -287,6 +292,7 @@
 <script setup lang="ts">
 import { ref, computed, inject, watch, onMounted, nextTick } from 'vue'
 import { useApi } from '../composables/useApi'
+import { useConnections } from '../composables/useConnections'
 import FolderPicker from '../components/FolderPicker.vue'
 import VideoOptionsPanel from '../components/VideoOptionsPanel.vue'
 import { connectionMetaInjectionKey } from '../keys/injection-keys';
@@ -401,6 +407,7 @@ const ssh = connectionMeta.value.ssh
 const isUploading = ref(false)
 
 const { apiFetch } = useApi()
+const { activeConnection } = useConnections()
 
 /** ── Step control ───────────────────────────────────────── */
 const step = ref<1 | 2 | 3>(1)

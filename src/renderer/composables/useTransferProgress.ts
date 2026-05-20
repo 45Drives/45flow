@@ -2,12 +2,14 @@
 import { computed, reactive, watch } from 'vue'
 import type { ProgressItem, VersionProgressItem } from './transcodeProgress'
 import { startProgressPolling } from './transcodeProgress'
+import { useWebSocketManager } from './useWebSocketManager'
 
 type UploadStatus = 'queued' | 'uploading' | 'done' | 'canceled' | 'error'
 type TranscodeStatus = 'queued' | 'running' | 'done' | 'failed' | 'unknown'
 
 export type TransferContext = {
     source: 'link' | 'upload'
+    connectionId?: string     // NEW: which server this task targets
     groupId?: string          // stable id shared by upload+transcode for same action
     linkUrl?: string
     linkTitle?: string
@@ -870,92 +872,163 @@ export function useTransferProgress() {
         }
         upsertTask(t)
 
-        let stopPolling: (() => void) | null = null
-        const stop = startProgressPolling({
-            apiFetch: opts.apiFetch,
-            ...(opts.mode === 'version'
-                ? { assetVersionIds: () => idsToTrack }
-                : { fileIds: () => idsToTrack }),
-            intervalMs: opts.intervalMs ?? 1500,
-            onUpdate: (items) => {
-                const cur = _state.tasks.find(x => x.taskId === taskId && x.kind === 'transcode') as
-                    | Extract<TransferTask, { kind: 'transcode' }>
-                    | undefined
-                if (!cur) return
+        // WebSocket + polling (both run in parallel for resilience)
+        const connectionId = opts.context?.connectionId
+        const wsManager = useWebSocketManager()
+        let wsSubscribed = false
+        const taskJobKind = opts.jobKind ?? 'any'
 
-                const castItems = (items || []) as TItem[]
-                cur.items = castItems as any
+        // WebSocket update handler
+        const handleWsUpdate = (data: any) => {
+            const cur = _state.tasks.find(x => x.taskId === taskId && x.kind === 'transcode') as
+                | Extract<TransferTask, { kind: 'transcode' }>
+                | undefined
+            if (!cur) return
 
-                const hasAllTrackedItems = (() => {
-                    if (!idsToTrack.length) return false
-                    const seen = new Set<number>()
-                    for (const it of castItems) {
-                        const rawId = opts.mode === 'version'
-                            ? (it as any)?.assetVersionId
-                            : (it as any)?.fileId
-                        const id = Number(rawId)
-                        if (Number.isFinite(id) && id > 0) seen.add(id)
-                    }
-                    return idsToTrack.every(id => seen.has(id))
-                })()
+            // Filter by kind - only accept updates matching this task's jobKind
+            if (taskJobKind !== 'any' && data?.kind && data.kind !== taskJobKind) return
 
-                const s = opts.summarizeItems(castItems, cur)
-                const rawNextStatus = (isTerminalTranscodeStatus(s.status) && !hasAllTrackedItems)
-                    ? 'running'
-                    : s.status
+            // Ignore 'done' status if we haven't started running yet
+            // (this catches completion broadcasts from previous jobs on same assetVersionId)
+            if (data?.status === 'done' && cur.status === 'queued') return
 
-                // When no matching jobs exist yet (server hasn't processed the ingest),
-                // show 'queued' instead of 'unknown' — the task is waiting for work, not broken.
-                const noMatchingJobs = !castItems.length || castItems.every(it => {
-                    const jobs = latestJobsForSummary((it as any)?.jobs || [])
-                    return !jobs.some(j => kindMatchesForSummary(j?.kind, cur.jobKind ?? 'any'))
+            // Ignore progress=100 unless status is explicitly 'done'
+            if (data?.progress === 100 && data?.status !== 'done') return
+
+            // Update task with WebSocket data
+            if (data.status) cur.status = data.status
+            if (Number.isFinite(data.progress)) cur.progress = clampPct(data.progress)
+            if (data.etaSeconds != null) cur.eta = formatEta(data.etaSeconds)
+            if (data.speedX != null) cur.speed = formatSpeed(data.speedX)
+            if (data.error) cur.error = data.error
+            if (data.kind) cur.jobKind = data.kind
+
+            // Mark as done if status is done
+            if (data.status === 'done') {
+                cur.progress = 100
+                cur.speed = null
+                cur.eta = null
+                cur.completedAt = now()
+            }
+
+            // Log failures
+            if (data.status === 'failed' && !(cur as any)._failureLogged) {
+                (cur as any)._failureLogged = true
+                window.appLog?.error('transcode.failed', {
+                    taskId: cur.taskId,
+                    title: cur.title,
+                    error: cur.error,
+                    context: cur.context,
                 })
-                const nextStatus = (rawNextStatus === 'unknown' && noMatchingJobs)
-                    ? 'queued' as TranscodeStatus
-                    : rawNextStatus
+            }
+        }
 
-                cur.status = nextStatus
-                const prevProgress = clampPct(cur.progress)
-                let nextProgress = clampPct(s.progress)
-                if (nextStatus === 'running') {
-                    if (nextProgress >= 100) {
-                        // Ignore stale "100 while still running" snapshots and keep prior progress.
-                        // If we have no prior progress yet, start from 0 instead of showing a fake near-complete state.
-                        nextProgress = (prevProgress > 0 && prevProgress < 100) ? prevProgress : 0
+        // Try WebSocket subscription if connectionId is available
+        if (connectionId && opts.mode === 'version' && idsToTrack.length > 0) {
+            // Subscribe to the primary asset version
+            const primaryId = idsToTrack[0]
+            wsSubscribed = wsManager.subscribe(
+                connectionId,
+                'transcode',
+                primaryId,
+                handleWsUpdate
+            )
+
+            if (wsSubscribed) {
+                console.log('[transcode] WebSocket active', { taskId, assetVersionId: primaryId })
+            } else {
+                console.log('[transcode] WebSocket unavailable, using polling only', { taskId })
+            }
+        }
+
+        // Always start polling as fallback/safety net
+        // WebSocket provides real-time updates, polling ensures we don't miss anything if WS disconnects
+        let stopPolling: (() => void) | null = null
+        stopPolling = startProgressPolling({
+                apiFetch: opts.apiFetch,
+                ...(opts.mode === 'version'
+                    ? { assetVersionIds: () => idsToTrack }
+                    : { fileIds: () => idsToTrack }),
+                intervalMs: opts.intervalMs ?? 1500,
+                onUpdate: (items) => {
+                    const cur = _state.tasks.find(x => x.taskId === taskId && x.kind === 'transcode') as
+                        | Extract<TransferTask, { kind: 'transcode' }>
+                        | undefined
+                    if (!cur) return
+
+                    const castItems = (items || []) as TItem[]
+                    cur.items = castItems as any
+
+                    const hasAllTrackedItems = (() => {
+                        if (!idsToTrack.length) return false
+                        const seen = new Set<number>()
+                        for (const it of castItems) {
+                            const rawId = opts.mode === 'version'
+                                ? (it as any)?.assetVersionId
+                                : (it as any)?.fileId
+                            const id = Number(rawId)
+                            if (Number.isFinite(id) && id > 0) seen.add(id)
+                        }
+                        return idsToTrack.every(id => seen.has(id))
+                    })()
+
+                    const s = opts.summarizeItems(castItems, cur)
+                    const rawNextStatus = (isTerminalTranscodeStatus(s.status) && !hasAllTrackedItems)
+                        ? 'running'
+                        : s.status
+
+                    // When no matching jobs exist yet (server hasn't processed the ingest),
+                    // show 'queued' instead of 'unknown' — the task is waiting for work, not broken.
+                    const noMatchingJobs = !castItems.length || castItems.every(it => {
+                        const jobs = latestJobsForSummary((it as any)?.jobs || [])
+                        return !jobs.some(j => kindMatchesForSummary(j?.kind, cur.jobKind ?? 'any'))
+                    })
+                    const nextStatus = (rawNextStatus === 'unknown' && noMatchingJobs)
+                        ? 'queued' as TranscodeStatus
+                        : rawNextStatus
+
+                    cur.status = nextStatus
+                    const prevProgress = clampPct(cur.progress)
+                    let nextProgress = clampPct(s.progress)
+                    if (nextStatus === 'running') {
+                        if (nextProgress >= 100) {
+                            // Ignore stale "100 while still running" snapshots and keep prior progress.
+                            // If we have no prior progress yet, start from 0 instead of showing a fake near-complete state.
+                            nextProgress = (prevProgress > 0 && prevProgress < 100) ? prevProgress : 0
+                        }
                     }
-                }
-                if (nextStatus === 'done') nextProgress = 100
-                if (nextStatus === 'queued') nextProgress = 0
-                cur.progress = nextProgress
-                cur.speed = (nextStatus === 'running') ? formatSpeed(s.speedX ?? null) : null
-                const serverEta = formatEta(s.etaSeconds ?? null)
-                const elapsedMs = Math.max(0, now() - Number(cur.startedAt || now()))
-                const localEta = formatEta(estimateEtaFromProgress(cur.progress, elapsedMs))
-                cur.eta = (nextStatus === 'running') ? (serverEta || localEta) : null
-                if (nextStatus === 'failed') {
-                    cur.error = extractTranscodeError(castItems as Array<ProgressItem | VersionProgressItem>, cur.jobKind ?? 'any')
-                    cur.speed = null
-                    cur.eta = null
-                    // Log to app file only once per failure (not on every poll tick)
-                    if (!(cur as any)._failureLogged) {
-                        (cur as any)._failureLogged = true
-                        window.appLog?.error('transcode.failed', {
-                            taskId: cur.taskId,
-                            title: cur.title,
-                            jobKind: cur.jobKind ?? 'any',
-                            error: cur.error,
-                            context: cur.context,
-                        })
-                    }
-                } else if (nextStatus === 'running' || nextStatus === 'done') {
-                    cur.error = null
-                    if (nextStatus === 'done') {
+                    if (nextStatus === 'done') nextProgress = 100
+                    if (nextStatus === 'queued') nextProgress = 0
+                    cur.progress = nextProgress
+                    cur.speed = (nextStatus === 'running') ? formatSpeed(s.speedX ?? null) : null
+                    const serverEta = formatEta(s.etaSeconds ?? null)
+                    const elapsedMs = Math.max(0, now() - Number(cur.startedAt || now()))
+                    const localEta = formatEta(estimateEtaFromProgress(cur.progress, elapsedMs))
+                    cur.eta = (nextStatus === 'running') ? (serverEta || localEta) : null
+                    if (nextStatus === 'failed') {
+                        cur.error = extractTranscodeError(castItems as Array<ProgressItem | VersionProgressItem>, cur.jobKind ?? 'any')
                         cur.speed = null
                         cur.eta = null
+                        // Log to app file only once per failure (not on every poll tick)
+                        if (!(cur as any)._failureLogged) {
+                            (cur as any)._failureLogged = true
+                            window.appLog?.error('transcode.failed', {
+                                taskId: cur.taskId,
+                                title: cur.title,
+                                jobKind: cur.jobKind ?? 'any',
+                                error: cur.error,
+                                context: cur.context,
+                            })
+                        }
+                    } else if (nextStatus === 'running' || nextStatus === 'done') {
+                        cur.error = null
+                        if (nextStatus === 'done') {
+                            cur.speed = null
+                            cur.eta = null
+                        }
                     }
-                }
-                if ((cur.jobKind ?? 'any') === 'proxy_mp4') {
-                    // Extract per-quality progress from the proxy_mp4 job (sent by client-side transcode)
+                    if ((cur.jobKind ?? 'any') === 'proxy_mp4') {
+                        // Extract per-quality progress from the proxy_mp4 job (sent by client-side transcode)
                     const proxyJob = (castItems as any[]).flatMap((it: any) => it.jobs || [])
                         .find((j: any) => String(j?.kind || '').toLowerCase() === 'proxy_mp4')
                     const perQ = proxyJob?.per_quality_progress
@@ -1032,7 +1105,16 @@ export function useTransferProgress() {
                 cur.eta = null
             },
         })
-        stopPolling = stop
+
+        // Create unified stop function that handles both WebSocket and polling
+        const stop = () => {
+            if (wsSubscribed && connectionId && opts.mode === 'version' && idsToTrack.length > 0) {
+                wsManager.unsubscribe(connectionId, 'transcode', idsToTrack[0], handleWsUpdate)
+            }
+            if (stopPolling) {
+                stopPolling()
+            }
+        }
 
         ; (t as any).stop = stop
         return taskId
@@ -1067,11 +1149,28 @@ export function useTransferProgress() {
         intervalMs?: number
         jobKind?: 'proxy_mp4' | 'hls' | 'any'
         context?: TransferContext
+        assetVersionId?: number
         fetchSnapshot: () => Promise<PlaybackProgressSnapshot | null>
     }) {
-        // Dedup: skip if an active transcode task already exists for this file+jobKind
+        // Dedup: skip if an active transcode task already exists for this assetVersionId or file+jobKind
         const file = opts.context?.file || ''
         const jobKind = opts.jobKind ?? 'any'
+        const assetVersionId = opts.assetVersionId && Number.isFinite(opts.assetVersionId) && opts.assetVersionId > 0 
+            ? opts.assetVersionId : undefined
+        
+        // Check by assetVersionId first (more reliable)
+        if (assetVersionId) {
+            const existing = _state.tasks.find(t => {
+                if (t.kind !== 'transcode') return false
+                if (!isActiveTask(t)) return false
+                if (!jobKindMatches(t.jobKind, jobKind)) return false
+                const taskIds = t.assetVersionIds || []
+                return taskIds.includes(assetVersionId)
+            })
+            if (existing) return null
+        }
+        
+        // Fallback: check by file path
         if (file) {
             const alreadyActive = _state.tasks.some(t => {
                 if (t.kind !== 'transcode') return false

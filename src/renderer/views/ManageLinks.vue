@@ -15,6 +15,9 @@
 
 		<div class="manage-surface p-2 bg-well rounded-md min-w-0 flex flex-col">
 			<div data-tour="manage-links-toolbar" class="manage-toolbar">
+				<div data-tour="server-filter">
+					<ServerFilterDropdown />
+				</div>
 				<input v-model="q" type="search" placeholder="Search title, directory, file..."
 					class="input-textlike px-3 py-2 border border-default rounded-lg bg-default text-default w-72" />
 				<select v-model="typeFilter" class="px-3 py-2 border border-default rounded-lg bg-default">
@@ -39,15 +42,16 @@
 			</div>
 
 			<div data-tour="manage-links-table" class="manage-table-wrap overflow-x-auto min-w-0 overscroll-x-contain touch-pan-x">
-				<table class="manage-table min-w-[1260px] text-sm border-collapse">
+				<table class="manage-table min-w-[1360px] text-sm border-collapse">
 					<colgroup>
-						<col class="w-[20%]" /> <!-- Title -->
+						<col class="w-[18%]" /> <!-- Title -->
 						<col class="w-[7%]" /> <!-- Type -->
-						<col class="w-[17%]" /> <!-- Short Link -->
-						<col class="w-[11%]" /> <!-- Expires -->
+						<col class="w-[12%]" /> <!-- Short Link -->
+						<col class="w-[10%]" /> <!-- Expires -->
 						<col class="w-[6%]" /> <!-- Status -->
 						<col class="w-[7%]" /> <!-- Access -->
-						<col class="w-[10%]" /> <!-- Created -->
+						<col class="w-[9%]" /> <!-- Created -->
+						<col class="w-[11%]" /> <!-- Server -->
 						<col class="w-[13%]" /> <!-- Actions -->
 					</colgroup>
 					<thead>
@@ -101,13 +105,14 @@
 									<span>{{ sortIndicator('created') }}</span>
 								</span>
 							</th>
+							<th class="text-left p-2 font-semibold border border-default">Server</th>
 							<th class="text-left p-2 font-semibold border border-default">Actions</th>
 						</tr>
 					</thead>
 
 					<tbody class="bg-accent">
 						<tr v-if="loading">
-							<td colspan="8" class="p-0 border border-default">
+							<td colspan="9" class="p-0 border border-default">
 								<div class="w-full min-h-[140px] flex items-center justify-center">
 									<div
 										class="flex items-center gap-3 px-4 py-3 rounded-lg bg-default/60 border border-default shadow-sm">
@@ -123,14 +128,14 @@
 						</tr>
 
 						<tr v-else-if="filteredRows.length === 0 && !showingDemoData">
-							<td colspan="8"
+							<td colspan="9"
 								class="px-2 py-4 text-center text-default font-bold border border-default align-middle whitespace-nowrap">
 								No links found.
 							</td>
 						</tr>
 
 						<!-- Demo rows for guided tour -->
-						<tr v-else-if="showingDemoData" v-for="it in DEMO_LINKS" :key="it.id"
+						<tr v-else-if="showingDemoData" v-for="it in DEMO_LINKS" :key="'demo-' + it.id"
 							data-tour-demo
 							class="hover:bg-black/10 dark:hover:bg-white/10 transition border border-default h-12 opacity-80">
 							<!-- Title -->
@@ -180,6 +185,10 @@
 									<div class="text-xs text-muted">{{ formatLocal(it.createdAt, { timeStyle: 'short' }) }}</div>
 								</div>
 							</td>
+							<!-- Server -->
+							<td class="p-2 border border-default align-middle whitespace-nowrap">
+								<span class="text-xs text-muted">Demo Server</span>
+							</td>
 							<!-- Actions -->
 							<td data-tour="manage-links-actions" class="p-2 border border-default align-middle whitespace-nowrap">
 								<div class="flex flex-nowrap items-center justify-around gap-1">
@@ -190,12 +199,12 @@
 							</td>
 						</tr>
 
-						<tr v-else v-for="it in pagedRows" :key="it.id"
+						<tr v-for="it in pagedRows" :key="'link-' + it.id" v-else
 							class="hover:bg-black/10 dark:hover:bg-white/10 transition border border-default h-12">
 							<!-- Title -->
 							<td class="p-2 border border-default align-middle overflow-hidden min-w-0">
 								<div v-if="editingId !== it.id" class="min-w-0 flex items-center justify-between gap-2">
-									<span
+									<span :title="it.title || fallbackTitle(it)"
 										class="font-medium cursor-pointer hover:underline block truncate max-w-[28ch] md:max-w-[40ch]"
 										@click="openDetails(it)">
 										{{ it.title || fallbackTitle(it) }}
@@ -226,7 +235,7 @@
 							<!-- Link -->
 							<td class="p-2 border border-default align-middle overflow-hidden min-w-0">
 								<div class="min-w-0 flex items-center gap-2 justify-between">
-									<a :href="it.url" target="_blank" rel="noopener"
+									<a :href="it.url" target="_blank" rel="noopener" :title="it.url"
 										class="hover:underline block truncate max-w-[28ch] md:max-w-[34ch]">
 										{{ it.url }}
 									</a>
@@ -303,6 +312,14 @@
 								</div>
 							</td>
 
+							<!-- Server -->
+							<td class="p-2 border border-default align-middle whitespace-nowrap">
+								<div class="flex flex-col leading-tight">
+									<div class="text-xs font-medium" :title="(it as any)._serverName || 'Unknown'">{{ (it as any)._serverName || 'Unknown' }}</div>
+									<div class="text-xs text-muted" :title="(it as any)._serverIp || ''">{{ (it as any)._serverIp || '' }}</div>
+								</div>
+							</td>
+
 
 							<!-- Actions -->
 							<td class="p-2 border border-default align-middle whitespace-nowrap">
@@ -322,7 +339,7 @@
 							</td>
 						</tr>
 						<tr v-for="n in emptyRowCount" :key="`empty-${n}`" class="h-12">
-							<td colspan="8" class="p-0 bg-well">&nbsp;</td>
+							<td colspan="9" class="p-0 bg-well">&nbsp;</td>
 						</tr>
 					</tbody>
 				</table>
@@ -350,11 +367,14 @@
 	
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useApi } from '../composables/useApi'
+import { useApi, apiFetchAll, type ServerResult } from '../composables/useApi'
+import { useServerFilter } from '../composables/useServerFilter'
+import { useConnections } from '../composables/useConnections'
 import { useLinkRefreshSignal } from '../composables/useLinkRefresh'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { appLog } from '../composables/useLog'
 import LinkDetailsModal from "../components/modals/LinkDetailsModal.vue"
+import ServerFilterDropdown from '../components/ServerFilterDropdown.vue'
 import type { LinkItem, LinkType, Status } from '../typings/electron'
 import { useTime } from '../composables/useTime'
 import { useTimeFormat } from '../composables/useTimeFormat'
@@ -413,17 +433,69 @@ const DEMO_LINKS: LinkItem[] = [
 const showingDemoData = computed(() => props.tourActive && rows.value.length === 0 && !loading.value)
 
 const { apiFetch } = useApi()
+const { filteredConnections } = useServerFilter()
+const { connections } = useConnections()
+const serverErrors = ref<Array<{ serverName: string; error: string }>>([])
+
 async function refresh() {
 	loading.value = true
 	error.value = null
+	serverErrors.value = []
+	
 	try {
-		const { items } = await listLinks({
+		// Fetch from all filtered servers in parallel
+		const params = {
 			q: q.value.trim() || undefined,
 			type: typeFilter.value || undefined,
 			status: statusFilter.value || undefined,
 			limit: fetchLimit.value,
-		})
-		rows.value = items
+		}
+		
+		const qs = new URLSearchParams()
+		if (params.q) qs.set('q', params.q)
+		if (params.type) qs.set('type', params.type)
+		if (params.status) qs.set('status', params.status)
+		if (params.limit) qs.set('limit', String(params.limit))
+		
+		const results = await apiFetchAll<{ items: LinkItem[] }>(
+			filteredConnections.value,
+			`/api/links?${qs.toString()}`
+		)
+		
+		// Aggregate links from all servers
+		const allLinks: LinkItem[] = []
+		
+		for (const result of results) {
+			if (result.success && result.data?.items) {
+				// Add server metadata to each link
+				const linksWithServer = result.data.items.map(link => ({
+					...link,
+					_serverName: result.serverName,
+					_serverIp: result.serverIp,
+					_connectionId: result.connectionId
+				}))
+				allLinks.push(...linksWithServer)
+			} else if (!result.success) {
+				// Track errors for unreachable servers
+				serverErrors.value.push({
+					serverName: result.serverName,
+					error: result.error || 'Unknown error'
+				})
+			}
+		}
+		
+		rows.value = allLinks
+		
+		// Show notification for unreachable servers
+		if (serverErrors.value.length > 0) {
+			const serverNames = serverErrors.value.map(e => e.serverName).join(', ')
+			pushNotification(new Notification(
+				'Server Unreachable',
+				`Could not fetch links from: ${serverNames}`,
+				'warning',
+				8000
+			))
+		}
 	} catch (e: any) {
 		error.value = e?.message || String(e)
 	} finally {
@@ -479,6 +551,9 @@ onMounted(refresh);
 const { linkVersion } = useLinkRefreshSignal()
 watch(linkVersion, () => refresh())
 
+// Refresh when server filter changes
+watch(filteredConnections, () => refresh(), { deep: true })
+
 /* ----------- fetch/list endpoints ----------- */
 async function listLinks(params: { q?: string; type?: '' | LinkType; status?: '' | Status; limit?: number; offset?: number }) {
 	const qs = new URLSearchParams()
@@ -490,8 +565,11 @@ async function listLinks(params: { q?: string; type?: '' | LinkType; status?: ''
 	return apiFetch(`/api/links?${qs.toString()}`)
 }
 
-async function patchLink(id: number | string, body: any) {
-	return apiFetch(`/api/links/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
+async function patchLink(linkItem: any, body: any) {
+	// Use the connection that owns this link
+	const connectionId = linkItem._connectionId
+	const { apiFetch } = useApi(connectionId)
+	return apiFetch(`/api/links/${linkItem.id}`, { method: 'PATCH', body: JSON.stringify(body) })
 }
 
 /* ------------------- state ------------------- */
@@ -620,7 +698,7 @@ async function copy(txt?: string | null) {
 async function toggleDisable(it: LinkItem) {
 	const disable = statusOf(it) !== 'disabled'
 	try {
-		await patchLink(it.id, { isDisabled: disable })
+		await patchLink(it, { isDisabled: disable })
 		it.isDisabled = disable
 		appLog.info('link.toggled', { linkId: it.id, disabled: disable })
 
@@ -684,7 +762,7 @@ async function saveTitle(it: LinkItem) {
 	}
 
 	try {
-		await patchLink(it.id, { title: trimmed || null })
+		await patchLink(it, { title: trimmed || null })
 		it.title = trimmed || null
 
 		pushNotification(
@@ -906,7 +984,7 @@ async function applyCustom(it: LinkItem, opts?: { forceNever?: boolean }) {
 	const newExp = isNever ? null : baseMs + totalHours * 3600e3
 
 	try {
-		await patchLink(it.id, { expiresAtMs: newExp })
+		await patchLink(it, { expiresAtMs: newExp })
 		it.expiresAt = newExp
 
 		// keep the editor in sync

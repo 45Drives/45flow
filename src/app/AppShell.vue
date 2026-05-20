@@ -20,6 +20,9 @@
 
       <!-- Right (menu) -->
       <div class="justify-self-end text-right flex items-center gap-2">
+        <div data-tour="connection-switcher">
+          <ConnectionSwitcher v-if="route.name !== 'server-selection'" />
+        </div>
         <GlobalMenu />
         <button
           class="theme-icon-btn"
@@ -56,9 +59,12 @@ import { useThemeFromAlias } from '../renderer/composables/useThemeFromAlias'
 import { useRoute, useRouter } from 'vue-router'
 import { useHeaderTitle } from '../renderer/composables/useHeaderTitle'
 import { registerIpcActionListener } from "../renderer/composables/registerIpcActionListener";
+import { useConnections } from '../renderer/composables/useConnections'
+import { useWebSocketManager } from '../renderer/composables/useWebSocketManager'
 import TransferProgressDock from '../renderer/components/TransferProgressDock.vue'
 import UpdateBanner from '../renderer/components/UpdateBanner.vue'
 import GlobalMenu from '../renderer/components/GlobalMenu.vue'
+import ConnectionSwitcher from '../renderer/components/ConnectionSwitcher.vue'
 import GuidedTour from '../renderer/components/GuidedTour.vue'
 import QuickShareOverlay from '../renderer/components/QuickShareOverlay.vue'
 import { useTourManager } from '../renderer/composables/useTourManager'
@@ -69,12 +75,36 @@ const ENABLE_TOUR = true
 
 const { activeTour, finishTour, cancelTour } = useTourManager()
 
-// provide shared refs
+// Initialize multi-server connection management
+const { activeConnection } = useConnections()
+
+// Initialize WebSocket manager (auto-connects to active connection)
+useWebSocketManager()
+
+// Legacy provide for backwards compatibility during migration
+// Components will gradually migrate to useConnections() directly
 const currentServer = ref<Server | null>(null)
 const divisionCode = ref<DivisionType>('default')
 const thisOS = ref<string>('')
 const route = useRoute()
 const router = useRouter()
+
+// Sync legacy currentServer ref with active connection
+watch(activeConnection, (conn) => {
+  if (conn) {
+    currentServer.value = {
+      ip: conn.serverIp,
+      name: conn.name,
+      lastSeen: conn.lastConnectedAt,
+      status: conn.status === 'connected' ? 'complete' : 'not complete',
+      setupComplete: conn.setupComplete,
+      serverName: conn.serverName,
+      serverInfo: conn.serverInfo
+    } as Server
+  } else {
+    currentServer.value = null
+  }
+}, { immediate: true })
 
 // Cancel any active tour when the route changes (user navigated away)
 watch(() => route.path, () => {
@@ -89,7 +119,7 @@ const hideTransfers = computed(() => route.meta.hideTransfers === true)
 const darkMode = useDarkModeState()
 
 const hasToken = computed(() => {
-  if (connectionMeta.value?.token) return true
+  if (activeConnection.value?.token) return true
   try { return !!sessionStorage.getItem('hb_token') } catch { return false }
 })
 
@@ -100,7 +130,17 @@ provide(thisOsInjectionKey, thisOS)
 const { discoveryState } = useServerDiscovery()
 provide(discoveryStateInjectionKey, discoveryState as DiscoveryState)
 
-const connectionMeta = ref<ConnectionMeta>({ port: 9095 })
+// Build ConnectionMeta from active connection for legacy compatibility
+const connectionMeta = computed<ConnectionMeta>(() => {
+  if (!activeConnection.value) return { port: 9095 }
+  return {
+    token: activeConnection.value.token,
+    port: activeConnection.value.apiPort,
+    httpsHost: activeConnection.value.baseUrl ? new URL(activeConnection.value.baseUrl).hostname : undefined,
+    apiBase: activeConnection.value.baseUrl,
+    ssh: activeConnection.value.ssh
+  }
+})
 provide(connectionMetaInjectionKey, connectionMeta)
 
 const { currentDivision, currentTheme, setThemeControlsUnlocked } = useThemeFromAlias()

@@ -6,6 +6,17 @@ import type { Server, ConnectionMeta } from '../types'
 import { currentServerInjectionKey, connectionMetaInjectionKey } from '../keys/injection-keys'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { clearLastSession } from './useSessionPersistence'
+import { useConnections } from './useConnections'
+import type { Connection } from './useConnections'
+
+export type ServerResult<T = any> = {
+    connectionId: string
+    serverName: string
+    serverIp: string
+    success: boolean
+    data?: T
+    error?: string
+}
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'
 type ApiInit = RequestInit & {
@@ -13,7 +24,7 @@ type ApiInit = RequestInit & {
     retry?: number
     retryDelayMs?: number
     parse?: 'json' | 'text' | 'auto'
-    suppressAuthRedirect?: boolean // ADD
+    suppressAuthRedirect?: boolean
 }
 
 const DEFAULT_TIMEOUT = 12_000
@@ -49,21 +60,55 @@ async function parseAuto(res: Response, mode: 'json' | 'text' | 'auto' = 'auto')
 
 let authRedirectInFlight = false
 
-export function useApi() {
-    const router = useRouter() // ← use the live router instance
+/**
+ * Create API client for a specific connection (or active connection if not specified)
+ * @param connectionId - Optional connection ID. If not provided, uses active connection.
+ */
+export function useApi(connectionId?: string) {
+    const router = useRouter()
+    const { activeConnection, getConnection, updateConnection } = useConnections()
 
-    const currentServer = inject<Ref<Server | null>>(currentServerInjectionKey)!
-    const meta = inject<Ref<ConnectionMeta>>(connectionMetaInjectionKey)!
+    // Resolve connection: use specified ID or fall back to active
+    const connection = computed<Connection | null>(() => {
+        if (connectionId) {
+            return getConnection(connectionId)
+        }
+        return activeConnection.value
+    })
 
-    const baseUrl = computed(() => meta.value.apiBase ?? '')
+    const baseUrl = computed(() => connection.value?.baseUrl ?? '')
+    const token = computed(() => connection.value?.token ?? '')
+
+    // Legacy injection for backwards compatibility (will be removed in Phase 3)
+    const legacyServer = inject<Ref<Server | null>>(currentServerInjectionKey, null)
+    const legacyMeta = inject<Ref<ConnectionMeta>>(connectionMetaInjectionKey, null)
+
+    // Build a ConnectionMeta-compatible object from Connection for compatibility
+    const meta = computed<ConnectionMeta>(() => {
+        if (!connection.value) {
+            return legacyMeta?.value || { port: 9095 }
+        }
+        return {
+            token: connection.value.token,
+            port: connection.value.apiPort,
+            httpsHost: connection.value.baseUrl ? new URL(connection.value.baseUrl).hostname : undefined,
+            apiBase: connection.value.baseUrl,
+            ssh: connection.value.ssh
+        }
+    })
 
     async function apiFetch(path: string, init: ApiInit = {}) {
-        if (!currentServer.value) throw new Error('No server selected')
+        const conn = connection.value
+        if (!conn) throw new Error('No connection selected')
         if (!baseUrl.value) throw new Error('API base URL is not set')
 
         const headers = new Headers(init.headers || {})
-        if (init.body && !headers.has('Content-Type') && !(init.body instanceof FormData)) headers.set('Content-Type', 'application/json')
-        if (meta.value.token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${meta.value.token}`)
+        if (init.body && !headers.has('Content-Type') && !(init.body instanceof FormData)) {
+            headers.set('Content-Type', 'application/json')
+        }
+        if (token.value && !headers.has('Authorization')) {
+            headers.set('Authorization', `Bearer ${token.value}`)
+        }
 
         const urlPath = path.startsWith('/') ? path : `/${path}`
         const url = `${baseUrl.value}${urlPath}`
@@ -82,11 +127,11 @@ export function useApi() {
 
             try {
                 if (shouldLogApiInfo(method)) {
-                    window.appLog?.info('api.request', { url, method, attempt })
+                    window.appLog?.info('api.request', { url, method, attempt, connectionId: conn.connectionId })
                 }
                 const res = await fetch(url, { ...init, method, headers, signal: ctrl.signal })
                 if (shouldLogApiInfo(method)) {
-                    window.appLog?.info('api.response', { url, status: res.status })
+                    window.appLog?.info('api.response', { url, status: res.status, connectionId: conn.connectionId })
                 }
 
                 if (res.status === 401) {
@@ -97,13 +142,18 @@ export function useApi() {
                         throw e
                     }
 
-                    // existing behavior:
+                    // Mark this connection as disconnected
+                    updateConnection(conn.connectionId, { 
+                        status: 'disconnected',
+                        lastError: 'Session expired'
+                    })
+
+                    // Clear old session storage (legacy cleanup)
                     clearLastSession()
-                    meta.value = { ...meta.value, token: undefined }
 
                     if (!authRedirectInFlight) {
                         authRedirectInFlight = true
-                        pushNotification(new Notification('Session expired', 'Please log in again.', 'warning', 8000))
+                        pushNotification(new Notification('Session expired', `Please log in again to ${conn.name}.`, 'warning', 8000))
                         router.push({ name: 'server-selection' }).finally(() => {
                             setTimeout(() => { authRedirectInFlight = false }, 500)
                         })
@@ -124,7 +174,8 @@ export function useApi() {
                         window.appLog?.warn?.('api.security', {
                             url,
                             status: res.status,
-                            security: (parsed as any).security
+                            security: (parsed as any).security,
+                            connectionId: conn.connectionId
                         })
                     }
 
@@ -153,7 +204,8 @@ export function useApi() {
                     window.appLog?.info?.('api.security', {
                         url,
                         status: res.status,
-                        security: (parsed as any).security
+                        security: (parsed as any).security,
+                        connectionId: conn.connectionId
                     })
                 }
                 return parsed
@@ -172,7 +224,8 @@ export function useApi() {
                     requestId: err?.requestId,
                     message: String(err?.message || err),
                     attempt,
-                    willRetry: canRetry
+                    willRetry: canRetry,
+                    connectionId: conn.connectionId
                 })
 
                 if (!canRetry) break
@@ -183,5 +236,110 @@ export function useApi() {
         throw lastErr
     }
 
-    return { baseUrl, apiFetch, meta }
+    return { baseUrl, apiFetch, meta, connection }
 }
+
+/**
+ * Fetch from multiple servers in parallel
+ * Returns results from all servers, including errors for unreachable ones
+ * @param connections - Array of connections to fetch from
+ * @param path - API path to fetch
+ * @param init - Fetch options
+ * @returns Array of ServerResult objects with success/error status per server
+ */
+export async function apiFetchAll<T = any>(
+    connections: Connection[],
+    path: string,
+    init: ApiInit = {}
+): Promise<ServerResult<T>[]> {
+    if (!connections.length) {
+        return []
+    }
+
+    // Fetch from each connection directly without using useApi() composable
+    const promises = connections.map(async (conn): Promise<ServerResult<T>> => {
+        try {
+            if (!conn.baseUrl || !conn.token) {
+                throw new Error('Invalid connection: missing baseUrl or token')
+            }
+
+            const headers = new Headers(init.headers || {})
+            if (init.body && !headers.has('Content-Type') && !(init.body instanceof FormData)) {
+                headers.set('Content-Type', 'application/json')
+            }
+            if (conn.token && !headers.has('Authorization')) {
+                headers.set('Authorization', `Bearer ${conn.token}`)
+            }
+
+            const urlPath = path.startsWith('/') ? path : `/${path}`
+            const url = `${conn.baseUrl}${urlPath}`
+            const method = (init.method || 'GET').toUpperCase()
+            const timeoutMs = init.timeoutMs ?? DEFAULT_TIMEOUT
+
+            const ctrl = new AbortController()
+            const timer = setTimeout(() => ctrl.abort(new DOMException('Timeout', 'AbortError')), timeoutMs)
+
+            try {
+                const res = await fetch(url, { ...init, method, headers, signal: ctrl.signal })
+                clearTimeout(timer)
+
+                if (res.status === 401) {
+                    throw Object.assign(new Error('Unauthorized'), { status: 401 })
+                }
+
+                if (!res.ok) {
+                    const detail = await res.text().catch(() => res.statusText)
+                    let parsed: any = null
+                    try { parsed = detail ? JSON.parse(detail) : null } catch { parsed = null }
+                    
+                    const parsedError = parsed && typeof parsed.error === 'string' ? parsed.error : ''
+                    const parsedMessage = parsed && typeof parsed.message === 'string' ? parsed.message : ''
+                    const baseMessage = parsedError || parsedMessage || detail || `HTTP ${res.status}`
+                    
+                    throw Object.assign(new Error(baseMessage), { status: res.status })
+                }
+
+                const parseMode = init.parse ?? 'auto'
+                let data: any
+
+                if (parseMode === 'text') {
+                    data = await res.text()
+                } else if (parseMode === 'blob') {
+                    data = await res.blob()
+                } else {
+                    const ct = res.headers.get('Content-Type') || ''
+                    if (/json/.test(ct)) {
+                        data = await res.json()
+                    } else if (/text/.test(ct)) {
+                        data = await res.text()
+                    } else if (res.status === 204) {
+                        data = null
+                    } else {
+                        data = await res.text()
+                    }
+                }
+
+                return {
+                    connectionId: conn.connectionId,
+                    serverName: conn.name,
+                    serverIp: conn.serverIp,
+                    success: true,
+                    data
+                }
+            } finally {
+                clearTimeout(timer)
+            }
+        } catch (err: any) {
+            return {
+                connectionId: conn.connectionId,
+                serverName: conn.name,
+                serverIp: conn.serverIp,
+                success: false,
+                error: err?.message || 'Request failed'
+            }
+        }
+    })
+
+    return Promise.all(promises)
+}
+

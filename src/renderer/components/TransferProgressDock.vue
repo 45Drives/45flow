@@ -129,8 +129,11 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useTransferProgress } from '../composables/useTransferProgress'
+import { useConnections } from '../composables/useConnections'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
+
+const { connections } = useConnections()
 
 const {
     state,
@@ -332,11 +335,21 @@ type OuterGroup = {
 
 function outerKeyForTask(t: any) {
     const c = t?.context || {}
-    if (c.groupId) return String(c.groupId)
-    if (c.linkUrl) return `link:${c.linkUrl}`
-    if (c.source === 'upload' && c.destDir) return `upload:${c.destDir}`
-    if (c.file) return `file:${c.file}`
-    return `task:${t.taskId}`
+    // Include connectionId in the key so tasks from different servers don't merge
+    const connPrefix = c.connectionId ? `${c.connectionId}:` : ''
+    if (c.groupId) return `${connPrefix}${String(c.groupId)}`
+    if (c.linkUrl) return `${connPrefix}link:${c.linkUrl}`
+    if (c.source === 'upload' && c.destDir) return `${connPrefix}upload:${c.destDir}`
+    if (c.file) return `${connPrefix}file:${c.file}`
+    return `${connPrefix}task:${t.taskId}`
+}
+
+/** Get server display name from connectionId */
+function serverNameForTask(t: any): string | undefined {
+    const connId = t?.context?.connectionId
+    if (!connId) return undefined
+    const conn = connections.find(c => c.connectionId === connId)
+    return conn?.name
 }
 
 function outerTitleForBucket(bucketCtx: any, tasks: any[]) {
@@ -405,6 +418,16 @@ const groups = computed<OuterGroup[]>(() => {
             {}
 
         const hdr = outerTitleForBucket(rep, bucket.tasks)
+        
+        // Add server name to subtitle when there are multiple connections active
+        const serverName = serverNameForTask(bucket.tasks[0])
+        const hasMultipleServers = connections.length > 1
+        if (hasMultipleServers && serverName) {
+            hdr.subtitle = hdr.subtitle 
+                ? `${serverName} · ${hdr.subtitle}`
+                : serverName
+        }
+        
         const fileGroups = new Map<string, FileGroup>()
 
         function ensureFileGroup(fk: string) {
