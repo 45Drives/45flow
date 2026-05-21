@@ -72,6 +72,8 @@ export type FullTranscodeOptions = {
   inputPath: string
   proxyQualities: ('720p' | '1080p' | 'original')[]
   generateHls: boolean
+  /** When true with generateHls, skip proxy MP4 generation (only generate HLS) */
+  generateProxy?: boolean
   watermarkPath?: string
   useHardwareAccel: boolean
   preset?: 'fast' | 'balanced' | 'quality'

@@ -96,9 +96,8 @@ export class FullTranscodeManager {
     // Select best H.264 codec for HW-accelerated phases
     const hwCodec = options.useHardwareAccel ? caps.bestCodecH264 : 'libx264';
     const proxyCodec = hwCodec;
-    // HLS can use NVENC/VideoToolbox (software filters pipe directly to encoder).
-    // VAAPI/QSV need hwupload inside filter_complex which is too complex for split→scale, so fall back to libx264.
-    const hlsCodec = (hwCodec === 'h264_nvenc' || hwCodec === 'h264_videotoolbox') ? hwCodec : 'libx264';
+    // HLS now uses separate passes per rendition, allowing hardware acceleration for all codecs
+    const hlsCodec = hwCodec;
     console.log(`[full-transcode] ${jobId}: hardware detection:`, {
       platform: process.platform,
       ffmpegSource: caps.ffmpegSource,
@@ -147,7 +146,10 @@ export class FullTranscodeManager {
 
     const gopSize = Math.round(probe.fps * 2);
     const canCopyAudio = probe.audioCodec === 'aac';
-    const totalQualities = options.proxyQualities.length;
+    const shouldGenerateProxy = options.generateProxy !== false;
+    const totalQualities = shouldGenerateProxy ? options.proxyQualities.length : 0;
+    
+    // HLS counts as 1 phase regardless of rendition count (unified progress bar)
     const totalPhases = (options.generateHls ? 1 : 0) + totalQualities;
     let phaseIndex = 0;
     console.log(`[full-transcode] ${jobId}: codec=${proxyCodec} gopSize=${gopSize} canCopyAudio=${canCopyAudio} watermark=${options.watermarkPath || 'none'} totalPhases=${totalPhases}`);
@@ -167,82 +169,175 @@ export class FullTranscodeManager {
       const hlsOutDir = path.join(outputDir, 'hls');
       fs.mkdirSync(hlsOutDir, { recursive: true });
 
-      // Build HLS rendition ladder from proxy qualities (exclude 'original')
-      const renditions = options.proxyQualities
-        .map((q) => heightForQuality(q))
-        .filter((h): h is number => h !== null)
-        .sort((a, b) => a - b);
-      // If only 'original' quality, use source height
-      if (renditions.length === 0 && probe.height > 0) {
-        renditions.push(probe.height);
+      // Build HLS rendition ladder from source height (adaptive bitrate)
+      // Always include standard rungs below source + source itself
+      const standardHeights = [720, 1080];
+      const renditions: number[] = [];
+      for (const h of standardHeights) {
+        // Only include if meaningfully below source (at least 10% smaller)
+        if (h < probe.height * 0.9) renditions.push(h);
       }
+      // Always include source height as top rendition
+      if (probe.height > 0) renditions.push(probe.height);
+      // Fallback
       if (renditions.length === 0) renditions.push(720);
 
-      // Create variant directories
-      for (let v = 0; v < renditions.length; v++) {
-        fs.mkdirSync(path.join(hlsOutDir, `v${v}`), { recursive: true });
-      }
-
-      const hlsArgs = this.buildHlsArgs(options.inputPath, hlsOutDir, {
-        renditions,
-        watermarkPath: options.watermarkPath || null,
-        gopSize,
-        canCopyAudio,
-        audioChannels: probe.audioChannels,
-        hasAudio: probe.hasAudio,
-        preset: options.preset,
-        codec: hlsCodec,
-      });
-
       console.log(`[full-transcode] ${jobId}: HLS → ${hlsOutDir}`);
-      console.log(`[full-transcode] ${jobId}: HLS renditions=${renditions.join(',')}, watermark=${options.watermarkPath || 'none'}`);
-      console.log(`[full-transcode] ${jobId}: HLS args =`, hlsArgs.join(' '));
+      console.log(`[full-transcode] ${jobId}: HLS renditions=${renditions.join(',')}, watermark=${options.watermarkPath || 'none'}, codec=${hlsCodec}`);
 
-      await this.runFfmpeg(ffmpegPath, hlsArgs, probe.durationSeconds, (pct, fps, speed, eta) => {
-        const overallPercent = (phaseIndex + pct / 100) / totalPhases * 100;
+      hlsMaster = path.join(hlsOutDir, 'master.m3u8');
+
+      // QSV needs separate passes per rendition to enable hardware acceleration
+      // (filter_complex with split doesn't work with QSV hwupload requirements).
+      // VAAPI has complex surface requirements, so use multi-rendition for now.
+      // NVENC/VideoToolbox/libx264 use single-pass multi-rendition (more efficient).
+      const needsSeparatePasses = hlsCodec.includes('qsv');
+
+      if (needsSeparatePasses) {
+        console.log(`[full-transcode] ${jobId}: Using separate passes for ${hlsCodec} (enables hardware acceleration)`);
+        // Generate each rendition in a separate pass
+        for (let v = 0; v < renditions.length; v++) {
+          if (this.canceled) throw new Error('Canceled');
+
+          const height = renditions[v];
+          const variantDir = path.join(hlsOutDir, `v${v}`);
+          fs.mkdirSync(variantDir, { recursive: true });
+
+          const hlsArgs = this.buildSingleHlsRenditionArgs(options.inputPath, variantDir, {
+            height,
+            sourceHeight: probe.height,
+            watermarkPath: options.watermarkPath || null,
+            gopSize,
+            canCopyAudio,
+            audioChannels: probe.audioChannels,
+            hasAudio: probe.hasAudio,
+            preset: options.preset,
+            codec: hlsCodec,
+          });
+
+          console.log(`[full-transcode] ${jobId}: HLS rendition ${v + 1}/${renditions.length} (${height}p) → ${variantDir}`);
+
+          await this.runFfmpeg(ffmpegPath, hlsArgs, probe.durationSeconds, (pct, fps, speed, eta) => {
+            // Unified progress: all renditions together = 1 phase
+            const renditionProgress = (v + pct / 100) / renditions.length;
+            const overallPercent = (phaseIndex + renditionProgress) / totalPhases * 100;
+            onProgress({
+              phase: 'hls',
+              perQualityProgress: { ...perQualityProgress },
+              overallPercent,
+              fps,
+              speed,
+              eta,
+              message: `HLS streaming — ${Math.round(renditionProgress * 100)}%`,
+              encoder: hlsCodec,
+            });
+          });
+
+          // Emit progress after this rendition completes
+          const renditionProgress = (v + 1) / renditions.length;
+          const overallPercent = (phaseIndex + renditionProgress) / totalPhases * 100;
+          onProgress({
+            phase: 'hls',
+            perQualityProgress: { ...perQualityProgress },
+            overallPercent,
+            fps: 0,
+            speed: '1.0x',
+            eta: '00:00:00',
+            message: `HLS streaming — ${Math.round(renditionProgress * 100)}%`,
+            encoder: hlsCodec,
+          });
+
+          console.log(`[full-transcode] ${jobId}: HLS rendition ${v + 1}/${renditions.length} (${height}p) DONE`);
+        }
+
+        // Create master.m3u8 manually (since we generated renditions separately)
+        const lines: string[] = ['#EXTM3U', '#EXT-X-VERSION:7'];
+        for (let v = 0; v < renditions.length; v++) {
+          const idx = path.join(hlsOutDir, `v${v}`, 'index.m3u8');
+          if (!fs.existsSync(idx)) continue;
+          const h = renditions[v];
+          const bw = h <= 480 ? 800000 : h <= 720 ? 2800000 : h <= 1080 ? 5000000 : 8000000;
+          lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${bw},RESOLUTION=${Math.round(h * 16 / 9 / 2) * 2}x${h}`);
+          lines.push(`v${v}/index.m3u8`);
+        }
+        fs.writeFileSync(hlsMaster, lines.join('\n') + '\n');
+        console.log(`[full-transcode] ${jobId}: created master.m3u8 (${renditions.length} renditions)`);
+      } else {
+        console.log(`[full-transcode] ${jobId}: Using single-pass multi-rendition for ${hlsCodec}`);
+        
+        // Create variant directories
+        for (let v = 0; v < renditions.length; v++) {
+          fs.mkdirSync(path.join(hlsOutDir, `v${v}`), { recursive: true });
+        }
+        
+        // Single-pass multi-rendition (NVENC/VideoToolbox/libx264)
+        const hlsArgs = this.buildMultiRenditionHlsArgs(options.inputPath, hlsOutDir, {
+          renditions,
+          watermarkPath: options.watermarkPath || null,
+          gopSize,
+          canCopyAudio,
+          audioChannels: probe.audioChannels,
+          hasAudio: probe.hasAudio,
+          preset: options.preset,
+          codec: hlsCodec,
+        });
+
+        await this.runFfmpeg(ffmpegPath, hlsArgs, probe.durationSeconds, (pct, fps, speed, eta) => {
+          const overallPercent = (phaseIndex + pct / 100) / totalPhases * 100;
+          onProgress({
+            phase: 'hls',
+            perQualityProgress: { ...perQualityProgress },
+            overallPercent,
+            fps,
+            speed,
+            eta,
+            message: `HLS streaming — ${Math.round(pct)}%`,
+            encoder: hlsCodec,
+          });
+        });
+
+        // Emit final HLS progress
+        const finalOverallPercent = (phaseIndex + 1) / totalPhases * 100;
         onProgress({
           phase: 'hls',
           perQualityProgress: { ...perQualityProgress },
-          overallPercent,
-          fps,
-          speed,
-          eta,
-          message: `HLS streaming — ${Math.round(pct)}%`,
+          overallPercent: finalOverallPercent,
+          fps: 0,
+          speed: '1.0x',
+          eta: '00:00:00',
+          message: 'HLS streaming — 100%',
           encoder: hlsCodec,
         });
-      });
+
+        // FFmpeg may generate incomplete master.m3u8 for single-rendition, so fix it
+        try {
+          const masterRaw = fs.readFileSync(hlsMaster, 'utf-8');
+          if (!masterRaw.includes('#EXT-X-STREAM-INF')) {
+            const lines: string[] = ['#EXTM3U', '#EXT-X-VERSION:7'];
+            for (let v = 0; v < renditions.length; v++) {
+              const idx = path.join(hlsOutDir, `v${v}`, 'index.m3u8');
+              if (!fs.existsSync(idx)) continue;
+              const h = renditions[v];
+              const bw = h <= 480 ? 800000 : h <= 720 ? 2800000 : h <= 1080 ? 5000000 : 8000000;
+              lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${bw},RESOLUTION=${Math.round(h * 16 / 9 / 2) * 2}x${h}`);
+              lines.push(`v${v}/index.m3u8`);
+            }
+            fs.writeFileSync(hlsMaster, lines.join('\n') + '\n');
+            console.log(`[full-transcode] ${jobId}: rewrote master.m3u8 (${renditions.length} renditions)`);
+          }
+        } catch (e: any) {
+          console.warn(`[full-transcode] ${jobId}: master.m3u8 fixup failed:`, e?.message);
+        }
+      }
 
       phaseIndex++;
       hlsDir = hlsOutDir;
-      hlsMaster = path.join(hlsOutDir, 'master.m3u8');
-
-      // FFmpeg 4.x generates an incomplete master.m3u8 for single-rendition
-      // var_stream_map (just the header, no #EXT-X-STREAM-INF).  Rewrite it
-      // with proper entries derived from the variant index playlists.
-      try {
-        const masterRaw = fs.readFileSync(hlsMaster, 'utf-8');
-        if (!masterRaw.includes('#EXT-X-STREAM-INF')) {
-          const lines: string[] = ['#EXTM3U', '#EXT-X-VERSION:7'];
-          for (let v = 0; v < renditions.length; v++) {
-            const idx = path.join(hlsOutDir, `v${v}`, 'index.m3u8');
-            if (!fs.existsSync(idx)) continue;
-            const h = renditions[v];
-            const bw = h <= 480 ? 800000 : h <= 720 ? 2800000 : h <= 1080 ? 5000000 : 8000000;
-            lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${bw},RESOLUTION=${Math.round(h * 16 / 9 / 2) * 2}x${h}`);
-            lines.push(`v${v}/index.m3u8`);
-          }
-          fs.writeFileSync(hlsMaster, lines.join('\n') + '\n');
-          console.log(`[full-transcode] ${jobId}: rewrote master.m3u8 (${lines.length} lines, ${renditions.length} renditions)`);
-        }
-      } catch (e: any) {
-        console.warn(`[full-transcode] ${jobId}: master.m3u8 fixup failed:`, e?.message);
-      }
-
       console.log(`[full-transcode] ${jobId}: HLS DONE → ${hlsMaster}`);
     }
 
     // ── Phase 2: Proxy MP4s (sequential, original → 1080p → 720p) ───────────
 
+    if (shouldGenerateProxy) {
     for (let i = 0; i < options.proxyQualities.length; i++) {
       if (this.canceled) throw new Error('Canceled');
 
@@ -291,22 +386,26 @@ export class FullTranscodeManager {
         });
       });
 
-      phaseIndex++;
+      // Mark quality complete and emit final progress for this quality
       perQualityProgress[quality] = 100;
+      const finalOverallPercent = (phaseIndex + 1) / totalPhases * 100;
+      onProgress({
+        phase: 'proxy',
+        activeQuality: quality,
+        perQualityProgress: { ...perQualityProgress },
+        overallPercent: finalOverallPercent,
+        fps: 0,
+        speed: '1.0x',
+        eta: '00:00:00',
+        message: `Review copy ${quality} — 100%`,
+        encoder: canFastRemux ? 'copy' : proxyCodec,
+      });
+
+      phaseIndex++;
       proxyFiles[quality] = outAbs;
       console.log(`[full-transcode] ${jobId}: proxy ${quality} DONE → ${outAbs}`);
     }
-
-    // Final progress
-    onProgress({
-      phase: 'proxy',
-      perQualityProgress: { ...perQualityProgress },
-      overallPercent: 100,
-      fps: 0,
-      speed: '0x',
-      eta: '00:00:00',
-      message: 'Complete',
-    });
+    } // end shouldGenerateProxy
 
     console.log(`[full-transcode] ${jobId}: ALL DONE — outputDir=${outputDir} proxies=${Object.keys(proxyFiles).join(',')} hlsMaster=${hlsMaster || 'none'}`);
     return {
@@ -369,14 +468,14 @@ export class FullTranscodeManager {
 
       if (opts.codec.includes('vaapi')) {
         filterComplex =
-          `[0:v]${scaleExpr}format=yuv420p[base];` +
+          `[0:v]${scaleExpr}format=nv12[base];` +
           `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
           `[base][wm]overlay=W-w-24:H-h-24,format=nv12,hwupload[outv]`;
       } else if (opts.codec.includes('qsv')) {
         filterComplex =
-          `[0:v]${scaleExpr}format=yuv420p[base];` +
+          `[0:v]${scaleExpr}format=nv12[base];` +
           `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
-          `[base][wm]overlay=W-w-24:H-h-24,hwupload=extra_hw_frames=64[outv]`;
+          `[base][wm]overlay=W-w-24:H-h-24,format=nv12,hwupload=extra_hw_frames=64[outv]`;
       } else {
         filterComplex =
           `[0:v]${scaleExpr}format=yuv420p[base];` +
@@ -393,7 +492,10 @@ export class FullTranscodeManager {
       if (opts.codec.includes('vaapi')) {
         args.push('-vf', `format=nv12,hwupload,scale_vaapi=w=-2:h=${opts.height}`);
       } else if (opts.codec.includes('qsv')) {
-        args.push('-vf', `hwupload=extra_hw_frames=64,scale_qsv=w=-2:h=${opts.height}`);
+        // QSV scale_qsv doesn't support -2, calculate width explicitly (round to even)
+        // QSV filter order: format convert → hwupload → scale on GPU
+        const width = Math.round(opts.height * 16 / 9 / 2) * 2;
+        args.push('-vf', `format=nv12,hwupload=extra_hw_frames=64,scale_qsv=w=${width}:h=${opts.height}`);
       } else {
         args.push('-vf', `scale=-2:${opts.height}:flags=lanczos,format=yuv420p`);
       }
@@ -402,7 +504,8 @@ export class FullTranscodeManager {
       if (opts.codec.includes('vaapi')) {
         args.push('-vf', 'format=nv12,hwupload');
       } else if (opts.codec.includes('qsv')) {
-        args.push('-vf', 'hwupload=extra_hw_frames=64');
+        // QSV requires NV12 format
+        args.push('-vf', 'format=nv12,hwupload=extra_hw_frames=64');
       }
     }
 
@@ -438,7 +541,124 @@ export class FullTranscodeManager {
     return args;
   }
 
-  private buildHlsArgs(
+  /** Build FFmpeg args for a single HLS rendition (enables QSV/VAAPI hardware acceleration) */
+  private buildSingleHlsRenditionArgs(
+    inputPath: string,
+    variantDir: string,
+    opts: {
+      height: number;
+      sourceHeight: number;
+      watermarkPath: string | null;
+      gopSize: number;
+      canCopyAudio: boolean;
+      audioChannels: number;
+      hasAudio: boolean;
+      preset?: string;
+      codec?: string;
+    },
+  ): string[] {
+    const args: string[] = ['-y'];
+    const codec = opts.codec || 'libx264';
+
+    // HW device init (before -i)
+    if (codec.includes('vaapi')) {
+      args.push('-vaapi_device', '/dev/dri/renderD128');
+    }
+    if (codec.includes('qsv') && process.platform === 'linux') {
+      args.push('-init_hw_device', 'qsv=hw', '-filter_hw_device', 'hw');
+    }
+
+    args.push('-i', ffp(inputPath));
+
+    // Build filter chain for scaling and optional watermark
+    if (opts.watermarkPath) {
+      const wmW = Math.round(opts.height / 5);
+      let filterComplex: string;
+
+      if (codec.includes('vaapi')) {
+        // VAAPI: scale in software, then hwupload
+        filterComplex =
+          `[0:v]scale=-2:${opts.height}:flags=lanczos,format=nv12[base];` +
+          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
+          `[base][wm]overlay=W-w-24:H-h-24,format=nv12,hwupload[outv]`;
+      } else if (codec.includes('qsv')) {
+        // QSV: scale in software, then hwupload (requires NV12)
+        filterComplex =
+          `[0:v]scale=-2:${opts.height}:flags=lanczos,format=nv12[base];` +
+          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
+          `[base][wm]overlay=W-w-24:H-h-24,format=nv12,hwupload=extra_hw_frames=64[outv]`;
+      } else {
+        // Software or NVENC/VideoToolbox: simple software filter
+        filterComplex =
+          `[0:v]scale=-2:${opts.height}:flags=lanczos,format=yuv420p[base];` +
+          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
+          `[base][wm]overlay=W-w-24:H-h-24[outv]`;
+      }
+
+      args.push('-i', ffp(opts.watermarkPath));
+      args.push('-filter_complex', filterComplex);
+      args.push('-map', '[outv]');
+      args.push('-map', '0:a?');
+    } else {
+      // Scale without watermark
+      if (codec.includes('vaapi')) {
+        args.push('-vf', `format=nv12,hwupload,scale_vaapi=w=-2:h=${opts.height}`);
+      } else if (codec.includes('qsv')) {
+        // QSV scale_qsv doesn't support -2, calculate width explicitly (round to even)
+        // QSV filter order: format convert → hwupload → scale on GPU
+        const width = Math.round(opts.height * 16 / 9 / 2) * 2;
+        args.push('-vf', `format=nv12,hwupload=extra_hw_frames=64,scale_qsv=w=${width}:h=${opts.height}`);
+      } else {
+        args.push('-vf', `scale=-2:${opts.height}:flags=lanczos,format=yuv420p`);
+      }
+    }
+
+    // Codec + encoding params
+    args.push('-c:v', codec);
+    this.addCodecParams(args, codec, opts.preset);
+
+    // GOP / keyframe alignment
+    args.push('-g', String(opts.gopSize));
+    args.push('-keyint_min', String(opts.gopSize));
+    args.push('-sc_threshold', '0');
+
+    const isHwCodec = codec.includes('vaapi') || codec.includes('qsv')
+      || codec.includes('nvenc') || codec.includes('videotoolbox');
+    if (!isHwCodec) {
+      args.push('-pix_fmt', 'yuv420p');
+      args.push('-profile:v', 'high', '-level', '4.1');
+    }
+
+    // BT.709 SDR color metadata for consistent web playback
+    args.push('-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv');
+
+    // Audio
+    if (opts.hasAudio) {
+      if (opts.canCopyAudio) {
+        args.push('-c:a', 'copy');
+      } else {
+        args.push('-c:a', 'aac', '-b:a', '320k');
+        if (opts.audioChannels > 2) args.push('-ac', String(opts.audioChannels));
+      }
+    }
+
+    // HLS packaging (fMP4 CMAF) for single rendition
+    args.push(
+      '-f', 'hls',
+      '-hls_time', '4',
+      '-hls_playlist_type', 'vod',
+      '-hls_segment_type', 'fmp4',
+      '-hls_fmp4_init_filename', 'init.mp4',
+      '-hls_flags', 'independent_segments',
+      '-hls_segment_filename', ffp(path.join(variantDir, 'seg_%05d.m4s')),
+      ffp(path.join(variantDir, 'index.m3u8')),
+    );
+
+    return args;
+  }
+
+  /** Build FFmpeg args for multi-rendition HLS in a single pass (NVENC/VideoToolbox/libx264) */
+  private buildMultiRenditionHlsArgs(
     inputPath: string,
     hlsOutDir: string,
     opts: {
@@ -496,7 +716,7 @@ export class FullTranscodeManager {
       if (opts.hasAudio) args.push('-map', '0:a');
     }
 
-    // HLS codec: NVENC/VideoToolbox when available, otherwise libx264
+    // Codec + encoding params
     const hlsCodec = opts.codec || 'libx264';
     args.push('-c:v', hlsCodec);
     this.addCodecParams(args, hlsCodec, opts.preset);
@@ -654,7 +874,8 @@ export class FullTranscodeManager {
         if (this.activeProcess === child) this.activeProcess = null;
 
         if (code === 0) {
-          onProgress(100, 0, '1.0x', '00:00:00');
+          // Don't emit 100% here - let the outer loop handle final progress
+          // to avoid progress bar flashing
           resolve();
         } else {
           const lastLines = stderr.slice(-1500);

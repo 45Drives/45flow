@@ -169,7 +169,9 @@ export function useUploadTranscode() {
                 extra?: Record<string, any>
             ) => {
                 const now = Date.now()
-                if (lastReport[kind] && now - lastReport[kind] < 2000) return
+                // Allow first report per kind and any report ≥ previous to pass immediately;
+                // throttle only rapid-fire updates within 2s
+                if (lastReport[kind] && now - lastReport[kind] < 2000 && kindPercent > 0) return
                 lastReport[kind] = now
                 if (!kindStartTime[kind]) kindStartTime[kind] = now
                 const speedNum = parseFloat(progress.speed) || null
@@ -219,20 +221,23 @@ export function useUploadTranscode() {
             let hlsOk = false
             if (opts.generateHls) {
                 try {
+                    // Report 0% immediately so the UI doesn't flash stale data
+                    reportProgress('hls', { speed: '0' }, 0)
+
                     // console.log('[client-transcode] starting HLS phase…')
                     const { done } = await (window as any).electron.fullTranscodeStart(
                         {
                             inputPath: opts.sourceFilePath,
-                            proxyQualities: [] as ('720p' | '1080p' | 'original')[],
+                            proxyQualities: opts.proxyQualities as ('720p' | '1080p' | 'original')[],
                             generateHls: true,
+                            generateProxy: false,
                             watermarkPath: opts.watermarkPath || undefined,
                             useHardwareAccel: hwAccelSetting.value,
                             preset: transcodePreset.value,
                         },
                         (progress: any) => {
                             if (progress.phase === 'hls') {
-                                // With generateHls=true + proxyQualities=[], totalPhases=1
-                                // so overallPercent IS the HLS percent directly
+                                // overallPercent is HLS progress directly (only phase running)
                                 reportProgress('hls', progress, progress.overallPercent)
                             }
                         }
@@ -278,17 +283,8 @@ export function useUploadTranscode() {
             let proxyOk = false
             if (opts.proxyQualities.length > 0) {
                 try {
-                    // Kick proxy_mp4 into 'running' state in the DB immediately
-                    // so the polling task shows "running" instead of "queued"
-                    await opts.apiFetch('/api/ingest/transcode-progress', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            assetVersionId: opts.assetVersionId,
-                            kind: 'proxy_mp4',
-                            progress: 0,
-                        }),
-                    }).catch(() => {})
+                    // Report 0% immediately so the UI doesn't flash stale data
+                    reportProgress('proxy_mp4', { speed: '0' }, 0)
 
                     // console.log('[client-transcode] starting proxy phase…')
                     const { done } = await (window as any).electron.fullTranscodeStart(
