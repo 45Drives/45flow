@@ -6,7 +6,7 @@
       class="absolute inset-4 mx-auto max-w-[95vw] max-h-[92vh] bg-accent border border-default rounded-lg shadow-2xl z-[151] flex flex-col">
       <!-- Header -->
       <div class="flex items-center justify-between px-5 py-4 border-b border-default shrink-0 bg-well">
-        <div>
+        <div class="flex-1 min-w-0">
           <h3 class="text-xl font-bold">
             Comments Review
           </h3>
@@ -14,7 +14,20 @@
             {{ link?.title || 'Untitled' }} • {{ filteredComments.length }} comment{{ filteredComments.length !== 1 ? 's' : '' }} across {{ filteredFileNames.length }} file{{ filteredFileNames.length !== 1 ? 's' : '' }}
           </p>
         </div>
-        <button class="btn btn-danger" @click="close">Close</button>
+        <div class="flex items-center gap-2 shrink-0">
+          <button 
+            v-if="link?.url" 
+            @click="openInBrowser"
+            class="btn btn-secondary px-4 py-2 h-fit flex items-center gap-2"
+            title="Open link in browser"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            Open in Browser
+          </button>
+          <button class="btn btn-danger" @click="close">Close</button>
+        </div>
       </div>
 
       <!-- Export Section -->
@@ -87,8 +100,19 @@
       <div v-else class="flex-1 flex min-h-0 overflow-hidden">
         <!-- Left Sidebar: Filters (30%) -->
         <div class="w-[30%] border-r border-default p-4 flex flex-col gap-4 overflow-y-auto shrink-0">
-          <div class="text-sm font-bold opacity-90">Filters</div>
+          <div class="text-sm font-bold opacity-90">Filters & Search</div>
           
+          <!-- Text Search -->
+          <div class="space-y-2">
+            <label class="text-xs font-semibold opacity-70">Search Text</label>
+            <input
+              v-model="searchText"
+              type="text"
+              placeholder="Search comments..."
+              class="w-full px-2 py-1.5 text-sm border border-default rounded bg-default"
+            />
+          </div>
+
           <!-- Status Filter -->
           <div class="space-y-2">
             <label class="text-xs font-semibold opacity-70">Status</label>
@@ -108,6 +132,40 @@
                 {{ fileName }} ({{ getFileCommentCount(fileName) }})
               </option>
             </select>
+          </div>
+
+          <!-- Author Filter -->
+          <div class="space-y-2">
+            <label class="text-xs font-semibold opacity-70">Author</label>
+            <select v-model="authorFilter" class="w-full px-2 py-1.5 text-sm border border-default rounded bg-default">
+              <option value="">All Authors ({{ allAuthors.length }})</option>
+              <option v-for="author in allAuthors" :key="author" :value="author">
+                {{ author }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Sort Options -->
+          <div class="space-y-2">
+            <label class="text-xs font-semibold opacity-70">Sort By</label>
+            <select v-model="sortBy" class="w-full px-2 py-1.5 text-sm border border-default rounded bg-default">
+              <option value="timecode">Timecode</option>
+              <option value="date">Date Created</option>
+              <option value="author">Author Name</option>
+              <option value="status">Status</option>
+            </select>
+          </div>
+
+          <!-- Sort Order -->
+          <div class="space-y-2">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                v-model="sortReverse"
+                class="rounded border-default"
+              />
+              <span class="text-xs font-semibold select-none">Reverse Sort Order</span>
+            </label>
           </div>
 
           <!-- Stats Panel -->
@@ -136,10 +194,47 @@
 
         <!-- Right: Comments List (70%) -->
         <div class="flex-1 flex flex-col min-h-0">
-          <!-- Comments Header -->
-          <div class="px-4 py-3 border-b border-default shrink-0 flex items-center justify-between bg-default/5">
-            <div class="text-sm font-semibold">
-              {{ filteredComments.length }} comment{{ filteredComments.length === 1 ? '' : 's' }}
+          <!-- Comments Header with Bulk Actions -->
+          <div class="px-4 py-3 border-b border-default shrink-0 bg-default/5">
+            <div class="flex items-center justify-between gap-4">
+              <div class="flex items-center gap-3">
+                <div class="text-sm font-semibold">
+                  {{ filteredComments.length }} comment{{ filteredComments.length === 1 ? '' : 's' }}
+                  <span v-if="selectedCommentIds.size > 0" class="text-primary">
+                    ({{ selectedCommentIds.size }} selected)
+                  </span>
+                </div>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    :checked="allVisibleSelected"
+                    @change="toggleSelectAll"
+                    class="rounded border-default"
+                  />
+                  <span class="text-xs font-semibold select-none">Select All</span>
+                </label>
+              </div>
+
+              <!-- Help Text / Bulk Actions -->
+              <div class="flex items-center gap-3">
+                <div v-if="selectedCommentIds.size === 0" class="text-xs text-muted italic">
+                  Click comments to select • Use bulk actions to resolve multiple at once
+                </div>
+                <div v-else class="flex items-center gap-2">
+                  <button
+                    @click="bulkResolve(true)"
+                    class="btn btn-success px-3 py-1 text-xs h-fit"
+                  >
+                    Resolve ({{ selectedCommentIds.size }})
+                  </button>
+                  <button
+                    @click="bulkResolve(false)"
+                    class="btn btn-secondary px-3 py-1 text-xs h-fit"
+                  >
+                    Unresolve ({{ selectedCommentIds.size }})
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -184,8 +279,10 @@
                 <div
                   v-for="comment in getFilteredFileComments(fileName)"
                   :key="comment.id"
-                  class="relative rounded-lg border border-default bg-well/40 hover:bg-well/60 transition-colors p-4"
+                  class="relative rounded-lg border border-default bg-well/40 hover:bg-well/60 transition-colors cursor-pointer comment-card"
+                  :class="{ 'comment-selected': selectedCommentIds.has(comment.id) }"
                   :style="{ marginLeft: `${(comment.depth || 0) * 2}rem` }"
+                  @click="handleCommentClick($event, comment.id)"
                 >
                   <!-- Depth indicator line -->
                   <div
@@ -193,60 +290,75 @@
                     class="absolute left-0 top-0 bottom-0 w-1 bg-primary/30 rounded-l-lg"
                   ></div>
 
-                  <div class="flex items-start justify-between gap-3 mb-2">
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2 flex-wrap">
-                        <span class="font-bold text-default">
-                          {{ comment.author_name || comment.user_name || 'Anonymous' }}
-                        </span>
-                        <span v-if="comment.start_seconds !== null && comment.start_seconds !== undefined" class="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/20 text-primary rounded text-xs font-mono font-semibold">
-                          <ClockIcon class="w-3 h-3" />
-                          {{ formatTimecodeRange(comment.start_seconds, comment.end_seconds) }}
-                        </span>
+                  <!-- Bulk Selection Checkbox - Top Left -->
+                  <div class="absolute top-3 left-3">
+                    <input
+                      type="checkbox"
+                      :checked="selectedCommentIds.has(comment.id)"
+                      @click.stop="toggleSelectComment(comment.id)"
+                      class="rounded border-default cursor-pointer"
+                      title="Select for bulk actions"
+                    />
+                  </div>
+
+                  <!-- Comment Content - Padded for checkbox -->
+                  <div class="pl-10 pr-4 py-4">
+                    <div class="flex items-start justify-between gap-3 mb-2">
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <span class="font-bold text-default">
+                            {{ comment.author_name || comment.user_name || 'Anonymous' }}
+                          </span>
+                          <span v-if="comment.start_seconds !== null && comment.start_seconds !== undefined" class="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/20 text-primary rounded text-xs font-mono font-semibold">
+                            <ClockIcon class="w-3 h-3" />
+                            {{ formatTimecodeRange(comment.start_seconds, comment.end_seconds) }}
+                          </span>
+                        </div>
+                        <div class="text-xs text-muted mt-1">
+                          {{ formatDate(comment.created_at) }}
+                          <span v-if="comment.is_edited" class="ml-1 italic">(edited)</span>
+                        </div>
                       </div>
-                      <div class="text-xs text-muted mt-1">
-                        {{ formatDate(comment.created_at) }}
-                        <span v-if="comment.is_edited" class="ml-1 italic">(edited)</span>
-                      </div>
+                      
+                      <!-- Individual Resolved Toggle - Top Right -->
+                      <label class="flex items-center gap-1.5 cursor-pointer shrink-0" @click.stop>
+                        <input
+                          type="checkbox"
+                          :checked="comment.resolved"
+                          @change="toggleResolved(comment)"
+                          class="rounded border-default"
+                          title="Toggle resolved status"
+                        />
+                        <span class="text-xs select-none">
+                          {{ comment.resolved ? 'Resolved' : 'Unresolved' }}
+                        </span>
+                      </label>
                     </div>
-                    
-                    <!-- Resolved Toggle -->
-                    <label class="flex items-center gap-1.5 cursor-pointer shrink-0">
-                      <input
-                        type="checkbox"
-                        :checked="comment.resolved"
-                        @change="toggleResolved(comment)"
-                        class="rounded border-default"
-                      />
-                      <span class="text-xs select-none">
-                        {{ comment.resolved ? 'Resolved' : 'Unresolved' }}
+
+                    <div class="text-default whitespace-pre-wrap leading-relaxed">{{ comment.body }}</div>
+
+                    <!-- Tags if present -->
+                    <div v-if="comment.tags" class="mt-2 flex flex-wrap gap-1">
+                      <span
+                        v-for="tag in parseTags(comment.tags)"
+                        :key="tag"
+                        class="inline-block px-2 py-0.5 bg-accent text-xs rounded-full border border-default"
+                      >
+                        #{{ tag }}
                       </span>
-                    </label>
-                  </div>
+                    </div>
 
-                  <div class="text-default whitespace-pre-wrap leading-relaxed">{{ comment.body }}</div>
-
-                  <!-- Tags if present -->
-                  <div v-if="comment.tags" class="mt-2 flex flex-wrap gap-1">
-                    <span
-                      v-for="tag in parseTags(comment.tags)"
-                      :key="tag"
-                      class="inline-block px-2 py-0.5 bg-accent text-xs rounded-full border border-default"
-                    >
-                      #{{ tag }}
-                    </span>
-                  </div>
-
-                  <!-- Comment Meta -->
-                  <div class="flex items-center gap-3 text-xs opacity-60 mt-2">
-                    <span v-if="comment.draw_data" class="flex items-center gap-1">
-                      <PencilIcon class="w-3 h-3" />
-                      Has annotation
-                    </span>
-                    <span v-if="comment.resolved_at" class="text-green-400 flex items-center gap-1">
-                      <CheckIcon class="w-3 h-3" />
-                      Resolved {{ formatDate(comment.resolved_at) }}
-                    </span>
+                    <!-- Comment Meta -->
+                    <div class="flex items-center gap-3 text-xs opacity-60 mt-2">
+                      <span v-if="comment.draw_data" class="flex items-center gap-1">
+                        <PencilIcon class="w-3 h-3" />
+                        Has annotation
+                      </span>
+                      <span v-if="comment.resolved_at" class="text-green-400 flex items-center gap-1">
+                        <CheckIcon class="w-3 h-3" />
+                        Resolved {{ formatDate(comment.resolved_at) }}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -289,6 +401,13 @@ const error = ref<string | null>(null)
 const comments = ref<CommentExport[]>([])
 const stats = ref<CommentStats | null>(null)
 const selectedFileFilter = ref('')
+const searchText = ref('')
+const authorFilter = ref('')
+const sortBy = ref<'timecode' | 'date' | 'author' | 'status'>('timecode')
+const sortReverse = ref(false)
+
+// Bulk selection
+const selectedCommentIds = ref<Set<number>>(new Set())
 const statusFilter = ref<'all' | 'resolved' | 'unresolved'>('all')
 
 // Export state
@@ -316,12 +435,22 @@ const fileGroups = computed(() => {
 
 const allFileNames = computed(() => fileGroups.value.map(g => g.fileName))
 
+// Get unique authors
+const allAuthors = computed(() => {
+  const authors = new Set<string>()
+  comments.value.forEach(c => {
+    const author = c.author_name || c.user_name || 'Anonymous'
+    authors.add(author)
+  })
+  return Array.from(authors).sort()
+})
+
 // Get all top-level comments
 const topLevelComments = computed(() => {
   return comments.value.filter(c => !c.parent_id)
 })
 
-// Apply filters
+// Apply filters and sorting
 const filteredComments = computed(() => {
   let result = topLevelComments.value
   
@@ -336,14 +465,63 @@ const filteredComments = computed(() => {
   } else if (statusFilter.value === 'unresolved') {
     result = result.filter(c => !c.resolved)
   }
+
+  // Filter by author
+  if (authorFilter.value) {
+    result = result.filter(c => {
+      const author = c.author_name || c.user_name || 'Anonymous'
+      return author === authorFilter.value
+    })
+  }
+
+  // Filter by search text
+  if (searchText.value.trim()) {
+    const search = searchText.value.toLowerCase()
+    result = result.filter(c => {
+      return c.body?.toLowerCase().includes(search) ||
+             c.author_name?.toLowerCase().includes(search) ||
+             c.user_name?.toLowerCase().includes(search)
+    })
+  }
   
-  return result.sort((a, b) => (a.start_seconds || 0) - (b.start_seconds || 0))
+  // Sort
+  const sortFn = (a: CommentExport, b: CommentExport): number => {
+    switch (sortBy.value) {
+      case 'timecode':
+        return (a.start_seconds || 0) - (b.start_seconds || 0)
+      case 'date':
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      case 'author': {
+        const authorA = a.author_name || a.user_name || 'Anonymous'
+        const authorB = b.author_name || b.user_name || 'Anonymous'
+        return authorA.localeCompare(authorB)
+      }
+      case 'status':
+        return (a.resolved ? 1 : 0) - (b.resolved ? 1 : 0)
+      default:
+        return 0
+    }
+  }
+
+  result = result.sort(sortFn)
+  
+  if (sortReverse.value) {
+    result = result.reverse()
+  }
+  
+  return result
 })
 
 // Get unique file names from filtered comments
 const filteredFileNames = computed(() => {
   const names = new Set(filteredComments.value.map(c => c.file_name || 'Unknown'))
   return Array.from(names).sort()
+})
+
+// Check if all visible comments are selected
+const allVisibleSelected = computed(() => {
+  if (filteredComments.value.length === 0) return false
+  return filteredComments.value.every(c => selectedCommentIds.value.has(c.id))
 })
 
 function getFileCommentCount(fileName: string): number {
@@ -422,12 +600,95 @@ async function loadComments() {
       unresolved: 0,
       withAnnotations: 0,
     }
+    
+    // Clear selections when reloading
+    selectedCommentIds.value.clear()
   } catch (err: any) {
     error.value = err?.message || String(err)
     console.error('[CommentsReview] Load error:', err)
   } finally {
     loading.value = false
   }
+}
+
+function toggleSelectComment(commentId: number) {
+  if (selectedCommentIds.value.has(commentId)) {
+    selectedCommentIds.value.delete(commentId)
+  } else {
+    selectedCommentIds.value.add(commentId)
+  }
+  // Force reactivity
+  selectedCommentIds.value = new Set(selectedCommentIds.value)
+}
+
+function handleCommentClick(event: MouseEvent, commentId: number) {
+  // Allow text selection without toggling
+  const selection = window.getSelection()
+  if (selection && selection.toString().length > 0) {
+    return
+  }
+  
+  // Toggle selection on comment click
+  toggleSelectComment(commentId)
+}
+
+function toggleSelectAll() {
+  if (allVisibleSelected.value) {
+    // Deselect all visible
+    filteredComments.value.forEach(c => selectedCommentIds.value.delete(c.id))
+  } else {
+    // Select all visible
+    filteredComments.value.forEach(c => selectedCommentIds.value.add(c.id))
+  }
+  // Force reactivity
+  selectedCommentIds.value = new Set(selectedCommentIds.value)
+}
+
+async function bulkResolve(resolved: boolean) {
+  if (selectedCommentIds.value.size === 0 || !props.link?.id) return
+
+  const linkId = props.link.id
+  const count = selectedCommentIds.value.size
+  const ids = Array.from(selectedCommentIds.value)
+
+  try {
+    // Update all selected comments
+    await Promise.all(
+      ids.map(commentId =>
+        apiFetch(`/api/links/${linkId}/comments/${commentId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ resolved }),
+        })
+      )
+    )
+
+    // Reload to refresh stats and filters
+    await loadComments()
+
+    pushNotification(
+      new Notification(
+        'Bulk Update Complete',
+        `Marked ${count} comment${count !== 1 ? 's' : ''} as ${resolved ? 'resolved' : 'unresolved'}`,
+        'success',
+        3000
+      )
+    )
+  } catch (err: any) {
+    console.error('[CommentsReview] Bulk resolve error:', err)
+    pushNotification(
+      new Notification(
+        'Bulk Update Failed',
+        err?.message || 'Could not update selected comments',
+        'error',
+        4000
+      )
+    )
+  }
+}
+
+function openInBrowser() {
+  if (!props.link?.url) return
+  window.open(props.link.url, '_blank', 'noopener,noreferrer')
 }
 
 async function toggleResolved(comment: CommentExport) {
@@ -536,5 +797,12 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Ensure consistent modal styling */
+.comment-card.comment-selected {
+  outline: 2px solid var(--btn-primary-border);
+  outline-offset: -2px;
+  border-color: var(--btn-primary-border);
+}
+
+/* Checkboxes already use theme colors via global CSS variables:
+   --checkbox-checked-border and --checkbox-checked-bg */
 </style>
