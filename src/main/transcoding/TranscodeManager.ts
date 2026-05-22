@@ -385,6 +385,11 @@ export class TranscodeManager {
     this.activeJobs.clear();
   }
 
+  /** Check if any transcode jobs are currently running */
+  hasActiveJobs(): boolean {
+    return this.activeJobs.size > 0;
+  }
+
   getActiveJobCount(): number {
     return this.activeJobs.size;
   }

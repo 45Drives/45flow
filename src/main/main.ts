@@ -392,6 +392,7 @@ import {
   upsertTransfer, getRunningTransfers, getQueuedTransfers,
   markTransfer, markTransferRunning, removeTransfer, removeQueuedMatch,
   pruneOldTransfers, isPidAlive, removeLogFile, makeLogPath, getAllTransfers,
+  cleanupOrphanedRunning,
   type PersistedTransfer,
 } from './transfers/transfer-store';
 import { TranscodeManager } from './transcoding/TranscodeManager';
@@ -1297,6 +1298,25 @@ function scanCandidatesForNic(nic: LocalNic): string[] {
 
 let mainWindowRef: BrowserWindow | null = null
 
+// ── Client-side transcoding managers (must be before createWindow) ───────────
+const transcodeManager = new TranscodeManager();
+const fullTranscodeManager = new FullTranscodeManager();
+
+// ── Cleanup function: call on quit to fail any orphaned client transcodes ───
+function cleanupOrphanedClientTranscodes() {
+  const simpleCount = transcodeManager.getActiveJobCount();
+  const fullActive = fullTranscodeManager.hasActiveJob();
+  const totalActive = simpleCount + (fullActive ? 1 : 0);
+  
+  if (totalActive > 0) {
+    jl('info', 'cleanup.orphaned-transcodes', { simpleCount, fullActive, totalActive });
+    transcodeManager.cancelAll();
+    if (fullActive) {
+      fullTranscodeManager.cancel();
+    }
+  }
+}
+
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 800,
@@ -1314,6 +1334,45 @@ function createWindow() {
     }
   });
   mainWindowRef = mainWindow
+
+  // ── Prevent window close if active transcodes are running ──────────────────
+  mainWindow.on('close', (event) => {
+    const activeSimple = transcodeManager.getActiveJobCount();
+    const activeFull = fullTranscodeManager.hasActiveJob();
+    const totalActive = activeSimple + (activeFull ? 1 : 0);
+
+    jl('debug', 'window.close', { activeSimple, activeFull, totalActive });
+
+    if (totalActive > 0) {
+      jl('warn', 'window.close.active-transcodes', { activeSimple, activeFull, totalActive });
+
+      // Prevent the window from closing
+      event.preventDefault();
+
+      // Show warning dialog
+      const choice = dialog.showMessageBoxSync({
+        type: 'warning',
+        buttons: ['Cancel', 'Quit Anyway'],
+        defaultId: 0,
+        title: 'Active Transcoding in Progress',
+        message: `${totalActive} transcode job${totalActive > 1 ? 's are' : ' is'} currently running.`,
+        detail: 'If you quit now, the in-progress transcodes will be stopped and you may need to restart them. The server will automatically fall back to server-side transcoding.\n\nDo you want to quit anyway?',
+        ...(mainWindow && !mainWindow.isDestroyed() ? { parent: mainWindow } : {}),
+      });
+
+      if (choice === 1) {
+        // User chose "Quit Anyway"
+        jl('info', 'window.close.force-quit', { totalActive });
+        // Cancel all active transcodes and clean up
+        cleanupOrphanedClientTranscodes();
+        // Close the window for real
+        mainWindow.destroy();
+      } else {
+        // User chose "Cancel" - do nothing, window stays open
+        jl('info', 'window.close.canceled', { totalActive });
+      }
+    }
+  });
 
   function safeSend(channel: string, payload?: any) {
     if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -1910,6 +1969,43 @@ function createWindow() {
 
   }, 5000)
 
+  // ── Warn before quitting if active client transcodes are running ──────────
+  app.on('before-quit', (event) => {
+    const activeSimple = transcodeManager.getActiveJobCount();
+    const activeFull = fullTranscodeManager.hasActiveJob();
+    const totalActive = activeSimple + (activeFull ? 1 : 0);
+
+    if (totalActive > 0) {
+      jl('warn', 'app.before-quit.active-transcodes', { activeSimple, activeFull, totalActive });
+
+      // Prevent quit temporarily
+      event.preventDefault();
+
+      // Show warning dialog
+      const win = BrowserWindow.getAllWindows()[0];
+      const choice = dialog.showMessageBoxSync({
+        type: 'warning',
+        buttons: ['Cancel', 'Quit Anyway'],
+        defaultId: 0,
+        title: 'Active Transcoding in Progress',
+        message: `${totalActive} transcode job${totalActive > 1 ? 's are' : ' is'} currently running.`,
+        detail: 'If you quit now, the in-progress transcodes will be stopped and you may need to restart them. The server will automatically fall back to server-side transcoding.\n\nDo you want to quit anyway?',
+        ...(win && !win.isDestroyed() ? { parent: win } : {}),
+      });
+
+      if (choice === 1) {
+        // User chose "Quit Anyway"
+        jl('info', 'app.before-quit.force-quit', { totalActive });
+        // Cancel all active transcodes and clean up
+        cleanupOrphanedClientTranscodes();
+        // Now quit for real
+        app.quit();
+      } else {
+        // User chose "Cancel"
+        jl('info', 'app.before-quit.canceled', { totalActive });
+      }
+    }
+  });
 
   app.on('window-all-closed', function () {
     ipcMain.removeAllListeners('message');
@@ -2047,6 +2143,7 @@ app.whenReady().then(() => {
 
   initAutoUpdates(() => (mainWindowRef && !mainWindowRef.isDestroyed()) ? mainWindowRef : null);
 
+  cleanupOrphanedRunning()  // mark orphaned 'running' transfers as failed (dead processes)
   // ── Resume detached transfers from previous session ──────────────────────
   pruneOldTransfers()       // remove old completed/failed entries (>7 days)
   resumeDetachedTransfers() // reattach to any still-running rsync processes
@@ -2364,7 +2461,7 @@ function resumeDetachedTransfers() {
       inflightTailers.set(t.id, tailer)
 
       // When tailer resolves (PID dies), handle completion
-      tailer.done.then(ok => handleDetachedCompletion(t, ok))
+      tailer.done.then(result => handleDetachedCompletion(t, result))
     } else {
       // PID is gone. Check log to see if it completed successfully.
       jl('info', 'resume.detached.pid_dead', { id: t.id, pid: t.pid })
@@ -2372,7 +2469,7 @@ function resumeDetachedTransfers() {
 
       if (ok) {
         jl('info', 'resume.detached.completed', { id: t.id })
-        handleDetachedCompletion(t, true)
+        handleDetachedCompletion(t, { ok: true })
       } else {
         // Transfer was interrupted — re-spawn rsync (--partial resumes)
         jl('info', 'resume.detached.respawn', { id: t.id, src: t.src })
@@ -2396,16 +2493,17 @@ function lastLogReached100(logFile: string): boolean {
 }
 
 /** Handle a detached transfer that has finished (PID died) */
-async function handleDetachedCompletion(t: PersistedTransfer, ok: boolean) {
+async function handleDetachedCompletion(t: PersistedTransfer, result: { ok: boolean; error?: string }) {
   inflightPids.delete(t.id)
   inflightTailers.delete(t.id)
 
   const win = BrowserWindow.getAllWindows()[0]
 
-  if (!ok) {
+  if (!result.ok) {
     markTransfer(t.id, 'failed')
-    win?.webContents?.send(`upload:done:${t.id}`, { error: 'rsync failed (detached)' })
-    jl('info', 'resume.detached.failed', { id: t.id })
+    const errorMsg = result.error || 'rsync failed (detached)'
+    win?.webContents?.send(`upload:done:${t.id}`, { error: errorMsg })
+    jl('info', 'resume.detached.failed', { id: t.id, error: errorMsg })
     return
   }
 
@@ -2465,7 +2563,7 @@ function startQueuedTransfer(t: PersistedTransfer) {
     jl('info', 'queue.local', { id: t.id, src: t.src, destDir: t.destDir })
     markTransferRunning(t.id, 0, '')
     runLocalCopy({ id: t.id, src: t.src, destDir: t.destDir, host: t.host, shareRoot: t.shareRoot, win })
-      .then(ok => handleDetachedCompletion({ ...t, pid: 0, logFile: '', status: 'running' }, ok))
+      .then(ok => handleDetachedCompletion({ ...t, pid: 0, logFile: '', status: 'running' }, { ok, error: ok ? undefined : 'Local copy failed' }))
     return
   }
 
@@ -2494,7 +2592,7 @@ function startQueuedTransfer(t: PersistedTransfer) {
 
   jl('info', 'queue.started', { id: t.id, pid, src: t.src })
 
-  tailer.done.then(ok => handleDetachedCompletion({ ...t, pid, logFile, status: 'running' }, ok))
+  tailer.done.then(result => handleDetachedCompletion({ ...t, pid, logFile, status: 'running' }, result))
 }
 
 /** Re-spawn an interrupted rsync transfer */
@@ -2514,7 +2612,7 @@ function respawnTransfer(t: PersistedTransfer) {
     const win = BrowserWindow.getAllWindows()[0] ?? undefined
     jl('info', 'resume.local', { id: t.id, src: t.src, destDir: t.destDir })
     runLocalCopy({ id: t.id, src: t.src, destDir: t.destDir, host: t.host, shareRoot: t.shareRoot, win })
-      .then(ok => handleDetachedCompletion(t, ok))
+      .then(ok => handleDetachedCompletion(t, { ok, error: ok ? undefined : 'Local copy failed' }))
     return
   }
 
@@ -2544,7 +2642,7 @@ function respawnTransfer(t: PersistedTransfer) {
 
   jl('info', 'resume.detached.respawned', { id: t.id, pid })
 
-  tailer.done.then(ok => handleDetachedCompletion(t, ok))
+  tailer.done.then(result => handleDetachedCompletion(t, result))
 }
 
 /** Run the ingest step for a completed transfer (mirrors the logic in upload:start) */
@@ -2819,15 +2917,16 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
       }
 
       // Wait for rsync to finish (detected by PID death + log parsing)
-      const ok = await tailer.done
+      const result = await tailer.done
 
       inflightPids.delete(id)
       inflightTailers.delete(id)
 
-      if (!ok) {
+      if (!result.ok) {
         markTransfer(id, 'failed')
-        event.sender.send(`upload:done:${id}`, { error: 'rsync failed (detached)' })
-        jl('info', 'rsync.detached.failed', { id, pid })
+        const errorMsg = result.error || 'rsync failed (detached)'
+        event.sender.send(`upload:done:${id}`, { error: errorMsg })
+        jl('info', 'rsync.detached.failed', { id, pid, error: errorMsg })
         return
       }
 
@@ -3054,7 +3153,7 @@ ipcMain.on('upload:cancel', (_event, { id }) => {
 })
 
 // ── Client-side transcoding ──────────────────────────────────────────────────
-const transcodeManager = new TranscodeManager();
+// (managers initialized earlier, before createWindow)
 
 ipcMain.handle('transcode:start', async (event, { jobId, options }) => {
   jl('info', 'transcode.start', { jobId, options });
@@ -3084,6 +3183,13 @@ ipcMain.handle('transcode:cancel', async (_event, { jobId }) => {
   return { canceled };
 });
 
+// ── Debug: clear all orphaned transfers ──────────────────────────────────────
+ipcMain.handle('transfers:cleanup-orphaned', async () => {
+  jl('info', 'transfers.cleanup-orphaned');
+  cleanupOrphanedRunning();
+  return { ok: true };
+});
+
 ipcMain.handle('transcode:get-capabilities', async () => {
   const { detectHardwareCapabilities, hasHardwareAcceleration, describeHardware } = await import('./transcoding/hardware-detect');
   const caps = detectHardwareCapabilities();
@@ -3099,7 +3205,7 @@ ipcMain.handle('transcode:get-capabilities', async () => {
 });
 
 // ── Full client-side transcoding (proxies + HLS) ─────────────────────────────
-const fullTranscodeManager = new FullTranscodeManager();
+// (manager initialized earlier, before createWindow)
 
 ipcMain.handle('transcode:full-start', async (event, { jobId, options }) => {
   jl('info', 'transcode.full.start', {

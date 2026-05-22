@@ -138,6 +138,27 @@ export function getQueuedTransfers(): PersistedTransfer[] {
   return readAll().filter(t => t.status === 'queued');
 }
 
+/** Clean up orphaned 'running' transfers on app startup - mark as failed if process is dead */
+export function cleanupOrphanedRunning(): void {
+  const list = readAll();
+  let changed = false;
+  
+  for (const t of list) {
+    if (t.status === 'running') {
+      // If no PID or PID is dead, mark as failed
+      if (!t.pid || !isPidAlive(t.pid)) {
+        t.status = 'failed';
+        t.completedAt = Date.now();
+        changed = true;
+      }
+    }
+  }
+  
+  if (changed) {
+    writeAll(list);
+  }
+}
+
 /** Transition a queued transfer to running, setting its PID and log file */
 export function markTransferRunning(id: string, pid: number, logFile: string): void {
   const list = readAll();

@@ -82,6 +82,17 @@ function probeSource(ffmpegPath: string, inputPath: string): ProbeInfo {
 export class FullTranscodeManager {
   private activeProcess: ChildProcess | null = null;
   private canceled = false;
+  private currentJobId: string | null = null;
+
+  /** Check if a transcode job is currently running */
+  hasActiveJob(): boolean {
+    return this.activeProcess !== null && this.currentJobId !== null;
+  }
+
+  /** Get current job ID if one is running */
+  getCurrentJobId(): string | null {
+    return this.currentJobId;
+  }
 
   async transcode(
     jobId: string,
@@ -89,7 +100,9 @@ export class FullTranscodeManager {
     onProgress: (progress: FullTranscodeProgress) => void,
   ): Promise<FullTranscodeResult> {
     this.canceled = false;
+    this.currentJobId = jobId;
 
+    try {
     const ffmpegPath = getFfmpegPath();
     const caps = detectHardwareCapabilities();
 
@@ -415,6 +428,10 @@ export class FullTranscodeManager {
       hlsDir,
       hlsMaster,
     };
+  } finally {
+    this.currentJobId = null;
+    this.activeProcess = null;
+  }
   }
 
   cancel(): void {
