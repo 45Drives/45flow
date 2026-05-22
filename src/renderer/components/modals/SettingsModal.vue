@@ -589,53 +589,59 @@
                                 </div>
                                 <p class="text-xs text-accent mt-2">When custom branding is enabled, recipients see your company branding with a small "Powered by 45Flow" attribution.</p>
 
-                                <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Brand Colors</p>
-                                <p class="text-xs text-accent mb-3">Define your brand colors. These will be available as a "Custom" theme in your palette and can be shown to recipients.</p>
-                                <div class="divide-y divide-default">
-                                    <SettingRow label="Primary brand color" description="Used for primary branded actions, highlights, and gradient start.">
-                                        <div class="flex flex-col gap-1.5">
-                                            <div class="flex items-center gap-2">
-                                                <input :value="sanitizeHex(brandingCustomPrimary)" type="color" :disabled="brandingBusy"
-                                                    class="w-8 h-8 rounded cursor-pointer border border-default"
-                                                    @input="brandingCustomPrimary = ($event.target as HTMLInputElement).value" />
-                                                <input v-model="brandingCustomPrimary" type="text" :disabled="brandingBusy"
-                                                    class="input-textlike border border-default px-2 py-1 rounded text-sm w-24 font-mono"
-                                                    placeholder="#D92B2F" maxlength="7" />
+                                <template v-if="brandingEnforcedTheme === 'custom'">
+                                    <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Brand Colors</p>
+                                    <p class="text-xs text-accent mb-3">Define your brand colors. These will be available as a "Custom" theme in your palette and can be shown to recipients.</p>
+                                    <div class="divide-y divide-default">
+                                        <SettingRow label="Primary brand color" description="Used for primary branded actions, highlights, and gradient start.">
+                                            <div class="flex flex-col items-end">
+                                                <div class="flex items-center gap-2">
+                                                    <input :value="sanitizeHex(brandingCustomPrimary)" type="color" :disabled="brandingBusy"
+                                                        class="w-8 h-8 rounded cursor-pointer border border-default"
+                                                        @input="brandingCustomPrimary = ($event.target as HTMLInputElement).value" />
+                                                    <input v-model="brandingCustomPrimary" type="text" :disabled="brandingBusy"
+                                                        class="input-textlike border border-default px-2 py-1 rounded text-sm w-24 font-mono"
+                                                        placeholder="#D92B2F" maxlength="7" />
+                                                </div>
+                                                <div class="mt-1.5">
+                                                    <div v-if="brandingPrimaryContrastWarning" class="text-xs text-warning flex items-start gap-1.5">
+                                                        <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                                        </svg>
+                                                        <span>{{ brandingPrimaryContrastWarning }}</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div v-if="brandingPrimaryContrastWarning" class="text-xs text-warning flex items-start gap-1.5">
-                                                <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                                </svg>
-                                                <span>{{ brandingPrimaryContrastWarning }}</span>
+                                        </SettingRow>
+                                        <SettingRow label="Secondary brand color" description="Used for gradient end, borders, and supporting accents.">
+                                            <div class="flex flex-col items-end">
+                                                <div class="flex items-center gap-2">
+                                                    <input :value="sanitizeHex(brandingCustomSecondary)" type="color" :disabled="brandingBusy"
+                                                        class="w-8 h-8 rounded cursor-pointer border border-default"
+                                                        @input="brandingCustomSecondary = ($event.target as HTMLInputElement).value" />
+                                                    <input v-model="brandingCustomSecondary" type="text" :disabled="brandingBusy"
+                                                        class="input-textlike border border-default px-2 py-1 rounded text-sm w-24 font-mono"
+                                                        placeholder="#b02428" maxlength="7" />
+                                                </div>
+                                                <div class="mt-1.5">
+                                                    <div v-if="brandingSecondaryContrastWarning" class="text-xs text-warning flex items-start gap-1.5">
+                                                        <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                                        </svg>
+                                                        <span>{{ brandingSecondaryContrastWarning }}</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </SettingRow>
-                                    <SettingRow label="Secondary brand color" description="Used for gradient end, borders, and supporting accents.">
-                                        <div class="flex flex-col gap-1.5">
-                                            <div class="flex items-center gap-2">
-                                                <input :value="sanitizeHex(brandingCustomSecondary)" type="color" :disabled="brandingBusy"
-                                                    class="w-8 h-8 rounded cursor-pointer border border-default"
-                                                    @input="brandingCustomSecondary = ($event.target as HTMLInputElement).value" />
-                                                <input v-model="brandingCustomSecondary" type="text" :disabled="brandingBusy"
-                                                    class="input-textlike border border-default px-2 py-1 rounded text-sm w-24 font-mono"
-                                                    placeholder="#b02428" maxlength="7" />
-                                            </div>
-                                            <div v-if="brandingSecondaryContrastWarning" class="text-xs text-warning flex items-start gap-1.5">
-                                                <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                                </svg>
-                                                <span>{{ brandingSecondaryContrastWarning }}</span>
-                                            </div>
-                                        </div>
-                                    </SettingRow>
-                                    <SettingRow label="Preview" description="Gradient from your two colors.">
-                                        <span class="inline-block w-48 h-6 rounded-md border border-default"
-                                            :style="{ background: brandingCustomPreview }" />
-                                    </SettingRow>
-                                </div>
+                                        </SettingRow>
+                                        <SettingRow label="Preview" description="Gradient from your two colors.">
+                                            <span class="inline-block w-48 h-6 rounded-md border border-default"
+                                                :style="{ background: brandingCustomPreview }" />
+                                        </SettingRow>
+                                    </div>
+                                </template>
 
                                 <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Company Logo</p>
-                                <p class="text-xs text-accent mb-3">Replaces the 45Studio logo on link pages. Supports PNG, JPEG, SVG, and WebP. Max 2 MB. Recommended: transparent background, at least 200px tall.</p>
+                                <p class="text-xs text-accent mb-3">Replaces the 45Studio logo on link pages. Supports PNG, JPEG, SVG, and WebP. Max 2 MB. <br/><b>Recommended: transparent background, at least 200px tall.</b></p>
                                 <div class="divide-y divide-default">
                                     <SettingRow label="Default logo" description="Shown on share and upload pages.">
                                         <div class="flex flex-col gap-2">
@@ -752,7 +758,7 @@
                                             <div class="h-px bg-default" />
                                             <div class="text-[0.65rem] text-accent">This link is protected</div>
                                             <div class="h-4 bg-well rounded" />
-                                            <div class="h-6 rounded" :style="{ background: brandingCustomPrimary }">
+                                            <div class="h-6 rounded" :style="{ background: brandingCustomPreview }">
                                                 <div class="text-[0.65rem] text-white/90 text-center leading-6">Unlock</div>
                                             </div>
                                         </div>
@@ -774,7 +780,7 @@
                                             <div class="aspect-video bg-well/50 rounded flex items-center justify-center">
                                                 <div class="w-6 h-6 border-2 border-accent/30 rounded-full" />
                                             </div>
-                                            <div class="h-5 rounded" :style="{ background: brandingCustomPrimary }">
+                                            <div class="h-5 rounded" :style="{ background: brandingCustomPreview }">
                                                 <div class="text-[0.65rem] text-white/90 text-center leading-5">Download</div>
                                             </div>
                                         </div>
@@ -794,7 +800,7 @@
                                             <div class="border-2 border-dashed border-accent/30 rounded p-2 bg-well/30">
                                                 <div class="text-[0.65rem] text-accent text-center">Drop files here</div>
                                             </div>
-                                            <div class="h-5 rounded" :style="{ background: brandingCustomPrimary }">
+                                            <div class="h-5 rounded" :style="{ background: brandingCustomPreview }">
                                                 <div class="text-[0.65rem] text-white/90 text-center leading-5">Browse</div>
                                             </div>
                                         </div>
