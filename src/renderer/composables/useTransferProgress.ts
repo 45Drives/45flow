@@ -908,10 +908,10 @@ export function useTransferProgress() {
 
         // WebSocket update handler
         const handleWsUpdate = (data: any) => {
-            const cur = _state.tasks.find(x => x.taskId === taskId && x.kind === 'transcode') as
-                | Extract<TransferTask, { kind: 'transcode' }>
-                | undefined
-            if (!cur) return
+                const cur = _state.tasks.find(x => x.taskId === taskId && x.kind === 'transcode') as
+                    | Extract<TransferTask, { kind: 'transcode' }>
+                    | undefined
+                if (!cur) return
 
             // Filter by kind - only accept updates matching this task's jobKind
             if (taskJobKind !== 'any' && data?.kind && data.kind !== taskJobKind) return
