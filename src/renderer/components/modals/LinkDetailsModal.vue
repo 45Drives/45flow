@@ -11,6 +11,16 @@
         </h3>
 
         <div class="flex items-center gap-2">
+          <button 
+            class="btn btn-secondary flex items-center gap-2" 
+            @click="commentsModalOpen = true" 
+            :disabled="!link"
+            title="View Comments"
+          >
+            <ChatBubbleLeftRightIcon class="w-4 h-4" />
+            Comments
+          </button>
+
           <button v-if="!editMode" class="btn btn-primary" @click="beginEdit" :disabled="!link">Edit</button>
 
           <button v-else class="btn btn-success" @click="saveAll" :disabled="saveDisabled">
@@ -220,7 +230,7 @@
                   <div v-if="unifiedAccessList.length" class="overflow-x-auto rounded-lg border border-default">
                     <table class="min-w-full text-sm border-separate border-spacing-0">
                       <thead>
-                        <tr class="bg-default text-gray-300">
+                        <tr class="bg-default text-default">
                           <th class="text-left px-3 py-2 border border-default">User</th>
                           <th class="text-left px-3 py-2 border border-default">Access Via</th>
                           <th class="text-left px-3 py-2 border border-default">Role</th>
@@ -491,7 +501,7 @@
             <div class="overflow-x-auto max-h-[18rem] overflow-y-auto overscroll-y-contain rounded-lg border border-default">
               <table class="min-w-full text-sm border-separate border-spacing-0 whitespace-nowrap">
                 <thead>
-                  <tr class="bg-default text-gray-300">
+                  <tr class="bg-default text-default">
                     <th class="text-left px-3 py-2 border border-default">Name</th>
                     <!-- <th v-if="link?.type === 'upload'" class="text-left px-3 py-2 border border-default">Saved As</th> -->
                     <th class="text-right px-3 py-2 border border-default">Size</th>
@@ -548,7 +558,7 @@
           <div v-else class="overflow-x-auto max-h-[18rem] overflow-y-auto overscroll-y-contain rounded-lg border border-default">
             <table class="min-w-full text-sm border-separate border-spacing-0">
               <thead>
-                <tr class="bg-default text-gray-300">
+                <tr class="bg-default text-default">
                   <th class="text-left px-3 py-2 border border-default">When</th>
                   <th class="text-left px-3 py-2 border border-default">Action</th>
                   <th class="text-left px-3 py-2 border border-default">Actor</th>
@@ -613,7 +623,7 @@
             <div class="overflow-x-auto rounded-lg border border-default">
               <table class="min-w-full text-sm border-separate border-spacing-0">
                 <thead>
-                  <tr class="bg-default text-gray-300">
+                  <tr class="bg-default text-default">
                     <th class="text-left px-3 py-2 border border-default">Version</th>
                     <th class="text-left px-3 py-2 border border-default">Created</th>
                     <th class="text-left px-3 py-2 border border-default">Snapshot</th>
@@ -745,6 +755,9 @@
         :linkType="(link?.type === 'download' ? 'download' : 'collection')" :initialPaths="draftFilePaths"
         :base="linkProjectBase" :startDir="linkStartDir" @apply="onApplyFilePaths" />
 
+      <!-- Comments modal -->
+      <CommentsReviewModal v-model="commentsModalOpen" :link="link" />
+
     </div>
   </div>
 </template>
@@ -753,14 +766,17 @@
 import { computed, inject, ref, watch } from 'vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { faTrash } from '@fortawesome/free-solid-svg-icons'
+import { ChatBubbleLeftRightIcon } from '@heroicons/vue/24/outline'
 import AddUsersModal from './AddUsersModal.vue'
 import EditLinkFilesModal from './EditLinkFilesModal.vue'
+import CommentsReviewModal from './CommentsReviewModal.vue'
 import PathInput from '../PathInput.vue'
 import WatermarkPreview from '../WatermarkPreview.vue'
 import type { LinkItem, LinkType, AccessRow, Status, ExistingUser } from '../../typings/electron'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { Switch } from '@headlessui/vue'
 import { useTransferProgress } from '../../composables/useTransferProgress'
+import { useConnections } from '../../composables/useConnections'
 import { connectionMetaInjectionKey } from '../../keys/injection-keys'
 import { useTourManager, type TourStep } from '../../composables/useTourManager'
 import { useOnboarding } from '../../composables/useOnboarding'
@@ -827,6 +843,7 @@ watch(() => props.modelValue, (open) => {
 })
 
 const transfer = useTransferProgress()
+const { activeConnection } = useConnections()
 const connectionMeta = inject(connectionMetaInjectionKey, null)
 
 const detailsLoading = ref(false)
@@ -847,6 +864,7 @@ const access = ref<AccessRow[]>([])
 const accessGroupRows = ref<any[]>([])
 const accessLoading = ref(false)
 const accessModalOpen = ref(false)
+const commentsModalOpen = ref(false)
 const versionsLoading = ref(false)
 const versionsError = ref<string | null>(null)
 const versions = ref<any[]>([])
@@ -2056,6 +2074,7 @@ function startLinkTranscodeTracking(opts: {
     file: opts.addedPaths.length === 1 ? opts.addedPaths[0] : undefined,
     files: opts.addedPaths.length > 1 ? opts.addedPaths.slice() : undefined,
     proxyQualities: opts.wantsProxy ? normalizeQualities(opts.proxyQualities) : [],
+    connectionId: activeConnection.value?.connectionId,
   }
 
   if (versionIds.length) {

@@ -19,6 +19,7 @@ The paid app is the main focus. Do not modify `studio-share` unless explicitly r
 
 When given a feature request:
 
+0. If the feature request is ambiguous or missing critical details (e.g., which users see it, expected error states, interaction behavior), ask clarifying questions before proceeding.
 1. Restate the feature as concrete implementation behavior.
 2. Search the paid app repo for the closest existing UI, state, API, type, and workflow patterns.
 3. Determine whether the feature is:
@@ -28,9 +29,9 @@ When given a feature request:
    - client plus server-side license gate
    - client plus persistence/database changes
 4. If server behavior is involved, inspect or define the `houston-broadcaster` API contract before editing.
-5. Implement the smallest coherent vertical slice.
+5. Implement the minimum set of changes across all layers (UI, state, API, DB) needed to make one user-facing behavior work end-to-end.
 6. Preserve existing behavior unless the request explicitly changes it.
-7. Validate with the most relevant build, typecheck, lint, or test command available.
+7. Validate by running, in order of priority: (1) typecheck, (2) lint, (3) existing tests covering changed files. Skip any that are not configured. If validation fails, fix the errors before presenting the summary. If you cannot fix them, revert your changes and explain the blocker.
 
 ## Premium feature rules
 
@@ -45,7 +46,7 @@ For paid/pro-only features, check whether the server needs:
 - database/schema support
 - migration/update logic
 
-When the server repo is unavailable, do not invent server internals. Instead, define the required API contract and implement only safe client-side scaffolding.
+When you cannot read files from the `houston-broadcaster` repo (e.g., it is not in your workspace or you lack access), do not invent server internals. Instead, define the required API contract and implement only safe client-side scaffolding.
 
 ## Free/community boundary
 
@@ -55,9 +56,11 @@ Do not add premium-only behavior to `studio-share`.
 
 If a shared API change could affect `studio-share`, call that out clearly and prefer additive changes that preserve existing community behavior.
 
+If implementing the feature is impossible without changes to `studio-share` but the user has not explicitly requested modifying the community version, stop and explain what shared changes are needed and ask for explicit approval before proceeding.
+
 ## App-specific cautions
 
-Be especially careful around:
+When modifying any of the following areas, always check for regressions in related components and explicitly note potential side effects in your plan:
 
 - LocalUploadPanel
 - QuickShare
@@ -72,6 +75,7 @@ Be especially careful around:
 - auth/token behavior
 
 When LocalUploadPanel and QuickShare represent the same conceptual job or upload workflow, keep their behavior and visual grouping consistent.
+Also do not use any emojis. Where appropriate, Heroicons can be used.
 
 ## Before editing
 

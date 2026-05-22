@@ -1,5 +1,5 @@
 <template>
-    <div class="z-50">
+    <div class="z-30">
         <!-- Trigger button -->
         <button ref="menuButton" @click="toggle" class="theme-trigger" title="Change theme">
             Themes <SwatchIcon class="ml-2 w-5 h-5" />

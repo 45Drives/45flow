@@ -1373,6 +1373,7 @@ async function startUploadAndShare() {
             groupId,
             file: filePath,
             proxyQualities: pQualities,
+            connectionId: activeConnection.value?.connectionId,
           },
         })
 

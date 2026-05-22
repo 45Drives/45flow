@@ -326,6 +326,14 @@
 								<div class="flex flex-nowrap items-center justify-around gap-1">
 									<button class="btn btn-secondary h-fit px-2 rounded-md" @click="openDetails(it)">
 										Details</button>
+									<!-- <button
+										v-if="it.type !== 'upload' && it.allow_comments"
+										class="btn btn-secondary h-fit px-2 rounded-md"
+										@click="openComments(it)"
+										:title="'View & manage comments'"
+									>
+										💬
+									</button> -->
 									<button :disabled="isDisabled(it)" class="btn btn-primary h-fit px-2 rounded-md"
 										@click="viewLink(it)">
 										Open
@@ -363,6 +371,7 @@
 
 	<!--  /////////////////////////////////////////////////////////////////////////////////////////////////////////////// -->
 	<LinkDetailsModal v-model="showModal" :link="current" :apiFetch="apiFetch" @updated="applyLinkPatch" />
+	<!-- <CommentsReviewModal v-model="showCommentsModal" :link="commentsLink" /> -->
 </template>
 	
 <script setup lang="ts">
@@ -374,6 +383,7 @@ import { useLinkRefreshSignal } from '../composables/useLinkRefresh'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { appLog } from '../composables/useLog'
 import LinkDetailsModal from "../components/modals/LinkDetailsModal.vue"
+// import CommentsReviewModal from "../components/modals/CommentsReviewModal.vue"
 import ServerFilterDropdown from '../components/ServerFilterDropdown.vue'
 import type { LinkItem, LinkType, Status } from '../typings/electron'
 import { useTime } from '../composables/useTime'
@@ -504,6 +514,8 @@ async function refresh() {
 }
 
 const showModal = ref(false)
+const showCommentsModal = ref(false)
+const commentsLink = ref<LinkItem | null>(null)
 const expEditor = ref<Record<string | number, { days: number; hours: number; open: boolean }>>({})
 const { formatEpochMs } = useTime();
 const { hour12 } = useTimeFormat();
@@ -797,6 +809,12 @@ const current = ref<LinkItem | null>(null)
 async function openDetails(it: LinkItem) {
 	current.value = it
 	showModal.value = true
+}
+
+async function openComments(it: LinkItem) {
+	commentsLink.value = it
+	showCommentsModal.value = true
+	appLog.info('comments_review.opened', { linkId: it.id, linkTitle: it.title })
 }
 
 function applyLinkPatch(p: Partial<LinkItem> & { id: LinkItem['id'] }) {

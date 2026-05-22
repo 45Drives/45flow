@@ -366,6 +366,7 @@ import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import { useResilientNav } from '../composables/useResilientNav';
 import { useTransferProgress } from '../composables/useTransferProgress'
+import { useConnections } from '../composables/useConnections'
 import { connectionMetaInjectionKey } from '../keys/injection-keys';
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
@@ -373,6 +374,7 @@ import { useOnboarding } from '../composables/useOnboarding'
 const { to } = useResilientNav()
 useHeader('Select Files to Share');
 const transfer = useTransferProgress()
+const { activeConnection } = useConnections()
 const connectionMeta = inject(connectionMetaInjectionKey)!
 const ssh = connectionMeta.value.ssh
 const { requestTour } = useTourManager()
@@ -1715,6 +1717,7 @@ async function generateLink() {
                             file: rec?.path || rec?.relPath || rec?.p || rec?.name,
                             files: files.value.slice(),
                             proxyQualities: transcodeProxy.value ? proxyQualities.value.slice() : [],
+                            connectionId: activeConnection.value?.connectionId,
                         }
                         const fileId = Number(rec?.id ?? rec?.fileId ?? rec?.file_id ?? rec?.file?.id)
                         const canUsePlayback = !!token && Number.isFinite(fileId) && fileId > 0 && accessMode.value === 'open'
@@ -1813,6 +1816,7 @@ async function generateLink() {
                                 linkTitle: linkTitle.value || undefined,
                                 files: files.value.slice(),
                                 proxyQualities: transcodeProxy.value ? proxyQualities.value.slice() : [],
+                                connectionId: activeConnection.value?.connectionId,
                             },
                         });
                     }
@@ -1831,6 +1835,15 @@ async function generateLink() {
                             title: "Generating transcodes",
                             detail: `Tracking file ${fileId}`,
                             intervalMs: 1500,
+                            context: {
+                                source: 'link',
+                                groupId: `link:${data.viewUrl}`,
+                                linkUrl: data.viewUrl,
+                                linkTitle: linkTitle.value || undefined,
+                                files: files.value.slice(),
+                                proxyQualities: transcodeProxy.value ? proxyQualities.value.slice() : [],
+                                connectionId: activeConnection.value?.connectionId,
+                            },
                         });
                     }
 
