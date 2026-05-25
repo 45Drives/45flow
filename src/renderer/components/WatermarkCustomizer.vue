@@ -53,16 +53,32 @@
           </p>
         </div>
 
-        <!-- Position Controls -->
+        <!-- Position Controls (Collapsible) -->
         <div class="space-y-3 p-3 border border-default rounded-lg bg-default/10">
-          <div class="flex items-center justify-between">
+          <button
+            @click="showAdvancedPosition = !showAdvancedPosition"
+            class="flex items-center justify-between w-full text-left hover:opacity-80 transition-opacity"
+          >
             <span class="text-xs font-semibold">Position</span>
-            <span v-if="isCustomSettings" class="text-xs text-primary italic">Custom</span>
-          </div>
+            <div class="flex items-center gap-2">
+              <span v-if="isCustomSettings" class="text-xs text-primary italic">Custom</span>
+              <svg
+                class="w-4 h-4 transition-transform"
+                :class="showAdvancedPosition ? 'rotate-180' : ''"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </button>
+          <p v-if="!showAdvancedPosition" class="text-xs text-muted italic">Drag the watermark in the preview to position it</p>
 
-          <!-- Anchor Point -->
-          <div class="space-y-2">
-            <label class="text-xs text-muted">Anchor Point</label>
+          <div v-show="showAdvancedPosition" class="space-y-3 pt-2">
+            <!-- Anchor Point -->
+            <div class="space-y-2">
+              <label class="text-xs text-muted">Anchor Point</label>
             <div class="grid grid-cols-3 gap-1">
               <button
                 v-for="anchor in anchorOptions"
@@ -152,6 +168,7 @@
                 px
               </label>
             </div>
+          </div>
           </div>
         </div>
 
@@ -244,18 +261,30 @@
       <div class="space-y-2">
         <label class="text-xs font-semibold text-muted">Live Preview</label>
         <div
-          class="relative aspect-video w-full rounded-md border border-default bg-gradient-to-br from-slate-700/40 via-slate-800/40 to-slate-900/60 overflow-hidden"
+          ref="previewContainer"
+          class="relative aspect-video w-full rounded-md border border-default bg-gradient-to-br from-slate-700/40 via-slate-800/40 to-slate-900/60 overflow-hidden select-none"
+          :class="{ 
+            'cursor-grabbing': isDragging, 
+            'cursor-grab': !isDragging && watermarkPreviewUrl && settings.position.anchor !== 'center',
+            'cursor-default': settings.position.anchor === 'center'
+          }"
+          @mousedown="startDrag"
         >
           <img
             v-if="watermarkPreviewUrl"
             :src="watermarkPreviewUrl"
             alt="Watermark preview"
-            class="absolute drop-shadow-md pointer-events-none"
-            style="object-fit: contain; max-width: none; max-height: none;"
+            class="absolute drop-shadow-md transition-opacity"
+            :class="isDragging ? 'opacity-80' : 'opacity-100'"
+            style="object-fit: contain; max-width: none; max-height: none; pointer-events: none;"
             :style="computedPreviewStyle"
           />
         </div>
-        <p class="text-xs text-muted italic">Preview updates in real-time as you adjust settings</p>
+        <p class="text-xs text-muted italic">
+          <span v-if="isDragging" class="text-primary font-semibold">Dragging...</span>
+          <span v-else-if="settings.position.anchor === 'center'" class="opacity-60">Center position is fixed — use advanced controls to adjust offsets</span>
+          <span v-else>Drag the watermark to position it or use advanced controls</span>
+        </p>
       </div>
     </div>
 
@@ -316,7 +345,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, nextTick, onMounted } from 'vue'
+import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import type { WatermarkSettings, PositionAnchor } from '../types/watermark'
 import { useWatermarkCustomization } from '../composables/useWatermarkCustomization'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
@@ -425,6 +454,103 @@ async function handleSavePreset() {
   }
 }
 
+// Collapsible position controls
+const showAdvancedPosition = ref(false)
+
+// Drag-to-position state
+const previewContainer = ref<HTMLElement | null>(null)
+const isDragging = ref(false)
+const dragStartX = ref(0)
+const dragStartY = ref(0)
+const dragStartSettings = ref<{ x: number; y: number } | null>(null)
+
+/**
+ * Start dragging watermark
+ */
+function startDrag(event: MouseEvent) {
+  if (!props.watermarkPreviewUrl || !previewContainer.value) return
+  
+  // Disable dragging when center anchor is selected (offsets don't apply)
+  if (settings.value.position.anchor === 'center') return
+  
+  event.preventDefault()
+  
+  isDragging.value = true
+  dragStartX.value = event.clientX
+  dragStartY.value = event.clientY
+  dragStartSettings.value = {
+    x: settings.value.position.x,
+    y: settings.value.position.y,
+  }
+  
+  // Attach global listeners so drag works even when mouse leaves preview
+  document.addEventListener('mousemove', drag)
+  document.addEventListener('mouseup', stopDrag)
+}
+
+/**
+ * Drag watermark and update position
+ */
+function drag(event: MouseEvent) {
+  if (!isDragging.value || !dragStartSettings.value || !previewContainer.value) return
+  
+  const rect = previewContainer.value.getBoundingClientRect()
+  let deltaX = event.clientX - dragStartX.value
+  let deltaY = event.clientY - dragStartY.value
+  
+  const { position } = settings.value
+  
+  // Invert delta for right/bottom anchors so watermark follows cursor
+  // For 'right' anchors: x offset is from right edge, so moving right = decrease offset
+  // For 'bottom' anchors: y offset is from bottom edge, so moving down = decrease offset
+  const invertX = position.anchor.includes('right')
+  const invertY = position.anchor.includes('bottom')
+  
+  if (invertX) deltaX = -deltaX
+  if (invertY) deltaY = -deltaY
+  
+  // Convert pixel delta to position units
+  if (position.xUnit === '%') {
+    const deltaXPercent = (deltaX / rect.width) * 100
+    // Allow positioning anywhere, clamp to reasonable bounds
+    const newX = Math.max(-50, Math.min(100, dragStartSettings.value.x + deltaXPercent))
+    updatePosition({ x: Math.round(newX * 10) / 10 })
+  } else {
+    // Allow positioning anywhere in pixel mode
+    const newX = Math.max(-500, Math.min(1000, dragStartSettings.value.x + deltaX))
+    updatePosition({ x: Math.round(newX) })
+  }
+  
+  if (position.yUnit === '%') {
+    const deltaYPercent = (deltaY / rect.height) * 100
+    const newY = Math.max(-50, Math.min(100, dragStartSettings.value.y + deltaYPercent))
+    updatePosition({ y: Math.round(newY * 10) / 10 })
+  } else {
+    const newY = Math.max(-500, Math.min(1000, dragStartSettings.value.y + deltaY))
+    updatePosition({ y: Math.round(newY) })
+  }
+}
+
+/**
+ * Stop dragging
+ */
+function stopDrag() {
+  if (!isDragging.value) return
+  
+  isDragging.value = false
+  dragStartSettings.value = null
+  
+  // Remove global listeners
+  document.removeEventListener('mousemove', drag)
+  document.removeEventListener('mouseup', stopDrag)
+}
+
+// Clean up global event listeners on component unmount
+onBeforeUnmount(() => {
+  document.removeEventListener('mousemove', drag)
+  document.removeEventListener('mouseup', stopDrag)
+})
+
 // Delete preset confirmation
 function confirmDeletePreset() {
   if (!currentPreset.value || !currentPreset.value.isCustom) return
@@ -501,11 +627,19 @@ const computedPreviewStyle = computed(() => {
 /**
  * Calculate slider track fill percentage for dynamic styling
  * Handles sliders with non-zero min values (like scale: 10-100)
+ * Uses theme gradient colors from btn-primary
  */
 const getSliderStyle = (value: number, max: number, min: number = 0) => {
   const percentage = ((value - min) / (max - min)) * 100
+  // Determine track color based on theme
+  const theme = document.documentElement.getAttribute('data-theme') || ''
+  const darkThemes = ['dark', 'dark-blue', 'dark-purple', 'midnight', 'sunset', 'aurora', 
+                      'neon', 'ocean', 'forest', 'galaxy', 'cyberpunk', 'ember', 'storm', 'magma']
+  const isDarkTheme = darkThemes.some(t => theme === t || theme.includes(t))
+  const trackBg = isDarkTheme ? '#4b5563' : '#9ca3af'
+  
   return {
-    background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${percentage}%, #4b5563 ${percentage}%, #4b5563 100%)`
+    background: `linear-gradient(to right, var(--btn-primary-bg) 0%, var(--btn-primary-bg) ${percentage}%, ${trackBg} ${percentage}%, ${trackBg} 100%)`
   }
 }
 </script>
@@ -527,7 +661,7 @@ input[type="range"].slider::-webkit-slider-thumb {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #3b82f6;
+  background: var(--btn-primary-bg);
   cursor: pointer;
   border: 2px solid white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -549,14 +683,14 @@ input[type="range"].slider:disabled::-webkit-slider-thumb {
 }
 input[type="range"].slider::-webkit-slider-thumb:active {
   transform: scale(1.15);
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 4px 8px var(--btn-primary-bg);
 }
 
 input[type="range"].slider::-moz-range-thumb {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #3b82f6;
+  background: var(--btn-primary-bg);
   cursor: pointer;
   border: 2px solid white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -570,6 +704,6 @@ input[type="range"].slider::-moz-range-thumb:hover {
 
 input[type="range"].slider::-moz-range-thumb:active {
   transform: scale(1.15);
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 4px 8px var(--btn-primary-bg);
 }
 </style>
