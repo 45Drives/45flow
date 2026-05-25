@@ -15,6 +15,7 @@
 
 import { useClientTranscode } from './useClientTranscode'
 import { useTransferProgress, type TransferContext } from './useTransferProgress'
+import type { WatermarkSettings } from '../types/watermark'
 
 type ApiFetch = (path: string, init?: any) => Promise<any>
 
@@ -25,6 +26,7 @@ export interface ClientTranscodeOpts {
     proxyQualities: string[]
     generateHls: boolean
     watermarkPath?: string | null
+    watermarkSettings?: WatermarkSettings | null
     // SSH connection for rsync of outputs
     ssh: { host: string; user: string; port: number; keyPath?: string }
     // Server API
@@ -232,6 +234,7 @@ export function useUploadTranscode() {
                             generateHls: true,
                             generateProxy: false,
                             watermarkPath: opts.watermarkPath || undefined,
+                            watermarkSettings: opts.watermarkSettings || undefined,
                             useHardwareAccel: hwAccelSetting.value,
                             preset: transcodePreset.value,
                         },
@@ -293,6 +296,7 @@ export function useUploadTranscode() {
                             proxyQualities: opts.proxyQualities as ('720p' | '1080p' | 'original')[],
                             generateHls: false,
                             watermarkPath: opts.watermarkPath || undefined,
+                            watermarkSettings: opts.watermarkSettings || undefined,
                             useHardwareAccel: hwAccelSetting.value,
                             preset: transcodePreset.value,
                         },

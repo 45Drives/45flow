@@ -7,7 +7,7 @@
 						<h2 class="wizard-main-title">
 							Local Upload Wizard
 							<span v-if="activeConnection" class="text-sm text-muted font-normal ml-2">
-								→ {{ activeConnection.name }}
+								→ {{ activeConnection!.name }}
 							</span>
 						</h2>
 						<ol class="wizard-stepper" aria-label="Upload steps">
@@ -248,16 +248,19 @@
 									v-model:selectedExistingWatermark="selectedExistingWatermark"
 									:watermarkFile="watermarkFile"
 									:existingWatermarkFiles="existingWatermarkFiles"
-									:effectiveWatermarkPreviewUrl="watermarkFile?.dataUrl || existingWatermarkPreviewUrl || null"
-									:effectiveWatermarkName="watermarkFile ? watermarkFile.name : (selectedExistingWatermark ? selectedExistingWatermark.split('/').pop() || '' : '')"
-									:showHeading="false"
-									watermarkLabel="Watermark Videos"
-									:watermarkStatusText="watermarkAfterUpload ? 'Apply watermark' : 'No watermark'"
-									reviewCopyHelpText="Streamable copies for review. The original file is always preserved."
+
 									@pickWatermark="pickWatermark"
 									@clearWatermark="clearWatermark"
 									@refreshWatermarks="loadExistingWatermarkFiles"
 								/>
+
+								<!-- Premium Watermark Customization -->
+								<div v-if="watermarkAfterUpload && (watermarkFile || selectedExistingWatermark)" class="mt-4 border-t border-default pt-4">
+									<WatermarkCustomizer 
+										v-model="watermarkSettings"
+										:watermarkPreviewUrl="watermarkFile?.dataUrl || existingWatermarkPreviewUrl || null"
+									/>
+								</div>
 							</div>
 						</div>
 					</section>
@@ -270,12 +273,12 @@
 							<button v-if="step !== 1" class="btn btn-secondary" @click="prevStep">Back</button>
 						</div>
 
-					<div class="justify-self-end">
-						<button data-tour="upload-next-btn" class="btn btn-primary" :disabled="nextDisabled" @click="nextStep">
-							{{ nextLabel }}
-						</button>
+						<div class="justify-self-end">
+							<button data-tour="upload-next-btn" class="btn btn-primary" :disabled="nextDisabled" @click="nextStep">
+								{{ nextLabel }}
+							</button>
+						</div>
 					</div>
-				</div>
 				</template>
 
 			</CardContainer>
@@ -295,7 +298,11 @@ import { useApi } from '../composables/useApi'
 import { useConnections } from '../composables/useConnections'
 import FolderPicker from '../components/FolderPicker.vue'
 import VideoOptionsPanel from '../components/VideoOptionsPanel.vue'
+import WatermarkCustomizer from '../components/WatermarkCustomizer.vue'
 import { connectionMetaInjectionKey } from '../keys/injection-keys';
+import type { WatermarkSettings } from '../types/watermark'
+import type { RsyncProgress, TranscodeProgress } from '../typings/electron'
+import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../types/watermark'
 import { useHeader } from '../composables/useHeader';
 import { useResilientNav } from '../composables/useResilientNav'
 import { onBeforeRouteLeave } from 'vue-router';
@@ -412,6 +419,118 @@ const { activeConnection } = useConnections()
 /** ── Step control ───────────────────────────────────────── */
 const step = ref<1 | 2 | 3>(1)
 
+/** ── Step 1: local files ───────────────────────────────── */
+const selected = ref<LocalFile[]>([])
+const tableDragOver = ref(false)
+let tableDragCounter = 0
+
+// Step 2: destination
+const destFolderRel = ref<string>('')       // FolderPicker v-model
+const projectBase = ref<string>('')
+
+// Normalize the destination we actually use with rsync
+const normalizedDest = computed(() =>
+	`/${destFolderRel.value.replace(/^\/+/, '')}`
+)
+const destDir = computed(() => normalizedDest.value)
+const canNext = computed(() => !!destFolderRel.value)
+
+// Registry of successful uploads: key = `${path}::${dest}`
+const uploadedRegistry = ref(new Set<string>())
+
+/** ── Step 3: upload & progress ─────────────────────────── */
+const transcodeProxyAfterUpload = ref(true)
+const proxyQualities = ref<string[]>(['original'])
+const watermarkAfterUpload = ref(false)
+const watermarkFile = ref<LocalFile | null>(null)
+const watermarkSettings = ref<WatermarkSettings>(createDefaultWatermarkSettings())
+const existingWatermarkFiles = ref<string[]>([])
+const selectedExistingWatermark = ref('')
+const existingWatermarkPreviewUrl = ref<string | null>(null)
+const adaptiveHls = ref(false)
+
+// ----- TYPES -----
+type UploadRow = {
+	localKey: string
+	path: string
+	name: string
+	size: number
+	dest: string
+	rsyncId?: string | null
+	status: 'queued' | 'transcoding' | 'uploading' | 'done' | 'canceled' | 'error'
+	error: string | null
+	progress: number
+	speed: string | null
+	eta: string | null
+	alreadyUploaded?: boolean
+	startedAt?: number | null
+	completedAt?: number | null
+	completedIn?: string | null
+	dockTaskId?: string | null
+	ingestUnsub?: (() => void) | null
+}
+const uploads = ref<UploadRow[]>([])
+
+// from step 1
+const serverPort = 22
+const privateKeyPath = undefined // or "~/.ssh/id_ed25519"
+
+const hasRunOnce = computed(() =>
+	uploads.value.some(u => u.status !== 'queued')
+)
+
+const allTerminal = computed(() =>
+	uploads.value.length > 0 &&
+	uploads.value.every(u =>
+		u.status === 'done' ||
+		u.status === 'canceled' ||
+		u.status === 'error'
+	)
+)
+
+const allDone = computed(() =>
+	uploads.value.length > 0 &&
+	uploads.value.every(u => u.status === 'done' || u.status === 'canceled')
+)
+
+/** ── Overall progress summary ──────────────────────────── */
+const uploadSummary = computed(() => {
+	const rows = uploads.value
+	const total = rows.length
+	const done = rows.filter(u => u.status === 'done').length
+	const active = rows.filter(u => u.status === 'uploading' || u.status === 'transcoding').length
+	const queued = rows.filter(u => u.status === 'queued').length
+	const errors = rows.filter(u => u.status === 'error').length
+	const canceled = rows.filter(u => u.status === 'canceled').length
+
+	// Weighted overall progress: done files count as 100%
+	let weightedPct = 0
+	for (const u of rows) {
+		if (u.status === 'done' || u.status === 'canceled') weightedPct += 100
+		else if (u.status === 'uploading' || u.status === 'transcoding') weightedPct += (u.progress || 0)
+		// queued/error = 0
+	}
+	const overallPct = total > 0 ? weightedPct / total : 0
+
+	return { total, done, active, queued, errors, canceled, overallPct }
+})
+
+const totalSelectedBytes = computed(() =>
+	selected.value.reduce((sum, f) => sum + (f.size || 0), 0)
+)
+const videoExts = new Set([
+	'mp4', 'mov', 'm4v', 'mkv', 'webm', 'avi', 'wmv', 'flv',
+	'mpg', 'mpeg', 'm2v', '3gp', '3g2', 'mxf', 'ts', 'm2ts', 'mts',
+	'ogv', 'vob', 'divx', 'f4v', 'asf', 'rm', 'rmvb', 'm4s',
+	'r3d', 'braw', 'ari', 'cine', 'dav',
+])
+const hasVideoSelected = computed(() =>
+	selected.value.some(f => {
+		const ext = String(f.name || '').toLowerCase().split('.').pop() || '';
+		return videoExts.has(ext);
+	})
+)
+
 const nextLabel = computed(() => {
 	if (step.value === 1) return 'Next';
 	if (step.value === 2) return 'Next';
@@ -456,6 +575,140 @@ function stepClass(n: number) {
 				? 'wizard-step-dot--active'
 				: 'wizard-step-dot--pending'
 	].join(' ')
+}
+
+/** ── Step 1: local files functions ───────────────────────────────── */
+function addToSelection(files?: LocalFile[]) {
+	const seen = new Set(selected.value.map(f => f.path))
+	const append: LocalFile[] = []
+	for (const f of (files || [])) if (!seen.has(f.path)) { append.push(f); seen.add(f.path) }
+	if (append.length) selected.value = [...selected.value, ...append]
+}
+function pickFiles() { window.electron.pickFiles().then(addToSelection) }
+function pickFolder() { window.electron.pickFolder().then(addToSelection) }
+function removeSelected(file: LocalFile) { selected.value = selected.value.filter(f => f.path !== file.path) }
+function clearSelected() { selected.value = [] }
+
+// ── Drag-and-drop onto the file table ──
+function onTableDragEnter(e: DragEvent) {
+	if (!e.dataTransfer?.types.includes('Files')) return
+	e.preventDefault()
+	tableDragCounter++
+	tableDragOver.value = true
+}
+function onTableDragOver(e: DragEvent) {
+	if (!e.dataTransfer?.types.includes('Files')) return
+	e.preventDefault()
+	if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+}
+function onTableDragLeave() {
+	tableDragCounter--
+	if (tableDragCounter <= 0) { tableDragCounter = 0; tableDragOver.value = false }
+}
+function onTableDrop(e: DragEvent) {
+	e.preventDefault()
+	tableDragOver.value = false
+	tableDragCounter = 0
+	if (!e.dataTransfer?.files?.length) return
+	const files: LocalFile[] = []
+	for (const f of Array.from(e.dataTransfer.files)) {
+		const filePath = window.electron?.getPathForFile?.(f) || (f as any).path || ''
+		if (filePath) files.push({ path: filePath, name: f.name, size: f.size })
+	}
+	if (files.length) addToSelection(files)
+}
+function pickWatermark() {
+	window.electron.pickWatermark().then((f: { path: string; name: string; size: number; dataUrl?: string | null } | null) => {
+		if (f) {
+			watermarkFile.value = f;
+			selectedExistingWatermark.value = '';
+		}
+	});
+}
+function clearWatermark() {
+	watermarkFile.value = null
+	existingWatermarkPreviewUrl.value = null
+	selectedExistingWatermark.value = ''
+}
+
+async function loadExistingWatermarkFiles() {
+	try {
+		const dirRel = resolveWatermarkDirRel()
+		const data = await apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' })
+		const entries = Array.isArray(data?.entries) ? data.entries : []
+		const serverWatermarks = entries
+			.filter((e: any) => !e?.isDir && typeof e?.name === 'string' && String(e.name).trim())
+			.map((e: any) => `${dirRel}/${String(e.name).trim()}`)
+			.sort((a: string, b: string) => a.localeCompare(b))
+		
+		// Check which built-in watermarks actually exist on the server
+		const base = connectionMeta.value.apiBase ?? ''
+		const token = connectionMeta.value.token ?? ''
+		const builtinChecks = await Promise.allSettled(
+			DEFAULT_45FLOW_WATERMARKS.map(async (wm) => {
+				const url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(wm.path)}`
+				const res = await fetch(url, { method: 'HEAD', headers: { 'Authorization': `Bearer ${token}` } })
+				return res.ok ? wm.path : null
+			})
+		)
+		const validBuiltins = builtinChecks
+			.filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && r.value !== null)
+			.map(r => r.value)
+		
+		existingWatermarkFiles.value = [...validBuiltins, ...serverWatermarks]
+	} catch {
+		existingWatermarkFiles.value = []
+	}
+}
+
+async function fetchExistingWatermarkPreview(relPath: string) {
+	try {
+		const base = connectionMeta.value.apiBase ?? ''
+		const token = connectionMeta.value.token ?? ''
+		const url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(relPath)}`
+		const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } })
+		if (!res.ok) { existingWatermarkPreviewUrl.value = null; return }
+		const blob = await res.blob()
+		existingWatermarkPreviewUrl.value = await new Promise<string>((resolve, reject) => {
+			const reader = new FileReader()
+			reader.onloadend = () => resolve(reader.result as string)
+			reader.onerror = reject
+			reader.readAsDataURL(blob)
+		})
+	} catch {
+		existingWatermarkPreviewUrl.value = null
+	}
+}
+
+function formatSize(size: number) {
+	const u = ['B', 'KB', 'MB', 'GB', 'TB']
+	let i = 0; let v = size
+	while (v >= 1024 && i < u.length - 1) { v /= 1024; i++ }
+	return `${v.toFixed(v < 10 && i > 0 ? 1 : 0)} ${u[i]}`
+}
+
+function formatDuration(ms: number): string {
+	const totalSeconds = Math.max(0, Math.round(ms / 1000));
+
+	if (totalSeconds < 1) return 'under 1 second';
+	if (totalSeconds < 60) return `${totalSeconds} second${totalSeconds === 1 ? '' : 's'}`;
+
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = totalSeconds % 60;
+
+	if (minutes < 60) {
+		if (seconds === 0) return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+		return `${minutes} minute${minutes === 1 ? '' : 's'} ${seconds} second${seconds === 1 ? '' : 's'}`;
+	}
+
+	const hours = Math.floor(minutes / 60);
+	const remMinutes = minutes % 60;
+
+	if (remMinutes === 0) {
+		return `${hours} hour${hours === 1 ? '' : 's'}`;
+	}
+
+	return `${hours} hour${hours === 1 ? '' : 's'} ${remMinutes} minute${remMinutes === 1 ? '' : 's'}`;
 }
 
 function joinPath(dir: string, name: string) {
@@ -628,6 +881,7 @@ async function runClientFullTranscode(opts: {
 		proxyQualities: opts.wantProxy ? proxyQualities.value.slice() : ['720p'],
 		generateHls: true,
 		watermarkPath: opts.localWatermarkPath,
+		watermarkSettings: opts.localWatermarkPath ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
 		ssh: {
 			host: ssh?.server || '',
 			user: ssh?.username || '',
@@ -801,30 +1055,29 @@ function waitForIngestAndStartTranscode(opts: {
 									if (proxyQualities.value.length) {
 										params.set('watermarkProxyQualities', proxyQualities.value.join(','));
 									}
+								// Premium: Pass custom watermark settings to server
+								if (watermarkSettings.value) {
+									params.set('watermarkSettings', JSON.stringify(watermarkSettings.value));
 								}
 							}
-
-							params.set('overwrite', '1');
-
-							const data = await apiFetch(`/api/ingest/register?${params.toString()}`, {
-								method: 'POST',
-							});
-
-							startTranscodeFromPayload(data);
-						} else {
-							pushNotification(
-								new Notification(
-									'Overwrite Canceled',
-									'Existing review copy outputs were kept.',
-									'info',
-									6000
-								)
-							);
 						}
+
+						const data = await apiFetch(`/api/files/reingest?${params}`, { method: 'POST' });
+						startTranscodeFromPayload(data);
 					} else {
-						const requestSuffix = payload?.requestId ? ` (request ${String(payload.requestId)})` : '';
 						pushNotification(
 							new Notification(
+								'Overwrite Canceled',
+								'Existing review copy outputs were kept.',
+								'info',
+								6000
+							)
+						);
+					}
+				} else {
+					const requestSuffix = payload?.requestId ? ` (request ${String(payload.requestId)})` : '';
+					pushNotification(
+						new Notification(
 							'Ingest Failed',
 							`${payload?.error || 'Ingest failed.'}${requestSuffix}`,
 							'error',
@@ -846,112 +1099,70 @@ function waitForIngestAndStartTranscode(opts: {
 	return () => window.electron?.ipcRenderer.removeListener(chan, handler)
 }
 
+function makeUploadKey(path: string, dest: string) {
+	return `${path}::${dest}`
+}
 
-/** ── Step 1: local files ───────────────────────────────── */
-const selected = ref<LocalFile[]>([])
-function addToSelection(files?: LocalFile[]) {
-	const seen = new Set(selected.value.map(f => f.path))
-	const append: LocalFile[] = []
-	for (const f of (files || [])) if (!seen.has(f.path)) { append.push(f); seen.add(f.path) }
-	if (append.length) selected.value = [...selected.value, ...append]
+function markUploaded(path: string, dest: string) {
+	uploadedRegistry.value.add(makeUploadKey(path, dest))
 }
-function pickFiles() { window.electron.pickFiles().then(addToSelection) }
-function pickFolder() { window.electron.pickFolder().then(addToSelection) }
-function removeSelected(file: LocalFile) { selected.value = selected.value.filter(f => f.path !== file.path) }
-function clearSelected() { selected.value = [] }
 
-// ── Drag-and-drop onto the file table ──
-const tableDragOver = ref(false)
-let tableDragCounter = 0
-function onTableDragEnter(e: DragEvent) {
-	if (!e.dataTransfer?.types.includes('Files')) return
-	e.preventDefault()
-	tableDragCounter++
-	tableDragOver.value = true
+function hasAlreadyUploaded(path: string, dest: string) {
+	return uploadedRegistry.value.has(makeUploadKey(path, dest))
 }
-function onTableDragOver(e: DragEvent) {
-	if (!e.dataTransfer?.types.includes('Files')) return
-	e.preventDefault()
-	if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
-}
-function onTableDragLeave() {
-	tableDragCounter--
-	if (tableDragCounter <= 0) { tableDragCounter = 0; tableDragOver.value = false }
-}
-function onTableDrop(e: DragEvent) {
-	e.preventDefault()
-	tableDragOver.value = false
-	tableDragCounter = 0
-	if (!e.dataTransfer?.files?.length) return
-	const files: LocalFile[] = []
-	for (const f of Array.from(e.dataTransfer.files)) {
-		const filePath = window.electron?.getPathForFile?.(f) || (f as any).path || ''
-		if (filePath) files.push({ path: filePath, name: f.name, size: f.size })
-	}
-	if (files.length) addToSelection(files)
-}
-function pickWatermark() {
-	window.electron.pickWatermark().then(f => {
-		if (f) {
-			watermarkFile.value = f;
-			selectedExistingWatermark.value = '';
+
+// Make rows once when entering Step 3
+function prepareRows(): UploadRow[] {
+	const dest = normalizedDest.value
+
+	return selected.value.map(f => {
+		const already = hasAlreadyUploaded(f.path, dest)
+
+		return {
+			localKey: crypto.randomUUID?.() || Math.random().toString(36).slice(2),
+			path: f.path,
+			name: f.name,
+			size: f.size,
+			dest,
+			rsyncId: null,
+			progress: already ? 100 : 0,
+			status: already ? 'done' : 'queued',
+			error: null,
+			speed: null,
+			eta: null,
+			alreadyUploaded: already,
+			startedAt: null,
+			completedAt: already ? Date.now() : null,
+			completedIn: already ? 'already uploaded' : null,
 		}
-	});
-}
-function clearWatermark() {
-	watermarkFile.value = null
-	existingWatermarkPreviewUrl.value = null
-	selectedExistingWatermark.value = ''
-}
-
-async function loadExistingWatermarkFiles() {
-	try {
-		const dirRel = resolveWatermarkDirRel()
-		const data = await apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' })
-		const entries = Array.isArray(data?.entries) ? data.entries : []
-		existingWatermarkFiles.value = entries
-			.filter((e: any) => !e?.isDir && typeof e?.name === 'string' && String(e.name).trim())
-			.map((e: any) => `${dirRel}/${String(e.name).trim()}`)
-			.sort((a: string, b: string) => a.localeCompare(b))
-	} catch {
-		existingWatermarkFiles.value = []
-	}
-}
-
-async function fetchExistingWatermarkPreview(relPath: string) {
-	try {
-		const base = connectionMeta.value.apiBase ?? ''
-		const token = connectionMeta.value.token ?? ''
-		const url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(relPath)}`
-		const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } })
-		if (!res.ok) { existingWatermarkPreviewUrl.value = null; return }
-		const blob = await res.blob()
-		existingWatermarkPreviewUrl.value = await new Promise<string>((resolve, reject) => {
-			const reader = new FileReader()
-			reader.onloadend = () => resolve(reader.result as string)
-			reader.onerror = reject
-			reader.readAsDataURL(blob)
-		})
-	} catch {
-		existingWatermarkPreviewUrl.value = null
-	}
-}
-
-const totalSelectedBytes = computed(() =>
-	selected.value.reduce((sum, f) => sum + (f.size || 0), 0)
-)
-const videoExts = new Set([
-	'mp4', 'mov', 'm4v', 'mkv', 'webm', 'avi', 'wmv', 'flv',
-	'mpg', 'mpeg', 'm2v', '3gp', '3g2', 'mxf', 'ts', 'm2ts', 'mts',
-	'ogv', 'vob', 'divx', 'f4v', 'asf', 'rm', 'rmvb', 'm4s',
-	'r3d', 'braw', 'ari', 'cine', 'dav',
-])
-const hasVideoSelected = computed(() =>
-	selected.value.some(f => {
-		const ext = String(f.name || '').toLowerCase().split('.').pop() || '';
-		return videoExts.has(ext);
 	})
-)
+}
+
+function resetUploadState() {
+	uploads.value = []
+	isUploading.value = false
+	activeUploads.value = 0
+	completedSinceStart = 0
+	failedSinceStart = 0
+	if (batchNotifyTimer) { clearTimeout(batchNotifyTimer); batchNotifyTimer = null }
+	rafState.clear()
+}
+
+function finish() {
+	// Reset the wizard (or route away)
+	selected.value = []
+	uploads.value = []
+	isUploading.value = false
+
+	uploadedRegistry.value.clear()
+	// goStep(1)
+	goBack();
+}
+
+function goBack() {
+	// router.push({ name: 'dashboard' })
+	to('dashboard');
+}
 
 watch(selected, () => {
 	if (!hasVideoSelected.value) {
@@ -965,74 +1176,6 @@ watch(selected, () => {
 		}
 	}
 }, { deep: true })
-
-function formatSize(size: number) {
-	const u = ['B', 'KB', 'MB', 'GB', 'TB']
-	let i = 0; let v = size
-	while (v >= 1024 && i < u.length - 1) { v /= 1024; i++ }
-	return `${v.toFixed(v < 10 && i > 0 ? 1 : 0)} ${u[i]}`
-}
-
-function formatDuration(ms: number): string {
-	const totalSeconds = Math.max(0, Math.round(ms / 1000));
-
-	if (totalSeconds < 1) return 'under 1 second';
-	if (totalSeconds < 60) return `${totalSeconds} second${totalSeconds === 1 ? '' : 's'}`;
-
-	const minutes = Math.floor(totalSeconds / 60);
-	const seconds = totalSeconds % 60;
-
-	if (minutes < 60) {
-		if (seconds === 0) return `${minutes} minute${minutes === 1 ? '' : 's'}`;
-		return `${minutes} minute${minutes === 1 ? '' : 's'} ${seconds} second${seconds === 1 ? '' : 's'}`;
-	}
-
-	const hours = Math.floor(minutes / 60);
-	const remMinutes = minutes % 60;
-
-	if (remMinutes === 0) {
-		return `${hours} hour${hours === 1 ? '' : 's'}`;
-	}
-
-	return `${hours} hour${hours === 1 ? '' : 's'} ${remMinutes} minute${remMinutes === 1 ? '' : 's'}`;
-}
-
-
-// Step 2: destination
-const destFolderRel = ref<string>('')       // FolderPicker v-model
-const canNext = computed(() => !!destFolderRel.value)
-const projectBase = ref<string>('')
-
-// Normalize the destination we actually use with rsync
-const normalizedDest = computed(() =>
-	`/${destFolderRel.value.replace(/^\/+/, '')}`
-)
-const destDir = computed(() => normalizedDest.value)
-
-// Registry of successful uploads: key = `${path}::${dest}`
-const uploadedRegistry = ref(new Set<string>())
-
-function makeUploadKey(path: string, dest: string) {
-	return `${path}::${dest}`
-}
-
-function markUploaded(path: string, dest: string) {
-	uploadedRegistry.value.add(makeUploadKey(path, dest))
-}
-
-function hasAlreadyUploaded(path: string, dest: string) {
-	return uploadedRegistry.value.has(makeUploadKey(path, dest))
-}
-
-/** ── Step 3: upload & progress ─────────────────────────── */
-const transcodeProxyAfterUpload = ref(true)
-const proxyQualities = ref<string[]>(['original'])
-const watermarkAfterUpload = ref(false)
-const watermarkFile = ref<LocalFile | null>(null)
-const existingWatermarkFiles = ref<string[]>([])
-const selectedExistingWatermark = ref('')
-const existingWatermarkPreviewUrl = ref<string | null>(null)
-const adaptiveHls = ref(false);
 
 watch(transcodeProxyAfterUpload, (v) => {
 	if (v && proxyQualities.value.length === 0) {
@@ -1061,17 +1204,6 @@ watch(watermarkAfterUpload, (enabled) => {
 	}
 })
 
-function finish() {
-	// Reset the wizard (or route away)
-	selected.value = []
-	uploads.value = []
-	isUploading.value = false
-
-	uploadedRegistry.value.clear()
-	// goStep(1)
-	goBack();
-}
-
 onBeforeRouteLeave((_to, _from, next) => {
 	resetUploadState();
 	selected.value = [];
@@ -1080,15 +1212,6 @@ onBeforeRouteLeave((_to, _from, next) => {
 	projectBase.value = '';
 	next();
 });
-
-const allTerminal = computed(() =>
-	uploads.value.length > 0 &&
-	uploads.value.every(u =>
-		u.status === 'done' ||
-		u.status === 'canceled' ||
-		u.status === 'error'
-	)
-)
 
 watch(step, (s, old) => {
 	if (s === 3 && uploads.value.length === 0) {
@@ -1118,74 +1241,6 @@ watch(destFolderRel, (val) => {
 	}
 })
 
-
-// ----- TYPES -----
-type UploadRow = {
-	localKey: string
-	path: string
-	name: string
-	size: number
-	dest: string
-	rsyncId?: string | null
-	status: 'queued' | 'transcoding' | 'uploading' | 'done' | 'canceled' | 'error'
-	error: string | null
-	progress: number
-	speed: string | null
-	eta: string | null
-	alreadyUploaded?: boolean
-	startedAt?: number | null
-	completedAt?: number | null
-	completedIn?: string | null
-	dockTaskId?: string | null
-	ingestUnsub?: (() => void) | null
-
-}
-const uploads = ref<UploadRow[]>([])
-
-const hasRunOnce = computed(() =>
-	uploads.value.some(u => u.status !== 'queued')
-)
-
-function resetUploadState() {
-	uploads.value = []
-	isUploading.value = false
-	activeUploads.value = 0
-	completedSinceStart = 0
-	failedSinceStart = 0
-	if (batchNotifyTimer) { clearTimeout(batchNotifyTimer); batchNotifyTimer = null }
-	rafState.clear()
-}
-
-// from step 1
-const serverPort = 22
-const privateKeyPath = undefined // or "~/.ssh/id_ed25519"
-
-// Make rows once when entering Step 3
-function prepareRows(): UploadRow[] {
-	const dest = normalizedDest.value
-
-	return selected.value.map(f => {
-		const already = hasAlreadyUploaded(f.path, dest)
-
-		return {
-			localKey: crypto.randomUUID?.() || Math.random().toString(36).slice(2),
-			path: f.path,
-			name: f.name,
-			size: f.size,
-			dest,
-			rsyncId: null,
-			progress: already ? 100 : 0,
-			status: already ? 'done' : 'queued',
-			error: null,
-			speed: null,
-			eta: null,
-			alreadyUploaded: already,
-			startedAt: null,
-			completedAt: already ? Date.now() : null,
-			completedIn: already ? 'already uploaded' : null,
-		}
-	})
-}
 
 function updateRowProgress(row: UploadRow, p?: number, speed?: string, eta?: string) {
 	// Coalesce many rsync ticks into one animation frame update
@@ -1336,13 +1391,12 @@ function uploadOneFile(
 				watermark: enableWatermark,
 				watermarkFileName: enableWatermark ? watermarkRelPathForIngest : undefined,
 				watermarkProxyQualities: enableWatermark ? proxyQualities.value.slice() : undefined,
+				watermarkSettings: enableWatermark ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
 				apiToken: connectionMeta.value.token || undefined,
 				clientTranscoded, // Tell server we transcoded client-side
 				clientWatermarked, // Tell server watermark was applied client-side
 			},
-			p => {
-				if (row.status === 'canceled' || row.status === 'done' || row.status === 'error') return
-
+		(p: RsyncProgress) => {
 				let pct: number | undefined =
 					typeof p.percent === 'number' && !Number.isNaN(p.percent) ? p.percent : undefined;
 
@@ -1386,8 +1440,9 @@ function uploadOneFile(
 						useHardwareAccel: hwAccelSetting.value,
 						preset: transcodePreset.value,
 						watermarkPath: (enableWatermark && localWatermarkPath) ? localWatermarkPath : undefined,
+							watermarkSettings: enableWatermark ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
 					},
-					(progress) => {
+					(progress: TranscodeProgress) => {
 						row.progress = progress.percent
 						transfer.updateUpload(taskId, {
 							progress: progress.percent,
@@ -1700,37 +1755,6 @@ function cancelOne(row: UploadRow) {
 	row.status = 'canceled'
 }
 
-const allDone = computed(() =>
-	uploads.value.length > 0 &&
-	uploads.value.every(u => u.status === 'done' || u.status === 'canceled')
-)
-
-/** ── Overall progress summary ──────────────────────────── */
-const uploadSummary = computed(() => {
-	const rows = uploads.value
-	const total = rows.length
-	const done = rows.filter(u => u.status === 'done').length
-	const active = rows.filter(u => u.status === 'uploading' || u.status === 'transcoding').length
-	const queued = rows.filter(u => u.status === 'queued').length
-	const errors = rows.filter(u => u.status === 'error').length
-	const canceled = rows.filter(u => u.status === 'canceled').length
-
-	// Weighted overall progress: done files count as 100%
-	let weightedPct = 0
-	for (const u of rows) {
-		if (u.status === 'done' || u.status === 'canceled') weightedPct += 100
-		else if (u.status === 'uploading' || u.status === 'transcoding') weightedPct += (u.progress || 0)
-		// queued/error = 0
-	}
-	const overallPct = total > 0 ? weightedPct / total : 0
-
-	return { total, done, active, queued, errors, canceled, overallPct }
-})
-
-function goBack() {
-	// router.push({ name: 'dashboard' })
-	to('dashboard');
-}
 </script>
 
 <style lang="css" scoped>

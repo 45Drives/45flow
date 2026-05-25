@@ -87,17 +87,6 @@
           class="text-xs text-amber-700 dark:text-amber-300 mb-2">
           Select a watermark image to continue.
         </p>
-
-        <!-- Watermark preview -->
-        <WatermarkPreview
-          v-if="watermarkEnabled && effectiveWatermarkPreviewUrl"
-          :previewUrl="effectiveWatermarkPreviewUrl"
-          :showClear="!!watermarkFile"
-          :maxWidth="compact ? '14rem' : '18rem'"
-          :size="compact ? 'small' : 'large'"
-          :clearBtnClass="compact ? 'text-xs px-2 py-0.5' : ''"
-          @clear="$emit('clearWatermark')"
-        />
       </div>
     </div>
   </div>
@@ -105,7 +94,6 @@
 
 <script setup lang="ts">
 import { Switch } from '@headlessui/vue'
-import WatermarkPreview from './WatermarkPreview.vue'
 
 type LocalFile = { path: string; name: string; size: number; dataUrl?: string | null }
 
@@ -126,8 +114,6 @@ const props = withDefaults(defineProps<{
   selectedExistingWatermark: string
   /** Available existing watermark files on server */
   existingWatermarkFiles: string[]
-  /** Computed preview URL (local dataUrl or fetched existing) */
-  effectiveWatermarkPreviewUrl: string | null
   /** Computed display name of the active watermark */
   effectiveWatermarkName?: string
   /** Whether using an already-existing watermark (no new file picked) */

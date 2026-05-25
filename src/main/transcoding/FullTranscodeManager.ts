@@ -8,7 +8,8 @@ import fs from 'fs';
 import { app } from 'electron';
 import { getFfmpegPath, getFfprobePath } from './ffmpeg-paths';
 import { detectHardwareCapabilities } from './hardware-detect';
-import type { FullTranscodeOptions, FullTranscodeProgress, FullTranscodeResult } from '../preload';
+import type { FullTranscodeOptions, FullTranscodeProgress, FullTranscodeResult, WatermarkSettings } from '../preload';
+import { buildWatermarkFilter } from './watermark-filter';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -220,6 +221,7 @@ export class FullTranscodeManager {
             height,
             sourceHeight: probe.height,
             watermarkPath: options.watermarkPath || null,
+            watermarkSettings: options.watermarkSettings,
             gopSize,
             canCopyAudio,
             audioChannels: probe.audioChannels,
@@ -287,6 +289,8 @@ export class FullTranscodeManager {
         const hlsArgs = this.buildMultiRenditionHlsArgs(options.inputPath, hlsOutDir, {
           renditions,
           watermarkPath: options.watermarkPath || null,
+          watermarkSettings: options.watermarkSettings,
+          sourceHeight: probe.height,
           gopSize,
           canCopyAudio,
           audioChannels: probe.audioChannels,
@@ -374,6 +378,7 @@ export class FullTranscodeManager {
             sourceHeight: probe.height,
             codec: proxyCodec,
             watermarkPath: useWatermark ? options.watermarkPath! : null,
+            watermarkSettings: options.watermarkSettings,
             gopSize,
             canCopyAudio,
             audioChannels: probe.audioChannels,
@@ -458,6 +463,7 @@ export class FullTranscodeManager {
       sourceHeight: number;
       codec: string;
       watermarkPath: string | null;
+      watermarkSettings?: WatermarkSettings | null;
       gopSize: number;
       canCopyAudio: boolean;
       audioChannels: number;
@@ -478,27 +484,21 @@ export class FullTranscodeManager {
     args.push('-i', ffp(inputPath));
 
     if (opts.watermarkPath) {
-      // Watermark filter_complex path
-      const scaleExpr = opts.height ? `scale=-2:${opts.height}:flags=lanczos,` : '';
-      const wmW = Math.round((opts.height || opts.sourceHeight) / 5);
-      let filterComplex: string;
-
+      // Determine hardware upload filter based on codec
+      let hwUpload: string | null = null
       if (opts.codec.includes('vaapi')) {
-        filterComplex =
-          `[0:v]${scaleExpr}format=nv12[base];` +
-          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
-          `[base][wm]overlay=W-w-24:H-h-24,format=nv12,hwupload[outv]`;
+        hwUpload = 'format=nv12,hwupload'
       } else if (opts.codec.includes('qsv')) {
-        filterComplex =
-          `[0:v]${scaleExpr}format=nv12[base];` +
-          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
-          `[base][wm]overlay=W-w-24:H-h-24,format=nv12,hwupload=extra_hw_frames=64[outv]`;
-      } else {
-        filterComplex =
-          `[0:v]${scaleExpr}format=yuv420p[base];` +
-          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
-          `[base][wm]overlay=W-w-24:H-h-24[outv]`;
+        hwUpload = 'format=nv12,hwupload=extra_hw_frames=64'
       }
+
+      // Build watermark filter (premium custom or legacy fixed position)
+      const filterComplex = buildWatermarkFilter(
+        opts.watermarkSettings,
+        opts.height,
+        opts.sourceHeight,
+        hwUpload
+      )
 
       args.push('-i', ffp(opts.watermarkPath));
       args.push('-filter_complex', filterComplex);
@@ -566,6 +566,7 @@ export class FullTranscodeManager {
       height: number;
       sourceHeight: number;
       watermarkPath: string | null;
+      watermarkSettings?: WatermarkSettings | null;
       gopSize: number;
       canCopyAudio: boolean;
       audioChannels: number;
@@ -589,28 +590,21 @@ export class FullTranscodeManager {
 
     // Build filter chain for scaling and optional watermark
     if (opts.watermarkPath) {
-      const wmW = Math.round(opts.height / 5);
-      let filterComplex: string;
-
+      // Determine hardware upload filter based on codec
+      let hwUpload: string | null = null;
       if (codec.includes('vaapi')) {
-        // VAAPI: scale in software, then hwupload
-        filterComplex =
-          `[0:v]scale=-2:${opts.height}:flags=lanczos,format=nv12[base];` +
-          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
-          `[base][wm]overlay=W-w-24:H-h-24,format=nv12,hwupload[outv]`;
+        hwUpload = 'format=nv12,hwupload';
       } else if (codec.includes('qsv')) {
-        // QSV: scale in software, then hwupload (requires NV12)
-        filterComplex =
-          `[0:v]scale=-2:${opts.height}:flags=lanczos,format=nv12[base];` +
-          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
-          `[base][wm]overlay=W-w-24:H-h-24,format=nv12,hwupload=extra_hw_frames=64[outv]`;
-      } else {
-        // Software or NVENC/VideoToolbox: simple software filter
-        filterComplex =
-          `[0:v]scale=-2:${opts.height}:flags=lanczos,format=yuv420p[base];` +
-          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
-          `[base][wm]overlay=W-w-24:H-h-24[outv]`;
+        hwUpload = 'format=nv12,hwupload=extra_hw_frames=64';
       }
+
+      // Use buildWatermarkFilter for both legacy and custom positioning
+      const filterComplex = buildWatermarkFilter(
+        opts.watermarkSettings,
+        opts.height,
+        opts.sourceHeight,
+        hwUpload,
+      );
 
       args.push('-i', ffp(opts.watermarkPath));
       args.push('-filter_complex', filterComplex);
@@ -681,6 +675,8 @@ export class FullTranscodeManager {
     opts: {
       renditions: number[];
       watermarkPath: string | null;
+      watermarkSettings?: WatermarkSettings | null;
+      sourceHeight: number;
       gopSize: number;
       canCopyAudio: boolean;
       audioChannels: number;
@@ -715,10 +711,68 @@ export class FullTranscodeManager {
       const v = vLabels[i];
       const out = oLabels[i];
       if (useWatermark) {
-        const wmW = Math.round(h / 5);
+        // Use custom settings if provided, otherwise legacy
+        const settings = opts.watermarkSettings;
+        const scale = settings?.scale || 20;
+        const opacity = settings ? (settings.opacity !== undefined ? settings.opacity : 70) / 100 : 1;
+        const rotation = settings?.rotation || 0;
+        const pos = settings?.position || { x: 24, y: 24, xUnit: 'px' as const, yUnit: 'px' as const, anchor: 'bottom-right' as const };
+
+        const wmSize = settings ? Math.round((h * scale) / 100) : Math.round(h / 5);
+
+        // Calculate overlay position
+        let overlayX = 'W-w-24';
+        let overlayY = 'H-h-24';
+
+        if (settings) {
+          if (pos.xUnit === '%') {
+            switch (pos.anchor) {
+              case 'top-left': case 'bottom-left': overlayX = `W*${pos.x / 100}`; break;
+              case 'top-right': case 'bottom-right': overlayX = `W-w-W*${pos.x / 100}`; break;
+              case 'center': overlayX = `(W-w)/2+W*${pos.x / 100}`; break;
+            }
+          } else {
+            switch (pos.anchor) {
+              case 'top-left': case 'bottom-left': overlayX = String(pos.x); break;
+              case 'top-right': case 'bottom-right': overlayX = `W-w-${pos.x}`; break;
+              case 'center': overlayX = `(W-w)/2+${pos.x}`; break;
+            }
+          }
+          if (pos.yUnit === '%') {
+            switch (pos.anchor) {
+              case 'top-left': case 'top-right': overlayY = `H*${pos.y / 100}`; break;
+              case 'bottom-left': case 'bottom-right': overlayY = `H-h-H*${pos.y / 100}`; break;
+              case 'center': overlayY = `(H-h)/2+H*${pos.y / 100}`; break;
+            }
+          } else {
+            switch (pos.anchor) {
+              case 'top-left': case 'top-right': overlayY = String(pos.y); break;
+              case 'bottom-left': case 'bottom-right': overlayY = `H-h-${pos.y}`; break;
+              case 'center': overlayY = `(H-h)/2+${pos.y}`; break;
+            }
+          }
+        }
+
         filterParts.push(`[${v}]scale=-2:${h}:flags=lanczos,format=yuv420p[${v}s];`);
-        filterParts.push(`[wm_raw${i}]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm${i}];`);
-        filterParts.push(`[${v}s][wm${i}]overlay=W-w-24:H-h-24[${out}];`);
+
+        // Build watermark processing chain
+        let wmChain = `[wm_raw${i}]scale=${wmSize}:-1:flags=lanczos`;
+        if (opacity < 1.0) {
+          wmChain += `,format=yuva420p,colorchannelmixer=aa=${opacity}`;
+        } else {
+          wmChain += `,colorchannelmixer=aa=1`;
+        }
+        wmChain += `[wm${i}a];`;
+        filterParts.push(wmChain);
+
+        if (rotation > 0 && rotation !== 360) {
+          const rotRad = (rotation * Math.PI) / 180;
+          filterParts.push(`[wm${i}a]rotate=${rotRad}:ow='hypot(iw,ih)':oh=ow:c=none[wm${i}];`);
+        } else {
+          filterParts.push(`[wm${i}a]null[wm${i}];`);
+        }
+
+        filterParts.push(`[${v}s][wm${i}]overlay=${overlayX}:${overlayY}[${out}];`);
       } else {
         filterParts.push(`[${v}]scale=-2:${h}:flags=lanczos,format=yuv420p[${out}];`);
       }

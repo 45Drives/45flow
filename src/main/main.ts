@@ -2304,6 +2304,7 @@ export type RsyncStartOpts = {
   proxyQualities?: string[]
   watermark?: boolean
   watermarkFileName?: string
+  watermarkSettings?: any  // WatermarkSettings from renderer/types/watermark
   watermarkProxyQualities?: string[]
   noIngest?: boolean
   apiToken?: string
@@ -3027,6 +3028,10 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
           if (watermarkProxyQualities.length) {
             params.set('watermarkProxyQualities', watermarkProxyQualities.join(','))
           }
+          // Premium: Pass custom watermark settings to server
+          if (opts.watermarkSettings) {
+            params.set('watermarkSettings', JSON.stringify(opts.watermarkSettings))
+          }
         }
         if (opts.clientTranscoded) params.set('clientTranscoded', '1')
         if (opts.clientWatermarked) params.set('clientWatermarked', '1')
@@ -3218,6 +3223,7 @@ ipcMain.handle('transcode:full-start', async (event, { jobId, options }) => {
     preset: options.preset,
   });
   console.log(`[transcode:full-start] jobId=${jobId} input=${options.inputPath} qualities=${options.proxyQualities} hls=${options.generateHls} watermark=${options.watermarkPath || 'none'} hwAccel=${options.useHardwareAccel} preset=${options.preset}`);
+  console.log(`[transcode:full-start] watermarkSettings:`, JSON.stringify(options.watermarkSettings));
 
   try {
     const result = await fullTranscodeManager.transcode(

@@ -257,7 +257,6 @@
                                                         v-model:selectedExistingWatermark="selectedExistingWatermark"
                                                         :watermarkFile="watermarkFile"
                                                         :existingWatermarkFiles="existingWatermarkFiles"
-                                                        :effectiveWatermarkPreviewUrl="effectiveWatermarkPreviewUrl"
                                                         :effectiveWatermarkName="effectiveWatermarkName"
                                                         :usingExistingWatermark="usingExistingWatermark"
                                                         :showHeading="false"
@@ -272,6 +271,14 @@
                                                         @clearWatermark="clearWatermark"
                                                         @refreshWatermarks="loadExistingWatermarkFiles"
                                                     />
+
+                                                    <!-- Watermark Customizer (premium feature) -->
+                                                    <div v-if="watermarkEnabled && (watermarkFile || selectedExistingWatermark)" class="mt-4 border-t border-default pt-4 min-w-0">
+                                                        <WatermarkCustomizer 
+                                                            v-model="watermarkSettings"
+                                                            :watermarkPreviewUrl="effectiveWatermarkPreviewUrl"
+                                                        />
+                                                    </div>
                                                 </DisclosurePanel>
                                             </Disclosure>
                                         </div>
@@ -360,7 +367,10 @@ import CommonLinkControls from '../components/CommonLinkControls.vue'
 import CheckPortForwarding from '../components/CheckPortForwarding.vue'
 import LinkAccessMode from '../components/LinkAccessMode.vue'
 import VideoOptionsPanel from '../components/VideoOptionsPanel.vue'
+import WatermarkCustomizer from '../components/WatermarkCustomizer.vue'
 import type { Commenter } from '../typings/electron'
+import type { WatermarkSettings } from '../types/watermark'
+import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../types/watermark'
 import { useHeader } from '../composables/useHeader'
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
@@ -799,6 +809,7 @@ const proxyQualities = ref<string[]>(['original'])
 const watermarkEnabled = ref(false)
 type LocalFile = { path: string; name: string; size: number; dataUrl?: string | null }
 const watermarkFile = ref<LocalFile | null>(null)
+const watermarkSettings = ref<WatermarkSettings>(createDefaultWatermarkSettings())
 const existingWatermarkFiles = ref<string[]>([])
 const selectedExistingWatermark = ref('')
 const existingWatermarkPreviewUrl = ref<string | null>(null)
@@ -1035,10 +1046,26 @@ async function loadExistingWatermarkFiles() {
         const dirRel = resolveWatermarkDirRel()
         const data = await apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' })
         const entries = Array.isArray(data?.entries) ? data.entries : []
-        existingWatermarkFiles.value = entries
+        const serverWatermarks = entries
             .filter((e: any) => !e?.isDir && typeof e?.name === 'string' && String(e.name).trim())
             .map((e: any) => `${dirRel}/${String(e.name).trim()}`)
             .sort((a: string, b: string) => a.localeCompare(b))
+        
+        // Check which built-in watermarks actually exist on the server
+        const base = connectionMeta.value.apiBase ?? ''
+        const token = connectionMeta.value.token ?? ''
+        const builtinChecks = await Promise.allSettled(
+            DEFAULT_45FLOW_WATERMARKS.map(async (wm) => {
+                const url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(wm.path)}`
+                const res = await fetch(url, { method: 'HEAD', headers: { 'Authorization': `Bearer ${token}` } })
+                return res.ok ? wm.path : null
+            })
+        )
+        const validBuiltins = builtinChecks
+            .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && r.value !== null)
+            .map(r => r.value)
+        
+        existingWatermarkFiles.value = [...validBuiltins, ...serverWatermarks]
 
         // Auto-load preview for first existing watermark when detected
         if (allSelectedVideosHaveWatermark.value && existingWatermarkFiles.value.length && !watermarkFile.value && !selectedExistingWatermark.value) {
@@ -1209,7 +1236,7 @@ async function uploadWatermarkToProject() {
     const destDir = resolveWatermarkUploadDir()
     const ensured = await ensureServerDirExists(destDir)
     if (!ensured) return { ok: false, error: 'failed to prepare remote watermark directory' }
-    const { done } = await window.electron.rsyncStart({
+    const { id: rsyncId, done } = await window.electron.rsyncStart({
         host,
         user,
         src: watermarkFile.value.path,
@@ -1219,8 +1246,8 @@ async function uploadWatermarkToProject() {
         noIngest: true,
     })
     const res = await done
-    if (!res?.ok) return { ok: false, error: res?.error || 'watermark upload failed' }
-    return { ok: true, relPath: resolveWatermarkRelPath(), reused: false }
+    if (!res?.ok) return { ok: false, error: res?.error || 'watermark upload failed', uploadId: rsyncId }
+    return { ok: true, relPath: resolveWatermarkRelPath(), reused: false, uploadId: rsyncId }
 }
 
 // Map units → seconds
@@ -1563,6 +1590,7 @@ async function generateLink() {
     if (watermarkEnabled.value && (watermarkFile.value?.name || selectedServerWatermark) && !keepExistingWatermark) {
         body.watermark = true
         body.watermarkFile = selectedServerWatermark || resolveWatermarkRelPath() || watermarkFile.value!.name
+        body.watermarkSettings = watermarkSettings.value
         body.watermarkProxyQualities = proxyQualities.value.slice()
     } else if (useExistingWatermarkOnly || keepExistingWatermark) {
         body.watermark = true
@@ -1584,6 +1612,18 @@ async function generateLink() {
         })
         if (watermarkEnabled.value && watermarkFile.value && !keepExistingWatermark && !selectedServerWatermark) {
             const up = await uploadWatermarkToProject()
+            
+            // Dismiss the watermark upload task from Transfer Dock since it's not a user-facing upload
+            if (up.uploadId) {
+                // Find and remove any upload task created by the watermark upload
+                const uploadTasks = transfer.state.tasks.filter(
+                    t => t.kind === 'upload' && t.taskId === up.uploadId
+                )
+                for (const task of uploadTasks) {
+                    transfer.removeTask(task.taskId)
+                }
+            }
+            
             if (!up.ok) {
                 pushNotification(
                     new Notification(
@@ -1680,10 +1720,10 @@ async function generateLink() {
             const transcodeDetail = (kind: 'hls' | 'proxy_mp4', assetVersionId: number) => {
                 const queuedSet = kind === 'hls' ? hlsQueuedSet : proxyQueuedSet
                 const activeSet = kind === 'hls' ? hlsActiveSet : proxyActiveSet
-                const kindLabel = kind === 'hls' ? 'HLS' : 'review copy'
-                if (activeSet.has(assetVersionId)) return `Tracking ${kindLabel} (already running)`
-                if (queuedSet.has(assetVersionId)) return `Tracking ${kindLabel} (queued now)`
-                return `Tracking ${kindLabel}`
+                const kindLabel = kind === 'hls' ? 'browser stream' : 'review copies'
+                if (activeSet.has(assetVersionId)) return `Generating ${kindLabel} (in progress)`
+                if (queuedSet.has(assetVersionId)) return `Generating ${kindLabel}`
+                return `Generating ${kindLabel}`
             }
 
             if (versionIds.length) {
