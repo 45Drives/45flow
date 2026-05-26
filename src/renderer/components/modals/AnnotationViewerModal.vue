@@ -41,82 +41,127 @@
         <!-- Left: Preview -->
         <div class="flex-1 flex flex-col p-6 overflow-auto">
           <div class="flex-1 flex items-center justify-center">
-            <div class="relative inline-block max-w-full max-h-full">
+            <div ref="imageContainerRef" class="relative inline-block max-w-full max-h-full">
               <!-- Frame Image -->
               <img
                 v-if="frameDataUrl"
+                ref="frameImageRef"
                 :src="frameDataUrl"
                 alt="Video frame"
-                class="max-w-full max-h-full object-contain rounded border border-default shadow-lg"
+                class="max-w-full max-h-full object-contain rounded border border-default shadow-lg block"
+                @load="onImageLoad"
               />
               
               <!-- Annotation Overlay -->
               <svg
-                v-if="frameDataUrl && annotationData"
-                class="absolute inset-0 w-full h-full pointer-events-none"
+                v-if="frameDataUrl && annotationData && displayWidth && displayHeight"
+                class="absolute top-0 left-0 pointer-events-none"
+                :width="displayWidth"
+                :height="displayHeight"
                 :viewBox="`0 0 ${frameWidth} ${frameHeight}`"
                 preserveAspectRatio="xMidYMid meet"
+                style="display: block;"
               >
-                <!-- Render different annotation types -->
-                <path
-                  v-if="annotationData.type === 'freehand' && annotationData.points"
-                  :d="createPathFromPoints(annotationData.points)"
-                  :stroke="annotationData.color || '#ff0000'"
-                  :stroke-width="annotationData.thickness || 3"
-                  fill="none"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                
-                <line
-                  v-else-if="annotationData.type === 'arrow'"
-                  :x1="annotationData.x1"
-                  :y1="annotationData.y1"
-                  :x2="annotationData.x2"
-                  :y2="annotationData.y2"
-                  :stroke="annotationData.color || '#ff0000'"
-                  :stroke-width="annotationData.thickness || 3"
-                  stroke-linecap="round"
-                  marker-end="url(#arrowhead)"
-                />
-                
-                <circle
-                  v-else-if="annotationData.type === 'circle'"
-                  :cx="annotationData.cx"
-                  :cy="annotationData.cy"
-                  :r="annotationData.r"
-                  :stroke="annotationData.color || '#ff0000'"
-                  :stroke-width="annotationData.thickness || 3"
-                  fill="none"
-                />
-                
-                <rect
-                  v-else-if="annotationData.type === 'rectangle'"
-                  :x="annotationData.x"
-                  :y="annotationData.y"
-                  :width="annotationData.width"
-                  :height="annotationData.height"
-                  :stroke="annotationData.color || '#ff0000'"
-                  :stroke-width="annotationData.thickness || 3"
-                  fill="none"
-                />
-                
-                <text
-                  v-else-if="annotationData.type === 'text'"
-                  :x="annotationData.x"
-                  :y="annotationData.y"
-                  :fill="annotationData.color || '#ff0000'"
-                  :font-size="annotationData.fontSize || 24"
-                  font-family="Arial, sans-serif"
-                  font-weight="bold"
-                >
-                  {{ annotationData.text }}
-                </text>
+                <!-- Render freehand paths -->
+                <g v-if="annotationData.paths">
+                  <path
+                    v-for="(path, idx) in annotationData.paths"
+                    :key="`path-${idx}`"
+                    :d="createPathFromPoints(path.points)"
+                    :stroke="path.color || '#ff0000'"
+                    :stroke-width="path.width || 3"
+                    fill="none"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </g>
 
-                <!-- Arrow marker definition -->
+                <!-- Render single legacy shape -->
+                <g v-if="annotationData.shape">
+                  <!-- Rectangle -->
+                  <rect
+                    v-if="annotationData.shape.type === 'rectangle' && annotationData.shape.start && annotationData.shape.end"
+                    :x="Math.min(annotationData.shape.start.x, annotationData.shape.end.x)"
+                    :y="Math.min(annotationData.shape.start.y, annotationData.shape.end.y)"
+                    :width="Math.abs(annotationData.shape.end.x - annotationData.shape.start.x)"
+                    :height="Math.abs(annotationData.shape.end.y - annotationData.shape.start.y)"
+                    :stroke="annotationData.shape.color || '#ff0000'"
+                    :stroke-width="annotationData.shape.width || 3"
+                    :fill="annotationData.shape.fillColor || 'none'"
+                  />
+                  
+                  <!-- Circle -->
+                  <circle
+                    v-else-if="annotationData.shape.type === 'circle' && annotationData.shape.start && annotationData.shape.end"
+                    :cx="annotationData.shape.start.x"
+                    :cy="annotationData.shape.start.y"
+                    :r="annotationData.shape.radius || Math.hypot(annotationData.shape.end.x - annotationData.shape.start.x, annotationData.shape.end.y - annotationData.shape.start.y)"
+                    :stroke="annotationData.shape.color || '#ff0000'"
+                    :stroke-width="annotationData.shape.width || 3"
+                    :fill="annotationData.shape.fillColor || 'none'"
+                  />
+                  
+                  <!-- Arrow / Line -->
+                  <line
+                    v-else-if="(annotationData.shape.type === 'arrow' || annotationData.shape.type === 'line') && annotationData.shape.start && annotationData.shape.end"
+                    :x1="annotationData.shape.start.x"
+                    :y1="annotationData.shape.start.y"
+                    :x2="annotationData.shape.end.x"
+                    :y2="annotationData.shape.end.y"
+                    :stroke="annotationData.shape.color || '#ff0000'"
+                    :stroke-width="annotationData.shape.width || 3"
+                    stroke-linecap="round"
+                    :marker-end="annotationData.shape.type === 'arrow' ? `url(#arrowhead-${annotationData.shape.color?.replace('#', '')})` : undefined"
+                  />
+                </g>
+
+                <!-- Render multiple shapes -->
+                <g v-if="annotationData.shapes">
+                  <g v-for="(shape, idx) in annotationData.shapes" :key="`shape-${idx}`">
+                    <!-- Rectangle -->
+                    <rect
+                      v-if="shape.type === 'rectangle'"
+                      :x="Math.min(shape.start.x, shape.end.x)"
+                      :y="Math.min(shape.start.y, shape.end.y)"
+                      :width="Math.abs(shape.end.x - shape.start.x)"
+                      :height="Math.abs(shape.end.y - shape.start.y)"
+                      :stroke="shape.color || '#ff0000'"
+                      :stroke-width="shape.width || 3"
+                      fill="none"
+                    />
+                    
+                    <!-- Circle -->
+                    <circle
+                      v-else-if="shape.type === 'circle'"
+                      :cx="shape.start.x"
+                      :cy="shape.start.y"
+                      :r="Math.hypot(shape.end.x - shape.start.x, shape.end.y - shape.start.y)"
+                      :stroke="shape.color || '#ff0000'"
+                      :stroke-width="shape.width || 3"
+                      fill="none"
+                    />
+                    
+                    <!-- Arrow / Line -->
+                    <line
+                      v-else-if="shape.type === 'arrow' || shape.type === 'line'"
+                      :x1="shape.start.x"
+                      :y1="shape.start.y"
+                      :x2="shape.end.x"
+                      :y2="shape.end.y"
+                      :stroke="shape.color || '#ff0000'"
+                      :stroke-width="shape.width || 3"
+                      stroke-linecap="round"
+                      :marker-end="shape.type === 'arrow' ? `url(#arrowhead-${shape.color?.replace('#', '')})` : undefined"
+                    />
+                  </g>
+                </g>
+
+                <!-- Arrow marker definitions (create one for each unique color) -->
                 <defs>
                   <marker
-                    id="arrowhead"
+                    v-for="color in uniqueColors"
+                    :key="`arrow-${color}`"
+                    :id="`arrowhead-${color.replace('#', '')}`"
                     markerWidth="10"
                     markerHeight="10"
                     refX="9"
@@ -125,7 +170,7 @@
                   >
                     <polygon
                       points="0 0, 10 3, 0 6"
-                      :fill="annotationData?.color || '#ff0000'"
+                      :fill="color"
                     />
                   </marker>
                 </defs>
@@ -235,6 +280,10 @@ const error = ref<string | null>(null)
 const frameDataUrl = ref<string | null>(null)
 const frameWidth = ref(1920)
 const frameHeight = ref(1080)
+const displayWidth = ref(0)
+const displayHeight = ref(0)
+const frameImageRef = ref<HTMLImageElement | null>(null)
+const imageContainerRef = ref<HTMLDivElement | null>(null)
 
 const annotationData = computed(() => {
   if (!props.comment?.draw_data) return null
@@ -246,6 +295,47 @@ const annotationData = computed(() => {
     return null
   }
 })
+
+const uniqueColors = computed(() => {
+  if (!annotationData.value) return []
+  const colors = new Set<string>()
+  
+  // Collect colors from all shapes and paths
+  if (annotationData.value.paths) {
+    annotationData.value.paths.forEach((path: any) => {
+      if (path.color) colors.add(path.color)
+    })
+  }
+  if (annotationData.value.shape?.color) {
+    colors.add(annotationData.value.shape.color)
+  }
+  if (annotationData.value.shapes) {
+    annotationData.value.shapes.forEach((shape: any) => {
+      if (shape.color) colors.add(shape.color)
+    })
+  }
+  
+  return Array.from(colors)
+})
+
+function onImageLoad() {
+  if (!frameImageRef.value) return
+  
+  // Get the actual displayed size of the image (accounting for object-contain)
+  const img = frameImageRef.value
+  const naturalWidth = img.naturalWidth
+  const naturalHeight = img.naturalHeight
+  const displayedWidth = img.offsetWidth
+  const displayedHeight = img.offsetHeight
+  
+  // Store the natural dimensions for viewBox
+  frameWidth.value = naturalWidth
+  frameHeight.value = naturalHeight
+  
+  // Store the displayed dimensions for SVG size
+  displayWidth.value = displayedWidth
+  displayHeight.value = displayedHeight
+}
 
 function createPathFromPoints(points: Array<{x: number, y: number}>): string {
   if (!points || points.length === 0) return ''
@@ -302,14 +392,14 @@ async function loadFrame() {
     if (!apiBase) {
       throw new Error('API base URL not configured')
     }
-    
-    const headers = new Headers()
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`)
-    }
-    
-    const response = await fetch(`${apiBase}${url}`, { headers })
-    
+
+    const response = await fetch(`${apiBase}${url}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+
     if (!response.ok) {
       const errorText = await response.text()
       throw new Error(errorText || `HTTP ${response.status}`)
@@ -321,14 +411,6 @@ async function loadFrame() {
     const reader = new FileReader()
     reader.onload = (e) => {
       frameDataUrl.value = e.target?.result as string
-      
-      // Get actual frame dimensions
-      const img = new Image()
-      img.onload = () => {
-        frameWidth.value = img.naturalWidth
-        frameHeight.value = img.naturalHeight
-      }
-      img.src = frameDataUrl.value
     }
     reader.readAsDataURL(blob)
   } catch (err: any) {
@@ -350,6 +432,8 @@ watch(() => props.modelValue, (isOpen) => {
     // Reset state when closing
     frameDataUrl.value = null
     error.value = null
+    displayWidth.value = 0
+    displayHeight.value = 0
   }
 })
 </script>
