@@ -50,7 +50,8 @@
 
 <script setup lang="ts">
 import { ref, provide, onMounted, onBeforeUnmount, watch, computed } from 'vue'
-import { DynamicBrandingLogo, GlobalModalConfirm, NotificationView, reportError, reportSuccess, toggleDarkMode, useDarkModeState } from '@45drives/houston-common-ui'
+import { DynamicBrandingLogo, GlobalModalConfirm, NotificationView, toggleDarkMode, useDarkModeState } from '@45drives/houston-common-ui'
+import { reportError, reportSuccess } from '../renderer/composables/useNotificationQueue'
 import { MoonIcon, SunIcon } from '@heroicons/vue/24/outline'
 import { divisionCodeInjectionKey, currentServerInjectionKey, discoveryStateInjectionKey, thisOsInjectionKey, connectionMetaInjectionKey } from '../renderer/keys/injection-keys'
 import type { Server, DivisionType, DiscoveryState, ConnectionMeta } from '../renderer/types'
