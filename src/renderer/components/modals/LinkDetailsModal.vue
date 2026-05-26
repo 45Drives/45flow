@@ -749,6 +749,10 @@
                   Refresh
                 </button>
               </div>
+              <div class="flex items-center gap-2 mb-2">
+                <input type="checkbox" id="show-default-watermarks-edit" v-model="showDefaultWatermarksForEdit" @change="loadExistingWatermarkFilesForEdit" class="input-checkbox h-4 w-4 m-0" />
+                <label for="show-default-watermarks-edit" class="text-sm cursor-pointer">Show default watermarks</label>
+              </div>
               <div class="flex flex-wrap items-center gap-2">
                 <button type="button" class="btn btn-secondary" @click="pickLocalWatermark">
                   Choose Local Image
@@ -960,6 +964,7 @@ type LocalFile = { path: string; name: string; size: number; dataUrl?: string | 
 const draftWatermarkLocalFile = ref<LocalFile | null>(null)
 const draftWatermarkSettings = ref<WatermarkSettings>(createDefaultWatermarkSettings())
 const watermarkConfigModalOpen = ref(false)
+const showDefaultWatermarksForEdit = ref(true)
 const existingWatermarkFilesForEdit = ref<string[]>([])
 const existingWatermarkPreviewUrlForEdit = ref<string | null>(null)
 
@@ -1443,7 +1448,7 @@ async function loadExistingWatermarkFilesForEdit() {
       .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && r.value !== null)
       .map(r => r.value)
     
-    existingWatermarkFilesForEdit.value = [...validBuiltins, ...serverWatermarks]
+    existingWatermarkFilesForEdit.value = showDefaultWatermarksForEdit.value ? [...validBuiltins, ...serverWatermarks] : serverWatermarks
   } catch {
     existingWatermarkFilesForEdit.value = []
   }

@@ -349,12 +349,17 @@
                     </div>
 
                     <!-- Comment Meta -->
-                    <div class="flex items-center gap-3 text-xs opacity-60 mt-2">
-                      <span v-if="comment.draw_data" class="flex items-center gap-1">
+                    <div class="flex items-center gap-3 text-xs mt-2">
+                      <button
+                        v-if="comment.draw_data"
+                        @click.stop="viewAnnotation(comment)"
+                        class="flex items-center gap-1 px-2 py-1 rounded bg-primary/20 text-primary hover:bg-primary/30 transition-colors font-semibold"
+                        title="View annotation on video frame"
+                      >
                         <PencilIcon class="w-3 h-3" />
-                        Has annotation
-                      </span>
-                      <span v-if="comment.resolved_at" class="text-green-400 flex items-center gap-1">
+                        View Annotation
+                      </button>
+                      <span v-if="comment.resolved_at" class="text-green-400 flex items-center gap-1 opacity-60">
                         <CheckIcon class="w-3 h-3" />
                         Resolved {{ formatDate(comment.resolved_at) }}
                       </span>
@@ -367,6 +372,13 @@
         </div>
       </div>
     </div>
+
+    <!-- Annotation Viewer Modal -->
+    <AnnotationViewerModal
+      v-model="showAnnotationViewer"
+      :comment="selectedAnnotationComment"
+      :link="link"
+    />
   </div>
 </template>
 
@@ -375,6 +387,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useApi } from '../../composables/useApi'
 import type { LinkItem } from '../../typings/electron'
 import type { CommentExport, CommentStats } from '../../types/comments'
+import type { Comment } from '../../composables/useComments'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { 
   ChatBubbleLeftRightIcon,
@@ -384,6 +397,7 @@ import {
   PencilIcon,
   ArrowDownTrayIcon
 } from '@heroicons/vue/24/outline'
+import AnnotationViewerModal from './AnnotationViewerModal.vue'
 
 const props = defineProps<{
   modelValue: boolean
@@ -398,6 +412,8 @@ const { apiFetch } = useApi()
 
 const loading = ref(false)
 const error = ref<string | null>(null)
+const showAnnotationViewer = ref(false)
+const selectedAnnotationComment = ref<Comment | null>(null)
 const comments = ref<CommentExport[]>([])
 const stats = ref<CommentStats | null>(null)
 const selectedFileFilter = ref('')
@@ -777,6 +793,11 @@ async function handleExport() {
   } finally {
     exporting.value = false
   }
+}
+
+function viewAnnotation(comment: Comment) {
+  selectedAnnotationComment.value = comment
+  showAnnotationViewer.value = true
 }
 
 function close() {

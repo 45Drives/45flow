@@ -83,6 +83,11 @@
           <button class="btn btn-secondary px-2 py-1 text-xs" @click="$emit('refreshWatermarks')">Refresh</button>
         </div>
 
+        <div v-if="watermarkEnabled" class="flex items-center gap-2 mb-2">
+          <input type="checkbox" id="show-default-watermarks" :checked="showDefaultWatermarks" @change="$emit('update:showDefaultWatermarks', ($event.target as HTMLInputElement).checked)" class="proxy-quality-checkbox" />
+          <label for="show-default-watermarks" class="text-sm cursor-pointer">Show default watermarks</label>
+        </div>
+
         <p v-if="watermarkEnabled && !watermarkFile && !selectedExistingWatermark && !usingExistingWatermark"
           class="text-xs text-amber-700 dark:text-amber-300 mb-2">
           Select a watermark image to continue.
@@ -114,6 +119,8 @@ const props = withDefaults(defineProps<{
   selectedExistingWatermark: string
   /** Available existing watermark files on server */
   existingWatermarkFiles: string[]
+  /** Whether to show default/built-in watermarks in the dropdown */
+  showDefaultWatermarks: boolean
   /** Computed display name of the active watermark */
   effectiveWatermarkName?: string
   /** Whether using an already-existing watermark (no new file picked) */
@@ -154,6 +161,7 @@ const emit = defineEmits<{
   'update:proxyQualities': [value: string[]]
   'update:watermarkEnabled': [value: boolean]
   'update:selectedExistingWatermark': [value: string]
+  'update:showDefaultWatermarks': [value: boolean]
   pickWatermark: []
   clearWatermark: []
   refreshWatermarks: []

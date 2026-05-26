@@ -255,6 +255,7 @@
                                                         v-model:proxyQualities="proxyQualities"
                                                         v-model:watermarkEnabled="watermarkEnabled"
                                                         v-model:selectedExistingWatermark="selectedExistingWatermark"
+                                                        v-model:showDefaultWatermarks="showDefaultWatermarks"
                                                         :watermarkFile="watermarkFile"
                                                         :existingWatermarkFiles="existingWatermarkFiles"
                                                         :effectiveWatermarkName="effectiveWatermarkName"
@@ -810,6 +811,7 @@ const watermarkEnabled = ref(false)
 type LocalFile = { path: string; name: string; size: number; dataUrl?: string | null }
 const watermarkFile = ref<LocalFile | null>(null)
 const watermarkSettings = ref<WatermarkSettings>(createDefaultWatermarkSettings())
+const showDefaultWatermarks = ref(true)
 const existingWatermarkFiles = ref<string[]>([])
 const selectedExistingWatermark = ref('')
 const existingWatermarkPreviewUrl = ref<string | null>(null)
@@ -1027,6 +1029,10 @@ watch(watermarkEnabled, (enabled) => {
     }
 })
 
+watch(showDefaultWatermarks, () => {
+    void loadExistingWatermarkFiles()
+})
+
 function pickWatermark() {
     window.electron.pickWatermark().then(f => {
         if (f) {
@@ -1065,7 +1071,7 @@ async function loadExistingWatermarkFiles() {
             .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && r.value !== null)
             .map(r => r.value)
         
-        existingWatermarkFiles.value = [...validBuiltins, ...serverWatermarks]
+        existingWatermarkFiles.value = showDefaultWatermarks.value ? [...validBuiltins, ...serverWatermarks] : serverWatermarks
 
         // Auto-load preview for first existing watermark when detected
         if (allSelectedVideosHaveWatermark.value && existingWatermarkFiles.value.length && !watermarkFile.value && !selectedExistingWatermark.value) {

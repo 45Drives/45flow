@@ -246,6 +246,7 @@
 									v-model:proxyQualities="proxyQualities"
 									v-model:watermarkEnabled="watermarkAfterUpload"
 									v-model:selectedExistingWatermark="selectedExistingWatermark"
+									v-model:showDefaultWatermarks="showDefaultWatermarks"
 									:watermarkFile="watermarkFile"
 									:existingWatermarkFiles="existingWatermarkFiles"
 
@@ -655,7 +656,7 @@ async function loadExistingWatermarkFiles() {
 			.filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && r.value !== null)
 			.map(r => r.value)
 		
-		existingWatermarkFiles.value = [...validBuiltins, ...serverWatermarks]
+		existingWatermarkFiles.value = showDefaultWatermarks.value ? [...validBuiltins, ...serverWatermarks] : serverWatermarks
 	} catch {
 		existingWatermarkFiles.value = []
 	}
@@ -1202,6 +1203,10 @@ watch(watermarkAfterUpload, (enabled) => {
 		selectedExistingWatermark.value = ''
 		existingWatermarkPreviewUrl.value = null
 	}
+})
+
+watch(showDefaultWatermarks, () => {
+	void loadExistingWatermarkFiles()
 })
 
 onBeforeRouteLeave((_to, _from, next) => {

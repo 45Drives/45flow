@@ -626,6 +626,7 @@ const watermarkEnabled = ref(false)
 type LocalFile = { path: string; name: string; size: number; dataUrl?: string | null }
 const watermarkFile = ref<LocalFile | null>(null)
 const watermarkSettings = ref<WatermarkSettings>(createDefaultWatermarkSettings())
+const showDefaultWatermarks = ref(true)
 const existingWatermarkFiles = ref<string[]>([])
 const selectedExistingWatermark = ref('')
 const existingWatermarkPreviewUrl = ref<string | null>(null)
@@ -748,6 +749,10 @@ watch(watermarkEnabled, (enabled) => {
   }
 })
 
+watch(showDefaultWatermarks, () => {
+  void loadExistingWatermarkFiles()
+})
+
 watch(selectedExistingWatermark, (v) => {
   if (String(v || '').trim()) {
     watermarkFile.value = null
@@ -861,7 +866,7 @@ async function loadExistingWatermarkFiles() {
       .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && r.value !== null)
       .map(r => r.value)
     
-    existingWatermarkFiles.value = [...validBuiltins, ...serverWatermarks]
+    existingWatermarkFiles.value = showDefaultWatermarks.value ? [...validBuiltins, ...serverWatermarks] : serverWatermarks
   } catch {
     existingWatermarkFiles.value = []
   }
