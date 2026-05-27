@@ -8,8 +8,10 @@
           <template #header>
             <div class="flex items-center justify-between px-6 py-4 shrink-0" data-tour="logs-modal-header">
               <div>
-                <div class="text-xl font-semibold text-default text-left">Client Log Viewer</div>
-                <div class="text-xs text-muted mt-1">Showing parsed entries from the local app log file.</div>
+                <div class="text-xl font-semibold text-default text-left">Log Viewer</div>
+                <div class="text-xs text-muted mt-1">
+                  {{ source === 'client' ? 'Showing parsed entries from the local app log file.' : 'Showing audit log entries from the connected server.' }}
+                </div>
               </div>
               <div class="flex items-center gap-2">
                 <button class="btn btn-secondary" type="button" @click="refresh" :disabled="loading">
@@ -23,7 +25,28 @@
           </template>
 
           <div class="px-6 pb-4 text-left min-h-0" data-tour="logs-modal-body">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
+            <!-- Source selector tabs -->
+            <div class="flex items-center gap-1 mb-4 border-b border-default">
+              <button
+                type="button"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
+                :class="source === 'client' ? 'border-blue-500 text-blue-400' : 'border-transparent text-muted hover:text-default'"
+                @click="switchSource('client')"
+              >
+                Client Logs
+              </button>
+              <button
+                type="button"
+                class="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
+                :class="source === 'server' ? 'border-blue-500 text-blue-400' : 'border-transparent text-muted hover:text-default'"
+                @click="switchSource('server')"
+              >
+                Server Logs
+              </button>
+            </div>
+
+            <!-- Client log metadata -->
+            <div v-if="source === 'client'" class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
               <div class="rounded-md border border-default p-3 bg-default">
                 <div class="text-xs text-muted">Log file</div>
                 <div class="text-sm font-mono break-all">{{ meta.file || 'n/a' }}</div>
@@ -35,6 +58,26 @@
               <div class="rounded-md border border-default p-3 bg-default">
                 <div class="text-xs text-muted">Entries loaded</div>
                 <div class="text-sm font-semibold">{{ entries.length }}</div>
+              </div>
+            </div>
+
+            <!-- Server log metadata -->
+            <div v-if="source === 'server'" class="grid grid-cols-1 lg:grid-cols-4 gap-3 mb-4">
+              <div class="rounded-md border border-default p-3 bg-default">
+                <div class="text-xs text-muted">Log file</div>
+                <div class="text-sm font-mono break-all">{{ serverMeta.file || 'n/a' }}</div>
+              </div>
+              <div class="rounded-md border border-default p-3 bg-default">
+                <div class="text-xs text-muted">Directory</div>
+                <div class="text-sm font-mono break-all">{{ serverMeta.logDir || 'n/a' }}</div>
+              </div>
+              <div class="rounded-md border border-default p-3 bg-default">
+                <div class="text-xs text-muted">Database</div>
+                <div class="text-sm font-mono break-all">{{ serverMeta.dbPath || 'n/a' }}</div>
+              </div>
+              <div class="rounded-md border border-default p-3 bg-default">
+                <div class="text-xs text-muted">Entries loaded</div>
+                <div class="text-sm font-semibold">{{ serverPagination.total }}</div>
               </div>
             </div>
 
@@ -61,7 +104,7 @@
               <input
                 v-model.trim="search"
                 type="search"
-                placeholder="Search event, summary, details..."
+                :placeholder="source === 'client' ? 'Search event, summary, details...' : 'Search action, actor, details...'"
                 class="input-textlike px-3 py-2 border border-default rounded-lg bg-default text-default min-w-[280px]"
               />
               <select v-model="levelFilter" class="px-3 py-2 border border-default rounded-lg bg-default">
@@ -69,13 +112,13 @@
                 <option value="error">Error</option>
                 <option value="warn">Warn</option>
                 <option value="info">Info</option>
-                <option value="debug">Debug</option>
+                <option v-if="source === 'client'" value="debug">Debug</option>
               </select>
-              <label class="inline-flex items-center gap-2 text-sm">
+              <label v-if="source === 'client'" class="inline-flex items-center gap-2 text-sm">
                 <input type="checkbox" v-model="errorsOnly" />
                 <span>Errors/warnings only</span>
               </label>
-              <label class="inline-flex items-center gap-2 text-sm">
+              <label v-if="source === 'client'" class="inline-flex items-center gap-2 text-sm">
                 <input type="checkbox" v-model="groupRelated" />
                 <span>Group related events</span>
               </label>
@@ -85,7 +128,8 @@
               {{ error }}
             </div>
 
-            <div class="overflow-x-auto border border-default rounded-md">
+            <!-- Client logs table -->
+            <div v-if="source === 'client'" class="overflow-x-auto border border-default rounded-md">
               <table class="min-w-full text-sm border-collapse">
                 <thead class="bg-default border-b border-default">
                   <tr>
@@ -133,6 +177,82 @@
                 </tbody>
               </table>
             </div>
+
+            <!-- Server logs table -->
+            <div v-if="source === 'server'" class="overflow-x-auto border border-default rounded-md">
+              <table class="min-w-full text-sm border-collapse">
+                <thead class="bg-default border-b border-default">
+                  <tr>
+                    <th class="p-2 text-left border-r border-default">Time</th>
+                    <th class="p-2 text-left border-r border-default">Level</th>
+                    <th class="p-2 text-left border-r border-default">Action</th>
+                    <th class="p-2 text-left border-r border-default">Actor</th>
+                    <th class="p-2 text-left border-r border-default">Resource</th>
+                    <th class="p-2 text-left">Details</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-accent">
+                  <tr v-if="loading">
+                    <td colspan="6" class="p-4 text-center">Loading logs…</td>
+                  </tr>
+                  <tr v-else-if="serverAccessDenied">
+                    <td colspan="6" class="p-4 text-center text-amber-400">
+                      Admin access required to view server logs. Log in with a system (PAM) account.
+                    </td>
+                  </tr>
+                  <tr v-else-if="serverEntries.length === 0">
+                    <td colspan="6" class="p-4 text-center">No matching server log entries.</td>
+                  </tr>
+                  <tr
+                    v-else
+                    v-for="row in filteredServerEntries"
+                    :key="row.id"
+                    class="border-b border-default align-top"
+                    :class="{
+                      'bg-red-900/10': row.level === 'error',
+                      'bg-amber-900/10': row.level === 'warn',
+                    }"
+                  >
+                    <td class="p-2 border-r border-default whitespace-nowrap">{{ formatTs(row.ts) }}</td>
+                    <td class="p-2 border-r border-default whitespace-nowrap uppercase">{{ row.level }}</td>
+                    <td class="p-2 border-r border-default font-mono">{{ row.action }}</td>
+                    <td class="p-2 border-r border-default">{{ row.actor || '—' }}</td>
+                    <td class="p-2 border-r border-default font-mono text-xs">
+                      <span v-if="row.resource_type">{{ row.resource_type }}<span v-if="row.resource_id">/{{ row.resource_id }}</span></span>
+                      <span v-else class="text-muted">—</span>
+                    </td>
+                    <td class="p-2">
+                      <details v-if="row.detail" class="cursor-pointer">
+                        <summary class="text-xs text-muted">Show detail</summary>
+                        <pre class="mt-1 text-xs whitespace-pre-wrap break-words">{{ JSON.stringify(row.detail, null, 2) }}</pre>
+                      </details>
+                      <span v-else class="text-muted">—</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <!-- Pagination for server logs -->
+              <div v-if="serverPagination.pages > 1" class="flex items-center justify-between px-3 py-2 border-t border-default bg-default">
+                <button
+                  type="button"
+                  class="btn btn-secondary text-xs"
+                  :disabled="serverPagination.page <= 1 || loading"
+                  @click="loadServerPage(serverPagination.page - 1)"
+                >
+                  ← Previous
+                </button>
+                <span class="text-xs text-muted">Page {{ serverPagination.page }} of {{ serverPagination.pages }}</span>
+                <button
+                  type="button"
+                  class="btn btn-secondary text-xs"
+                  :disabled="serverPagination.page >= serverPagination.pages || loading"
+                  @click="loadServerPage(serverPagination.page + 1)"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
           </div>
         </CardContainer>
       </div>
@@ -142,23 +262,27 @@
 
 <script setup lang="ts">
 import { CardContainer } from "@45drives/houston-common-ui";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useTourManager, type TourStep } from "../../composables/useTourManager";
 import { useOnboarding } from "../../composables/useOnboarding";
+import { useApi } from "../../composables/useApi";
 
 const { requestTour } = useTourManager();
 const { onboarding, markDone } = useOnboarding();
+const { apiFetch } = useApi();
 
 const logsTourSteps: TourStep[] = [
 	{
 		target: '[data-tour="logs-modal-header"]',
-		message: 'The Client Log Viewer shows parsed entries from the local app log file.\n\nUse "Refresh" to reload entries from disk.',
+		message: 'The Log Viewer shows parsed entries from the local app log file or the connected server audit log.\n\nUse the tabs to switch between Client and Server logs.',
 	},
 	{
 		target: '[data-tour="logs-modal-body"]',
-		message: 'The log body shows stats (error/warning/info/debug counts), a search bar, and level filters.\n\nThe table below lists each log entry with timestamp, level, event, and summary. Click any row to expand details. Use "Errors & Warnings only" to quickly filter noise.',
+		message: 'The log body shows stats (error/warning/info/debug counts), a search bar, and level filters.\n\nThe table below lists each log entry with timestamp, level, event, and summary. Click any row to expand details.',
 	},
 ]
+
+type LogSource = 'client' | 'server';
 
 type ParsedLogEntry = {
   id: string;
@@ -168,6 +292,18 @@ type ParsedLogEntry = {
   summary: string;
   details?: string;
   data?: Record<string, any>;
+};
+
+type ServerLogEntry = {
+  id: number;
+  ts: string;
+  actor: string | null;
+  ip: string | null;
+  action: string;
+  resource_type: string | null;
+  resource_id: string | null;
+  detail: Record<string, any> | null;
+  level: string;
 };
 
 type DisplayRow = {
@@ -184,10 +320,19 @@ const emit = defineEmits<{
   (e: "close"): void;
 }>();
 
+const source = ref<LogSource>('client');
 const loading = ref(false);
 const error = ref<string | null>(null);
 const entries = ref<ParsedLogEntry[]>([]);
 const meta = ref<{ file: string; logDir: string }>({ file: "", logDir: "" });
+
+// Server log state
+const serverEntries = ref<ServerLogEntry[]>([]);
+const serverAccessDenied = ref(false);
+const serverMeta = ref<{ file: string; logDir: string; dbPath: string }>({ file: "", logDir: "", dbPath: "" });
+const serverPagination = ref<{ total: number; page: number; pages: number; limit: number }>({
+  total: 0, page: 1, pages: 1, limit: 100,
+});
 
 const search = ref("");
 const levelFilter = ref("");
@@ -196,12 +341,21 @@ const groupRelated = ref(true);
 
 const counts = computed(() => {
   const out = { error: 0, warn: 0, info: 0, debug: 0 };
-  for (const e of entries.value) {
-    const lvl = String(e.level || "").toLowerCase();
-    if (lvl === "error") out.error += 1;
-    else if (lvl === "warn") out.warn += 1;
-    else if (lvl === "debug") out.debug += 1;
-    else out.info += 1;
+  if (source.value === 'client') {
+    for (const e of entries.value) {
+      const lvl = String(e.level || "").toLowerCase();
+      if (lvl === "error") out.error += 1;
+      else if (lvl === "warn") out.warn += 1;
+      else if (lvl === "debug") out.debug += 1;
+      else out.info += 1;
+    }
+  } else {
+    for (const e of serverEntries.value) {
+      const lvl = String(e.level || "").toLowerCase();
+      if (lvl === "error") out.error += 1;
+      else if (lvl === "warn") out.warn += 1;
+      else out.info += 1;
+    }
   }
   return out;
 });
@@ -216,6 +370,21 @@ const filteredEntries = computed(() => {
       entry.event.toLowerCase().includes(q) ||
       entry.summary.toLowerCase().includes(q) ||
       String(entry.details || "").toLowerCase().includes(q)
+    );
+  });
+});
+
+const filteredServerEntries = computed(() => {
+  const q = search.value.toLowerCase();
+  return serverEntries.value.filter((entry) => {
+    if (levelFilter.value && entry.level !== levelFilter.value) return false;
+    if (!q) return true;
+    return (
+      entry.action.toLowerCase().includes(q) ||
+      (entry.actor || "").toLowerCase().includes(q) ||
+      (entry.resource_type || "").toLowerCase().includes(q) ||
+      (entry.resource_id || "").toLowerCase().includes(q) ||
+      JSON.stringify(entry.detail || "").toLowerCase().includes(q)
     );
   });
 });
@@ -309,7 +478,53 @@ function formatTs(ts: string) {
   return d.toLocaleString();
 }
 
-async function refresh() {
+function switchSource(newSource: LogSource) {
+  if (source.value === newSource) return;
+  source.value = newSource;
+  error.value = null;
+  refresh();
+}
+
+async function loadServerPage(page: number) {
+  loading.value = true;
+  error.value = null;
+  serverAccessDenied.value = false;
+  try {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(serverPagination.value.limit),
+    });
+    if (levelFilter.value) params.set('level', levelFilter.value);
+
+    const res = await apiFetch(`/api/admin/audit-log?${params.toString()}`);
+    if (!res?.ok) throw new Error(res?.error || 'Failed to fetch server logs');
+
+    serverEntries.value = Array.isArray(res.entries) ? res.entries : [];
+    serverMeta.value = {
+      file: String(res.file || ""),
+      logDir: String(res.logDir || ""),
+      dbPath: String(res.dbPath || ""),
+    };
+    serverPagination.value = {
+      total: res.total ?? 0,
+      page: res.page ?? page,
+      pages: res.pages ?? 1,
+      limit: res.limit ?? 100,
+    };
+  } catch (e: any) {
+    if (e?.status === 401 || e?.status === 403) {
+      serverAccessDenied.value = true;
+      serverEntries.value = [];
+    } else {
+      error.value = e?.message || String(e);
+      serverEntries.value = [];
+    }
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function refreshClient() {
   loading.value = true;
   error.value = null;
   try {
@@ -328,6 +543,14 @@ async function refresh() {
     entries.value = [];
   } finally {
     loading.value = false;
+  }
+}
+
+async function refresh() {
+  if (source.value === 'client') {
+    await refreshClient();
+  } else {
+    await loadServerPage(serverPagination.value.page);
   }
 }
 
