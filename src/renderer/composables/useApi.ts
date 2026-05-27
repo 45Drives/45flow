@@ -23,7 +23,7 @@ type ApiInit = RequestInit & {
     timeoutMs?: number
     retry?: number
     retryDelayMs?: number
-    parse?: 'json' | 'text' | 'auto'
+    parse?: 'json' | 'text' | 'auto' | 'blob'
     suppressAuthRedirect?: boolean
 }
 
@@ -79,21 +79,10 @@ export function useApi(connectionId?: string) {
     const baseUrl = computed(() => connection.value?.baseUrl ?? '')
     const token = computed(() => connection.value?.token ?? '')
 
-    // Legacy injection for backwards compatibility (will be removed in Phase 3)
-    // Wrapped in try-catch to allow useApi to be called outside setup context (e.g., in event handlers)
-    let legacyServer: Ref<Server | null> | null = null
-    let legacyMeta: Ref<ConnectionMeta> | null = null
-    try {
-        legacyServer = inject<Ref<Server | null>>(currentServerInjectionKey, null)
-        legacyMeta = inject<Ref<ConnectionMeta>>(connectionMetaInjectionKey, null)
-    } catch (e) {
-        // inject() called outside setup context - this is fine when connectionId is provided
-    }
-
     // Build a ConnectionMeta-compatible object from Connection for compatibility
     const meta = computed<ConnectionMeta>(() => {
         if (!connection.value) {
-            return legacyMeta?.value || { port: 9095 }
+            return { port: 9095 }
         }
         return {
             token: connection.value.token,
@@ -206,6 +195,12 @@ export function useApi(connectionId?: string) {
                 }
 
                 clearTimeout(timer)
+                
+                // Handle blob parsing separately
+                if (parseMode === 'blob') {
+                    return await res.blob()
+                }
+                
                 const parsed = await parseAuto(res, parseMode)
                 if (parsed && typeof parsed === 'object' && 'security' in (parsed as any)) {
                     window.appLog?.info?.('api.security', {
