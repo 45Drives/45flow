@@ -438,6 +438,106 @@
                             <div v-if="certSuccessMsg" class="text-success text-sm mt-3">{{ certSuccessMsg }}</div>
                         </template>
 
+                        <!-- ═══ Server Health ═════════════════════════════════ -->
+                        <template v-if="activeSection === 'health'">
+                            <p class="text-xs text-accent mb-3">
+                                Live server resource stats from the connected broadcaster.
+                            </p>
+
+                            <div class="flex items-center gap-2 mb-4">
+                                <button class="btn btn-secondary text-sm" type="button" @click="fetchHealth" :disabled="healthLoading">
+                                    {{ healthLoading ? 'Loading…' : 'Refresh' }}
+                                </button>
+                                <span v-if="healthData?.version" class="text-xs text-muted">houston-broadcaster v{{ healthData.version }}</span>
+                            </div>
+
+                            <div v-if="healthError" class="text-danger text-xs mb-3">{{ healthError }}</div>
+
+                            <div v-if="healthData" class="space-y-4">
+                                <!-- Uptime -->
+                                <div class="rounded-lg border border-default bg-default/40 p-3">
+                                    <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Uptime</p>
+                                    <div class="grid grid-cols-2 gap-3 text-sm">
+                                        <div>
+                                            <span class="text-muted">Process:</span>
+                                            <span class="ml-1 font-mono">{{ formatUptime(healthData.uptime?.process) }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-muted">System:</span>
+                                            <span class="ml-1 font-mono">{{ formatUptime(healthData.uptime?.system) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- CPU -->
+                                <div class="rounded-lg border border-default bg-default/40 p-3">
+                                    <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">CPU</p>
+                                    <div class="grid grid-cols-2 gap-3 text-sm">
+                                        <div>
+                                            <span class="text-muted">Cores:</span>
+                                            <span class="ml-1 font-mono">{{ healthData.cpu?.cores }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-muted">Load (1/5/15m):</span>
+                                            <span class="ml-1 font-mono">{{ healthData.cpu?.loadAvg1?.toFixed(2) }} / {{ healthData.cpu?.loadAvg5?.toFixed(2) }} / {{ healthData.cpu?.loadAvg15?.toFixed(2) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Memory -->
+                                <div class="rounded-lg border border-default bg-default/40 p-3">
+                                    <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Memory</p>
+                                    <div class="grid grid-cols-2 gap-3 text-sm">
+                                        <div>
+                                            <span class="text-muted">System:</span>
+                                            <span class="ml-1 font-mono">{{ formatBytes(healthData.memory?.systemFree) }} free / {{ formatBytes(healthData.memory?.systemTotal) }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-muted">Process RSS:</span>
+                                            <span class="ml-1 font-mono">{{ formatBytes(healthData.memory?.rss) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Disk -->
+                                <div v-if="healthData.disk" class="rounded-lg border border-default bg-default/40 p-3">
+                                    <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Disk (Share Root)</p>
+                                    <div class="text-xs text-muted mb-2 font-mono">{{ healthData.disk.path }}</div>
+                                    <div class="w-full h-3 rounded-full bg-well overflow-hidden mb-2">
+                                        <div class="h-full rounded-full transition-all"
+                                            :class="healthData.disk.usedPercent > 90 ? 'bg-red-500' : healthData.disk.usedPercent > 75 ? 'bg-amber-500' : 'bg-blue-500'"
+                                            :style="{ width: healthData.disk.usedPercent + '%' }" />
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-3 text-sm">
+                                        <div><span class="text-muted">Used:</span> <span class="font-mono">{{ formatBytes(healthData.disk.usedBytes) }}</span></div>
+                                        <div><span class="text-muted">Free:</span> <span class="font-mono">{{ formatBytes(healthData.disk.availBytes) }}</span></div>
+                                        <div><span class="text-muted">Total:</span> <span class="font-mono">{{ formatBytes(healthData.disk.totalBytes) }}</span></div>
+                                    </div>
+                                </div>
+
+                                <!-- Transcodes -->
+                                <div class="rounded-lg border border-default bg-default/40 p-3">
+                                    <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Transcode Queue</p>
+                                    <div class="grid grid-cols-4 gap-3 text-sm">
+                                        <div><span class="text-muted">Queued:</span> <span class="font-mono">{{ healthData.transcodes?.queued ?? 0 }}</span></div>
+                                        <div><span class="text-muted">Running:</span> <span class="font-mono">{{ healthData.transcodes?.running ?? 0 }}</span></div>
+                                        <div><span class="text-muted">Done:</span> <span class="font-mono">{{ healthData.transcodes?.done ?? 0 }}</span></div>
+                                        <div><span class="text-muted">Failed:</span> <span class="font-mono text-red-400">{{ healthData.transcodes?.failed ?? 0 }}</span></div>
+                                    </div>
+                                </div>
+
+                                <!-- Links & Connections -->
+                                <div class="rounded-lg border border-default bg-default/40 p-3">
+                                    <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Links & Connections</p>
+                                    <div class="grid grid-cols-3 gap-3 text-sm">
+                                        <div><span class="text-muted">Active links:</span> <span class="font-mono">{{ healthData.links?.active ?? 0 }}</span></div>
+                                        <div><span class="text-muted">Total links:</span> <span class="font-mono">{{ healthData.links?.total ?? 0 }}</span></div>
+                                        <div><span class="text-muted">WebSocket:</span> <span class="font-mono">{{ healthData.connections?.websocket ?? 0 }}</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
                         <!-- ═══ Maintenance ═══════════════════════════════════ -->
                         <template v-if="activeSection === 'maintenance'">
                             <p class="text-xs text-accent mb-3">
@@ -940,7 +1040,7 @@ const settingsTourSteps: TourStep[] = [
 ]
 
 // ── Section navigation ──────────────────────────────────────────────────
-type Section = 'sharing' | 'project' | 'app' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding';
+type Section = 'sharing' | 'project' | 'app' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health';
 const activeSection = ref<Section>('sharing');
 
 const navGroups = [
@@ -963,6 +1063,7 @@ const navGroups = [
         label: 'Application',
         items: [
             { key: 'app' as Section, label: 'Preferences' },
+            { key: 'health' as Section, label: 'Server Health' },
             { key: 'maintenance' as Section, label: 'Maintenance' },
         ],
     },
@@ -1038,6 +1139,54 @@ const cleanupDeleteOrphans = ref(true);
 const cleanupPruneMissingFiles = ref(false);
 const cleanupMaxMissingFiles = ref(200);
 const cleanupOrphanMinAgeHours = ref(24);
+
+// ── Server Health ──
+const healthLoading = ref(false);
+const healthError = ref<string | null>(null);
+const healthData = ref<any | null>(null);
+
+async function fetchHealth() {
+    healthLoading.value = true;
+    healthError.value = null;
+    try {
+        const res = await apiFetch('/api/admin/health');
+        if (!res?.ok) throw new Error(res?.error || 'Failed to fetch health');
+        healthData.value = res;
+    } catch (e: any) {
+        if (e?.status === 401 || e?.status === 403) {
+            healthError.value = 'Admin access required. Log in with a system (PAM) account.';
+        } else {
+            healthError.value = e?.message || String(e);
+        }
+        healthData.value = null;
+    } finally {
+        healthLoading.value = false;
+    }
+}
+
+function formatUptime(seconds: number | undefined) {
+    if (!seconds) return '—';
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (d > 0) return `${d}d ${h}h ${m}m`;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+}
+
+function formatBytes(bytes: number | undefined) {
+    if (!bytes || bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    const val = bytes / Math.pow(1024, i);
+    return `${val.toFixed(i > 1 ? 1 : 0)} ${units[i]}`;
+}
+
+watch(activeSection, (section) => {
+    if (section === 'health' && !healthData.value && !healthLoading.value) {
+        fetchHealth();
+    }
+});
 
 const cleanupTranscodeFixes = computed(() =>
     Array.isArray(cleanupResult.value?.transcodeFixes) ? cleanupResult.value.transcodeFixes : []
