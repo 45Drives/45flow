@@ -448,6 +448,7 @@ const watermarkSettings = ref<WatermarkSettings>(createDefaultWatermarkSettings(
 const existingWatermarkFiles = ref<string[]>([])
 const selectedExistingWatermark = ref('')
 const existingWatermarkPreviewUrl = ref<string | null>(null)
+const showDefaultWatermarks = ref(false)
 const adaptiveHls = ref(false)
 
 // ----- TYPES -----
