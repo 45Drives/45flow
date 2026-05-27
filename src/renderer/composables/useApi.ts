@@ -80,8 +80,15 @@ export function useApi(connectionId?: string) {
     const token = computed(() => connection.value?.token ?? '')
 
     // Legacy injection for backwards compatibility (will be removed in Phase 3)
-    const legacyServer = inject<Ref<Server | null>>(currentServerInjectionKey, null)
-    const legacyMeta = inject<Ref<ConnectionMeta>>(connectionMetaInjectionKey, null)
+    // Wrapped in try-catch to allow useApi to be called outside setup context (e.g., in event handlers)
+    let legacyServer: Ref<Server | null> | null = null
+    let legacyMeta: Ref<ConnectionMeta> | null = null
+    try {
+        legacyServer = inject<Ref<Server | null>>(currentServerInjectionKey, null)
+        legacyMeta = inject<Ref<ConnectionMeta>>(connectionMetaInjectionKey, null)
+    } catch (e) {
+        // inject() called outside setup context - this is fine when connectionId is provided
+    }
 
     // Build a ConnectionMeta-compatible object from Connection for compatibility
     const meta = computed<ConnectionMeta>(() => {

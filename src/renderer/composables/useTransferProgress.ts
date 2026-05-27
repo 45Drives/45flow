@@ -1504,34 +1504,41 @@ export function useTransferProgress() {
     async function restoreActiveTranscodes(
         apiFetch: (path: string, init?: any) => Promise<any>
     ) {
-        // First, clean up any orphaned client-side transcodes still in memory
-        // (client transcodes can't survive app restart since FFmpeg dies with the app)
-        _state.tasks = _state.tasks.filter(t => {
-            if (t.kind === 'transcode' && t.transcoder === 'client') {
-                window.appLog?.warn?.('transfer.restore.skip-orphaned-client-transcode', { 
-                    taskId: t.taskId,
-                    title: t.title,
-                    status: t.status,
-                    progress: t.progress,
-                });
-                return false;
-            }
-            return true;
-        });
+        // Check if any tasks are currently active (uploads in progress OR transcode
+        // polling tasks running). If so, this is NOT a fresh app start — don't
+        // release client claims or remove transcode tasks that may be in progress.
+        const hasActiveWork = _state.tasks.some(isActiveTask)
 
-        // Release stale client-claimed transcode jobs on the server.
-        // These are jobs that were being processed by client FFmpeg in a previous session
-        // but the app closed before they completed. Reset them so the server can pick them up.
-        try {
-            await apiFetch('/api/ingest/transcode-release-client', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({}),
-                suppressAuthRedirect: true,
-            })
-        } catch (e: any) {
-            // Non-fatal: old servers won't have this endpoint
-            window.appLog?.warn?.('transfer.restore.release-client.error', { error: e?.message || String(e) })
+        // Only clean up orphaned client transcodes if nothing is active.
+        // On a genuine app restart, all tasks start fresh.
+        if (!hasActiveWork) {
+            _state.tasks = _state.tasks.filter(t => {
+                if (t.kind === 'transcode' && t.transcoder === 'client') {
+                    window.appLog?.warn?.('transfer.restore.skip-orphaned-client-transcode', { 
+                        taskId: t.taskId,
+                        title: t.title,
+                        status: t.status,
+                        progress: t.progress,
+                    });
+                    return false;
+                }
+                return true;
+            });
+
+            // Release stale client-claimed transcode jobs on the server.
+            // These are jobs that were being processed by client FFmpeg in a previous session
+            // but the app closed before they completed. Reset them so the server can pick them up.
+            try {
+                await apiFetch('/api/ingest/transcode-release-client', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({}),
+                    suppressAuthRedirect: true,
+                })
+            } catch (e: any) {
+                // Non-fatal: old servers won't have this endpoint
+                window.appLog?.warn?.('transfer.restore.release-client.error', { error: e?.message || String(e) })
+            }
         }
         
         try {

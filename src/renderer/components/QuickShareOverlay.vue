@@ -181,6 +181,7 @@
               v-model:proxyQualities="proxyQualities"
               v-model:watermarkEnabled="watermarkEnabled"
               v-model:selectedExistingWatermark="selectedExistingWatermark"
+              v-model:showDefaultWatermarks="showDefaultWatermarks"
               :watermarkFile="watermarkFile"
               :existingWatermarkFiles="existingWatermarkFiles"
               :effectiveWatermarkName="watermarkFile ? watermarkFile.name : (selectedExistingWatermark ? selectedExistingWatermark.split('/').pop() || '' : '')"
@@ -866,7 +867,17 @@ async function loadExistingWatermarkFiles() {
       .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && r.value !== null)
       .map(r => r.value)
     
-    existingWatermarkFiles.value = showDefaultWatermarks.value ? [...validBuiltins, ...serverWatermarks] : serverWatermarks
+    // User watermarks first, default watermarks last
+    existingWatermarkFiles.value = showDefaultWatermarks.value ? [...serverWatermarks, ...validBuiltins] : serverWatermarks
+    
+    // Auto-select last used watermark if available
+    try {
+      const lastUsed = localStorage.getItem('45flow-last-watermark')
+      if (lastUsed && existingWatermarkFiles.value.includes(lastUsed) && !watermarkFile.value && !selectedExistingWatermark.value) {
+        selectedExistingWatermark.value = lastUsed
+        void fetchExistingWatermarkPreview(lastUsed)
+      }
+    } catch { /* ignore storage errors */ }
   } catch {
     existingWatermarkFiles.value = []
   }

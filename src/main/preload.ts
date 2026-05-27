@@ -47,6 +47,8 @@ export type RsyncOpts = {
   /** file was transcoded on client side, skip server transcode */
   clientTranscoded?: boolean
   clientWatermarked?: boolean
+  /** client will transcode (pre-claim jobs to prevent server from picking them up) */
+  clientTranscode?: boolean
 }
 
 export type RsyncResult = { ok?: boolean; error?: string }
