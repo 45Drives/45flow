@@ -1335,7 +1335,13 @@ async function startUploadAndShare() {
           : ''
         const filePath = rec?.path || rec?.name || 'File'
         const displayName = rec?.name || rec?.path || 'File'
-        const context = { source: 'upload' as const, groupId, file: filePath }
+        const context = { 
+          source: 'link' as const, 
+          groupId, 
+          file: filePath,
+          linkUrl: viewUrl.value,
+          linkTitle: linkTitle.value || undefined
+        }
 
         const alreadyTrackingHls = transfer.hasActiveTranscode({
           assetVersionIds: [assetVersionId],
@@ -1429,9 +1435,11 @@ async function startUploadAndShare() {
           generateHls: true,
           apiFetch,
           context: {
-            source: 'upload' as const,
+            source: 'link' as const,
             groupId,
             file: filePath,
+            linkUrl: viewUrl.value,
+            linkTitle: linkTitle.value || undefined,
             proxyQualities: pQualities,
             connectionId: activeConnection.value?.connectionId,
           },
