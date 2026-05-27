@@ -43,6 +43,19 @@
               >
                 Server Logs
               </button>
+              <!-- Server selector (when multiple servers connected) -->
+              <div v-if="source === 'server' && connectedServers.length > 1" class="ml-auto flex items-center gap-2">
+                <label class="text-xs text-muted">Server:</label>
+                <select
+                  v-model="selectedServerConnectionId"
+                  class="px-2 py-1 text-sm border border-default rounded bg-default"
+                  @change="refresh()"
+                >
+                  <option v-for="conn in connectedServers" :key="conn.connectionId" :value="conn.connectionId">
+                    {{ conn.name || conn.serverIp }}
+                  </option>
+                </select>
+              </div>
             </div>
 
             <!-- Client log metadata -->
@@ -266,10 +279,30 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useTourManager, type TourStep } from "../../composables/useTourManager";
 import { useOnboarding } from "../../composables/useOnboarding";
 import { useApi } from "../../composables/useApi";
+import { useConnections } from "../../composables/useConnections";
 
 const { requestTour } = useTourManager();
 const { onboarding, markDone } = useOnboarding();
-const { apiFetch } = useApi();
+const { connections, activeConnection } = useConnections();
+
+const connectedServers = computed(() => connections.filter(c => c.status === 'connected'));
+
+// Track which server to pull logs from (defaults to active connection)
+const selectedServerConnectionId = ref<string>(activeConnection.value?.connectionId ?? '');
+
+// Initialize default if not set
+watch(connectedServers, (servers) => {
+  if (!selectedServerConnectionId.value && servers.length) {
+    selectedServerConnectionId.value = servers[0].connectionId;
+  }
+}, { immediate: true });
+
+// Create a reactive apiFetch bound to the selected server
+function getServerApiFetch() {
+  const connId = selectedServerConnectionId.value;
+  const { apiFetch } = useApi(connId || undefined);
+  return apiFetch;
+}
 
 const logsTourSteps: TourStep[] = [
 	{
@@ -496,6 +529,7 @@ async function loadServerPage(page: number) {
     });
     if (levelFilter.value) params.set('level', levelFilter.value);
 
+    const apiFetch = getServerApiFetch();
     const res = await apiFetch(`/api/admin/audit-log?${params.toString()}`);
     if (!res?.ok) throw new Error(res?.error || 'Failed to fetch server logs');
 
