@@ -1005,7 +1005,7 @@ Export comments in multiple formats for use in external tools:
 
 ## 19. Annotations & Drawing Tools
 
-45Flow Pro includes built-in annotation tools for drawing directly on video frames. Annotations are created in the **link's review UI** (the shared video player) — not from within the comments panel.
+45Flow Pro includes built-in annotation tools for drawing directly on video frames. Annotations are created in the **link's review UI** (the shared video player).
 
 ![Annotation drawing tools](images/annotation-tools.png)
 
