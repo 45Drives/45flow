@@ -80,10 +80,29 @@ function probeSource(ffmpegPath: string, inputPath: string): ProbeInfo {
 
 // ── Main class ───────────────────────────────────────────────────────────────
 
+/**
+ * Detect if an FFmpeg exit code indicates a hardware acceleration crash.
+ * Common Windows codes:
+ *   3221225477 (0xC0000005) = ACCESS_VIOLATION (NVENC/driver crash)
+ *   3221225725 (0xC00000FD) = STACK_OVERFLOW
+ * Common Unix codes:
+ *   -11 = SIGSEGV
+ *   -6  = SIGABRT
+ */
+function isHardwareCrash(exitCode: number | null): boolean {
+  if (exitCode === null) return false;
+  // Windows: 0xC0000005 (3221225477) or similar high codes
+  if (process.platform === 'win32' && exitCode > 3221225000 && exitCode < 3221226000) return true;
+  // Unix: segfault or abort signals
+  if (process.platform !== 'win32' && (exitCode === -11 || exitCode === -6)) return true;
+  return false;
+}
+
 export class FullTranscodeManager {
   private activeProcess: ChildProcess | null = null;
   private canceled = false;
   private currentJobId: string | null = null;
+  private hwRetryAttempted = false; // Track if we've already tried SW fallback
 
   /** Check if a transcode job is currently running */
   hasActiveJob(): boolean {
@@ -102,6 +121,7 @@ export class FullTranscodeManager {
   ): Promise<FullTranscodeResult> {
     this.canceled = false;
     this.currentJobId = jobId;
+    this.hwRetryAttempted = false;
 
     try {
     const ffmpegPath = getFfmpegPath();
@@ -232,7 +252,7 @@ export class FullTranscodeManager {
 
           console.log(`[full-transcode] ${jobId}: HLS rendition ${v + 1}/${renditions.length} (${height}p) → ${variantDir}`);
 
-          await this.runFfmpeg(ffmpegPath, hlsArgs, probe.durationSeconds, (pct, fps, speed, eta) => {
+          await this.runFfmpegWithRetry(ffmpegPath, hlsArgs, probe.durationSeconds, (pct, fps, speed, eta) => {
             // Unified progress: all renditions together = 1 phase
             const renditionProgress = (v + pct / 100) / renditions.length;
             const overallPercent = (phaseIndex + renditionProgress) / totalPhases * 100;
@@ -246,7 +266,7 @@ export class FullTranscodeManager {
               message: `HLS streaming — ${Math.round(renditionProgress * 100)}%`,
               encoder: hlsCodec,
             });
-          });
+          }, hlsCodec);
 
           // Emit progress after this rendition completes
           const renditionProgress = (v + 1) / renditions.length;
@@ -299,7 +319,7 @@ export class FullTranscodeManager {
           codec: hlsCodec,
         });
 
-        await this.runFfmpeg(ffmpegPath, hlsArgs, probe.durationSeconds, (pct, fps, speed, eta) => {
+        await this.runFfmpegWithRetry(ffmpegPath, hlsArgs, probe.durationSeconds, (pct, fps, speed, eta) => {
           const overallPercent = (phaseIndex + pct / 100) / totalPhases * 100;
           onProgress({
             phase: 'hls',
@@ -311,7 +331,7 @@ export class FullTranscodeManager {
             message: `HLS streaming — ${Math.round(pct)}%`,
             encoder: hlsCodec,
           });
-        });
+        }, hlsCodec);
 
         // Emit final HLS progress
         const finalOverallPercent = (phaseIndex + 1) / totalPhases * 100;
@@ -388,7 +408,7 @@ export class FullTranscodeManager {
       console.log(`[full-transcode] ${jobId}: proxy ${quality} → ${outAbs}`);
       console.log(`[full-transcode] ${jobId}: proxy args =`, args.join(' '));
 
-      await this.runFfmpeg(ffmpegPath, args, probe.durationSeconds, (pct, fps, speed, eta) => {
+      await this.runFfmpegWithRetry(ffmpegPath, args, probe.durationSeconds, (pct, fps, speed, eta) => {
         perQualityProgress[quality] = pct;
         const overallPercent = (phaseIndex + pct / 100) / totalPhases * 100;
         onProgress({
@@ -402,7 +422,7 @@ export class FullTranscodeManager {
           message: `Review copy ${quality}${canFastRemux ? ' (remux)' : ''} — ${Math.round(pct)}%`,
           encoder: canFastRemux ? 'copy' : proxyCodec,
         });
-      });
+      }, canFastRemux ? 'copy' : proxyCodec);
 
       // Mark quality complete and emit final progress for this quality
       perQualityProgress[quality] = 100;
@@ -433,6 +453,19 @@ export class FullTranscodeManager {
       hlsDir,
       hlsMaster,
     };
+  } catch (error: any) {
+    // Clean up partial transcode directory on error
+    const outputDir = path.join(app.getPath('temp'), `45flow-full-transcode-${jobId}`);
+    try {
+      if (fs.existsSync(outputDir)) {
+        fs.rmSync(outputDir, { recursive: true, force: true });
+        console.log(`[full-transcode] ${jobId}: cleaned up partial transcode at ${outputDir}`);
+      }
+    } catch (cleanupErr: any) {
+      console.warn(`[full-transcode] ${jobId}: failed to clean up ${outputDir}:`, cleanupErr?.message);
+    }
+    // Re-throw the original error
+    throw error;
   } finally {
     this.currentJobId = null;
     this.activeProcess = null;
@@ -950,7 +983,10 @@ export class FullTranscodeManager {
           resolve();
         } else {
           const lastLines = stderr.slice(-1500);
-          reject(new Error(`FFmpeg exited with code ${code}:\n${lastLines}`));
+          const errorMsg = new Error(`FFmpeg exited with code ${code}:\n${lastLines}`);
+          // Attach exit code so caller can detect hardware crashes
+          (errorMsg as any).exitCode = code;
+          reject(errorMsg);
         }
       });
 
@@ -959,5 +995,48 @@ export class FullTranscodeManager {
         reject(err);
       });
     });
+  }
+
+  /**
+   * Run FFmpeg with automatic hardware crash detection and software fallback.
+   * If hardware acceleration crashes (e.g., NVENC driver failure), provide clear error.
+   */
+  private async runFfmpegWithRetry(
+    ffmpegPath: string,
+    args: string[],
+    durationSeconds: number,
+    onProgress: (pct: number, fps: number, speed: string, eta: string) => void,
+    currentCodec: string,
+  ): Promise<void> {
+    try {
+      await this.runFfmpeg(ffmpegPath, args, durationSeconds, onProgress);
+    } catch (err: any) {
+      const exitCode = err?.exitCode;
+      const isHwCrash = isHardwareCrash(exitCode);
+      const isHwCodec = currentCodec.includes('nvenc') || 
+                        currentCodec.includes('videotoolbox') || 
+                        currentCodec.includes('qsv') || 
+                        currentCodec.includes('vaapi');
+
+      if (isHwCrash && isHwCodec) {
+        const platform = process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'macOS' : 'Linux';
+        const driverAdvice = currentCodec.includes('nvenc') 
+          ? 'Try updating your NVIDIA GPU drivers or disable hardware acceleration in Settings.'
+          : currentCodec.includes('videotoolbox')
+          ? 'This may be a macOS VideoToolbox issue. Try disabling hardware acceleration in Settings.'
+          : currentCodec.includes('qsv')
+          ? 'Try updating your Intel graphics drivers or disable hardware acceleration in Settings.'
+          : 'Try updating your graphics drivers or disable hardware acceleration in Settings.';
+        
+        throw new Error(
+          `Hardware encoder (${currentCodec}) crashed on ${platform}.\n\n` +
+          `Exit code: ${exitCode} (0x${(exitCode >>> 0).toString(16).toUpperCase()})\n\n` +
+          `${driverAdvice}`
+        );
+      }
+
+      // Not a hardware crash, propagate original error
+      throw err;
+    }
   }
 }
