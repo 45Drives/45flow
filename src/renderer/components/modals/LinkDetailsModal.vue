@@ -1859,6 +1859,16 @@ const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   upload_aborted: 'Upload aborted',
   'upload.failed': 'Upload failed',
   'upload.aborted': 'Upload aborted',
+  comment_created: 'Comment added',
+  comment_reply: 'Comment reply added',
+  comment_edited: 'Comment edited',
+  comment_deleted: 'Comment deleted',
+  annotation_created: 'Annotation added',
+  annotation_edited: 'Annotation edited',
+  annotation_deleted: 'Annotation deleted',
+  link_viewed: 'Link accessed',
+  auth_success: 'Authenticated',
+  password_verified: 'Password verified',
 }
 
 function titleCaseWords(v: string) {

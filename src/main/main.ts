@@ -574,10 +574,19 @@ async function tryAttach(ip: string) {
   }
 
   if (pf.ok === false && pf.code !== 200) {
-    // Network or non-200/404—use backoff but no mute
-    s.backoffMs = Math.min(s.backoffMs * 2, 30000);
-    s.nextAt = now + s.backoffMs;
-    jl('warn', 'sse.preflight.fail', { ip, code: pf.code, nextIn: s.backoffMs });
+    // Network error (connection refused, timeout) or non-200/404 — mute to avoid log spam
+    if (!pf.code) {
+      // No HTTP code = network-level failure (host unreachable / port closed) — mute like 404
+      const muteMs = 10 * 60 * 1000; // 10 minutes
+      s.mutedUntil404 = now + muteMs;
+      s.backoffMs = Math.min(Math.max(s.backoffMs * 2, 5000), 30000);
+      s.nextAt = now + s.backoffMs;
+      jl('debug', 'sse.preflight.unreachable', { ip, nextIn: s.backoffMs, muteMs });
+    } else {
+      s.backoffMs = Math.min(s.backoffMs * 2, 30000);
+      s.nextAt = now + s.backoffMs;
+      jl('warn', 'sse.preflight.fail', { ip, code: pf.code, nextIn: s.backoffMs });
+    }
     s.inFlight = false;
     return;
   }
