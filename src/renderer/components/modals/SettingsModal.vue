@@ -353,6 +353,17 @@
                                         <span class="ml-1">{{ formatCertExpiry(certStatus.certExpiry) }}</span>
                                         <span v-if="certStatus.daysRemaining != null" class="text-accent ml-1">({{ certStatus.daysRemaining }} days)</span>
                                     </div>
+                                    <div v-if="certStatus.certMode === 'letsencrypt'">
+                                        <span class="text-accent">Auto-renewal:</span>
+                                        <span v-if="certStatus.renewalTimerActive"
+                                            class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                            Active
+                                        </span>
+                                        <span v-else
+                                            class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                                            Inactive
+                                        </span>
+                                    </div>
                                     <div v-if="certStatus.certMode === 'self-signed'" class="text-accent text-xs mt-1">
                                         Browsers will show a security warning when clients open share links. Set up a trusted certificate below to fix this.
                                     </div>
@@ -1570,6 +1581,8 @@ const certStatus = ref<{
     daysRemaining: number | null;
     valid: boolean;
     wanIp: string | null;
+    renewalTimerActive: boolean;
+    renewalTimerMethod: string | null;
 }>({
     certMode: 'self-signed',
     certDomain: null,
@@ -1578,6 +1591,8 @@ const certStatus = ref<{
     daysRemaining: null,
     valid: false,
     wanIp: null,
+    renewalTimerActive: false,
+    renewalTimerMethod: null,
 });
 
 const dnsHostPart = computed(() => {
@@ -1605,6 +1620,8 @@ async function loadCertStatus() {
             daysRemaining: data.daysRemaining ?? null,
             valid: data.valid,
             wanIp: data.wanIp || null,
+            renewalTimerActive: data.renewalTimerActive ?? false,
+            renewalTimerMethod: data.renewalTimerMethod || null,
         };
         // Pre-fill form from existing values
     } catch {
