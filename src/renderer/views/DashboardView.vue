@@ -80,6 +80,7 @@ const dashboardTourSteps: TourStep[] = [
 	{
 		target: '[data-tour="flow-logo"]',
 		message: 'Welcome to 45Flow!\n\nTip: You can drag and drop files anywhere onto the app to open Quick Share — the fastest way to upload and share files. A guided tour of Quick Share will appear the first time you drop a file.\n\nLet\'s explore the dashboard.',
+		beforeShow: () => { transfer.setOpen(false) }, // Close transfer dock if open
 	},
 	// ── Multi-Server Features ──────────────────────
 	{
