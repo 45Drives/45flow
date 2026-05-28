@@ -223,9 +223,11 @@ export class FullTranscodeManager {
 
       // QSV needs separate passes per rendition to enable hardware acceleration
       // (filter_complex with split doesn't work with QSV hwupload requirements).
+      // NVENC also needs separate passes — multi-rendition filter_complex with split
+      // causes driver crashes (0xC0000005) on Windows, especially with Quadro cards.
       // VAAPI has complex surface requirements, so use multi-rendition for now.
-      // NVENC/VideoToolbox/libx264 use single-pass multi-rendition (more efficient).
-      const needsSeparatePasses = hlsCodec.includes('qsv');
+      // VideoToolbox/libx264 use single-pass multi-rendition (more efficient).
+      const needsSeparatePasses = hlsCodec.includes('qsv') || hlsCodec.includes('nvenc');
 
       if (needsSeparatePasses) {
         console.log(`[full-transcode] ${jobId}: Using separate passes for ${hlsCodec} (enables hardware acceleration)`);
