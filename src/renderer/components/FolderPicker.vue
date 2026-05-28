@@ -1,5 +1,5 @@
 <template>
-  <section class="fp-shell bg-accent flex flex-col gap-2 text-left text-base rounded-md">
+  <section class="fp-shell bg-accent flex flex-col gap-2 text-left text-base rounded-md min-h-0">
     <div class="fp-meta flex flex-col gap-2 text-sm">
       <label v-if="allowEntireTree" class="flex items-center gap-2 cursor-pointer select-none">
         <input type="checkbox" v-model="showEntireTree" @change="changeProject" />
@@ -49,7 +49,7 @@
     </div>
 
     <div class="fp-browser border rounded overflow-auto bg-accent" :class="containerHeights">
-      <div class="fp-toolbar sticky top-0 bg-accent border-b border-default px-2 py-1 flex items-center gap-2 z-20">
+      <div class="fp-toolbar sticky top-0 border-b border-default px-2 py-1 flex items-center gap-2 z-20 bg-primary">
         <button class="btn btn-secondary" :disabled="!canGoUp || browseMode === 'roots'" @click="goUpOne"
           title="Go up one directory">
           <FontAwesomeIcon :icon="faArrowLeft" />
@@ -683,6 +683,9 @@ const containerHeights = computed(() => props.heightClass || 'max-h-[28rem] min-
 .fp-browser {
     border-color: color-mix(in srgb, var(--btn-primary-bg) 24%, #4d4e5e);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, white 3%, transparent);
+    min-height: 0;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
 }
 
 .fp-toolbar {

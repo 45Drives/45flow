@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-3 max-h-[500px] mt-2 rounded-md">
+  <div class="flex flex-col gap-3 mt-2 rounded-md">
     <!-- Top controls + PathInput -->
     <div class="flex flex-col gap-2 text-sm">
       <div class="text-muted">Click on files to select or deselect them. Shift-click to select a range. <span v-if="viewMode === 'grid'">Click on folders to enter. Use folder checkboxes to select all contents.</span><span v-else>Use folder checkboxes to select all contents.</span></div>
@@ -11,7 +11,7 @@
     </div>
 
     <!-- Table wrapper -->
-    <div class="bg-accent border border-default rounded overflow-auto max-h-[440px] min-h-[300px] p-1">
+    <div class="bg-accent border border-default rounded overflow-y-auto max-h-[440px] min-h-[200px] p-1">
       <!-- Small toolbar: List / Grid toggle -->
       <div class="sticky top-0 bg-primary rounded-md border-b border-default px-2 py-1 flex items-center gap-2 z-20">
         <button class="btn btn-secondary" :disabled="!canGoUp" @click="goUpOne" title="Go up one directory">

@@ -108,11 +108,11 @@
 
 						<h2 class="wizard-heading">Choose destination on server</h2>
 
-						<div data-tour="upload-folder-picker">
+						<div data-tour="upload-folder-picker" class="flex flex-col flex-1 min-h-0">
 							<FolderPicker v-model="destFolderRel" :apiFetch="apiFetch" useCase="upload"
 								subtitle="Pick the folder on the server where these files will be uploaded."
 								:auto-detect-roots="true" :allow-entire-tree="true" v-model:project="projectBase"
-								v-model:dest="destFolderRel" />
+								v-model:dest="destFolderRel" heightClass="flex-1 min-h-0" />
 						</div>
 					</section>
 
