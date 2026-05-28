@@ -55,10 +55,9 @@
                 <div class="font-semibold">{{ currentAccessSummary }}</div>
               </div>
               <div>
-                <span class="opacity-70">Sharing Mode</span>
+                <span class="opacity-70">Review Copy Qualities Shared</span>
                 <div class="font-semibold">
-                    {{ currentGenerateReviewProxy ? 'Transcoded' : 'Review Copies Disabled' }}
-                    <span v-if="currentProxyQualities.length" class="opacity-70">({{ currentProxyQualities.join(', ') }})</span>
+                    {{ currentGenerateReviewProxy ? currentProxyQualities.join(', ') : 'Disabled' }}
                 </div>
               </div>
               <div>
