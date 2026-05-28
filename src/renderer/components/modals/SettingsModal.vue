@@ -374,7 +374,7 @@
                             <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Set Up Trusted Certificate</p>
 
                             <div class="divide-y divide-default">
-                                <SettingRow label="Domain" description="Your custom domain name (e.g. studio.yourcompany.com).">
+                                <SettingRow label="Domain" description="Your custom domain name (e.g. studio.yourcompany.com). Auto-synced from External Base if set.">
                                     <input v-model="certDomainInput" type="text" :disabled="certBusy"
                                         class="input-textlike border border-default px-2 py-1 rounded text-sm w-56"
                                         placeholder="studio.yourcompany.com" />
@@ -1624,10 +1624,63 @@ async function loadCertStatus() {
             renewalTimerMethod: data.renewalTimerMethod || null,
         };
         // Pre-fill form from existing values
+        if (!certDomainInput.value && data.certDomain) {
+            certDomainInput.value = data.certDomain;
+        }
+        if (!certEmailInput.value && data.certEmail) {
+            certEmailInput.value = data.certEmail;
+        }
     } catch {
         // Silent — cert status is non-critical
     }
 }
+
+/**
+ * Extract the hostname from a URL string. Returns null if it's an IP address.
+ * Used to sync external base domain → certificate domain.
+ */
+function extractDomainFromUrl(urlStr: string): string | null {
+    if (!urlStr) return null;
+    try {
+        // Normalize the input
+        const normalized = normalizeUrlInput(urlStr, 'https');
+        if (!normalized) return null;
+
+        const url = new URL(normalized);
+        const host = url.hostname;
+
+        // Skip IP addresses — cert domain should be a real domain
+        if (/^(\d{1,3}\.){3}\d{1,3}$/.test(host)) return null;
+
+        return host;
+    } catch {
+        return null;
+    }
+}
+
+// Sync external base → cert domain when external base changes to a domain
+watch(externalBase, (newVal) => {
+    if (externalAuto.value) return; // Only sync when in custom mode
+
+    const domain = extractDomainFromUrl(newVal);
+    if (domain) {
+        certDomainInput.value = domain;
+    }
+});
+
+// Sync cert domain → external base when cert domain is entered and external base is empty/auto
+watch(certDomainInput, (newVal) => {
+    const trimmed = newVal.trim();
+    if (!trimmed) return;
+
+    // Only sync if external base is empty or in auto mode
+    if (!externalBase.value.trim() || externalAuto.value) {
+        // Build the URL from the domain
+        const url = `https://${trimmed}`;
+        externalBase.value = url;
+        externalAuto.value = false; // Disable auto-detect
+    }
+});
 
 async function verifyDNS() {
     certError.value = null;
