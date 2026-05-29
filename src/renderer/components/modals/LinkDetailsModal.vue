@@ -1450,13 +1450,22 @@ async function loadExistingWatermarkFilesForEdit() {
     // User watermarks first, default watermarks last
     existingWatermarkFilesForEdit.value = showDefaultWatermarksForEdit.value ? [...serverWatermarks, ...validBuiltins] : serverWatermarks
     
-    // Auto-select last used watermark if available
-    try {
-      const lastUsed = localStorage.getItem('45flow-last-watermark')
-      if (lastUsed && existingWatermarkFilesForEdit.value.includes(lastUsed) && !draftWatermarkLocalFile.value && !draftWatermarkFile.value) {
-        draftWatermarkFile.value = lastUsed
+    // Auto-select: prefer current watermark from link metadata (what's actually in the video),
+    // then fall back to localStorage last-used
+    if (!draftWatermarkLocalFile.value && !draftWatermarkFile.value) {
+      const detected = currentWatermarkFile.value
+      if (detected && existingWatermarkFilesForEdit.value.includes(detected)) {
+        draftWatermarkFile.value = detected
+        return
       }
-    } catch { /* ignore storage errors */ }
+
+      try {
+        const lastUsed = localStorage.getItem('45flow-last-watermark')
+        if (lastUsed && existingWatermarkFilesForEdit.value.includes(lastUsed)) {
+          draftWatermarkFile.value = lastUsed
+        }
+      } catch { /* ignore storage errors */ }
+    }
   } catch {
     existingWatermarkFilesForEdit.value = []
   }
