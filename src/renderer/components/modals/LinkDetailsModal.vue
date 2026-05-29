@@ -1174,7 +1174,9 @@ const currentWatermarkFile = computed(() => String(props.link?.watermarkFile || 
 const mediaSettingsDirty = computed(() => {
   if (!!draftGenerateReviewProxy.value !== currentGenerateReviewProxy.value) return true
   if (!sameValues(normalizeQualities(draftProxyQualities.value), originalProxyQualities.value)) return true
+  if (!sameValues(normalizeQualities(draftProxyQualities.value), originalProxyQualities.value)) return true
   if (!!draftWatermarkEnabled.value !== currentWatermark.value) return true
+  if ((draftWatermarkFile.value || '').trim() !== (originalWatermarkFile.value || currentWatermarkFile.value)) return true
   if ((draftWatermarkFile.value || '').trim() !== (originalWatermarkFile.value || currentWatermarkFile.value)) return true
   if (draftWatermarkLocalFile.value) return true
   return false
@@ -1385,8 +1387,10 @@ function seedDraftMediaSettings() {
     ? currentProxyQualities.value.slice()
     : (draftGenerateReviewProxy.value ? ['720p'] : [])
   originalProxyQualities.value = draftProxyQualities.value.slice()
+  originalProxyQualities.value = draftProxyQualities.value.slice()
   draftWatermarkEnabled.value = currentWatermark.value
   draftWatermarkFile.value = currentWatermarkFile.value
+  originalWatermarkFile.value = currentWatermarkFile.value
   originalWatermarkFile.value = currentWatermarkFile.value
   draftWatermarkLocalFile.value = null
 }
@@ -1497,6 +1501,7 @@ async function loadExistingWatermarkFilesForEdit() {
       if (detected && existingWatermarkFilesForEdit.value.includes(detected)) {
         draftWatermarkFile.value = detected
         originalWatermarkFile.value = detected
+        originalWatermarkFile.value = detected
         return
       }
 
@@ -1504,6 +1509,7 @@ async function loadExistingWatermarkFilesForEdit() {
         const lastUsed = localStorage.getItem('45flow-last-watermark')
         if (lastUsed && existingWatermarkFilesForEdit.value.includes(lastUsed)) {
           draftWatermarkFile.value = lastUsed
+          originalWatermarkFile.value = lastUsed
           originalWatermarkFile.value = lastUsed
         }
       } catch { /* ignore storage errors */ }
@@ -2273,7 +2279,6 @@ async function reprocessMedia() {
     reprocessingMedia.value = false
   }
 }
-
 function startLinkTranscodeTracking(opts: {
   resp: any
   wantsProxy: boolean
@@ -3512,7 +3517,10 @@ async function saveAll() {
       startLinkTranscodeTracking({
         resp: trackingResp,
         wantsProxy: shouldUpdateFiles ? !!wantsProxy : !!draftGenerateReviewProxy.value,
+        wantsProxy: shouldUpdateFiles ? !!wantsProxy : !!draftGenerateReviewProxy.value,
         wantsHls: true,
+        addedPaths: shouldUpdateFiles ? addedPaths.slice() : draftFilePaths.value.slice(),
+        proxyQualities: (shouldUpdateFiles ? wantsProxy : draftGenerateReviewProxy.value) ? nextProxyQualities : [],
         addedPaths: shouldUpdateFiles ? addedPaths.slice() : draftFilePaths.value.slice(),
         proxyQualities: (shouldUpdateFiles ? wantsProxy : draftGenerateReviewProxy.value) ? nextProxyQualities : [],
       })
