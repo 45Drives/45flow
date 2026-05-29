@@ -904,10 +904,11 @@ if truthy "${GH_UPLOAD_RELEASE:-0}" || truthy "${GH_PUBLISH_RELEASE:-0}" || trut
     GH_RELEASE_TAG_EFFECTIVE="$GH_RELEASE_TAG_JSON"
   else
     GH_RELEASE_VIEW_OUTPUT="$(gh release view "$RELEASE_TAG" --repo "$GH_REPO" 2>/dev/null || true)"
-    GH_RELEASE_TAG_FROM_URL="$(printf '%s\n' "$GH_RELEASE_VIEW_OUTPUT" | sed -n 's#.*releases/tag/\([^[:space:]]\+\).*#\1#p' | tail -n1)"
-    GH_RELEASE_TAG_FROM_URL="${GH_RELEASE_TAG_FROM_URL//$'\r'/}"
-    if [[ -n "${GH_RELEASE_TAG_FROM_URL//[[:space:]]/}" ]]; then
-      GH_RELEASE_TAG_EFFECTIVE="$GH_RELEASE_TAG_FROM_URL"
+    # Parse the "tag:" field, not the "url:" field (which contains "untagged-" for drafts)
+    GH_RELEASE_TAG_FROM_TAG_FIELD="$(printf '%s\n' "$GH_RELEASE_VIEW_OUTPUT" | sed -n 's/^tag:[[:space:]]*\([^[:space:]]\+\).*/\1/p')"
+    GH_RELEASE_TAG_FROM_TAG_FIELD="${GH_RELEASE_TAG_FROM_TAG_FIELD//$'\r'/}"
+    if [[ -n "${GH_RELEASE_TAG_FROM_TAG_FIELD//[[:space:]]/}" ]]; then
+      GH_RELEASE_TAG_EFFECTIVE="$GH_RELEASE_TAG_FROM_TAG_FIELD"
     else
       echo "Unable to resolve release key from gh output; defaulting to '$RELEASE_TAG' for upload/publish." >&2
     fi
