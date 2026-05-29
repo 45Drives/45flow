@@ -373,6 +373,22 @@
                 File: <code>{{ currentWatermarkFile }}</code>
               </div>
 
+              <div v-if="editMode && isDownloadish && (draftGenerateReviewProxy || draftWatermarkEnabled)" class="pt-2 border-t border-default">
+                <div class="flex items-center gap-3">
+                  <button
+                    class="btn btn-primary"
+                    :disabled="reprocessingMedia"
+                    @click="reprocessMedia()"
+                  >
+                    <span v-if="reprocessingMedia">Processing…</span>
+                    <span v-else>Reprocess Review Copies</span>
+                  </button>
+                  <span class="text-xs opacity-70">
+                    Regenerates review copies/streams with current quality and watermark settings.
+                  </span>
+                </div>
+              </div>
+
               <div v-if="editMode && isDownloadish" class="pt-2 border-t border-default space-y-2">
                 <div class="flex items-center justify-between">
                   <div class="text-default font-semibold">
@@ -926,6 +942,7 @@ const versionFileById = computed(() => {
 
 const editMode = ref(false)
 const saving = ref(false)
+const reprocessingMedia = ref(false)
 
 /**
  * Check if there are active transcodes for this link
@@ -943,10 +960,29 @@ const hasActiveTranscodes = computed(() => {
   })
 })
 
+const hasUnsavedChanges = computed(() => {
+  if (!editMode.value || !props.link) return false
+  if ((draftTitle.value || '') !== (props.link.title || '')) return true
+  if ((draftNotes.value || '') !== (((props.link as any).notes) || '')) return true
+  if (draftAccessMode.value !== (props.link.access_mode || 'open')) return true
+  const linkAccessMode = props.link.access_mode || 'open'
+  const seedComments = (props.link?.type !== 'upload' && linkAccessMode !== 'restricted')
+    ? !!(props.link.allow_comments ?? true)
+    : false
+  if (!!draftAllowComments.value !== seedComments) return true
+  if (mediaSettingsDirty.value) return true
+  if (isDownloadish.value && filesDirty.value) return true
+  if (props.link.type === 'upload' && uploadDirDirty.value) return true
+  const hadPassword = (props.link.auth_mode || '') === 'password' || !!props.link.passwordRequired
+  if (draftUsePassword.value !== hadPassword) return true
+  if (draftUsePassword.value && draftPassword.value.trim().length > 0) return true
+  return false
+})
+
 const saveDisabled = computed(() =>
-  saving.value || 
+  saving.value ||
   hasActiveTranscodes.value ||
-  (editMode.value && (!accessSatisfied.value || !passwordSatisfied.value))
+  (editMode.value && (!accessSatisfied.value || !passwordSatisfied.value || !hasUnsavedChanges.value))
 )
 
 const draftTitle = ref('')
@@ -957,8 +993,10 @@ const draftUsePassword = ref(false)
 const draftPassword = ref('')
 const draftGenerateReviewProxy = ref(false)
 const draftProxyQualities = ref<string[]>([])
+const originalProxyQualities = ref<string[]>([])
 const draftWatermarkEnabled = ref(false)
 const draftWatermarkFile = ref('')
+const originalWatermarkFile = ref('')
 type LocalFile = { path: string; name: string; size: number; dataUrl?: string | null }
 const draftWatermarkLocalFile = ref<LocalFile | null>(null)
 const draftWatermarkSettings = ref<WatermarkSettings>(createDefaultWatermarkSettings())
@@ -1135,9 +1173,9 @@ const currentWatermark = computed(() => !!(props.link?.watermark))
 const currentWatermarkFile = computed(() => String(props.link?.watermarkFile || '').trim())
 const mediaSettingsDirty = computed(() => {
   if (!!draftGenerateReviewProxy.value !== currentGenerateReviewProxy.value) return true
-  if (!sameValues(normalizeQualities(draftProxyQualities.value), currentProxyQualities.value)) return true
+  if (!sameValues(normalizeQualities(draftProxyQualities.value), originalProxyQualities.value)) return true
   if (!!draftWatermarkEnabled.value !== currentWatermark.value) return true
-  if ((draftWatermarkFile.value || '').trim() !== currentWatermarkFile.value) return true
+  if ((draftWatermarkFile.value || '').trim() !== (originalWatermarkFile.value || currentWatermarkFile.value)) return true
   if (draftWatermarkLocalFile.value) return true
   return false
 })
@@ -1346,8 +1384,10 @@ function seedDraftMediaSettings() {
   draftProxyQualities.value = currentProxyQualities.value.length
     ? currentProxyQualities.value.slice()
     : (draftGenerateReviewProxy.value ? ['720p'] : [])
+  originalProxyQualities.value = draftProxyQualities.value.slice()
   draftWatermarkEnabled.value = currentWatermark.value
   draftWatermarkFile.value = currentWatermarkFile.value
+  originalWatermarkFile.value = currentWatermarkFile.value
   draftWatermarkLocalFile.value = null
 }
 
@@ -1456,6 +1496,7 @@ async function loadExistingWatermarkFilesForEdit() {
       const detected = currentWatermarkFile.value
       if (detected && existingWatermarkFilesForEdit.value.includes(detected)) {
         draftWatermarkFile.value = detected
+        originalWatermarkFile.value = detected
         return
       }
 
@@ -1463,6 +1504,7 @@ async function loadExistingWatermarkFilesForEdit() {
         const lastUsed = localStorage.getItem('45flow-last-watermark')
         if (lastUsed && existingWatermarkFilesForEdit.value.includes(lastUsed)) {
           draftWatermarkFile.value = lastUsed
+          originalWatermarkFile.value = lastUsed
         }
       } catch { /* ignore storage errors */ }
     }
@@ -2169,6 +2211,67 @@ function mapAssetVersionToFileId(data: any): Map<number, number> {
   }
 
   return out
+}
+
+async function reprocessMedia() {
+  const id = props.link?.id
+  if (!id) return
+  reprocessingMedia.value = true
+  try {
+    const nextProxyQualities = normalizeQualities(draftProxyQualities.value)
+    const body: any = {
+      generateReviewProxy: !!draftGenerateReviewProxy.value,
+      adaptiveHls: !!draftGenerateReviewProxy.value || !!draftWatermarkEnabled.value,
+      proxyQualities: draftGenerateReviewProxy.value ? nextProxyQualities : [],
+      watermark: !!draftWatermarkEnabled.value,
+      watermarkFile: draftWatermarkEnabled.value ? draftWatermarkFile.value.trim() : null,
+      watermarkProxyQualities: draftWatermarkEnabled.value ? nextProxyQualities : [],
+      overwrite: true,
+    }
+    const resp = await props.apiFetch(`/api/links/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+      timeoutMs: 5 * 60 * 1000,
+    })
+    if (resp?.hasTranscodes) {
+      startLinkTranscodeTracking({
+        resp,
+        wantsProxy: !!draftGenerateReviewProxy.value,
+        wantsHls: true,
+        addedPaths: draftFilePaths.value.slice(),
+        proxyQualities: draftGenerateReviewProxy.value ? nextProxyQualities : [],
+      })
+      pushNotification(
+        new Notification(
+          'Media Reprocessing Started',
+          'Review copies are being regenerated. Track progress in the Transfer Dock.',
+          'success',
+          5000
+        )
+      )
+    } else {
+      pushNotification(
+        new Notification(
+          'Media Reprocessing',
+          'Settings applied. No video files require processing.',
+          'info',
+          5000
+        )
+      )
+    }
+  } catch (e: any) {
+    const msg = typeof e?.message === 'string' ? e.message : 'Failed to reprocess media'
+    pushNotification(
+      new Notification(
+        'Media Reprocessing Failed',
+        msg,
+        'error',
+        8000
+      )
+    )
+  } finally {
+    reprocessingMedia.value = false
+  }
 }
 
 function startLinkTranscodeTracking(opts: {
@@ -3186,17 +3289,14 @@ async function saveAll() {
       titleChanged || notesChanged || accessModeChanged || allowCommentsChanged || authModeChanged || passwordChanged
     const shouldUpdateFiles = isDownloadish.value && filesDirty.value
     const shouldPatchMediaSettings = mediaSettingsDirty.value
+    const watermarkChanged =
+      (!!draftWatermarkEnabled.value !== currentWatermark.value) ||
+      ((draftWatermarkFile.value || '').trim() !== (originalWatermarkFile.value || currentWatermarkFile.value)) ||
+      !!draftWatermarkLocalFile.value
     const deferMediaPatchUntilAfterFiles = shouldUpdateFiles && shouldPatchMediaSettings
     const shouldUpdateDetails =
       shouldUpdateDetailsCore || (shouldPatchMediaSettings && !deferMediaPatchUntilAfterFiles)
     const shouldUpdateUploadDest = props.link.type === 'upload' && uploadDirDirty.value
-    const wantsMediaProcessing = !!draftGenerateReviewProxy.value || !!draftWatermarkEnabled.value
-    const shouldTriggerMediaProcessing =
-      isDownloadish.value &&
-      !shouldUpdateFiles &&
-      mediaSettingsDirty.value &&
-      wantsMediaProcessing &&
-      draftFilePaths.value.length > 0
 
     const addedPaths = computeAddedPaths(draftFilePaths.value, originalFilePaths.value)
     const wantsHls = addedPaths.length > 0
@@ -3290,6 +3390,7 @@ async function saveAll() {
         body.watermarkFile = draftWatermarkEnabled.value ? draftWatermarkFile.value.trim() : null
         body.watermarkProxyQualities = draftWatermarkEnabled.value ? nextProxyQualities : []
         body.watermarkSettings = draftWatermarkEnabled.value ? JSON.parse(JSON.stringify(draftWatermarkSettings.value)) : null
+        if (!watermarkChanged) body.saveSettingsOnly = true
       }
 
       try {
@@ -3381,6 +3482,7 @@ async function saveAll() {
         watermarkFile: draftWatermarkEnabled.value ? draftWatermarkFile.value.trim() : null,
         watermarkProxyQualities: draftWatermarkEnabled.value ? nextProxyQualities : [],
         watermarkSettings: draftWatermarkEnabled.value ? JSON.parse(JSON.stringify(draftWatermarkSettings.value)) : null,
+        ...(watermarkChanged ? {} : { saveSettingsOnly: true }),
       }
 
       try {
@@ -3404,71 +3506,15 @@ async function saveAll() {
       }
     }
 
-    let trackingResp: any | null = null
-    let trackingPaths: string[] = []
-    let trackingWantsHls = false
-    let trackingWantsProxy = false
-
-    if (shouldUpdateFiles && filesResp && (wantsHls || wantsProxy)) {
-      trackingResp = filesResp
-      trackingPaths = addedPaths.slice()
-      trackingWantsHls = wantsHls
-      trackingWantsProxy = wantsProxy
-    } else if (shouldTriggerMediaProcessing) {
-      const mediaPlan = await analyzeMediaNeedsForPaths({
-        paths: draftFilePaths.value.slice(),
-        wantsProxy: !!draftGenerateReviewProxy.value,
-        wantsHls: true,
-        proxyQualities: nextProxyQualities,
-      })
-      const pathsToTrack = mediaPlan.trackingPaths.length ? mediaPlan.trackingPaths : draftFilePaths.value.slice()
-      // console.log('[link-details:save] media trigger via PATCH only (no PUT /files)', {
-      //   shouldTriggerMediaProcessing,
-      //   missingPaths: mediaPlan.missingPaths,
-      //   pathsToTrack,
-      //   nextProxyQualities,
-      // })
-      const triggerResp = mediaResp || detailsResp
-      if (pathsToTrack.length && triggerResp) {
-        trackingResp = triggerResp
-        trackingPaths = pathsToTrack
-        trackingWantsHls = true
-        trackingWantsProxy = !!draftGenerateReviewProxy.value
-      }
-    } else if (!shouldUpdateFiles) {
-      // console.log('[link-details:save] no files update and no media trigger', {
-      //   shouldUpdateFiles,
-      //   shouldTriggerMediaProcessing,
-      //   mediaSettingsDirty: mediaSettingsDirty.value,
-      //   draftGenerateReviewProxy: draftGenerateReviewProxy.value,
-      //   draftWatermarkEnabled: draftWatermarkEnabled.value,
-      // })
-    }
-
-    if (trackingResp && (trackingWantsHls || trackingWantsProxy)) {
-      // console.log('[link-details:save] start tracking from response', {
-      //   trackingWantsHls,
-      //   trackingWantsProxy,
-      //   trackingPaths,
-      // })
+    // Track transcode progress when files were added or watermark changed
+    const trackingResp = shouldUpdateFiles ? filesResp : (watermarkChanged ? (mediaResp || detailsResp) : null)
+    if (trackingResp && (trackingResp?.hasTranscodes || (shouldUpdateFiles && (wantsHls || wantsProxy)))) {
       startLinkTranscodeTracking({
         resp: trackingResp,
-        wantsProxy: trackingWantsProxy,
-        wantsHls: trackingWantsHls,
-        addedPaths: trackingPaths,
-        proxyQualities: trackingWantsProxy ? nextProxyQualities : [],
-      })
-    } else if (!shouldUpdateFiles && detailsResp && wantsMediaProcessing) {
-      // Last resort: try details response if server included transcode info there.
-      // console.log('[link-details:save] fallback tracking attempt from details response', {
-      //   hasDetailsResp: !!detailsResp,
-      // })
-      startLinkTranscodeTracking({
-        resp: detailsResp,
-        wantsProxy: !!draftGenerateReviewProxy.value,
+        wantsProxy: shouldUpdateFiles ? !!wantsProxy : !!draftGenerateReviewProxy.value,
         wantsHls: true,
-        addedPaths: draftFilePaths.value.slice(),
-        proxyQualities: draftGenerateReviewProxy.value ? nextProxyQualities : [],
+        addedPaths: shouldUpdateFiles ? addedPaths.slice() : draftFilePaths.value.slice(),
+        proxyQualities: (shouldUpdateFiles ? wantsProxy : draftGenerateReviewProxy.value) ? nextProxyQualities : [],
       })
     }
 

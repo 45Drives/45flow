@@ -2,7 +2,7 @@
   <div v-if="modelValue" class="fixed inset-0 z-50 flex items-center justify-center">
     <div class="absolute inset-0 bg-black/50" @click="close()"></div>
 
-    <div class="relative w-[96vw] max-w-2xl bg-accent rounded-lg shadow-xl p-4 flex flex-col max-h-[90vh]">
+    <div class="relative w-[96vw] max-w-4xl bg-accent rounded-lg shadow-xl p-4 flex flex-col max-h-[90vh]">
       <div class="flex items-center justify-between mb-3" data-tour="users-modal-header">
         <h3 class="text-lg font-semibold">{{ linkMode ? 'Manage link access' : 'Manage users' }}</h3>
 
@@ -20,11 +20,11 @@
             <div class="flex items-center justify-between mb-2">
               <div class="font-semibold text-sm">{{ linkMode ? 'Select existing users' : 'Existing users' }}</div>
               <input type="text" v-model.trim="userSearch"
-                class="input-textlike border rounded px-2 py-1 text-sm"
+                class="input-textlike border rounded px-2 py-1 text-sm  w-80"
                 placeholder="Search by name/username/email/company/tag" @input="debouncedFetchUsers()" />
             </div>
 
-            <div class="max-h-[45vh] overflow-auto border rounded">
+            <div class="max-h-[30vh] overflow-auto border rounded">
               <div v-for="u in users" :key="u.id ?? u.username"
                 class="flex items-center justify-between px-3 py-2 border-b border-default text-sm">
                 <label v-if="linkMode" class="flex items-center gap-2 cursor-pointer" @click.stop>
@@ -161,7 +161,7 @@
                 Close create form
               </button>
             </div>
-            <div v-if="showCreate" class="border rounded p-3 bg-accent/60">
+            <div v-if="showCreate" class="border rounded p-3 bg-accent/60 max-h-[50vh] overflow-auto">
               <div class="font-semibold text-sm mb-2">Create new user</div>
               <div class="flex flex-col gap-2">
                 <div class="text-xs opacity-70 mb-1">A temporary password is required. Share it securely with the user.</div>
@@ -289,23 +289,28 @@
                   <div class="text-xs opacity-70 mt-1">Used to tint this user’s comments.</div>
                 </div>
 
-                <div class="flex flex-row w-full justify-between mt-2">
+                <div v-if="error" class="text-sm text-red-500">{{ error }}</div>
+
+                <div class="flex flex-row w-full justify-between mt-2 sticky bottom-0 bg-accent/95 py-2 border-t border-default -mb-1">
 
                   <button class="btn btn-secondary" @click="resetNewUser()">Reset</button>
                   <button class="btn btn-primary" @click="createUser()" tabindex="11" :disabled="!canSubmit">{{linkMode ? 'Create & Select User' : 'Create User'}}</button>
                 </div>
-
-
-                <div v-if="error" class="text-sm text-red-500">{{ error }}</div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="flex justify-end gap-2 mt-4" data-tour="users-modal-actions">
-        <button class="btn btn-secondary" @click="close()">{{ linkMode ? 'Cancel' : 'Close' }}</button>
-        <button v-if="linkMode" class="btn btn-success" @click="apply()">Add to link</button>
+      <div class="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-default" data-tour="users-modal-actions">
+        <span v-if="linkMode" class="text-xs opacity-60">
+          {{ selectedKeys.length + selectedGroupIds.length }} user{{ selectedKeys.length + selectedGroupIds.length === 1 ? '' : 's'}}/group{{ selectedKeys.length + selectedGroupIds.length === 1 ? '' : 's'}} selected
+        </span>
+        <span v-else></span>
+        <div class="flex gap-2">
+          <button class="btn btn-secondary" @click="close()">{{ linkMode ? 'Cancel' : 'Close' }}</button>
+          <button v-if="linkMode" class="btn btn-success" @click="apply()" :disabled="!selectedKeys.length && !selectedGroupIds.length">Add selected to link</button>
+        </div>
       </div>
     </div>
   </div>
