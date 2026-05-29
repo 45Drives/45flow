@@ -894,12 +894,23 @@ if truthy "${GH_UPLOAD_RELEASE:-0}" || truthy "${GH_PUBLISH_RELEASE:-0}" || trut
   if truthy "${GH_CREATE_DRAFT:-0}"; then
     if ! gh release view "$RELEASE_TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
       gh release create "$RELEASE_TAG" --repo "$GH_REPO" --title "$GH_TITLE" --notes "$GH_NOTES" --draft
+      # Wait a moment for GitHub to process the new release
+      sleep 2
     fi
   fi
 
   GH_RELEASE_TAG_EFFECTIVE="$RELEASE_TAG"
-  GH_RELEASE_TAG_JSON="$(gh release view "$RELEASE_TAG" --repo "$GH_REPO" --json tagName --jq '.tagName' 2>/dev/null || true)"
-  GH_RELEASE_TAG_JSON="${GH_RELEASE_TAG_JSON//$'\r'/}"
+  # Retry logic for viewing the release (in case GitHub is still processing)
+  for attempt in 1 2 3; do
+    GH_RELEASE_TAG_JSON="$(gh release view "$RELEASE_TAG" --repo "$GH_REPO" --json tagName --jq '.tagName' 2>/dev/null || true)"
+    GH_RELEASE_TAG_JSON="${GH_RELEASE_TAG_JSON//$'\r'/}"
+    if [[ -n "${GH_RELEASE_TAG_JSON//[[:space:]]/}" ]]; then
+      break
+    fi
+    if [[ $attempt -lt 3 ]]; then
+      sleep 1
+    fi
+  done
   if [[ -n "${GH_RELEASE_TAG_JSON//[[:space:]]/}" ]]; then
     GH_RELEASE_TAG_EFFECTIVE="$GH_RELEASE_TAG_JSON"
   else
