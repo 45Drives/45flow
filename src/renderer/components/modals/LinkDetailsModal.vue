@@ -3505,7 +3505,7 @@ async function saveAll() {
         return
       }
     }
-
+    
     // Track transcode progress when files were added or watermark changed
     const trackingResp = shouldUpdateFiles ? filesResp : (watermarkChanged ? (mediaResp || detailsResp) : null)
     if (trackingResp && (trackingResp?.hasTranscodes || (shouldUpdateFiles && (wantsHls || wantsProxy)))) {
