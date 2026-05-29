@@ -1805,7 +1805,6 @@ async function generateLink() {
                             linkUrl: data.viewUrl,
                             linkTitle: linkTitle.value || undefined,
                             file: rec?.path || rec?.relPath || rec?.p || rec?.name,
-                            files: files.value.slice(),
                             proxyQualities: transcodeProxy.value ? proxyQualities.value.slice() : [],
                             connectionId: activeConnection.value?.connectionId,
                         }

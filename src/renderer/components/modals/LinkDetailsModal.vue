@@ -2179,6 +2179,14 @@ function startLinkTranscodeTracking(opts: {
   proxyQualities?: string[]
 }) {
   if (!opts.wantsProxy && !opts.wantsHls) return
+  // console.log('[link-details:tracking] entry', {
+  //   wantsProxy: opts.wantsProxy,
+  //   wantsHls: opts.wantsHls,
+  //   addedPaths: opts.addedPaths,
+  //   respTranscodes: opts.resp?.transcodes,
+  //   respFiles: opts.resp?.files,
+  //   respItems: opts.resp?.items,
+  // })
 
   const versionIds = extractAssetVersionIdsFromLinkFilesResponse(opts.resp)
   const linkTitle = (draftTitle.value || props.link?.title || (props.link ? fallbackTitle(props.link) : '') || '').trim()
@@ -2214,40 +2222,71 @@ function startLinkTranscodeTracking(opts: {
     proxyQualities: opts.wantsProxy ? normalizeQualities(opts.proxyQualities) : [],
     connectionId: activeConnection.value?.connectionId,
   }
+  // Per-file context: exclude `files` to avoid dedup matching all files in one task
+  const perFileContext = (filePath: string) => ({
+    source: context.source,
+    groupId: context.groupId,
+    linkUrl: context.linkUrl,
+    linkTitle: context.linkTitle,
+    file: filePath,
+    proxyQualities: context.proxyQualities,
+  })
 
   if (versionIds.length) {
     const jobInfo = extractJobInfoByVersion(opts.resp)
     const unknownPolicy =
       opts.resp?.keepExistingOutputs || opts.resp?.allowExistingOutputs ? 'skipped' : 'queued'
+    // console.log('[link-details:tracking] version-based path', {
+    //   versionIds,
+    //   versionToFileId: Object.fromEntries(versionToFileId),
+    //   fileLabelById: Object.fromEntries(fileLabelById),
+    //   allPaths,
+    //   jobInfo,
+    //   unknownPolicy,
+    //   detailsToken: detailsToken.value ? '(set)' : '(empty)',
+    // })
 
     if (opts.wantsProxy) {
       const proxySplit = filterVersionIdsByJobKind(versionIds, jobInfo, 'proxy_mp4', unknownPolicy)
       const proxyCandidates = [...proxySplit.queued, ...proxySplit.active]
       const proxyActiveSplit = transfer.splitActiveTranscodeAssetVersions(proxyCandidates, 'proxy_mp4')
       const proxyToTrack = proxyActiveSplit.inactive
+      // console.log('[link-details:tracking] proxy split', {
+      //   proxySplit,
+      //   proxyCandidates,
+      //   proxyActiveSplit,
+      //   proxyToTrack,
+      // })
 
       if (proxyToTrack.length) {
         const fallbackIds: number[] = []
         for (const assetVersionId of proxyToTrack) {
             const fileId = versionToFileId.get(assetVersionId)
+            // console.log('[link-details:tracking] proxy per-file', { assetVersionId, fileId, hasToken: !!detailsToken.value, label: fileId ? fileLabelById.get(fileId) : undefined })
             if (detailsToken.value && fileId) {
               const detailLabel = fileLabelById.get(fileId) || fallbackFileLabel(assetVersionId)
+              const filePath = allPaths.find(p => p.endsWith(detailLabel)) || detailLabel
               const playbackPath = `/api/token/${encodeURIComponent(detailsToken.value)}/files/${encodeURIComponent(String(fileId))}/playback/${encodeURIComponent(String(assetVersionId))}?prefer=auto&audit=0`
               transfer.startPlaybackTranscodeTask({
-                title: 'Generating review copies',
-                detail: `Tracking ${detailLabel}`,
+                title: `Review Copy: ${detailLabel}`,
+                detail: filePath,
                 intervalMs: 1500,
                 jobKind: 'proxy_mp4',
-                context,
+                assetVersionId,
+                context: perFileContext(filePath),
               fetchSnapshot: async () => {
                 const payload = await props.apiFetch(playbackPath, { suppressAuthRedirect: true })
                 const j = payload?.transcodes?.proxy_mp4 || payload?.transcodes?.proxy || null
                 return {
                   status: j?.status ?? payload?.proxyStatus ?? payload?.status,
                   progress: j?.progress ?? payload?.proxyProgress ?? 0,
+                  etaSeconds: j?.eta_seconds ?? null,
+                  speedX: j?.speed_x ?? null,
                   qualityOrder: j?.quality_order ?? j?.qualityOrder ?? payload?.quality_order ?? payload?.qualityOrder,
                   activeQuality: j?.active_quality ?? j?.activeQuality ?? payload?.active_quality ?? payload?.activeQuality,
                   perQualityProgress: j?.per_quality_progress ?? j?.perQualityProgress ?? payload?.per_quality_progress ?? payload?.perQualityProgress,
+                  transcoder: j?.transcoder,
+                  encoder: j?.encoder,
                 }
               },
             })
@@ -2257,15 +2296,18 @@ function startLinkTranscodeTracking(opts: {
         }
 
         if (fallbackIds.length) {
+          // console.log('[link-details:tracking] proxy fallback ids', fallbackIds)
           for (const assetVersionId of fallbackIds) {
+            const fallbackLabel = fallbackFileLabel(assetVersionId)
+            const fallbackPath = allPaths.find(p => p.endsWith(fallbackLabel)) || fallbackLabel
             transfer.startAssetVersionTranscodeTask({
               apiFetch: props.apiFetch,
               assetVersionIds: [assetVersionId],
-              title: 'Generating review copies',
-              detail: `Tracking ${fallbackFileLabel(assetVersionId)}`,
+              title: `Review Copy: ${fallbackLabel}`,
+              detail: fallbackPath,
               intervalMs: 1500,
               jobKind: 'proxy_mp4',
-              context,
+              context: perFileContext(fallbackPath),
             })
           }
         }
@@ -2302,26 +2344,39 @@ function startLinkTranscodeTracking(opts: {
       const hlsCandidates = [...hlsSplit.queued, ...hlsSplit.active]
       const hlsActiveSplit = transfer.splitActiveTranscodeAssetVersions(hlsCandidates, 'hls')
       const hlsToTrack = hlsActiveSplit.inactive
+      // console.log('[link-details:tracking] hls split', {
+      //   hlsSplit,
+      //   hlsCandidates,
+      //   hlsActiveSplit,
+      //   hlsToTrack,
+      // })
 
       if (hlsToTrack.length) {
         const fallbackIds: number[] = []
         for (const assetVersionId of hlsToTrack) {
             const fileId = versionToFileId.get(assetVersionId)
+            // console.log('[link-details:tracking] hls per-file', { assetVersionId, fileId, hasToken: !!detailsToken.value, label: fileId ? fileLabelById.get(fileId) : undefined })
             if (detailsToken.value && fileId) {
               const detailLabel = fileLabelById.get(fileId) || fallbackFileLabel(assetVersionId)
+              const filePath = allPaths.find(p => p.endsWith(detailLabel)) || detailLabel
               const playbackPath = `/api/token/${encodeURIComponent(detailsToken.value)}/files/${encodeURIComponent(String(fileId))}/playback/${encodeURIComponent(String(assetVersionId))}?prefer=auto&audit=0`
               transfer.startPlaybackTranscodeTask({
-                title: 'Generating browser stream',
-                detail: `Tracking ${detailLabel}`,
+                title: `Stream: ${detailLabel}`,
+                detail: filePath,
                 intervalMs: 1500,
                 jobKind: 'hls',
-                context,
+                assetVersionId,
+                context: perFileContext(filePath),
               fetchSnapshot: async () => {
                 const payload = await props.apiFetch(playbackPath, { suppressAuthRedirect: true })
                 const j = payload?.transcodes?.hls || payload?.transcodes?.HLS || null
                 return {
                   status: j?.status ?? payload?.hlsStatus ?? payload?.status,
                   progress: j?.progress ?? payload?.hlsProgress ?? 0,
+                  etaSeconds: j?.eta_seconds ?? null,
+                  speedX: j?.speed_x ?? null,
+                  transcoder: j?.transcoder,
+                  encoder: j?.encoder,
                 }
               },
             })
@@ -2331,15 +2386,18 @@ function startLinkTranscodeTracking(opts: {
         }
 
         if (fallbackIds.length) {
+          console.log('[link-details:tracking] hls fallback ids', fallbackIds)
           for (const assetVersionId of fallbackIds) {
+            const fallbackLabel = fallbackFileLabel(assetVersionId)
+            const fallbackPath = allPaths.find(p => p.endsWith(fallbackLabel)) || fallbackLabel
             transfer.startAssetVersionTranscodeTask({
               apiFetch: props.apiFetch,
               assetVersionIds: [assetVersionId],
-              title: 'Generating browser stream',
-              detail: `Tracking ${fallbackFileLabel(assetVersionId)}`,
+              title: `Stream: ${fallbackLabel}`,
+              detail: fallbackPath,
               intervalMs: 1500,
               jobKind: 'hls',
-              context,
+              context: perFileContext(fallbackPath),
             })
           }
         }
@@ -2424,16 +2482,14 @@ function startLinkTranscodeTracking(opts: {
     for (const fileId of idsToTrack) {
       const rec = recById.get(fileId)
       const filePath = rec?.path || rec?.name
-      const baseContext = {
-        ...context,
-        file: filePath || context.file,
-      }
+      const fileLabel = rec?.name || filePath || `file ${fileId}`
+      const baseContext = perFileContext(filePath || context.file || '')
       const playbackPath = `/api/token/${encodeURIComponent(detailsToken.value)}/files/${encodeURIComponent(String(fileId))}/playback?prefer=auto&audit=0`
 
       if (opts.wantsProxy) {
         transfer.startPlaybackTranscodeTask({
-          title: 'Generating review copies',
-          detail: filePath ? `Tracking ${filePath}` : `Tracking file ${fileId}`,
+          title: `Review Copy: ${fileLabel}`,
+          detail: filePath || undefined,
           intervalMs: 1500,
           jobKind: 'proxy_mp4',
           context: baseContext,
@@ -2443,9 +2499,13 @@ function startLinkTranscodeTracking(opts: {
             return {
               status: j?.status ?? payload?.proxyStatus ?? payload?.status,
               progress: j?.progress ?? payload?.proxyProgress ?? 0,
+              etaSeconds: j?.eta_seconds ?? null,
+              speedX: j?.speed_x ?? null,
               qualityOrder: j?.quality_order ?? j?.qualityOrder ?? payload?.quality_order ?? payload?.qualityOrder,
               activeQuality: j?.active_quality ?? j?.activeQuality ?? payload?.active_quality ?? payload?.activeQuality,
               perQualityProgress: j?.per_quality_progress ?? j?.perQualityProgress ?? payload?.per_quality_progress ?? payload?.perQualityProgress,
+              transcoder: j?.transcoder,
+              encoder: j?.encoder,
             }
           },
         })
@@ -2453,8 +2513,8 @@ function startLinkTranscodeTracking(opts: {
 
       if (opts.wantsHls) {
         transfer.startPlaybackTranscodeTask({
-          title: 'Generating browser stream',
-          detail: filePath ? `Tracking ${filePath}` : `Tracking file ${fileId}`,
+          title: `Stream: ${fileLabel}`,
+          detail: filePath || undefined,
           intervalMs: 1500,
           jobKind: 'hls',
           context: baseContext,
@@ -2464,6 +2524,10 @@ function startLinkTranscodeTracking(opts: {
             return {
               status: j?.status ?? payload?.hlsStatus ?? payload?.status,
               progress: j?.progress ?? payload?.hlsProgress ?? 0,
+              etaSeconds: j?.eta_seconds ?? null,
+              speedX: j?.speed_x ?? null,
+              transcoder: j?.transcoder,
+              encoder: j?.encoder,
             }
           },
         })
