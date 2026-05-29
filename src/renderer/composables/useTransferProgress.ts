@@ -2,12 +2,14 @@
 import { computed, reactive, watch } from 'vue'
 import type { ProgressItem, VersionProgressItem } from './transcodeProgress'
 import { startProgressPolling } from './transcodeProgress'
+import { useWebSocketManager } from './useWebSocketManager'
 
 type UploadStatus = 'queued' | 'uploading' | 'done' | 'canceled' | 'error'
 type TranscodeStatus = 'queued' | 'running' | 'done' | 'failed' | 'unknown'
 
 export type TransferContext = {
-    source: 'link' | 'upload'
+    source: 'link' | 'upload' | 'server'
+    connectionId?: string     // NEW: which server this task targets
     groupId?: string          // stable id shared by upload+transcode for same action
     linkUrl?: string
     linkTitle?: string
@@ -67,6 +69,10 @@ type PlaybackProgressSnapshot = {
     qualityOrder?: string[]
     activeQuality?: string
     perQualityProgress?: Record<string, number>
+    transcoder?: 'client' | 'server'
+    encoder?: string
+    etaSeconds?: number | null
+    speedX?: number | null
 }
 
 function now() {
@@ -366,6 +372,34 @@ function proxyJobProgress(j: any) {
 function summarizeProxyCumulativeProgress(jobs: any[], expectedQualities?: string[]) {
     const proxyJobs = latestJobsForSummary(jobs || []).filter(j => isProxyJobKind(j?.kind))
     if (!proxyJobs.length) return null
+
+    // NEW: Check if the job has per_quality_progress (new server format with single job)
+    if (proxyJobs.length === 1 && proxyJobs[0]?.per_quality_progress) {
+        const job = proxyJobs[0]
+        const activeQuality = job.active_quality
+        const perQualProg = job.per_quality_progress
+        
+        // If we have an active quality, show ONLY that quality's progress (not cumulative)
+        if (activeQuality && typeof perQualProg === 'object') {
+            const activeProgress = proxyActiveQualityProgress(activeQuality, perQualProg)
+            if (typeof activeProgress === 'number') {
+                return activeProgress
+            }
+        }
+        
+        // Fallback: show cumulative progress if no active quality
+        const qualityOrder = job.quality_order || expectedQualities || []
+        const qualities = normalizeQualityList(qualityOrder)
+        
+        if (qualities.length && typeof perQualProg === 'object') {
+            let sum = 0
+            for (const q of qualities) {
+                const qProg = perQualProg[q]
+                sum += typeof qProg === 'number' ? clampPct(qProg) : 0
+            }
+            return clampPct(sum / qualities.length)
+        }
+    }
 
     const expected = normalizeQualityList(expectedQualities)
     const found = normalizeQualityList(proxyJobs.map(proxyQualityFromJob).filter(Boolean))
@@ -870,92 +904,194 @@ export function useTransferProgress() {
         }
         upsertTask(t)
 
-        let stopPolling: (() => void) | null = null
-        const stop = startProgressPolling({
-            apiFetch: opts.apiFetch,
-            ...(opts.mode === 'version'
-                ? { assetVersionIds: () => idsToTrack }
-                : { fileIds: () => idsToTrack }),
-            intervalMs: opts.intervalMs ?? 1500,
-            onUpdate: (items) => {
+        // WebSocket + polling (both run in parallel for resilience)
+        const connectionId = opts.context?.connectionId
+        const wsManager = useWebSocketManager()
+        let wsSubscribed = false
+        const taskJobKind = opts.jobKind ?? 'any'
+
+        // WebSocket update handler
+        const handleWsUpdate = (data: any) => {
                 const cur = _state.tasks.find(x => x.taskId === taskId && x.kind === 'transcode') as
                     | Extract<TransferTask, { kind: 'transcode' }>
                     | undefined
                 if (!cur) return
 
-                const castItems = (items || []) as TItem[]
-                cur.items = castItems as any
+            // Filter by kind - only accept updates matching this task's jobKind
+            if (taskJobKind !== 'any' && data?.kind && data.kind !== taskJobKind) return
 
-                const hasAllTrackedItems = (() => {
-                    if (!idsToTrack.length) return false
-                    const seen = new Set<number>()
-                    for (const it of castItems) {
-                        const rawId = opts.mode === 'version'
-                            ? (it as any)?.assetVersionId
-                            : (it as any)?.fileId
-                        const id = Number(rawId)
-                        if (Number.isFinite(id) && id > 0) seen.add(id)
-                    }
-                    return idsToTrack.every(id => seen.has(id))
-                })()
+            // Ignore 'done' status if we haven't started running yet
+            // (this catches completion broadcasts from previous jobs on same assetVersionId)
+            if (data?.status === 'done' && cur.status === 'queued') return
 
-                const s = opts.summarizeItems(castItems, cur)
-                const rawNextStatus = (isTerminalTranscodeStatus(s.status) && !hasAllTrackedItems)
-                    ? 'running'
-                    : s.status
+            // Ignore progress=100 unless status is explicitly 'done'
+            if (data?.progress === 100 && data?.status !== 'done') return
 
-                // When no matching jobs exist yet (server hasn't processed the ingest),
-                // show 'queued' instead of 'unknown' — the task is waiting for work, not broken.
-                const noMatchingJobs = !castItems.length || castItems.every(it => {
-                    const jobs = latestJobsForSummary((it as any)?.jobs || [])
-                    return !jobs.some(j => kindMatchesForSummary(j?.kind, cur.jobKind ?? 'any'))
-                })
-                const nextStatus = (rawNextStatus === 'unknown' && noMatchingJobs)
-                    ? 'queued' as TranscodeStatus
-                    : rawNextStatus
-
-                cur.status = nextStatus
-                const prevProgress = clampPct(cur.progress)
-                let nextProgress = clampPct(s.progress)
-                if (nextStatus === 'running') {
-                    if (nextProgress >= 100) {
-                        // Ignore stale "100 while still running" snapshots and keep prior progress.
-                        // If we have no prior progress yet, start from 0 instead of showing a fake near-complete state.
-                        nextProgress = (prevProgress > 0 && prevProgress < 100) ? prevProgress : 0
-                    }
+                // Update from WebSocket data
+                if (data?.status) {
+                    cur.status = data.status
                 }
-                if (nextStatus === 'done') nextProgress = 100
-                if (nextStatus === 'queued') nextProgress = 0
-                cur.progress = nextProgress
-                cur.speed = (nextStatus === 'running') ? formatSpeed(s.speedX ?? null) : null
-                const serverEta = formatEta(s.etaSeconds ?? null)
-                const elapsedMs = Math.max(0, now() - Number(cur.startedAt || now()))
-                const localEta = formatEta(estimateEtaFromProgress(cur.progress, elapsedMs))
-                cur.eta = (nextStatus === 'running') ? (serverEta || localEta) : null
-                if (nextStatus === 'failed') {
-                    cur.error = extractTranscodeError(castItems as Array<ProgressItem | VersionProgressItem>, cur.jobKind ?? 'any')
-                    cur.speed = null
-                    cur.eta = null
-                    // Log to app file only once per failure (not on every poll tick)
-                    if (!(cur as any)._failureLogged) {
-                        (cur as any)._failureLogged = true
-                        window.appLog?.error('transcode.failed', {
-                            taskId: cur.taskId,
-                            title: cur.title,
-                            jobKind: cur.jobKind ?? 'any',
-                            error: cur.error,
-                            context: cur.context,
-                        })
+
+                // For proxy_mp4 tasks, prefer per-quality progress over cumulative
+                // Two shapes: server-side (outJson.progress_meta) and client-side (top-level perQualityProgress)
+                const wsPerQ = data?.perQualityProgress
+                    ?? data?.outJson?.progress_meta?.per_quality_progress
+                const wsActiveQ = data?.activeQuality
+                    ?? data?.outJson?.progress_meta?.active_quality
+                const wsQOrder = data?.qualityOrder
+                    ?? data?.outJson?.progress_meta?.quality_order
+
+                if (taskJobKind === 'proxy_mp4' && wsPerQ && typeof wsPerQ === 'object') {
+                    const qualityOrder = normalizeQualityList(
+                        (Array.isArray(wsQOrder) && wsQOrder.length) ? wsQOrder : Object.keys(wsPerQ)
+                    )
+                    if (qualityOrder.length) {
+                        if (!cur.context) cur.context = { source: 'server' }
+                        cur.context.proxyQualities = qualityOrder
                     }
-                } else if (nextStatus === 'running' || nextStatus === 'done') {
-                    cur.error = null
-                    if (nextStatus === 'done') {
+                    // Show active quality's individual progress (0-100)
+                    const activePct = proxyActiveQualityProgress(wsActiveQ, wsPerQ)
+                    if (typeof activePct === 'number') {
+                        cur.progress = activePct
+                    }
+                    cur.detail = proxyDetailFromActiveQuality(wsActiveQ, cur.progress, cur.context?.proxyQualities)
+                } else if (typeof data?.progress === 'number') {
+                    cur.progress = normalizeProgressPercent(data.progress)
+                }
+                
+                if (data?.etaSeconds !== undefined) {
+                    const eta = normalizeEtaSeconds(data.etaSeconds)
+                    cur.eta = formatEta(eta)
+                }
+                
+                if (data?.speedX !== undefined) {
+                    const speed = normalizeSpeedX(data.speedX)
+                    cur.speed = speed !== null ? `${speed.toFixed(2)}x` : null
+                }
+
+                if (data?.error) {
+                    cur.error = data.error
+                }
+
+                // Extract transcoder and encoder from WebSocket data
+                if (data?.transcoder) cur.transcoder = data.transcoder
+                if (data?.encoder) cur.encoder = data.encoder
+                // Also check outJson for server-side encoder
+                if (!cur.encoder && data?.outJson?.encoder) cur.encoder = data.outJson.encoder
+
+                // Mark as complete if status is done
+                if (cur.status === 'done' || cur.status === 'failed') {
+                    cur.progress = 100
+                    cur.completedAt = now()
+                }
+            }
+
+        // Try WebSocket subscription if connectionId is available
+        if (connectionId && opts.mode === 'version' && idsToTrack.length > 0) {
+            // Subscribe to the primary asset version
+            const primaryId = idsToTrack[0]
+            wsSubscribed = wsManager.subscribe(
+                connectionId,
+                'transcode',
+                primaryId,
+                handleWsUpdate
+            )
+
+            if (wsSubscribed) {
+                // console.log('[transcode] WebSocket active', { taskId, assetVersionId: primaryId })
+            } else {
+                console.log('[transcode] WebSocket unavailable, using polling only', { taskId })
+            }
+        }
+
+        // Only start polling if WebSocket is not active (fallback)
+        let stopPolling: (() => void) | null = null
+        if (!wsSubscribed) {
+        stopPolling = startProgressPolling({
+                apiFetch: opts.apiFetch,
+                ...(opts.mode === 'version'
+                    ? { assetVersionIds: () => idsToTrack }
+                    : { fileIds: () => idsToTrack }),
+                intervalMs: opts.intervalMs ?? 1500,
+                onUpdate: (items) => {
+                    const cur = _state.tasks.find(x => x.taskId === taskId && x.kind === 'transcode') as
+                        | Extract<TransferTask, { kind: 'transcode' }>
+                        | undefined
+                    if (!cur) return
+
+                    const castItems = (items || []) as TItem[]
+                    cur.items = castItems as any
+
+                    const hasAllTrackedItems = (() => {
+                        if (!idsToTrack.length) return false
+                        const seen = new Set<number>()
+                        for (const it of castItems) {
+                            const rawId = opts.mode === 'version'
+                                ? (it as any)?.assetVersionId
+                                : (it as any)?.fileId
+                            const id = Number(rawId)
+                            if (Number.isFinite(id) && id > 0) seen.add(id)
+                        }
+                        return idsToTrack.every(id => seen.has(id))
+                    })()
+
+                    const s = opts.summarizeItems(castItems, cur)
+                    const rawNextStatus = (isTerminalTranscodeStatus(s.status) && !hasAllTrackedItems)
+                        ? 'running'
+                        : s.status
+
+                    // When no matching jobs exist yet (server hasn't processed the ingest),
+                    // show 'queued' instead of 'unknown' — the task is waiting for work, not broken.
+                    const noMatchingJobs = !castItems.length || castItems.every(it => {
+                        const jobs = latestJobsForSummary((it as any)?.jobs || [])
+                        return !jobs.some(j => kindMatchesForSummary(j?.kind, cur.jobKind ?? 'any'))
+                    })
+                    const nextStatus = (rawNextStatus === 'unknown' && noMatchingJobs)
+                        ? 'queued' as TranscodeStatus
+                        : rawNextStatus
+
+                    cur.status = nextStatus
+                    const prevProgress = clampPct(cur.progress)
+                    let nextProgress = clampPct(s.progress)
+                    if (nextStatus === 'running') {
+                        if (nextProgress >= 100) {
+                            // Ignore stale "100 while still running" snapshots and keep prior progress.
+                            // If we have no prior progress yet, start from 0 instead of showing a fake near-complete state.
+                            nextProgress = (prevProgress > 0 && prevProgress < 100) ? prevProgress : 0
+                        }
+                    }
+                    if (nextStatus === 'done') nextProgress = 100
+                    if (nextStatus === 'queued') nextProgress = 0
+                    cur.progress = nextProgress
+                    cur.speed = (nextStatus === 'running') ? formatSpeed(s.speedX ?? null) : null
+                    const serverEta = formatEta(s.etaSeconds ?? null)
+                    const elapsedMs = Math.max(0, now() - Number(cur.startedAt || now()))
+                    const localEta = formatEta(estimateEtaFromProgress(cur.progress, elapsedMs))
+                    cur.eta = (nextStatus === 'running') ? (serverEta || localEta) : null
+                    if (nextStatus === 'failed') {
+                        cur.error = extractTranscodeError(castItems as Array<ProgressItem | VersionProgressItem>, cur.jobKind ?? 'any')
                         cur.speed = null
                         cur.eta = null
+                        // Log to app file only once per failure (not on every poll tick)
+                        if (!(cur as any)._failureLogged) {
+                            (cur as any)._failureLogged = true
+                            window.appLog?.error('transcode.failed', {
+                                taskId: cur.taskId,
+                                title: cur.title,
+                                jobKind: cur.jobKind ?? 'any',
+                                error: cur.error,
+                                context: cur.context,
+                            })
+                        }
+                    } else if (nextStatus === 'running' || nextStatus === 'done') {
+                        cur.error = null
+                        if (nextStatus === 'done') {
+                            cur.speed = null
+                            cur.eta = null
+                        }
                     }
-                }
-                if ((cur.jobKind ?? 'any') === 'proxy_mp4') {
-                    // Extract per-quality progress from the proxy_mp4 job (sent by client-side transcode)
+                    if ((cur.jobKind ?? 'any') === 'proxy_mp4') {
+                        // Extract per-quality progress from the proxy_mp4 job (sent by client-side transcode)
                     const proxyJob = (castItems as any[]).flatMap((it: any) => it.jobs || [])
                         .find((j: any) => String(j?.kind || '').toLowerCase() === 'proxy_mp4')
                     const perQ = proxyJob?.per_quality_progress
@@ -967,7 +1103,7 @@ export function useTransferProgress() {
                             (Array.isArray(qOrder) && qOrder.length) ? qOrder : Object.keys(perQ)
                         )
                         if (qualityOrder.length) {
-                            if (!cur.context) cur.context = { source: 'upload' }
+                            if (!cur.context) cur.context = { source: 'server' }
                             cur.context.proxyQualities = qualityOrder
                         }
                         // Build per-quality sub-items for display
@@ -1032,7 +1168,17 @@ export function useTransferProgress() {
                 cur.eta = null
             },
         })
-        stopPolling = stop
+        } // end if (!wsSubscribed)
+
+        // Create unified stop function that handles both WebSocket and polling
+        const stop = () => {
+            if (wsSubscribed && connectionId && opts.mode === 'version' && idsToTrack.length > 0) {
+                wsManager.unsubscribe(connectionId, 'transcode', idsToTrack[0], handleWsUpdate)
+            }
+            if (stopPolling) {
+                stopPolling()
+            }
+        }
 
         ; (t as any).stop = stop
         return taskId
@@ -1067,11 +1213,28 @@ export function useTransferProgress() {
         intervalMs?: number
         jobKind?: 'proxy_mp4' | 'hls' | 'any'
         context?: TransferContext
+        assetVersionId?: number
         fetchSnapshot: () => Promise<PlaybackProgressSnapshot | null>
     }) {
-        // Dedup: skip if an active transcode task already exists for this file+jobKind
+        // Dedup: skip if an active transcode task already exists for this assetVersionId or file+jobKind
         const file = opts.context?.file || ''
         const jobKind = opts.jobKind ?? 'any'
+        const assetVersionId = opts.assetVersionId && Number.isFinite(opts.assetVersionId) && opts.assetVersionId > 0 
+            ? opts.assetVersionId : undefined
+        
+        // Check by assetVersionId first (more reliable)
+        if (assetVersionId) {
+            const existing = _state.tasks.find(t => {
+                if (t.kind !== 'transcode') return false
+                if (!isActiveTask(t)) return false
+                if (!jobKindMatches(t.jobKind, jobKind)) return false
+                const taskIds = t.assetVersionIds || []
+                return taskIds.includes(assetVersionId)
+            })
+            if (existing) return null
+        }
+        
+        // Fallback: check by file path
         if (file) {
             const alreadyActive = _state.tasks.some(t => {
                 if (t.kind !== 'transcode') return false
@@ -1099,6 +1262,7 @@ export function useTransferProgress() {
             stop: undefined,
             jobKind: opts.jobKind ?? 'any',
             context: opts.context,
+            ...(assetVersionId ? { assetVersionIds: [assetVersionId] } : {}),
         }
         upsertTask(t)
 
@@ -1134,13 +1298,17 @@ export function useTransferProgress() {
                 cur.status = normalizePlaybackStatus(snap.status)
                 cur.progress = cur.status === 'done' ? 100 : normalizeProgressPercent(snap.progress)
 
+                // Transcoder/encoder attribution
+                if (snap.transcoder) cur.transcoder = snap.transcoder
+                if (snap.encoder) cur.encoder = snap.encoder
+
                 // ETA & speed from server snapshot
                 if (cur.status === 'running') {
-                    const serverEta = formatEta((snap as any)?.etaSeconds ?? null)
+                    const serverEta = formatEta(snap.etaSeconds ?? null)
                     const elapsedMs = Math.max(0, now() - Number(cur.startedAt || now()))
                     const localEta = formatEta(estimateEtaFromProgress(cur.progress, elapsedMs))
                     cur.eta = serverEta || localEta
-                    cur.speed = formatSpeed((snap as any)?.speedX ?? null)
+                    cur.speed = formatSpeed(snap.speedX ?? null)
                 } else {
                     cur.eta = null
                     cur.speed = null
@@ -1345,6 +1513,43 @@ export function useTransferProgress() {
     async function restoreActiveTranscodes(
         apiFetch: (path: string, init?: any) => Promise<any>
     ) {
+        // Check if any tasks are currently active (uploads in progress OR transcode
+        // polling tasks running). If so, this is NOT a fresh app start — don't
+        // release client claims or remove transcode tasks that may be in progress.
+        const hasActiveWork = _state.tasks.some(isActiveTask)
+
+        // Only clean up orphaned client transcodes if nothing is active.
+        // On a genuine app restart, all tasks start fresh.
+        if (!hasActiveWork) {
+            _state.tasks = _state.tasks.filter(t => {
+                if (t.kind === 'transcode' && t.transcoder === 'client') {
+                    window.appLog?.warn?.('transfer.restore.skip-orphaned-client-transcode', { 
+                        taskId: t.taskId,
+                        title: t.title,
+                        status: t.status,
+                        progress: t.progress,
+                    });
+                    return false;
+                }
+                return true;
+            });
+
+            // Release stale client-claimed transcode jobs on the server.
+            // These are jobs that were being processed by client FFmpeg in a previous session
+            // but the app closed before they completed. Reset them so the server can pick them up.
+            try {
+                await apiFetch('/api/ingest/transcode-release-client', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({}),
+                    suppressAuthRedirect: true,
+                })
+            } catch (e: any) {
+                // Non-fatal: old servers won't have this endpoint
+                window.appLog?.warn?.('transfer.restore.release-client.error', { error: e?.message || String(e) })
+            }
+        }
+        
         try {
             const json = await apiFetch('/api/progress/active', {
                 parse: 'json',
@@ -1367,9 +1572,15 @@ export function useTransferProgress() {
 
                 const jobs: any[] = Array.isArray(item.jobs) ? item.jobs : []
 
+                // Skip jobs that were client-claimed (they can't survive app restart)
+                // After release-client call above, these should already be re-queued,
+                // but filter them out here as a safety net
+                const serverJobs = jobs.filter(j => !j.client_claimed)
+                if (!serverJobs.length) continue
+
                 // Determine which job kinds are active for this version
                 const activeKinds = new Set<string>()
-                for (const j of jobs) {
+                for (const j of serverJobs) {
                     const kind = String(j.kind || '').toLowerCase()
                     if (kind.startsWith('proxy_mp4')) activeKinds.add('proxy_mp4')
                     else if (kind === 'hls') activeKinds.add('hls')
@@ -1394,7 +1605,7 @@ export function useTransferProgress() {
                         intervalMs: 1500,
                         jobKind,
                         context: {
-                            source: 'upload' as const,
+                            source: 'server' as const,
                             destDir: relDir,
                             file: filePath,
                         },

@@ -164,6 +164,7 @@
 
 <script setup lang="ts">
 import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useHeader } from '../composables/useHeader'
 import { currentServerInjectionKey, discoveryStateInjectionKey, connectionMetaInjectionKey } from '../keys/injection-keys'
 import { EyeIcon, EyeSlashIcon } from "@heroicons/vue/20/solid";
@@ -172,11 +173,15 @@ import { pushNotification, Notification, CardContainer, useDarkModeState } from 
 import PortForwardingModal from '../components/modals/PortForwardingModal.vue' 
 import { useResilientNav } from '../composables/useResilientNav';
 import { loadLastSession, saveLastSession, clearLastSession, saveManualServer, saveRegistryLicenseId } from '../composables/useSessionPersistence';
+import { useConnections } from '../composables/useConnections'
+import type { Connection } from '../composables/useConnections'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
 useHeader('Welcome to 45Flow!');
 
+const route = useRoute()
 const { to } = useResilientNav()
+const { addConnection, setActive, removeConnection, connections } = useConnections()
 const discoveryState = inject<DiscoveryState>(discoveryStateInjectionKey)!;
 const manualIp = ref('');
 const username = ref('');
@@ -777,23 +782,7 @@ async function connectToServer() {
             return;
         }
 
-        // Set current server (avoid creating a "manual" entry if we already discovered it)
-        providedCurrentServer.value = effectiveServer ?? {
-            ip, name: ip, lastSeen: Date.now(), status: 'unknown', manuallyAdded: true
-        };
-
-        connectionMeta.value = {
-            ...connectionMeta.value,
-            port: apiPortToUse,
-            apiBase,
-            httpsHost: undefined,
-            ssh: {
-                server: ip,
-                username: username.value,
-                port: sshPortToUse,
-            },
-        };
-
+        // AppShell will update currentServer and connectionMeta from activeConnection
         window.appLog?.info('login.resolveApiBase', { isDev, ip, port: apiPortToUse, apiBase, href: location.href });
         window.appLog?.info('login.request', { url: `${apiBase}/api/login`, ip });
 
@@ -920,16 +909,6 @@ async function connectToServer() {
         const loginData = await res.json();
         const token = loginData.token;
 
-        connectionMeta.value = {
-            ...connectionMeta.value,
-            token,
-            ssh: {
-                server: ip,
-                username: username.value,
-                port: sshPortToUse,
-            },
-        };
-
         statusLine.value = '';
         
         try { sessionStorage.setItem('hb_token', token); } catch { /* ignore */ }
@@ -979,7 +958,35 @@ async function connectToServer() {
             saveManualServer({ ip, name: effectiveServer?.name || ip });
         }
 
-        // Persist session for auto-login on next app open
+        // Create new connection in multi-server store
+        const newConnection: Connection = {
+            connectionId: crypto.randomUUID(),
+            name: effectiveServer?.name || ip,
+            serverIp: ip,
+            serverName: effectiveServer?.name,
+            baseUrl: apiBase,
+            username: username.value,
+            token,
+            tokenIssuedAt: Date.now(),
+            apiPort: apiPortToUse,
+            sshPort: sshPortToUse,
+            httpsPort: httpsPort.value ?? 443,
+            ssh: {
+                server: ip,
+                username: username.value,
+                port: sshPortToUse
+            },
+            serverInfo: effectiveServer?.serverInfo,
+            setupComplete: effectiveServer?.setupComplete,
+            status: 'connected',
+            lastConnectedAt: Date.now(),
+            isActive: true
+        }
+        
+        const actualConnectionId = addConnection(newConnection)
+        setActive(actualConnectionId)
+
+        // Legacy persistence for backwards compatibility (will be removed in Phase 3)
         saveLastSession({
             serverIp: ip,
             serverName: effectiveServer?.name || ip,
@@ -992,7 +999,7 @@ async function connectToServer() {
             savedAt: Date.now(),
         });
 
-        window.appLog?.info('login.success', { ip });
+        window.appLog?.info('login.success', { ip, connectionId: newConnection.connectionId });
 
         // Fire-and-forget: cache licenseId for VPS registry discovery
         fetch(`${apiBase}/api/license/status`)
@@ -1020,6 +1027,12 @@ onMounted(async () => {
         setTimeout(() => {
             requestTour('connect', connectTourSteps, () => markDone('connectTourDone'))
         }, 500)
+    }
+
+    // Skip auto-login if user explicitly clicked "Add Connection"
+    if (route.query.skipAutoLogin === 'true') {
+        window.appLog?.info('auto-login.skipped', { reason: 'user adding new connection' })
+        return
     }
 
     const saved = loadLastSession()
@@ -1050,8 +1063,21 @@ onMounted(async () => {
         clearTimeout(timer)
 
         if (res.status === 401) {
-            // Token expired — clear and let user log in normally
+            // Token expired — clear legacy session and remove any migrated connection
             clearLastSession()
+            
+            // Find and remove connection with this token (likely from migration)
+            const expiredConn = connections.find(c => 
+                c.serverIp === saved.serverIp && c.token === saved.token
+            )
+            if (expiredConn) {
+                window.appLog?.info('auto-login.removing-expired-connection', { 
+                    connectionId: expiredConn.connectionId,
+                    ip: saved.serverIp
+                })
+                removeConnection(expiredConn.connectionId)
+            }
+            
             statusLine.value = ''
             isBusy.value = false
             return
@@ -1074,22 +1100,37 @@ onMounted(async () => {
             manuallyAdded: true,
         }
 
-        providedCurrentServer.value = serverObj
-        connectionMeta.value = {
-            ...connectionMeta.value,
+        // NOTE: Migration should have already converted saved session to connection
+        // This path should rarely execute, but we handle it for safety
+        const restoredConnection: Connection = {
+            connectionId: crypto.randomUUID(),
+            name: saved.serverName || saved.serverIp,
+            serverIp: saved.serverIp,
+            serverName: saved.serverName,
+            baseUrl: saved.apiBase,
+            username: saved.username,
             token: saved.token,
-            port: saved.apiPort,
-            apiBase: saved.apiBase,
+            tokenIssuedAt: saved.savedAt || Date.now(),
+            apiPort: saved.apiPort,
+            sshPort: saved.sshPort,
+            httpsPort: saved.httpsPort,
             ssh: {
                 server: saved.serverIp,
                 username: saved.username,
-                port: saved.sshPort,
+                port: saved.sshPort || 22
             },
+            status: 'connected',
+            lastConnectedAt: Date.now(),
+            isActive: true
         }
+        
+        const actualConnectionId = addConnection(restoredConnection)
+        setActive(actualConnectionId)
 
+        // Legacy compatibility - AppShell will update connectionMeta from activeConnection
         try { sessionStorage.setItem('hb_token', saved.token) } catch { /* ignore */ }
 
-        window.appLog?.info('auto-login.restored', { ip: saved.serverIp })
+        window.appLog?.info('auto-login.restored', { ip: saved.serverIp, connectionId: actualConnectionId })
         statusLine.value = ''
         isBusy.value = false
 
@@ -1170,7 +1211,6 @@ async function checkBroadcasterUpdateInBackground(apiBase: string, token: string
 
             // 2. Clear auth and navigate back to the connection screen
             clearLastSession()
-            connectionMeta.value = { ...connectionMeta.value, token: undefined };
             to('server-selection');
 
             // 3. Show a persistent "updating" notification on the connection screen

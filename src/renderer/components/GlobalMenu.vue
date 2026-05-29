@@ -1,5 +1,5 @@
 <template>
-    <div class="z-50">
+    <div class="z-30">
         <!-- Trigger button -->
         <button ref="menuButton" @click="toggle" class="theme-trigger" title="Change theme">
             Themes <SwatchIcon class="ml-2 w-5 h-5" />
@@ -26,16 +26,17 @@
                             @click="selectTheme(palette.theme)">
                             {{ palette.label }}
                         </button>
-                        <!-- Custom theme swatch (only when branding enables it) -->
-                        <button v-if="customThemeEnabled"
-                            class="tp-swatch"
-                            :class="[currentTheme === 'theme-custom' ? 'tp-swatch-active' : '']"
-                            :style="{ background: customGradient }"
-                            title="Custom"
-                            @click="selectTheme('theme-custom')">
-                            Custom
-                        </button>
                     </div>
+
+                    <!-- Custom branding button (full width, only when branding enables it) -->
+                    <button v-if="customThemeEnabled"
+                        class="tp-custom-branding"
+                        :class="[currentTheme === 'theme-custom' ? 'tp-custom-branding-active' : '']"
+                        :style="{ background: customGradient }"
+                        title="Custom Branding Theme"
+                        @click="selectTheme('theme-custom')">
+                        Custom Branding Colors
+                    </button>
                 </div>
             </transition>
         </teleport>
@@ -216,6 +217,33 @@ function selectTheme(theme: Theme) {
 }
 
 .tp-swatch-active {
+    border-color: white;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 12px rgba(255, 255, 255, 0.2);
+}
+
+/* ── Custom Branding Button (full-width) ────────── */
+.tp-custom-branding {
+    width: 100%;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 0.65rem 0.5rem;
+    margin-top: 0.3rem;
+    border-radius: 0.4rem;
+    color: white;
+    border: 2px solid rgba(0, 0, 0, 0.18);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+    cursor: pointer;
+    text-align: center;
+    transition: transform 0.12s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.tp-custom-branding:hover {
+    transform: scale(1.02);
+    filter: brightness(1.08);
+}
+
+.tp-custom-branding-active {
     border-color: white;
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 12px rgba(255, 255, 255, 0.2);
 }

@@ -38,6 +38,8 @@ export type RsyncOpts = {
   watermarkFileName?: string
   /** qualities that should receive watermark (defaults to proxyQualities) */
   watermarkProxyQualities?: string[]
+  /** premium: custom watermark settings (position, scale, opacity, rotation) */
+  watermarkSettings?: WatermarkSettings
   /** skip ingest/register step after transfer (useful for helper assets like watermark images) */
   noIngest?: boolean
   /** JWT token for authenticated ingest/register calls */
@@ -45,9 +47,24 @@ export type RsyncOpts = {
   /** file was transcoded on client side, skip server transcode */
   clientTranscoded?: boolean
   clientWatermarked?: boolean
+  /** client will transcode (pre-claim jobs to prevent server from picking them up) */
+  clientTranscode?: boolean
 }
 
 export type RsyncResult = { ok?: boolean; error?: string }
+
+export type WatermarkSettings = {
+  position: {
+    x: number
+    y: number
+    xUnit: '%' | 'px'
+    yUnit: '%' | 'px'
+    anchor: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center'
+  }
+  scale: number
+  opacity: number
+  rotation: number
+}
 
 export type TranscodeOptions = {
   inputPath: string
@@ -56,6 +73,7 @@ export type TranscodeOptions = {
   useHardwareAccel: boolean
   preset?: 'fast' | 'balanced' | 'quality'
   watermarkPath?: string
+  watermarkSettings?: WatermarkSettings | null
 }
 
 export type TranscodeProgress = {
@@ -72,7 +90,10 @@ export type FullTranscodeOptions = {
   inputPath: string
   proxyQualities: ('720p' | '1080p' | 'original')[]
   generateHls: boolean
+  /** When true with generateHls, skip proxy MP4 generation (only generate HLS) */
+  generateProxy?: boolean
   watermarkPath?: string
+  watermarkSettings?: WatermarkSettings | null
   useHardwareAccel: boolean
   preset?: 'fast' | 'balanced' | 'quality'
 }

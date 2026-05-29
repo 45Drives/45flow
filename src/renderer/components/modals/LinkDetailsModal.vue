@@ -11,10 +11,21 @@
         </h3>
 
         <div class="flex items-center gap-2">
+          <button v-if="!editMode"
+            class="btn btn-secondary flex items-center gap-2" 
+            @click="commentsModalOpen = true" 
+            :disabled="!link"
+            title="View Comments"
+          >
+            <ChatBubbleLeftRightIcon class="w-4 h-4" />
+            Comments
+          </button>
+
           <button v-if="!editMode" class="btn btn-primary" @click="beginEdit" :disabled="!link">Edit</button>
 
-          <button v-else class="btn btn-success" @click="saveAll" :disabled="saveDisabled">
-            Save Changes
+          <button v-else class="btn btn-success" @click="saveAll" :disabled="saveDisabled" :title="hasActiveTranscodes ? 'Transcode in progress - please wait' : ''">
+            <span v-if="hasActiveTranscodes" class="opacity-70">⏳ Transcoding...</span>
+            <span v-else>Save Changes</span>
           </button>
           <button v-if="editMode" class="btn btn-secondary" @click="cancelEdit" :disabled="saving">
             Cancel
@@ -44,10 +55,9 @@
                 <div class="font-semibold">{{ currentAccessSummary }}</div>
               </div>
               <div>
-                <span class="opacity-70">Sharing Mode</span>
+                <span class="opacity-70">Review Copy Qualities Shared</span>
                 <div class="font-semibold">
-                    {{ currentGenerateReviewProxy ? 'Transcoded' : 'Review Copies Disabled' }}
-                    <span v-if="currentProxyQualities.length" class="opacity-70">({{ currentProxyQualities.join(', ') }})</span>
+                    {{ currentGenerateReviewProxy ? currentProxyQualities.join(', ') : 'Disabled' }}
                 </div>
               </div>
               <div>
@@ -220,7 +230,7 @@
                   <div v-if="unifiedAccessList.length" class="overflow-x-auto rounded-lg border border-default">
                     <table class="min-w-full text-sm border-separate border-spacing-0">
                       <thead>
-                        <tr class="bg-default text-gray-300">
+                        <tr class="bg-default text-default">
                           <th class="text-left px-3 py-2 border border-default">User</th>
                           <th class="text-left px-3 py-2 border border-default">Access Via</th>
                           <th class="text-left px-3 py-2 border border-default">Role</th>
@@ -345,66 +355,21 @@
                       'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-default shadow ring-0 transition duration-200 ease-in-out'
                     ]" />
                   </Switch>
+                  <button 
+                    v-if="draftWatermarkEnabled"
+                    type="button" 
+                    class="btn btn-primary px-3 py-1 text-xs"
+                    @click="openWatermarkConfigModal"
+                  >
+                    Configure Watermark...
+                  </button>
                 </template>
                 <template v-else>
                   <span class="text-sm opacity-80">{{ currentWatermark ? 'Enabled' : 'Disabled' }}</span>
                 </template>
               </div>
 
-              <div v-if="editMode && draftWatermarkEnabled" class="space-y-2">
-                <div class="flex flex-col gap-1 min-w-0">
-                  <label class="text-default font-semibold sm:whitespace-nowrap">Watermark File Name</label>
-                  <input
-                    v-model.trim="draftWatermarkFile"
-                    placeholder="e.g. watermark.png"
-                    class="input-textlike border rounded px-3 py-2 w-full min-w-0"
-                  />
-                  <p class="text-xs opacity-70">
-                    Use an existing file name already available on the server.
-                  </p>
-                  <div class="flex flex-wrap items-center gap-2 mt-1">
-                    <select
-                      v-model="draftWatermarkFile"
-                      class="input-textlike border rounded px-2 py-1 text-sm min-w-[20rem]"
-                    >
-                      <option value="">Select existing watermark file…</option>
-                      <option v-for="wm in existingWatermarkFilesForEdit" :key="wm" :value="wm">
-                        {{ wm }}
-                      </option>
-                    </select>
-                    <button type="button" class="btn btn-secondary px-2 py-1 text-xs" @click="loadExistingWatermarkFilesForEdit">
-                      Refresh
-                    </button>
-                  </div>
-                  <div class="flex flex-wrap items-center gap-2 mt-1">
-                    <button type="button" class="btn btn-secondary" @click="pickLocalWatermark">
-                      Choose Local Image
-                    </button>
-                    <span class="text-xs opacity-80">
-                      {{ draftWatermarkLocalFile ? draftWatermarkLocalFile.name : 'No local file selected' }}
-                    </span>
-                    <button
-                      v-if="draftWatermarkLocalFile"
-                      type="button"
-                      class="btn btn-danger px-2 py-1 text-xs"
-                      @click="clearLocalWatermark"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                  <p v-if="draftWatermarkLocalFile" class="text-xs opacity-70">
-                    Selected local file will be uploaded on save and used as watermark.
-                  </p>
-                  <WatermarkPreview
-                    v-if="watermarkPreviewUrl"
-                    :previewUrl="watermarkPreviewUrl"
-                    label="Preview"
-                    maxWidth="14rem"
-                    size="small"
-                  />
-                </div>
-              </div>
-              <div v-else-if="!editMode && currentWatermarkFile" class="text-xs opacity-70">
+              <div v-if="!editMode && currentWatermarkFile" class="text-xs opacity-70">
                 File: <code>{{ currentWatermarkFile }}</code>
               </div>
 
@@ -491,7 +456,7 @@
             <div class="overflow-x-auto max-h-[18rem] overflow-y-auto overscroll-y-contain rounded-lg border border-default">
               <table class="min-w-full text-sm border-separate border-spacing-0 whitespace-nowrap">
                 <thead>
-                  <tr class="bg-default text-gray-300">
+                  <tr class="bg-default text-default">
                     <th class="text-left px-3 py-2 border border-default">Name</th>
                     <!-- <th v-if="link?.type === 'upload'" class="text-left px-3 py-2 border border-default">Saved As</th> -->
                     <th class="text-right px-3 py-2 border border-default">Size</th>
@@ -548,7 +513,7 @@
           <div v-else class="overflow-x-auto max-h-[18rem] overflow-y-auto overscroll-y-contain rounded-lg border border-default">
             <table class="min-w-full text-sm border-separate border-spacing-0">
               <thead>
-                <tr class="bg-default text-gray-300">
+                <tr class="bg-default text-default">
                   <th class="text-left px-3 py-2 border border-default">When</th>
                   <th class="text-left px-3 py-2 border border-default">Action</th>
                   <th class="text-left px-3 py-2 border border-default">Actor</th>
@@ -613,7 +578,7 @@
             <div class="overflow-x-auto rounded-lg border border-default">
               <table class="min-w-full text-sm border-separate border-spacing-0">
                 <thead>
-                  <tr class="bg-default text-gray-300">
+                  <tr class="bg-default text-default">
                     <th class="text-left px-3 py-2 border border-default">Version</th>
                     <th class="text-left px-3 py-2 border border-default">Created</th>
                     <th class="text-left px-3 py-2 border border-default">Snapshot</th>
@@ -745,22 +710,111 @@
         :linkType="(link?.type === 'download' ? 'download' : 'collection')" :initialPaths="draftFilePaths"
         :base="linkProjectBase" :startDir="linkStartDir" @apply="onApplyFilePaths" />
 
+      <!-- Comments modal -->
+      <CommentsReviewModal v-model="commentsModalOpen" :link="link" />
+
+      <!-- Watermark Customization Modal -->
+      <div v-if="watermarkConfigModalOpen" class="fixed inset-0 z-50 flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/60" @click="watermarkConfigModalOpen = false"></div>
+        <div class="relative bg-accent border border-default rounded-lg shadow-lg w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto p-6 z-50">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold">Configure Watermark</h3>
+            <button class="btn btn-secondary" @click="watermarkConfigModalOpen = false">Close</button>
+          </div>
+          
+          <!-- Watermark file selection -->
+          <div class="mb-4 space-y-2 p-4 border border-default rounded-lg bg-default/20">
+            <div class="flex flex-col gap-2">
+              <label class="text-sm font-semibold">Watermark File Name</label>
+              <input
+                v-model.trim="draftWatermarkFile"
+                placeholder="e.g. watermark.png"
+                class="input-textlike border rounded px-3 py-2 w-full"
+              />
+              <p class="text-xs opacity-70">
+                Use an existing file name already available on the server.
+              </p>
+              <div class="flex flex-wrap items-center gap-2">
+                <select
+                  v-model="draftWatermarkFile"
+                  class="input-textlike border rounded px-2 py-1 text-sm min-w-[20rem]"
+                >
+                  <option value="">Select existing watermark file…</option>
+                  <option v-for="wm in existingWatermarkFilesForEdit" :key="wm" :value="wm">
+                    {{ wm }}
+                  </option>
+                </select>
+                <button type="button" class="btn btn-secondary px-2 py-1 text-xs" @click="loadExistingWatermarkFilesForEdit">
+                  Refresh
+                </button>
+              </div>
+              <div class="flex items-center gap-2 mb-2">
+                <input type="checkbox" id="show-default-watermarks-edit" v-model="showDefaultWatermarksForEdit" @change="loadExistingWatermarkFilesForEdit" class="input-checkbox h-4 w-4 m-0" />
+                <label for="show-default-watermarks-edit" class="text-sm cursor-pointer">Show default watermarks</label>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button type="button" class="btn btn-secondary" @click="pickLocalWatermark">
+                  Choose Local Image
+                </button>
+                <span class="text-xs opacity-80">
+                  {{ draftWatermarkLocalFile ? draftWatermarkLocalFile.name : 'No local file selected' }}
+                </span>
+                <button
+                  v-if="draftWatermarkLocalFile"
+                  type="button"
+                  class="btn btn-danger px-2 py-1 text-xs"
+                  @click="clearLocalWatermark"
+                >
+                  Clear
+                </button>
+              </div>
+              <p v-if="draftWatermarkLocalFile" class="text-xs opacity-70">
+                Selected local file will be uploaded on save and used as watermark.
+              </p>
+            </div>
+          </div>
+
+          <!-- Watermark Customizer -->
+          <WatermarkCustomizer 
+            v-if="draftWatermarkFile || draftWatermarkLocalFile"
+            v-model="draftWatermarkSettings"
+            :watermarkPreviewUrl="watermarkPreviewUrl || null"
+          />
+          <div v-else class="p-4 text-center text-sm opacity-70">
+            Select a watermark file to configure customization settings.
+          </div>
+          
+          <!-- Save/Regenerate Actions -->
+          <div v-if="draftWatermarkFile || draftWatermarkLocalFile" class="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-default">
+            <button class="btn btn-secondary" @click="cancelWatermarkConfig">Cancel</button>
+            <button class="btn btn-primary" @click="saveWatermarkConfig">
+              Apply Settings
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, inject, ref, watch } from 'vue'
+import { computed, inject, ref, watch, toRaw } from 'vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { faTrash } from '@fortawesome/free-solid-svg-icons'
+import { ChatBubbleLeftRightIcon } from '@heroicons/vue/24/outline'
 import AddUsersModal from './AddUsersModal.vue'
 import EditLinkFilesModal from './EditLinkFilesModal.vue'
+import CommentsReviewModal from './CommentsReviewModal.vue'
 import PathInput from '../PathInput.vue'
-import WatermarkPreview from '../WatermarkPreview.vue'
+import WatermarkCustomizer from '../WatermarkCustomizer.vue'
 import type { LinkItem, LinkType, AccessRow, Status, ExistingUser } from '../../typings/electron'
+import type { WatermarkSettings } from '../../types/watermark'
+import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../../types/watermark'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { Switch } from '@headlessui/vue'
 import { useTransferProgress } from '../../composables/useTransferProgress'
+import { useConnections } from '../../composables/useConnections'
 import { connectionMetaInjectionKey } from '../../keys/injection-keys'
 import { useTourManager, type TourStep } from '../../composables/useTourManager'
 import { useOnboarding } from '../../composables/useOnboarding'
@@ -827,6 +881,7 @@ watch(() => props.modelValue, (open) => {
 })
 
 const transfer = useTransferProgress()
+const { activeConnection } = useConnections()
 const connectionMeta = inject(connectionMetaInjectionKey, null)
 
 const detailsLoading = ref(false)
@@ -847,6 +902,7 @@ const access = ref<AccessRow[]>([])
 const accessGroupRows = ref<any[]>([])
 const accessLoading = ref(false)
 const accessModalOpen = ref(false)
+const commentsModalOpen = ref(false)
 const versionsLoading = ref(false)
 const versionsError = ref<string | null>(null)
 const versions = ref<any[]>([])
@@ -870,8 +926,27 @@ const versionFileById = computed(() => {
 
 const editMode = ref(false)
 const saving = ref(false)
+
+/**
+ * Check if there are active transcodes for this link
+ * Prevents starting duplicate transcodes when clicking Save/Overwrite multiple times
+ */
+const hasActiveTranscodes = computed(() => {
+  if (!props.link?.id) return false
+  const groupId = `link:${props.link.id}`
+  return transfer.state.tasks.some(t => {
+    if (t.kind !== 'transcode') return false
+    // Check if task is active (queued, running, unknown)
+    if (t.status !== 'queued' && t.status !== 'running' && t.status !== 'unknown') return false
+    // Check if task belongs to this link
+    return t.context?.groupId === groupId
+  })
+})
+
 const saveDisabled = computed(() =>
-  saving.value || (editMode.value && (!accessSatisfied.value || !passwordSatisfied.value))
+  saving.value || 
+  hasActiveTranscodes.value ||
+  (editMode.value && (!accessSatisfied.value || !passwordSatisfied.value))
 )
 
 const draftTitle = ref('')
@@ -886,6 +961,9 @@ const draftWatermarkEnabled = ref(false)
 const draftWatermarkFile = ref('')
 type LocalFile = { path: string; name: string; size: number; dataUrl?: string | null }
 const draftWatermarkLocalFile = ref<LocalFile | null>(null)
+const draftWatermarkSettings = ref<WatermarkSettings>(createDefaultWatermarkSettings())
+const watermarkConfigModalOpen = ref(false)
+const showDefaultWatermarksForEdit = ref(true)
 const existingWatermarkFilesForEdit = ref<string[]>([])
 const existingWatermarkPreviewUrlForEdit = ref<string | null>(null)
 
@@ -1274,7 +1352,7 @@ function seedDraftMediaSettings() {
 }
 
 function pickLocalWatermark() {
-  window.electron.pickWatermark().then((f) => {
+  window.electron.pickWatermark().then((f: { path: string; name: string; size: number; dataUrl?: string | null } | null) => {
     if (!f) return
     draftWatermarkLocalFile.value = f
     draftWatermarkFile.value = f.name
@@ -1283,6 +1361,39 @@ function pickLocalWatermark() {
 
 function clearLocalWatermark() {
   draftWatermarkLocalFile.value = null
+}
+
+function openWatermarkConfigModal() {
+  // Initialize with current settings if they exist
+  // Try to get settings from the link's current watermark configuration
+  // For now, reset to defaults - settings will be loaded when component mounts
+  draftWatermarkSettings.value = createDefaultWatermarkSettings()
+  watermarkConfigModalOpen.value = true
+}
+
+function cancelWatermarkConfig() {
+  watermarkConfigModalOpen.value = false
+  // Reset to current values
+  draftWatermarkFile.value = currentWatermarkFile.value
+  draftWatermarkLocalFile.value = null
+  draftWatermarkSettings.value = createDefaultWatermarkSettings()
+}
+
+async function saveWatermarkConfig() {
+  // Apply the watermark settings to the draft state
+  // User will need to click the main "Save All" button to persist
+  draftWatermarkEnabled.value = true
+  
+  watermarkConfigModalOpen.value = false
+  
+  pushNotification(
+    new Notification(
+      'Watermark Configuration Applied',
+      'Click "Save Changes" to persist changes and regenerate outputs',
+      'info',
+      4000
+    )
+  )
 }
 
 async function fetchWatermarkPreviewForEdit(relPath: string) {
@@ -1317,10 +1428,44 @@ async function loadExistingWatermarkFilesForEdit() {
     const dirRel = resolveWatermarkDirRelForEdit()
     const data = await props.apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' })
     const entries = Array.isArray(data?.entries) ? data.entries : []
-    existingWatermarkFilesForEdit.value = entries
+    const serverWatermarks = entries
       .filter((e: any) => !e?.isDir && typeof e?.name === 'string' && String(e.name).trim())
       .map((e: any) => resolveWatermarkRelPathForEdit(String(e.name).trim()))
       .sort((a: string, b: string) => a.localeCompare(b))
+    
+    // Check which built-in watermarks actually exist on the server
+    const base = connectionMeta?.value?.apiBase ?? ''
+    const token = connectionMeta?.value?.token ?? ''
+    const builtinChecks = await Promise.allSettled(
+      DEFAULT_45FLOW_WATERMARKS.map(async (wm) => {
+        const url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(wm.path)}`
+        const res = await fetch(url, { method: 'HEAD', headers: { 'Authorization': `Bearer ${token}` } })
+        return res.ok ? wm.path : null
+      })
+    )
+    const validBuiltins = builtinChecks
+      .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && r.value !== null)
+      .map(r => r.value)
+    
+    // User watermarks first, default watermarks last
+    existingWatermarkFilesForEdit.value = showDefaultWatermarksForEdit.value ? [...serverWatermarks, ...validBuiltins] : serverWatermarks
+    
+    // Auto-select: prefer current watermark from link metadata (what's actually in the video),
+    // then fall back to localStorage last-used
+    if (!draftWatermarkLocalFile.value && !draftWatermarkFile.value) {
+      const detected = currentWatermarkFile.value
+      if (detected && existingWatermarkFilesForEdit.value.includes(detected)) {
+        draftWatermarkFile.value = detected
+        return
+      }
+
+      try {
+        const lastUsed = localStorage.getItem('45flow-last-watermark')
+        if (lastUsed && existingWatermarkFilesForEdit.value.includes(lastUsed)) {
+          draftWatermarkFile.value = lastUsed
+        }
+      } catch { /* ignore storage errors */ }
+    }
   } catch {
     existingWatermarkFilesForEdit.value = []
   }
@@ -1381,7 +1526,8 @@ async function uploadDraftLocalWatermark() {
   const destDir = resolveWatermarkUploadDirForEdit()
   const ensured = await ensureServerDirExistsForEdit(destDir)
   if (!ensured) return { ok: false, error: 'failed to prepare remote watermark directory' as string }
-  const { done } = await window.electron.rsyncStart({
+  if (!draftWatermarkLocalFile.value?.path) return { ok: false, error: 'no local watermark file selected' as string }
+  const { id: rsyncId, done } = await window.electron.rsyncStart({
     host,
     user,
     src: draftWatermarkLocalFile.value.path,
@@ -1391,8 +1537,8 @@ async function uploadDraftLocalWatermark() {
     noIngest: true,
   })
   const res = await done
-  if (!res?.ok) return { ok: false, error: res?.error || 'watermark upload failed' as string }
-  return { ok: true, relPath: resolveWatermarkRelPathForEdit(draftWatermarkLocalFile.value.name) }
+  if (!res?.ok) return { ok: false, error: res?.error || 'watermark upload failed' as string, uploadId: rsyncId }
+  return { ok: true, relPath: resolveWatermarkRelPathForEdit(draftWatermarkLocalFile.value.name), uploadId: rsyncId }
 }
 
 function computeAddedPaths(next: string[], prev: string[]) {
@@ -1722,6 +1868,16 @@ const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   upload_aborted: 'Upload aborted',
   'upload.failed': 'Upload failed',
   'upload.aborted': 'Upload aborted',
+  comment_created: 'Comment added',
+  comment_reply: 'Comment reply added',
+  comment_edited: 'Comment edited',
+  comment_deleted: 'Comment deleted',
+  annotation_created: 'Annotation added',
+  annotation_edited: 'Annotation edited',
+  annotation_deleted: 'Annotation deleted',
+  link_viewed: 'Link accessed',
+  auth_success: 'Authenticated',
+  password_verified: 'Password verified',
 }
 
 function titleCaseWords(v: string) {
@@ -2023,6 +2179,14 @@ function startLinkTranscodeTracking(opts: {
   proxyQualities?: string[]
 }) {
   if (!opts.wantsProxy && !opts.wantsHls) return
+  // console.log('[link-details:tracking] entry', {
+  //   wantsProxy: opts.wantsProxy,
+  //   wantsHls: opts.wantsHls,
+  //   addedPaths: opts.addedPaths,
+  //   respTranscodes: opts.resp?.transcodes,
+  //   respFiles: opts.resp?.files,
+  //   respItems: opts.resp?.items,
+  // })
 
   const versionIds = extractAssetVersionIdsFromLinkFilesResponse(opts.resp)
   const linkTitle = (draftTitle.value || props.link?.title || (props.link ? fallbackTitle(props.link) : '') || '').trim()
@@ -2056,41 +2220,73 @@ function startLinkTranscodeTracking(opts: {
     file: opts.addedPaths.length === 1 ? opts.addedPaths[0] : undefined,
     files: opts.addedPaths.length > 1 ? opts.addedPaths.slice() : undefined,
     proxyQualities: opts.wantsProxy ? normalizeQualities(opts.proxyQualities) : [],
+    connectionId: activeConnection.value?.connectionId,
   }
+  // Per-file context: exclude `files` to avoid dedup matching all files in one task
+  const perFileContext = (filePath: string) => ({
+    source: context.source,
+    groupId: context.groupId,
+    linkUrl: context.linkUrl,
+    linkTitle: context.linkTitle,
+    file: filePath,
+    proxyQualities: context.proxyQualities,
+  })
 
   if (versionIds.length) {
     const jobInfo = extractJobInfoByVersion(opts.resp)
     const unknownPolicy =
       opts.resp?.keepExistingOutputs || opts.resp?.allowExistingOutputs ? 'skipped' : 'queued'
+    // console.log('[link-details:tracking] version-based path', {
+    //   versionIds,
+    //   versionToFileId: Object.fromEntries(versionToFileId),
+    //   fileLabelById: Object.fromEntries(fileLabelById),
+    //   allPaths,
+    //   jobInfo,
+    //   unknownPolicy,
+    //   detailsToken: detailsToken.value ? '(set)' : '(empty)',
+    // })
 
     if (opts.wantsProxy) {
       const proxySplit = filterVersionIdsByJobKind(versionIds, jobInfo, 'proxy_mp4', unknownPolicy)
       const proxyCandidates = [...proxySplit.queued, ...proxySplit.active]
       const proxyActiveSplit = transfer.splitActiveTranscodeAssetVersions(proxyCandidates, 'proxy_mp4')
       const proxyToTrack = proxyActiveSplit.inactive
+      // console.log('[link-details:tracking] proxy split', {
+      //   proxySplit,
+      //   proxyCandidates,
+      //   proxyActiveSplit,
+      //   proxyToTrack,
+      // })
 
       if (proxyToTrack.length) {
         const fallbackIds: number[] = []
         for (const assetVersionId of proxyToTrack) {
             const fileId = versionToFileId.get(assetVersionId)
+            // console.log('[link-details:tracking] proxy per-file', { assetVersionId, fileId, hasToken: !!detailsToken.value, label: fileId ? fileLabelById.get(fileId) : undefined })
             if (detailsToken.value && fileId) {
               const detailLabel = fileLabelById.get(fileId) || fallbackFileLabel(assetVersionId)
+              const filePath = allPaths.find(p => p.endsWith(detailLabel)) || detailLabel
               const playbackPath = `/api/token/${encodeURIComponent(detailsToken.value)}/files/${encodeURIComponent(String(fileId))}/playback/${encodeURIComponent(String(assetVersionId))}?prefer=auto&audit=0`
               transfer.startPlaybackTranscodeTask({
-                title: 'Generating review copies',
-                detail: `Tracking ${detailLabel}`,
+                title: `Review Copy: ${detailLabel}`,
+                detail: filePath,
                 intervalMs: 1500,
                 jobKind: 'proxy_mp4',
-                context,
+                assetVersionId,
+                context: perFileContext(filePath),
               fetchSnapshot: async () => {
                 const payload = await props.apiFetch(playbackPath, { suppressAuthRedirect: true })
                 const j = payload?.transcodes?.proxy_mp4 || payload?.transcodes?.proxy || null
                 return {
                   status: j?.status ?? payload?.proxyStatus ?? payload?.status,
                   progress: j?.progress ?? payload?.proxyProgress ?? 0,
+                  etaSeconds: j?.eta_seconds ?? null,
+                  speedX: j?.speed_x ?? null,
                   qualityOrder: j?.quality_order ?? j?.qualityOrder ?? payload?.quality_order ?? payload?.qualityOrder,
                   activeQuality: j?.active_quality ?? j?.activeQuality ?? payload?.active_quality ?? payload?.activeQuality,
                   perQualityProgress: j?.per_quality_progress ?? j?.perQualityProgress ?? payload?.per_quality_progress ?? payload?.perQualityProgress,
+                  transcoder: j?.transcoder,
+                  encoder: j?.encoder,
                 }
               },
             })
@@ -2100,15 +2296,18 @@ function startLinkTranscodeTracking(opts: {
         }
 
         if (fallbackIds.length) {
+          // console.log('[link-details:tracking] proxy fallback ids', fallbackIds)
           for (const assetVersionId of fallbackIds) {
+            const fallbackLabel = fallbackFileLabel(assetVersionId)
+            const fallbackPath = allPaths.find(p => p.endsWith(fallbackLabel)) || fallbackLabel
             transfer.startAssetVersionTranscodeTask({
               apiFetch: props.apiFetch,
               assetVersionIds: [assetVersionId],
-              title: 'Generating review copies',
-              detail: `Tracking ${fallbackFileLabel(assetVersionId)}`,
+              title: `Review Copy: ${fallbackLabel}`,
+              detail: fallbackPath,
               intervalMs: 1500,
               jobKind: 'proxy_mp4',
-              context,
+              context: perFileContext(fallbackPath),
             })
           }
         }
@@ -2145,26 +2344,39 @@ function startLinkTranscodeTracking(opts: {
       const hlsCandidates = [...hlsSplit.queued, ...hlsSplit.active]
       const hlsActiveSplit = transfer.splitActiveTranscodeAssetVersions(hlsCandidates, 'hls')
       const hlsToTrack = hlsActiveSplit.inactive
+      // console.log('[link-details:tracking] hls split', {
+      //   hlsSplit,
+      //   hlsCandidates,
+      //   hlsActiveSplit,
+      //   hlsToTrack,
+      // })
 
       if (hlsToTrack.length) {
         const fallbackIds: number[] = []
         for (const assetVersionId of hlsToTrack) {
             const fileId = versionToFileId.get(assetVersionId)
+            // console.log('[link-details:tracking] hls per-file', { assetVersionId, fileId, hasToken: !!detailsToken.value, label: fileId ? fileLabelById.get(fileId) : undefined })
             if (detailsToken.value && fileId) {
               const detailLabel = fileLabelById.get(fileId) || fallbackFileLabel(assetVersionId)
+              const filePath = allPaths.find(p => p.endsWith(detailLabel)) || detailLabel
               const playbackPath = `/api/token/${encodeURIComponent(detailsToken.value)}/files/${encodeURIComponent(String(fileId))}/playback/${encodeURIComponent(String(assetVersionId))}?prefer=auto&audit=0`
               transfer.startPlaybackTranscodeTask({
-                title: 'Generating browser stream',
-                detail: `Tracking ${detailLabel}`,
+                title: `Stream: ${detailLabel}`,
+                detail: filePath,
                 intervalMs: 1500,
                 jobKind: 'hls',
-                context,
+                assetVersionId,
+                context: perFileContext(filePath),
               fetchSnapshot: async () => {
                 const payload = await props.apiFetch(playbackPath, { suppressAuthRedirect: true })
                 const j = payload?.transcodes?.hls || payload?.transcodes?.HLS || null
                 return {
                   status: j?.status ?? payload?.hlsStatus ?? payload?.status,
                   progress: j?.progress ?? payload?.hlsProgress ?? 0,
+                  etaSeconds: j?.eta_seconds ?? null,
+                  speedX: j?.speed_x ?? null,
+                  transcoder: j?.transcoder,
+                  encoder: j?.encoder,
                 }
               },
             })
@@ -2174,15 +2386,18 @@ function startLinkTranscodeTracking(opts: {
         }
 
         if (fallbackIds.length) {
+          console.log('[link-details:tracking] hls fallback ids', fallbackIds)
           for (const assetVersionId of fallbackIds) {
+            const fallbackLabel = fallbackFileLabel(assetVersionId)
+            const fallbackPath = allPaths.find(p => p.endsWith(fallbackLabel)) || fallbackLabel
             transfer.startAssetVersionTranscodeTask({
               apiFetch: props.apiFetch,
               assetVersionIds: [assetVersionId],
-              title: 'Generating browser stream',
-              detail: `Tracking ${fallbackFileLabel(assetVersionId)}`,
+              title: `Stream: ${fallbackLabel}`,
+              detail: fallbackPath,
               intervalMs: 1500,
               jobKind: 'hls',
-              context,
+              context: perFileContext(fallbackPath),
             })
           }
         }
@@ -2267,16 +2482,14 @@ function startLinkTranscodeTracking(opts: {
     for (const fileId of idsToTrack) {
       const rec = recById.get(fileId)
       const filePath = rec?.path || rec?.name
-      const baseContext = {
-        ...context,
-        file: filePath || context.file,
-      }
+      const fileLabel = rec?.name || filePath || `file ${fileId}`
+      const baseContext = perFileContext(filePath || context.file || '')
       const playbackPath = `/api/token/${encodeURIComponent(detailsToken.value)}/files/${encodeURIComponent(String(fileId))}/playback?prefer=auto&audit=0`
 
       if (opts.wantsProxy) {
         transfer.startPlaybackTranscodeTask({
-          title: 'Generating review copies',
-          detail: filePath ? `Tracking ${filePath}` : `Tracking file ${fileId}`,
+          title: `Review Copy: ${fileLabel}`,
+          detail: filePath || undefined,
           intervalMs: 1500,
           jobKind: 'proxy_mp4',
           context: baseContext,
@@ -2286,9 +2499,13 @@ function startLinkTranscodeTracking(opts: {
             return {
               status: j?.status ?? payload?.proxyStatus ?? payload?.status,
               progress: j?.progress ?? payload?.proxyProgress ?? 0,
+              etaSeconds: j?.eta_seconds ?? null,
+              speedX: j?.speed_x ?? null,
               qualityOrder: j?.quality_order ?? j?.qualityOrder ?? payload?.quality_order ?? payload?.qualityOrder,
               activeQuality: j?.active_quality ?? j?.activeQuality ?? payload?.active_quality ?? payload?.activeQuality,
               perQualityProgress: j?.per_quality_progress ?? j?.perQualityProgress ?? payload?.per_quality_progress ?? payload?.perQualityProgress,
+              transcoder: j?.transcoder,
+              encoder: j?.encoder,
             }
           },
         })
@@ -2296,8 +2513,8 @@ function startLinkTranscodeTracking(opts: {
 
       if (opts.wantsHls) {
         transfer.startPlaybackTranscodeTask({
-          title: 'Generating browser stream',
-          detail: filePath ? `Tracking ${filePath}` : `Tracking file ${fileId}`,
+          title: `Stream: ${fileLabel}`,
+          detail: filePath || undefined,
           intervalMs: 1500,
           jobKind: 'hls',
           context: baseContext,
@@ -2307,6 +2524,10 @@ function startLinkTranscodeTracking(opts: {
             return {
               status: j?.status ?? payload?.hlsStatus ?? payload?.status,
               progress: j?.progress ?? payload?.hlsProgress ?? 0,
+              etaSeconds: j?.eta_seconds ?? null,
+              speedX: j?.speed_x ?? null,
+              transcoder: j?.transcoder,
+              encoder: j?.encoder,
             }
           },
         })
@@ -2984,6 +3205,17 @@ async function saveAll() {
 
     if (draftWatermarkEnabled.value && draftWatermarkLocalFile.value) {
       const up = await uploadDraftLocalWatermark()
+      
+      // Dismiss the watermark upload task from Transfer Dock since it's not a user-facing upload
+      if (up.uploadId) {
+        const uploadTasks = transfer.state.tasks.filter(
+          t => t.kind === 'upload' && t.taskId === up.uploadId
+        )
+        for (const task of uploadTasks) {
+          transfer.removeTask(task.taskId)
+        }
+      }
+      
       if (!up.ok) {
         pushNotification(
           new Notification(
@@ -3057,6 +3289,7 @@ async function saveAll() {
         body.watermark = !!draftWatermarkEnabled.value
         body.watermarkFile = draftWatermarkEnabled.value ? draftWatermarkFile.value.trim() : null
         body.watermarkProxyQualities = draftWatermarkEnabled.value ? nextProxyQualities : []
+        body.watermarkSettings = draftWatermarkEnabled.value ? JSON.parse(JSON.stringify(draftWatermarkSettings.value)) : null
       }
 
       try {
@@ -3147,6 +3380,7 @@ async function saveAll() {
         watermark: !!draftWatermarkEnabled.value,
         watermarkFile: draftWatermarkEnabled.value ? draftWatermarkFile.value.trim() : null,
         watermarkProxyQualities: draftWatermarkEnabled.value ? nextProxyQualities : [],
+        watermarkSettings: draftWatermarkEnabled.value ? JSON.parse(JSON.stringify(draftWatermarkSettings.value)) : null,
       }
 
       try {

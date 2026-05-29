@@ -33,41 +33,60 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
    - [Selecting a Destination Folder](#selecting-a-destination-folder)
    - [Configuring the Upload Link](#configuring-the-upload-link)
    - [Generating the Upload Link](#generating-the-upload-link)
-9. [Managing Links](#9-managing-links)
+9. [Transfer Dock](#9-transfer-dock)
+    - [Transfer Dock Overview](#transfer-dock-overview)
+    - [Transfer Entry Details](#transfer-entry-details)
+    - [Transcode Status](#transcode-status)
+10. [Managing Links](#10-managing-links)
    - [Searching & Filtering Links](#searching--filtering-links)
    - [Link Table Columns](#link-table-columns)
    - [Link Actions](#link-actions)
-10. [Link Details](#10-link-details)
+11. [Link Details](#11-link-details)
    - [Link Configuration Summary](#link-configuration-summary)
    - [Shared Files](#shared-files)
    - [Access Activity Log](#access-activity-log)
    - [File Versions](#file-versions)
-11. [Editing a Link](#11-editing-a-link)
-12. [Video Player & Comments](#12-video-player--comments)
+12. [Editing a Link](#12-editing-a-link)
+13. [Video Player & Comments](#13-video-player--comments)
     - [Playback Controls](#playback-controls)
     - [Quality Selection](#quality-selection)
     - [Timecoded Comments](#timecoded-comments)
-13. [User Management](#13-user-management)
+14. [User Management](#14-user-management)
     - [Viewing Existing Users](#viewing-existing-users)
     - [Creating a New User](#creating-a-new-user)
     - [Editing & Deleting Users](#editing--deleting-users)
-14. [Role Management](#14-role-management)
+15. [Role Management](#15-role-management)
     - [System Roles](#system-roles)
     - [Creating Custom Roles](#creating-custom-roles)
     - [Editing & Deleting Roles](#editing--deleting-roles)
-15. [Settings](#15-settings)
+16. [Settings](#16-settings)
     - [Default Link Access](#default-link-access)
     - [External Share URL (Public)](#external-share-url-public)
     - [Internal Share URL (LAN / VPN)](#internal-share-url-lan--vpn)
     - [Project Root](#project-root)
     - [Default Link Options](#default-link-options)
+    - [Server Health](#server-health)
     - [Maintenance & Cleanup](#maintenance--cleanup)
-16. [View Logs (Client Log Viewer)](#16-view-logs-client-log-viewer)
-    - [Log Summary](#log-summary)
+17. [Multi-Server Management](#17-multi-server-management)
+    - [Adding Servers](#adding-servers)
+    - [Switching Active Server](#switching-active-server)
+    - [Server Filter (All Servers View)](#server-filter-all-servers-view)
+18. [Comments Review & Export](#18-comments-review--export)
+    - [Reviewing Comments](#reviewing-comments)
+    - [Exporting Comments](#exporting-comments)
+19. [Annotations & Drawing Tools](#19-annotations--drawing-tools)
+    - [Creating Annotations](#creating-annotations)
+    - [Viewing Annotations](#viewing-annotations)
+20. [Advanced Watermark Customization](#20-advanced-watermark-customization)
+    - [Watermark Position & Style](#watermark-position--style)
+    - [Watermark Presets](#watermark-presets)
+21. [View Logs](#21-view-logs)
+    - [Client Logs](#client-logs)
+    - [Server Logs (Audit Log)](#server-logs-audit-log)
+    - [Multi-Server Log Viewer](#multi-server-log-viewer)
     - [Searching & Filtering Logs](#searching--filtering-logs)
-    - [Log Entry Details](#log-entry-details)
-17. [Port Forwarding for External Sharing](#17-port-forwarding-for-external-sharing)
-18. [Frequently Asked Questions](#18-frequently-asked-questions)
+22. [Port Forwarding for External Sharing](#22-port-forwarding-for-external-sharing)
+23. [Frequently Asked Questions](#23-frequently-asked-questions)
 
 ---
 
@@ -487,7 +506,66 @@ When someone opens the link, they'll see a drag-and-drop upload page where they 
 
 ---
 
-## 9. Managing Links
+## 9. Transfer Dock
+
+The **Transfer Dock** is a persistent overlay that tracks all active and recently completed transfers — uploads, transcodes, and review copy generation. It remains visible across all screens so you can continue working while monitoring progress.
+
+![Transfer Dock open](images/transfer-dock-open.png)
+
+### Transfer Dock Overview
+
+The Transfer Dock appears at the bottom of the screen whenever a transfer is in progress. It shows:
+
+- **Active transfer count** — e.g., "Transfers (2 active)"
+- **Link grouping** — Transfers are grouped by the link they belong to, with the server name and link URL displayed.
+- **Clear finished** — Remove completed transfers from the dock.
+- **Close** — Collapse the dock (transfers continue in the background).
+
+When collapsed, a minimal indicator remains visible showing active transfer count. Click it to expand the dock again.
+
+![Transfer Dock collapsed](images/transfer-dock-hidden.png)
+
+### Transfer Entry Details
+
+Each file in the Transfer Dock shows:
+
+| Field | Description |
+|-------|-------------|
+| **File name** | The name of the file being transferred. |
+| **Destination** | Server-side path (e.g., `tank/Local Uploads/video.mp4`). |
+| **Status** | Current state: *Running*, *Complete*, *Queued*, *Canceled*, or *Error*. |
+| **Progress** | Percentage bar for the active phase. |
+| **Speed** | Transfer or encode speed (e.g., `95.23 MB/s` for uploads, `1.05x` for transcodes). |
+| **ETA** | Estimated time remaining. |
+| **Action** | Cancel or Dismiss button. |
+
+### Transcode Status
+
+When review copies or streaming proxies are being generated, each transcode entry shows:
+
+- **Transcode source** — `Client` or `Server`, indicating where the processing is running.
+- **Encoder** — The hardware/software encoder in use:
+  - `GPU (QSV)` — Intel Quick Sync Video
+  - `GPU (NVENC)` — NVIDIA hardware encoder
+  - `GPU (AMF)` — AMD hardware encoder
+  - `GPU (VideoToolbox)` — macOS hardware encoder
+  - `CPU` — Software encoding (libx264)
+- **Speed multiplier** — e.g., `1.05x` means encoding at 1.05× real-time.
+- **Progress** — Percentage complete with ETA.
+
+A typical transfer entry for a QuickShare might show multiple sub-items:
+
+```
+Review Copy (Full Res)     Client · GPU (QSV)    1.05x   ETA 2:08   31%
+Stream                     Client · GPU (QSV)    100%
+Upload                     95.23 MB/s            ETA 0:14            100%
+```
+
+> **Tip:** If client-side transcoding is enabled (Settings → Performance), video processing happens on your machine before upload. The Transfer Dock shows both the transcode and upload phases separately so you can track each step.
+
+---
+
+## 10. Managing Links
 
 All links you create — both share and upload — appear on the Dashboard in the **links table**. This is your central view for monitoring and managing all active, expired, and disabled links.
 
@@ -529,7 +607,7 @@ Each link row provides these actions:
 
 ---
 
-## 10. Link Details
+## 11. Link Details
 
 Click **"Details"** on any link (or click its title) to view comprehensive information.
 
@@ -590,7 +668,7 @@ Click **"Edit"** at the top of the Link Details view to modify the link's settin
 
 ---
 
-## 11. Editing a Link
+## 12. Editing a Link
 
 From the Link Details view, click **"Edit"** to modify an existing link's configuration.
 
@@ -614,7 +692,7 @@ Click **"Cancel"** or **"Close"** to discard changes and return to Link Details.
 
 ---
 
-## 12. Video Player & Comments
+## 13. Video Player & Comments
 
 When someone opens a share link containing video files, they see the **45Flow Video Player** — a browser-based player with collaboration features.
 
@@ -659,7 +737,7 @@ For collection links (multiple files), a sidebar file browser appears on the lef
 
 ---
 
-## 13. User Management
+## 14. User Management
 
 Users are required for the **"Only invited users"** access mode and allow role-based permissions on restricted links. Access user management from the Dashboard by clicking **"Manage Users"**.
 
@@ -703,7 +781,7 @@ Click **"Create User"** to save. The user will appear in the existing users list
 
 ---
 
-## 14. Role Management
+## 15. Role Management
 
 Roles define what users can do when accessing restricted links. Access role management from **Manage Users → Manage Roles**.
 
@@ -744,7 +822,7 @@ Roles define what users can do when accessing restricted links. Access role mana
 
 ---
 
-## 15. Settings
+## 16. Settings
 
 Configure application-wide defaults and server settings. Access Settings from the Dashboard by clicking **"Settings"**.
 
@@ -831,6 +909,33 @@ For administrators to manage server health:
 
 ![Maintenance and cleanup scan results](images/settings-maintenance.png)
 
+### Server Health
+
+The **Server Health** section (under Settings → Application → Server Health) provides real-time resource statistics from your connected server.
+
+![Server Health panel](images/settings-server-health.png)
+
+Server Health auto-loads when you navigate to the section and shows the following:
+
+| Section | What It Shows |
+|---------|---------------|
+| **Version** | The installed houston-broadcaster version |
+| **Uptime** | Process uptime (how long the server has been running) and system uptime (total OS uptime) |
+| **CPU** | Number of CPU cores and load averages (1-minute, 5-minute, 15-minute) |
+| **Memory** | System total/free RAM and process RSS (resident set size) |
+| **Disk (Share Root)** | Visual progress bar showing disk usage on the share root volume, with used/free/total bytes |
+| **Transcode Queue** | Number of transcode jobs currently queued, running, completed, or failed |
+| **Links & Connections** | Count of active/total links and current WebSocket connections |
+
+The disk usage bar changes color based on usage:
+- 🔵 Blue — under 75% used
+- 🟡 Amber — 75%–90% used
+- 🔴 Red — over 90% used
+
+Click **"Refresh"** to fetch the latest stats from the server.
+
+> **Note:** Server Health requires admin (PAM) access. If you're logged in with a non-admin user or an environment token, you'll see an access denied message.
+
 ### Saving Settings
 
 - Click **"Save settings"** to apply all changes. New links will use the updated defaults.
@@ -840,17 +945,139 @@ For administrators to manage server health:
 
 ---
 
-## 16. View Logs (Client Log Viewer)
+## 17. Multi-Server Management
 
-The Client Log Viewer lets you inspect application activity, identify errors, and troubleshoot issues. Access it from the Dashboard by clicking **"View Logs"**.
+45Flow Pro supports connecting to and managing **multiple servers** simultaneously.
 
-![Client Log Viewer](images/log-viewer.png)
+![Multi-server connection switcher](images/multi-server-switcher.png)
 
-### Log Summary
+### Adding Servers
+
+1. From the connection screen, connect to any server using auto-discovery or manual IP.
+2. Once connected, use the **Connection Manager** (accessible from the server switcher dropdown in the header) to add additional servers.
+3. Each server maintains its own JWT token, SSH credentials, and license status.
+
+### Switching Active Server
+
+The **active server** is displayed in the header bar. Click the dropdown to switch between connected servers. The active server is where all your actions take effect — creating links, uploading files, managing users, etc.
+
+![Connection Manager modal](images/connection-manager-modal.png)
+
+### Server Filter (All Servers View)
+
+When multiple servers are connected, the **"Show links from"** filter appears on the Dashboard:
+
+- **All Servers** — Aggregates links from every connected server. Each row shows which server the link belongs to.
+- **Specific server** — Shows links only from the selected server.
+
+This is useful for managing links across multiple servers from a single view.
+
+![Server filter dropdown](images/server-filter-dropdown.png)
+
+---
+
+## 18. Comments Review & Export
+
+45Flow Pro lets you review and manage all comments on a link from the **Link Details** view. Open any link's details from the Dashboard, then click the **"Comments"** button at the top to open the comments panel.
+
+![Comments panel in Link Details](images/comments-review-modal.png)
+
+### Reviewing Comments
+
+- View all comments across all files in a link in one place.
+- **Filter** by file, by resolved/unresolved status, or by user.
+- **Resolve/Unresolve** individual comments or bulk-resolve all.
+- Each comment shows its timecode, author, annotation indicator, and tags.
+- If a comment has an annotation, click **"View Annotation"** to see the drawing overlaid on the video frame at that timecode.
+
+### Exporting Comments
+
+Export comments in multiple formats for use in external tools:
+
+| Format | Description |
+|--------|-------------|
+| **JSON** | Structured data with all fields — timestamps, authors, annotations, tags, resolved status. |
+| **CSV** | Spreadsheet-compatible tabular export. |
+| **Markdown** | Human-readable formatted list, suitable for reports or emails. |
+| **WebVTT** | Subtitle/caption format — timecoded comments as VTT cues for use in NLEs or other players. |
+
+---
+
+## 19. Annotations & Drawing Tools
+
+45Flow Pro includes built-in annotation tools for drawing directly on video frames. Annotations are created in the **link's review UI** (the shared video player).
+
+![Annotation drawing tools](images/annotation-tools.png)
+
+### Creating Annotations
+
+Annotations are created by reviewers when leaving a comment on a shared link:
+
+1. Open the shared link in a browser (the review player).
+2. Pause the video at the frame you want to annotate.
+3. Click the **annotation/draw tool** in the comment area.
+4. Use the available tools:
+   - **Freehand** — Draw freeform paths
+   - **Rectangle** — Draw rectangular highlights
+   - **Circle/Ellipse** — Draw circular highlights
+   - **Arrow/Line** — Draw directional arrows or straight lines
+5. Choose a color for your annotation.
+6. Submit the comment — the annotation is saved alongside the timecoded comment.
+
+### Viewing Annotations
+
+Annotations can be viewed in two places:
+
+- **In the review player** — Navigate to a comment with an annotation and the drawing renders on top of the video at the correct timecode.
+- **In Link Details → Comments** — Click **"View Annotation"** on any comment that has one. The **Annotation Viewer** modal shows a full-size view of the annotated frame with all drawing data rendered.
+
+![Annotation viewer modal](images/annotation-viewer.png)
+
+---
+
+## 20. Advanced Watermark Customization
+
+45Flow Pro extends basic watermarking with a full customization panel for controlling how watermarks appear on review copies.
+
+![Watermark Customizer panel](images/watermark-customizer.png)
+
+### Watermark Position & Style
+
+| Setting | Description |
+|---------|-------------|
+| **Position** | Anchor point: top-left, top-right, center, bottom-left, bottom-right, or custom X/Y coordinates. |
+| **Scale** | Size of the watermark relative to the video frame (percentage). |
+| **Opacity** | Transparency level (0% = invisible, 100% = fully opaque). |
+| **Rotation** | Angle of rotation in degrees. |
+
+### Watermark Presets
+
+Save and reuse watermark configurations:
+
+- **Save as preset** — Give your current configuration a name to reuse on future links.
+- **Load preset** — Apply a previously saved preset with one click.
+- **Delete preset** — Remove presets you no longer need.
+- Presets are stored on the server and available across all your links.
+
+> **Note:** Basic watermarking (enable/disable, select watermark image file) is available in the free edition. Advanced positioning, opacity, scale, rotation, and the preset system require 45Flow Pro.
+
+---
+
+## 21. View Logs
+
+The Log Viewer lets you inspect application activity, identify errors, and troubleshoot issues. Access it from the Dashboard by clicking **"View Logs"**.
+
+The Log Viewer has two tabs: **Client Logs** and **Server Logs**.
+
+![Log Viewer with tabs](images/log-viewer-tabs.png)
+
+### Client Logs
+
+The Client Logs tab shows parsed entries from the local application log file stored on your computer.
 
 At the top, you'll see:
 
-- **Log file** — The name of the currently loaded log file (e.g., `4545flow-premium-dev-client-2026-03-11.json`).
+- **Log file** — The name of the currently loaded log file (e.g., `45flow-premium-client-2026-05-27.json`).
 - **Directory** — The file path where logs are stored on your system.
 - **Entries loaded** — Total number of parsed log entries.
 
@@ -860,36 +1087,54 @@ At the top, you'll see:
 - 🔵 **Info** — General operational events (uploads started, links created)
 - ⚪ **Debug** — Low-level diagnostic data
 
+### Server Logs (Audit Log)
+
+The Server Logs tab retrieves structured audit log entries from the connected server. These entries record every significant action taken on the server — link creation, file changes, transcode operations, user actions, branding updates, license activations, and more.
+
+![Server Logs tab](images/log-viewer-server.png)
+
+At the top, you'll see:
+
+- **Log file** — The ops.log file name on the server (e.g., `ops.log`).
+- **Directory** — The server-side log directory path (e.g., `/var/log/houston-broadcaster`).
+- **Database** — The SQLite database path where structured audit entries are stored.
+- **Entries loaded** — Total number of audit log entries in the database.
+
+Each server log entry shows:
+
+| Column | Description |
+|--------|-------------|
+| **Time** | Timestamp of the server event. |
+| **Level** | Severity: INFO, WARN, or ERROR. |
+| **Action** | The audit event name (e.g., `link.files_updated`, `annotation.created`, `transcode.cancelled`). |
+| **Actor** | Username of who performed the action. |
+| **Resource** | The resource type and ID affected (e.g., `link/17`, `annotation/42`). |
+| **Details** | Expandable JSON payload with additional context. |
+
+Server logs support **pagination** — use the Previous/Next buttons at the bottom to navigate through pages of results.
+
+### Multi-Server Log Viewer
+
+When connected to multiple servers, a **server selector dropdown** appears in the Server Logs tab. This lets you choose which server's audit log to view without disconnecting or switching your active server.
+
+![Server selector in log viewer](images/log-viewer-server-selector.png)
+
 ### Searching & Filtering Logs
 
 | Control | Description |
 |---------|-------------|
-| **Search** | Filter by event name, summary text, details, IP address, or actor. |
-| **Level filter** | Show only a specific level: *All levels*, *Error*, *Warn*, *Info*, or *Debug*. |
-| **Errors/warnings only** | Quick toggle to show only error and warning entries. |
-| **Group related events** | Groups similar events together to reduce visual duplication during repeated failures. |
+| **Search** | Filter by event name, summary text, details, actor, or resource. |
+| **Level filter** | Show only a specific level: *All levels*, *Error*, *Warn*, *Info*, or *Debug* (client only). |
+| **Errors/warnings only** | (Client tab) Quick toggle to show only error and warning entries. |
+| **Group related events** | (Client tab) Groups similar events together to reduce visual duplication. |
 
-### Log Entry Details
+> **Note:** Server Logs require admin (PAM) access. If you're logged in with a non-admin account, you'll see a message indicating that admin access is required.
 
-Each log entry shows:
-
-| Column | Description |
-|--------|-------------|
-| **Time** | Timestamp of the event. |
-| **Level** | Severity: ERROR, WARN, INFO, or DEBUG. Error rows are highlighted in red, warnings in amber. |
-| **Event** | Event identifier (e.g., `upload.started`, `link.created`, `sse.error`). |
-| **Summary** | Human-readable description of what happened. |
-
-Click on any entry to expand its **Details** section, which shows the full event payload and structured diagnostic information.
-
-- Click **"Refresh"** to reload and re-parse the current log file.
-- Click **"Close"** to return to the Dashboard.
-
-> **Tip:** If you're experiencing connection or upload issues, check the logs for `ERROR` entries. The event names and summaries will help identify the cause.
+> **Tip:** If you're experiencing connection or upload issues, check the Client Logs for `ERROR` entries. For server-side issues (transcodes failing, links not updating), check the Server Logs tab.
 
 ---
 
-## 17. Port Forwarding for External Sharing
+## 22. Port Forwarding for External Sharing
 
 To share files externally (over the internet), HTTPS port **443** (or your custom HTTPS port) must be forwarded from your router to your server.
 
@@ -913,7 +1158,7 @@ Port forwarding tells your router to direct incoming traffic on a specific port 
 
 ---
 
-## 18. Frequently Asked Questions
+## 23. Frequently Asked Questions
 
 **Q: My server doesn't appear in the auto-discovery dropdown. What do I do?**  
 A: The `houston-broadcaster` service must be running on the server. Try connecting manually using the server's IP address via the **"Connect manually via IP"** field.
@@ -946,7 +1191,16 @@ A: Yes. Click **"Disable"** in the link's action column on the Dashboard. This i
 A: All uploaded files go through a quarantine process with malware scanning before being moved to the destination folder. Files that fail the scan are rejected.
 
 **Q: Where are my logs stored?**  
-A: Client logs are stored in your local application data directory (shown in the Log Viewer). They are not stored on the server.
+A: **Client logs** are stored in your local application data directory (shown in the Log Viewer's Client tab). **Server logs** (audit entries) are stored on the server in both a SQLite database and the ops.log file. You can view both from the Log Viewer — use the Client/Server tabs to switch.
+
+**Q: I can't see Server Logs — it says "Admin access required". What do I do?**  
+A: Server logs require a system (PAM) account login. If you logged in using an environment token or open access, you won't have admin privileges. Log in with your server's system username and password to access server logs and health stats.
+
+**Q: How do I connect to multiple servers?**  
+A: 45Flow Pro supports multiple simultaneous server connections. After connecting to your first server, use the Connection Manager (from the server switcher dropdown in the header) to add additional servers. Each server maintains its own authentication and license state.
+
+**Q: Can I view annotations created by other users?**  
+A: Yes. All annotations are visible to anyone with access to the link. They appear as overlays on the video frame at the timecoded position where they were created.
 
 ---
 

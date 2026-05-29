@@ -16,3 +16,6 @@ export const tourQuickShareStep = ref<1 | 2 | 3>(1)
 
 /** When true, step 3 should show the mock "done" state */
 export const tourQuickShareShowDone = ref(false)
+
+/** Tracks whether the real Quick Share overlay modal is currently visible */
+export const quickShareOverlayOpen = ref(false)

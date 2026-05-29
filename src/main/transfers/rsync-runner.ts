@@ -40,9 +40,9 @@ export type LogTailer = {
   stop: () => void;
   /**
    * Promise that resolves when the process exits.
-   * Value = true if rsync appears to have succeeded, false otherwise.
+   * Resolves to { ok: true } if rsync succeeded, { ok: false, error?: string } otherwise.
    */
-  done: Promise<boolean>;
+  done: Promise<{ ok: boolean; error?: string }>;
 };
 
 // Parse rsync progress lines like:
@@ -176,9 +176,9 @@ export function tailLogFile(opts: TailOpts): LogTailer {
   let offset = 0;
   let partial = '';         // leftover bytes that don't end with \n
   let timer: ReturnType<typeof setInterval> | null = null;
-  let _resolve: ((ok: boolean) => void) | null = null;
+  let _resolve: ((result: { ok: boolean; error?: string }) => void) | null = null;
 
-  const done = new Promise<boolean>((resolve) => { _resolve = resolve; });
+  const done = new Promise<{ ok: boolean; error?: string }>((resolve) => { _resolve = resolve; });
 
   const emit = (parsed: any) => {
     try { win?.webContents?.send(`upload:progress:${id}`, parsed); } catch { /* window may be gone */ }
@@ -247,8 +247,16 @@ export function tailLogFile(opts: TailOpts): LogTailer {
 
       // Heuristic: check the last progress line for 100% to decide success
       const ok = lastProgressWas100(logFile);
-      jl('info', 'rsync.detached.exit', { id, pid, ok });
-      _resolve?.(ok);
+      
+      if (!ok) {
+        // Extract error message from log file for better diagnostics
+        const errorMsg = extractRsyncError(logFile);
+        jl('info', 'rsync.detached.exit', { id, pid, ok, error: errorMsg });
+        _resolve?.({ ok: false, error: errorMsg || 'Transfer did not complete' });
+      } else {
+        jl('info', 'rsync.detached.exit', { id, pid, ok });
+        _resolve?.({ ok: true });
+      }
     }
   }
 
@@ -294,5 +302,49 @@ function lastProgressWas100(logFile: string): boolean {
     return lastPct >= 100;
   } catch {
     return false;
+  }
+}
+
+/** Extract error message from rsync log file for better user feedback */
+function extractRsyncError(logFile: string): string | null {
+  try {
+    const content = fs.readFileSync(logFile, 'utf-8');
+    const lines = content.split('\n').filter(l => l.trim());
+    
+    // Look for common rsync error patterns
+    for (const line of lines) {
+      // SSH connection errors
+      if (/ssh:.*Connection.*timed out/i.test(line)) {
+        return 'Connection timed out - server may be unreachable';
+      }
+      if (/ssh:.*Connection refused/i.test(line)) {
+        return 'Connection refused - check if SSH server is running';
+      }
+      if (/ssh:.*No route to host/i.test(line)) {
+        return 'No route to host - check network connectivity';
+      }
+      if (/Host key verification failed/i.test(line)) {
+        return 'Host key verification failed - server identity changed';
+      }
+      if (/Permission denied/i.test(line)) {
+        return 'Permission denied - check SSH key and credentials';
+      }
+      // Generic rsync errors
+      if (/rsync error:/i.test(line)) {
+        return line.trim().substring(0, 200); // Limit length
+      }
+    }
+    
+    // If we find any error-like content, return the last few lines
+    const errorLines = lines.filter(l => 
+      /error|failed|timeout|refused|denied/i.test(l)
+    );
+    if (errorLines.length > 0) {
+      return errorLines[errorLines.length - 1].substring(0, 200);
+    }
+    
+    return null;
+  } catch {
+    return null;
   }
 }

@@ -80,6 +80,12 @@ const dashboardTourSteps: TourStep[] = [
 	{
 		target: '[data-tour="flow-logo"]',
 		message: 'Welcome to 45Flow!\n\nTip: You can drag and drop files anywhere onto the app to open Quick Share — the fastest way to upload and share files. A guided tour of Quick Share will appear the first time you drop a file.\n\nLet\'s explore the dashboard.',
+		beforeShow: () => { transfer.setOpen(false) }, // Close transfer dock if open
+	},
+	// ── Multi-Server Features ──────────────────────
+	{
+		target: '[data-tour="connection-switcher"]',
+		message: 'This is your Active Server selector.\n\n45Flow can connect to multiple servers at once. The server shown here is where your actions will take effect — creating links, uploading files, managing users, etc.\n\nClick the dropdown to switch between connected servers or add new ones.',
 	},
 	// ── Dashboard actions ──────────────────────
 	{
@@ -116,13 +122,18 @@ const dashboardTourSteps: TourStep[] = [
 		beforeShow: () => { tourShowDemoLinks.value = true },
 	},
 	{
+		target: '[data-tour="server-filter"]',
+		message: 'The "Show links from" filter lets you view links from all connected servers at once, or filter to just one server.\n\nWhen viewing "All Servers", links are aggregated and each row shows which server it belongs to. This is useful for managing links across multiple servers from one view.',
+		beforeShow: () => { tourShowDemoLinks.value = true },
+	},
+	{
 		target: '[data-tour="manage-links-toolbar"]',
-		message: 'Use the toolbar to search links by title, directory, or file name.\n\nYou can also filter by link type (Upload, Share) and status (Active, Expired, Disabled). The Refresh button fetches the latest data from the server.',
+		message: 'Use the toolbar to search links by title, directory, or file name.\n\nYou can also filter by link type (Upload, Share) and status (Active, Expired, Disabled). The Refresh button fetches the latest data from all filtered servers.',
 		beforeShow: () => { tourShowDemoLinks.value = true },
 	},
 	{
 		target: '[data-tour="manage-links-table"]',
-		message: 'The table shows all your links at a glance.\n\nEach row displays the link\'s title, type, sharing mode (Original or Review Copy), a short URL you can copy, expiry countdown, status badge, access mode, creation date, and action buttons.\n\nClick any column header to sort. These are example links for the tour — your real links will appear here.',
+		message: 'The table shows all your links at a glance.\n\nEach row displays the link\'s title, type, a short URL you can copy, expiry countdown, status badge, access mode, creation date, server name/IP, and action buttons.\n\nWhen viewing links from multiple servers, the Server column shows which server each link belongs to. Click any column header to sort. These are example links for the tour — your real links will appear here.',
 		beforeShow: () => { tourShowDemoLinks.value = true },
 	},
 	{

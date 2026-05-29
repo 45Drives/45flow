@@ -255,9 +255,9 @@
                                                         v-model:proxyQualities="proxyQualities"
                                                         v-model:watermarkEnabled="watermarkEnabled"
                                                         v-model:selectedExistingWatermark="selectedExistingWatermark"
+                                                        v-model:showDefaultWatermarks="showDefaultWatermarks"
                                                         :watermarkFile="watermarkFile"
                                                         :existingWatermarkFiles="existingWatermarkFiles"
-                                                        :effectiveWatermarkPreviewUrl="effectiveWatermarkPreviewUrl"
                                                         :effectiveWatermarkName="effectiveWatermarkName"
                                                         :usingExistingWatermark="usingExistingWatermark"
                                                         :showHeading="false"
@@ -272,6 +272,14 @@
                                                         @clearWatermark="clearWatermark"
                                                         @refreshWatermarks="loadExistingWatermarkFiles"
                                                     />
+
+                                                    <!-- Watermark Customizer (premium feature) -->
+                                                    <div v-if="watermarkEnabled && (watermarkFile || selectedExistingWatermark)" class="mt-4 border-t border-default pt-4 min-w-0">
+                                                        <WatermarkCustomizer 
+                                                            v-model="watermarkSettings"
+                                                            :watermarkPreviewUrl="effectiveWatermarkPreviewUrl"
+                                                        />
+                                                    </div>
                                                 </DisclosurePanel>
                                             </Disclosure>
                                         </div>
@@ -360,12 +368,16 @@ import CommonLinkControls from '../components/CommonLinkControls.vue'
 import CheckPortForwarding from '../components/CheckPortForwarding.vue'
 import LinkAccessMode from '../components/LinkAccessMode.vue'
 import VideoOptionsPanel from '../components/VideoOptionsPanel.vue'
+import WatermarkCustomizer from '../components/WatermarkCustomizer.vue'
 import type { Commenter } from '../typings/electron'
+import type { WatermarkSettings } from '../types/watermark'
+import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../types/watermark'
 import { useHeader } from '../composables/useHeader'
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
 import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import { useResilientNav } from '../composables/useResilientNav';
 import { useTransferProgress } from '../composables/useTransferProgress'
+import { useConnections } from '../composables/useConnections'
 import { connectionMetaInjectionKey } from '../keys/injection-keys';
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
@@ -373,6 +385,7 @@ import { useOnboarding } from '../composables/useOnboarding'
 const { to } = useResilientNav()
 useHeader('Select Files to Share');
 const transfer = useTransferProgress()
+const { activeConnection } = useConnections()
 const connectionMeta = inject(connectionMetaInjectionKey)!
 const ssh = connectionMeta.value.ssh
 const { requestTour } = useTourManager()
@@ -797,9 +810,12 @@ const proxyQualities = ref<string[]>(['original'])
 const watermarkEnabled = ref(false)
 type LocalFile = { path: string; name: string; size: number; dataUrl?: string | null }
 const watermarkFile = ref<LocalFile | null>(null)
+const watermarkSettings = ref<WatermarkSettings>(createDefaultWatermarkSettings())
+const showDefaultWatermarks = ref(true)
 const existingWatermarkFiles = ref<string[]>([])
 const selectedExistingWatermark = ref('')
 const existingWatermarkPreviewUrl = ref<string | null>(null)
+const detectedWatermarkFile = ref('')
 const overwriteExisting = ref(false)
 const preflightLoading = ref(false)
 const preflightProxyBlocked = ref(false)
@@ -941,6 +957,22 @@ async function runPreflight() {
         preflightWatermarkExistingCount.value = Number(summary.watermarkExistingCount || 0)
         preflightTranscodeInProgressCount.value = Number(summary.transcodeInProgressCount || 0)
 
+        // Extract detected watermark file from preflight items for auto-selection
+        const items = Array.isArray(data?.items) ? data.items : []
+        const detectedWatermarks = items
+            .filter((it: any) => it?.watermarkFile)
+            .map((it: any) => String(it.watermarkFile))
+        if (detectedWatermarks.length > 0) {
+            const allSame = detectedWatermarks.every((w: string) => w === detectedWatermarks[0])
+            if (allSame) {
+                detectedWatermarkFile.value = detectedWatermarks[0]
+            } else {
+                detectedWatermarkFile.value = ''
+            }
+        } else {
+            detectedWatermarkFile.value = ''
+        }
+
         const noticeKey = [
             videoSelected.slice().sort().join('|'),
             preflightProxyBlocked.value ? '1' : '0',
@@ -1014,6 +1046,10 @@ watch(watermarkEnabled, (enabled) => {
     }
 })
 
+watch(showDefaultWatermarks, () => {
+    void loadExistingWatermarkFiles()
+})
+
 function pickWatermark() {
     window.electron.pickWatermark().then(f => {
         if (f) {
@@ -1033,15 +1069,52 @@ async function loadExistingWatermarkFiles() {
         const dirRel = resolveWatermarkDirRel()
         const data = await apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' })
         const entries = Array.isArray(data?.entries) ? data.entries : []
-        existingWatermarkFiles.value = entries
+        const serverWatermarks = entries
             .filter((e: any) => !e?.isDir && typeof e?.name === 'string' && String(e.name).trim())
             .map((e: any) => `${dirRel}/${String(e.name).trim()}`)
             .sort((a: string, b: string) => a.localeCompare(b))
+        
+        // Check which built-in watermarks actually exist on the server
+        const base = connectionMeta.value.apiBase ?? ''
+        const token = connectionMeta.value.token ?? ''
+        const builtinChecks = await Promise.allSettled(
+            DEFAULT_45FLOW_WATERMARKS.map(async (wm) => {
+                const url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(wm.path)}`
+                const res = await fetch(url, { method: 'HEAD', headers: { 'Authorization': `Bearer ${token}` } })
+                return res.ok ? wm.path : null
+            })
+        )
+        const validBuiltins = builtinChecks
+            .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && r.value !== null)
+            .map(r => r.value)
+        
+        // User watermarks first, default watermarks last
+        existingWatermarkFiles.value = showDefaultWatermarks.value ? [...serverWatermarks, ...validBuiltins] : serverWatermarks
 
-        // Auto-load preview for first existing watermark when detected
-        if (allSelectedVideosHaveWatermark.value && existingWatermarkFiles.value.length && !watermarkFile.value && !selectedExistingWatermark.value) {
-            selectedExistingWatermark.value = existingWatermarkFiles.value[0]
-            void fetchExistingWatermarkPreview(existingWatermarkFiles.value[0])
+        // Auto-select: prefer detected watermark from preflight (what's actually in the video),
+        // then fall back to localStorage last-used, then first in list
+        if (!watermarkFile.value && !selectedExistingWatermark.value) {
+            const detected = detectedWatermarkFile.value
+            if (detected && existingWatermarkFiles.value.includes(detected)) {
+                selectedExistingWatermark.value = detected
+                void fetchExistingWatermarkPreview(detected)
+                return
+            }
+
+            try {
+                const lastUsed = localStorage.getItem('45flow-last-watermark')
+                if (lastUsed && existingWatermarkFiles.value.includes(lastUsed)) {
+                    selectedExistingWatermark.value = lastUsed
+                    void fetchExistingWatermarkPreview(lastUsed)
+                    return
+                }
+            } catch { /* ignore storage errors */ }
+
+            // Fallback: first existing watermark when all selected videos have one
+            if (allSelectedVideosHaveWatermark.value && existingWatermarkFiles.value.length) {
+                selectedExistingWatermark.value = existingWatermarkFiles.value[0]
+                void fetchExistingWatermarkPreview(existingWatermarkFiles.value[0])
+            }
         }
     } catch {
         existingWatermarkFiles.value = []
@@ -1207,7 +1280,7 @@ async function uploadWatermarkToProject() {
     const destDir = resolveWatermarkUploadDir()
     const ensured = await ensureServerDirExists(destDir)
     if (!ensured) return { ok: false, error: 'failed to prepare remote watermark directory' }
-    const { done } = await window.electron.rsyncStart({
+    const { id: rsyncId, done } = await window.electron.rsyncStart({
         host,
         user,
         src: watermarkFile.value.path,
@@ -1217,8 +1290,8 @@ async function uploadWatermarkToProject() {
         noIngest: true,
     })
     const res = await done
-    if (!res?.ok) return { ok: false, error: res?.error || 'watermark upload failed' }
-    return { ok: true, relPath: resolveWatermarkRelPath(), reused: false }
+    if (!res?.ok) return { ok: false, error: res?.error || 'watermark upload failed', uploadId: rsyncId }
+    return { ok: true, relPath: resolveWatermarkRelPath(), reused: false, uploadId: rsyncId }
 }
 
 // Map units → seconds
@@ -1561,6 +1634,7 @@ async function generateLink() {
     if (watermarkEnabled.value && (watermarkFile.value?.name || selectedServerWatermark) && !keepExistingWatermark) {
         body.watermark = true
         body.watermarkFile = selectedServerWatermark || resolveWatermarkRelPath() || watermarkFile.value!.name
+        body.watermarkSettings = watermarkSettings.value
         body.watermarkProxyQualities = proxyQualities.value.slice()
     } else if (useExistingWatermarkOnly || keepExistingWatermark) {
         body.watermark = true
@@ -1582,6 +1656,18 @@ async function generateLink() {
         })
         if (watermarkEnabled.value && watermarkFile.value && !keepExistingWatermark && !selectedServerWatermark) {
             const up = await uploadWatermarkToProject()
+            
+            // Dismiss the watermark upload task from Transfer Dock since it's not a user-facing upload
+            if (up.uploadId) {
+                // Find and remove any upload task created by the watermark upload
+                const uploadTasks = transfer.state.tasks.filter(
+                    t => t.kind === 'upload' && t.taskId === up.uploadId
+                )
+                for (const task of uploadTasks) {
+                    transfer.removeTask(task.taskId)
+                }
+            }
+            
             if (!up.ok) {
                 pushNotification(
                     new Notification(
@@ -1657,6 +1743,12 @@ async function generateLink() {
         // Only apply overwrite for the retry; reset for subsequent requests
         overwriteExisting.value = false
 
+        // Persist watermark selection for future auto-select
+        const effectiveWatermark = String(body.watermarkFile || selectedExistingWatermark.value || '').trim()
+        if (effectiveWatermark) {
+            try { localStorage.setItem('45flow-last-watermark', effectiveWatermark) } catch { }
+        }
+
         const wantsHls = hasVideoSelected.value
         if (transcodeProxy.value || wantsHls) {
             const versionIds = extractAssetVersionIdsFromMagicLinkResponse(data);
@@ -1678,10 +1770,10 @@ async function generateLink() {
             const transcodeDetail = (kind: 'hls' | 'proxy_mp4', assetVersionId: number) => {
                 const queuedSet = kind === 'hls' ? hlsQueuedSet : proxyQueuedSet
                 const activeSet = kind === 'hls' ? hlsActiveSet : proxyActiveSet
-                const kindLabel = kind === 'hls' ? 'HLS' : 'review copy'
-                if (activeSet.has(assetVersionId)) return `Tracking ${kindLabel} (already running)`
-                if (queuedSet.has(assetVersionId)) return `Tracking ${kindLabel} (queued now)`
-                return `Tracking ${kindLabel}`
+                const kindLabel = kind === 'hls' ? 'browser stream' : 'review copies'
+                if (activeSet.has(assetVersionId)) return `Generating ${kindLabel} (in progress)`
+                if (queuedSet.has(assetVersionId)) return `Generating ${kindLabel}`
+                return `Generating ${kindLabel}`
             }
 
             if (versionIds.length) {
@@ -1713,8 +1805,8 @@ async function generateLink() {
                             linkUrl: data.viewUrl,
                             linkTitle: linkTitle.value || undefined,
                             file: rec?.path || rec?.relPath || rec?.p || rec?.name,
-                            files: files.value.slice(),
                             proxyQualities: transcodeProxy.value ? proxyQualities.value.slice() : [],
+                            connectionId: activeConnection.value?.connectionId,
                         }
                         const fileId = Number(rec?.id ?? rec?.fileId ?? rec?.file_id ?? rec?.file?.id)
                         const canUsePlayback = !!token && Number.isFinite(fileId) && fileId > 0 && accessMode.value === 'open'
@@ -1729,6 +1821,7 @@ async function generateLink() {
                                 intervalMs: 1500,
                                 jobKind: 'hls',
                                 context,
+                                assetVersionId,
                                 fetchSnapshot: async () => {
                                     const payload = await apiFetch(playbackPath, { suppressAuthRedirect: true })
                                     const j = payload?.transcodes?.hls || payload?.transcodes?.HLS || null
@@ -1737,6 +1830,8 @@ async function generateLink() {
                                         progress: j?.progress ?? payload?.hlsProgress ?? 0,
                                         etaSeconds: j?.eta_seconds ?? null,
                                         speedX: j?.speed_x ?? null,
+                                        transcoder: j?.transcoder,
+                                        encoder: j?.encoder,
                                     }
                                 }
                             })
@@ -1760,6 +1855,7 @@ async function generateLink() {
                                     intervalMs: 1500,
                                     jobKind: 'proxy_mp4',
                                     context,
+                                    assetVersionId,
                                     fetchSnapshot: async () => {
                                         const payload = await apiFetch(playbackPath, { suppressAuthRedirect: true })
                                         const j = payload?.transcodes?.proxy_mp4 || payload?.transcodes?.proxy || null
@@ -1771,6 +1867,8 @@ async function generateLink() {
                                             qualityOrder: j?.quality_order ?? j?.qualityOrder ?? payload?.quality_order ?? payload?.qualityOrder,
                                             activeQuality: j?.active_quality ?? j?.activeQuality ?? payload?.active_quality ?? payload?.activeQuality,
                                             perQualityProgress: j?.per_quality_progress ?? j?.perQualityProgress ?? payload?.per_quality_progress ?? payload?.perQualityProgress,
+                                            transcoder: j?.transcoder,
+                                            encoder: j?.encoder,
                                         }
                                     }
                                 })
@@ -1811,6 +1909,7 @@ async function generateLink() {
                                 linkTitle: linkTitle.value || undefined,
                                 files: files.value.slice(),
                                 proxyQualities: transcodeProxy.value ? proxyQualities.value.slice() : [],
+                                connectionId: activeConnection.value?.connectionId,
                             },
                         });
                     }
@@ -1829,6 +1928,15 @@ async function generateLink() {
                             title: "Generating transcodes",
                             detail: `Tracking file ${fileId}`,
                             intervalMs: 1500,
+                            context: {
+                                source: 'link',
+                                groupId: `link:${data.viewUrl}`,
+                                linkUrl: data.viewUrl,
+                                linkTitle: linkTitle.value || undefined,
+                                files: files.value.slice(),
+                                proxyQualities: transcodeProxy.value ? proxyQualities.value.slice() : [],
+                                connectionId: activeConnection.value?.connectionId,
+                            },
                         });
                     }
 

@@ -18,5 +18,5 @@ buildMac.sh
 
 scripts/release/RELEASE_*
 .electron-dev-userdata
-*.dmg
+IMPLEMENTATION_*.md*.dmg
 *.zip

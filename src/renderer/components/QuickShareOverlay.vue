@@ -36,7 +36,10 @@
       <!-- Header -->
       <div class="flex items-center justify-between mb-4 shrink-0">
         <h2 class="text-lg font-semibold">
-          Upload {{ droppedFiles.length === 1 ? `"${droppedFiles[0].name}"` : `${droppedFiles.length} files` }} to server?
+          Upload {{ droppedFiles.length === 1 ? `"${droppedFiles[0].name}"` : `${droppedFiles.length} files` }} to server
+          <span v-if="activeConnection" class="text-sm text-muted font-normal ml-2">
+            ({{ activeConnection.name }})
+          </span>
         </h2>
         <div class="flex items-center gap-2">
           <button class="btn btn-secondary flex items-center gap-1" @click="minimized = true" title="Minimize">
@@ -128,6 +131,9 @@
                 <span class="text-sm">External (Internet)</span>
               </label>
             </div>
+            <button type="button" @click="showPortFwdModal = true" class="text-xs text-primary hover:underline whitespace-nowrap">
+              Learn how to set up port forwarding
+            </button>
           </div>
         </div>
 
@@ -178,9 +184,9 @@
               v-model:proxyQualities="proxyQualities"
               v-model:watermarkEnabled="watermarkEnabled"
               v-model:selectedExistingWatermark="selectedExistingWatermark"
+              v-model:showDefaultWatermarks="showDefaultWatermarks"
               :watermarkFile="watermarkFile"
               :existingWatermarkFiles="existingWatermarkFiles"
-              :effectiveWatermarkPreviewUrl="watermarkPreviewUrl"
               :effectiveWatermarkName="watermarkFile ? watermarkFile.name : (selectedExistingWatermark ? selectedExistingWatermark.split('/').pop() || '' : '')"
               dataTour="qs-video-options"
               :compact="true"
@@ -190,6 +196,14 @@
               @clearWatermark="clearWatermark"
               @refreshWatermarks="loadExistingWatermarkFiles"
             />
+
+            <!-- Premium Watermark Customization -->
+            <div v-if="hasVideo && watermarkEnabled && (watermarkFile || selectedExistingWatermark)" class="mt-3 border-t border-default pt-3">
+              <WatermarkCustomizer 
+                v-model="watermarkSettings" 
+                :watermarkPreviewUrl="watermarkPreviewUrl"
+              />
+            </div>
           </DisclosurePanel>
         </Disclosure>
 
@@ -206,6 +220,8 @@
           :preselectedGroups="accessGroups"
           @apply="onApplyUsers" />
       </section>
+
+      <PortForwardingModal v-if="showPortFwdModal" @close="showPortFwdModal = false" />
 
       <!-- ===== STEP 3: Upload & Share Progress ===== -->
       <section v-show="wizardStep === 3" data-tour="qs-step-upload">
@@ -272,7 +288,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, inject, watch, onMounted, onBeforeUnmount, toRaw } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowUpTrayIcon, ChevronDownIcon, MinusIcon } from '@heroicons/vue/24/outline'
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
@@ -280,17 +296,22 @@ import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { appLog } from '../composables/useLog'
 import { connectionMetaInjectionKey, currentServerInjectionKey } from '../keys/injection-keys'
 import { useApi } from '../composables/useApi'
+import { useConnections } from '../composables/useConnections'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { useClientTranscode } from '../composables/useClientTranscode'
 import { useUploadTranscode } from '../composables/useUploadTranscode'
 import { signalLinkCreated } from '../composables/useLinkRefresh'
-import { tourQuickShareOpen, tourQuickShareStep, tourQuickShareShowDone } from '../composables/useQuickShareTour'
+import { tourQuickShareOpen, tourQuickShareStep, tourQuickShareShowDone, quickShareOverlayOpen } from '../composables/useQuickShareTour'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
 import FolderPicker from './FolderPicker.vue'
 import AddUsersModal from './modals/AddUsersModal.vue'
+import PortForwardingModal from './modals/PortForwardingModal.vue'
 import LinkAccessMode from './LinkAccessMode.vue'
 import VideoOptionsPanel from './VideoOptionsPanel.vue'
+import WatermarkCustomizer from './WatermarkCustomizer.vue'
+import type { WatermarkSettings } from '../types/watermark'
+import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../types/watermark'
 import type { Commenter, RsyncProgress } from '../typings/electron'
 
 // Cast to avoid TS plugin resolution issues with global Window augmentation
@@ -300,6 +321,7 @@ type DroppedFile = { path: string; name: string; size: number }
 
 const route = useRoute()
 const { apiFetch } = useApi()
+const { activeConnection } = useConnections()
 const transfer = useTransferProgress()
 const currentServer = inject(currentServerInjectionKey)!
 const connectionMeta = inject(connectionMetaInjectionKey)!
@@ -366,7 +388,7 @@ const quickShareTourSteps: TourStep[] = [
   // ── Quick Share Step 2: Network ──
   {
     target: '[data-tour="qs-network"]',
-    message: 'Choose the network for your share link.\n\nLocal (LAN) generates an internal URL for your network. External (Internet) uses your public domain or IP so anyone outside your network can access it.',
+    message: 'Choose the network for your share link.\n\nLocal (LAN) generates an internal URL for your network. External (Internet) uses your public domain or IP so anyone outside your network can access it (this requires port forwarding to be set up to your server).\n\nClick "Learn how to set up port forwarding" to see detailed setup instructions.',
     beforeShow: () => {
       tourQuickShareOpen.value = true
       tourQuickShareStep.value = 2
@@ -496,11 +518,10 @@ function onDocDrop(e: DragEvent) {
 
   if (!onboarding.value.quickShareTourDone) {
     // First drop — run the Quick Share tour first, then open the real modal
+    // But only if tours are enabled; otherwise skip straight to modal
     pendingDropFiles = files
-    requestTour('quickShare', quickShareTourSteps, () => {
+    const tourShown = requestTour('quickShare', quickShareTourSteps, () => {
       markDone('quickShareTourDone')
-      // Restore the user's real files before exiting tour mode
-      // so the watcher doesn't blank the modal.
       const realFiles = pendingDropFiles
       pendingDropFiles = []
       tourQuickShareShowDone.value = false
@@ -512,7 +533,11 @@ function onDocDrop(e: DragEvent) {
       tourQuickShareOpen.value = false
       showModal.value = realFiles.length > 0
     })
-    return
+    // If requestTour actually started the tour, wait for it to finish
+    if (tourShown !== false) return
+    // Tours disabled — mark done and fall through
+    markDone('quickShareTourDone')
+    pendingDropFiles = []
   }
 
   droppedFiles.value = files
@@ -536,6 +561,7 @@ onBeforeUnmount(() => {
 
 // ── Modal state ──
 const showModal = ref(false)
+watch(showModal, (v) => { quickShareOverlayOpen.value = v })
 const minimized = ref(false)
 const droppedFiles = ref<DroppedFile[]>([])
 const wizardStep = ref<1 | 2 | 3>(1)
@@ -599,6 +625,7 @@ const proxyQualities = ref<string[]>(['original'])
 
 // Restricted users
 const userModalOpen = ref(false)
+const showPortFwdModal = ref(false)
 const accessUsers = ref<Commenter[]>([])
 const accessGroups = ref<{ id: number; name: string; member_count?: number; display_color?: string | null; role_id: number | null; role_name: string | null }[]>([])
 const linkContext = { type: 'download' as const }
@@ -607,6 +634,8 @@ const linkContext = { type: 'download' as const }
 const watermarkEnabled = ref(false)
 type LocalFile = { path: string; name: string; size: number; dataUrl?: string | null }
 const watermarkFile = ref<LocalFile | null>(null)
+const watermarkSettings = ref<WatermarkSettings>(createDefaultWatermarkSettings())
+const showDefaultWatermarks = ref(true)
 const existingWatermarkFiles = ref<string[]>([])
 const selectedExistingWatermark = ref('')
 const existingWatermarkPreviewUrl = ref<string | null>(null)
@@ -729,6 +758,10 @@ watch(watermarkEnabled, (enabled) => {
   }
 })
 
+watch(showDefaultWatermarks, () => {
+  void loadExistingWatermarkFiles()
+})
+
 watch(selectedExistingWatermark, (v) => {
   if (String(v || '').trim()) {
     watermarkFile.value = null
@@ -823,10 +856,36 @@ async function loadExistingWatermarkFiles() {
     const dirRel = resolveWatermarkDirRel()
     const data = await apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' })
     const entries = Array.isArray(data?.entries) ? data.entries : []
-    existingWatermarkFiles.value = entries
+    const serverWatermarks = entries
       .filter((e: any) => !e?.isDir && typeof e?.name === 'string' && String(e.name).trim())
       .map((e: any) => `${dirRel}/${String(e.name).trim()}`)
       .sort((a: string, b: string) => a.localeCompare(b))
+    
+    // Check which built-in watermarks actually exist on the server
+    const base = connectionMeta.value.apiBase ?? ''
+    const token = connectionMeta.value.token ?? ''
+    const builtinChecks = await Promise.allSettled(
+      DEFAULT_45FLOW_WATERMARKS.map(async (wm) => {
+        const url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(wm.path)}`
+        const res = await fetch(url, { method: 'HEAD', headers: { 'Authorization': `Bearer ${token}` } })
+        return res.ok ? wm.path : null
+      })
+    )
+    const validBuiltins = builtinChecks
+      .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && r.value !== null)
+      .map(r => r.value)
+    
+    // User watermarks first, default watermarks last
+    existingWatermarkFiles.value = showDefaultWatermarks.value ? [...serverWatermarks, ...validBuiltins] : serverWatermarks
+    
+    // Auto-select last used watermark if available
+    try {
+      const lastUsed = localStorage.getItem('45flow-last-watermark')
+      if (lastUsed && existingWatermarkFiles.value.includes(lastUsed) && !watermarkFile.value && !selectedExistingWatermark.value) {
+        selectedExistingWatermark.value = lastUsed
+        void fetchExistingWatermarkPreview(lastUsed)
+      }
+    } catch { /* ignore storage errors */ }
   } catch {
     existingWatermarkFiles.value = []
   }
@@ -860,7 +919,7 @@ async function uploadWatermarkToProject() {
   const destDir = resolveWatermarkUploadDir()
   const ensured = await ensureServerDirExists(destDir)
   if (!ensured) return { ok: false, error: 'failed to prepare remote watermark directory' }
-  const { done } = await electron.rsyncStart({
+  const { id: rsyncId, done } = await electron.rsyncStart({
     host,
     user,
     src: watermarkFile.value.path,
@@ -870,8 +929,8 @@ async function uploadWatermarkToProject() {
     noIngest: true,
   })
   const res = await done
-  if (!res?.ok) return { ok: false, error: res?.error || 'watermark upload failed' }
-  return { ok: true, relPath: resolveWatermarkRelPath() }
+  if (!res?.ok) return { ok: false, error: res?.error || 'watermark upload failed', uploadId: rsyncId }
+  return { ok: true, relPath: resolveWatermarkRelPath(), uploadId: rsyncId }
 }
 
 let linkDefaultsLoaded = false
@@ -1027,6 +1086,7 @@ async function startUploadAndShare() {
               useHardwareAccel: hwAccelSetting.value,
               preset: transcodePreset.value,
               watermarkPath: localWatermarkPath || undefined,
+              watermarkSettings: localWatermarkPath ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
             },
             (progress: { percent: number; fps: any; speed: any; eta: any }) => {
               perFileProgress.value[f.path] = progress.percent
@@ -1133,6 +1193,7 @@ async function startUploadAndShare() {
 
     // Upload watermark if needed
     let watermarkRelPath = ''
+    let watermarkUploadId: string | undefined
     if (watermarkEnabled.value && hasVideo.value) {
       const selectedServerWm = String(selectedExistingWatermark.value || '').trim()
       if (selectedServerWm) {
@@ -1146,6 +1207,7 @@ async function startUploadAndShare() {
           return
         }
         watermarkRelPath = (wmUp as any).relPath || ''
+        watermarkUploadId = (wmUp as any).uploadId
       }
     }
 
@@ -1205,6 +1267,10 @@ async function startUploadAndShare() {
       body.watermark = true
       body.watermarkFile = watermarkRelPath
       body.watermarkProxyQualities = proxyQualities.value.slice()
+      // Premium: Pass custom watermark settings to server
+      if (watermarkSettings.value) {
+        body.watermarkSettings = watermarkSettings.value
+      }
     }
 
     // If client applied the watermark, tell the server so it doesn't re-watermark
@@ -1231,6 +1297,16 @@ async function startUploadAndShare() {
     viewUrl.value = data.viewUrl || ''
     uploadPhase.value = 'done'
     signalLinkCreated()
+
+    // Dismiss the watermark upload task from Transfer Dock since it's not a user-facing upload
+    if (watermarkUploadId) {
+      const uploadTasks = transfer.state.tasks.filter(
+        t => t.kind === 'upload' && t.taskId === watermarkUploadId
+      )
+      for (const task of uploadTasks) {
+        transfer.removeTask(task.taskId)
+      }
+    }
 
     // ── Start transcode tracking in the TransferDock ──
     // When client transcoding is enabled, the FFmpeg onProgress callback
@@ -1267,7 +1343,13 @@ async function startUploadAndShare() {
           : ''
         const filePath = rec?.path || rec?.name || 'File'
         const displayName = rec?.name || rec?.path || 'File'
-        const context = { source: 'upload' as const, groupId, file: filePath }
+        const context = { 
+          source: 'link' as const, 
+          groupId, 
+          file: filePath,
+          linkUrl: viewUrl.value,
+          linkTitle: linkTitle.value || undefined
+        }
 
         const alreadyTrackingHls = transfer.hasActiveTranscode({
           assetVersionIds: [assetVersionId],
@@ -1287,6 +1369,7 @@ async function startUploadAndShare() {
             intervalMs: 1500,
             jobKind: 'hls',
             context,
+            assetVersionId,
             fetchSnapshot: async () => {
               const payload = await apiFetch(playbackPath, { suppressAuthRedirect: true })
               const j = payload?.transcodes?.hls || payload?.transcodes?.HLS || null
@@ -1307,6 +1390,7 @@ async function startUploadAndShare() {
             intervalMs: 1500,
             jobKind: 'proxy_mp4',
             context,
+            assetVersionId,
             fetchSnapshot: async () => {
               const payload = await apiFetch(playbackPath, { suppressAuthRedirect: true })
               const j = payload?.transcodes?.proxy_mp4 || payload?.transcodes?.proxy || null
@@ -1359,14 +1443,23 @@ async function startUploadAndShare() {
           generateHls: true,
           apiFetch,
           context: {
-            source: 'upload' as const,
+            source: 'link' as const,
             groupId,
             file: filePath,
+            linkUrl: viewUrl.value,
+            linkTitle: linkTitle.value || undefined,
             proxyQualities: pQualities,
+            connectionId: activeConnection.value?.connectionId,
           },
         })
 
         // Run transcode async — same composable as LocalUploadPanel
+        console.log('[quick-share] runClientTranscode watermark debug:', {
+          localWatermarkPath,
+          watermarkSettingsRaw: watermarkSettings.value,
+          watermarkSettingsToRaw: localWatermarkPath ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
+          watermarkEnabled: watermarkEnabled.value,
+        })
         ;(async () => {
           const result = await runClientTranscode({
             assetVersionId: avId,
@@ -1375,6 +1468,7 @@ async function startUploadAndShare() {
             proxyQualities: pQualities,
             generateHls: true,
             watermarkPath: localWatermarkPath,
+            watermarkSettings: localWatermarkPath ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
             ssh: {
               host: host || '',
               user: user || '',

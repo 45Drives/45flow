@@ -5,6 +5,8 @@ import fs from 'fs';
 import { app } from 'electron';
 import { getFfmpegPath, getFfprobePath } from './ffmpeg-paths';
 import { detectHardwareCapabilities, hasHardwareAcceleration } from './hardware-detect';
+import { buildWatermarkFilter } from './watermark-filter';
+import type { WatermarkSettings } from '../preload';
 
 export interface TranscodeOptions {
   inputPath: string;
@@ -13,6 +15,7 @@ export interface TranscodeOptions {
   useHardwareAccel: boolean;
   preset?: 'fast' | 'balanced' | 'quality';
   watermarkPath?: string; // Absolute path to watermark image (PNG with alpha)
+  watermarkSettings?: WatermarkSettings | null;
 }
 
 export interface TranscodeProgress {
@@ -223,32 +226,21 @@ export class TranscodeManager {
       : 0; // 0 = no scale (original)
 
     if (hasWatermark) {
-      // --- Watermark path: use -filter_complex for overlay ---
-      // Scale watermark to 1/5 of the output height (matches server & FullTranscodeManager)
-      const scaleExpr = targetHeight > 0 ? `scale=-2:${targetHeight}:flags=lanczos,` : '';
-      const effectiveHeight = targetHeight || sourceHeight;
-      const wmW = Math.round(effectiveHeight / 5);
-      let filterComplex: string;
-
+      // Determine hardware upload filter based on codec
+      let hwUpload: string | null = null
       if (codec.includes('vaapi')) {
-        // VAAPI: overlay in system memory, then hwupload for encoding
-        filterComplex =
-          `[0:v]${scaleExpr}format=yuv420p[base];` +
-          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
-          `[base][wm]overlay=W-w-24:H-h-24,format=nv12,hwupload[outv]`;
+        hwUpload = 'format=nv12,hwupload'
       } else if (codec.includes('qsv')) {
-        // QSV: overlay in system memory, then hwupload for encoding
-        filterComplex =
-          `[0:v]${scaleExpr}format=yuv420p[base];` +
-          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
-          `[base][wm]overlay=W-w-24:H-h-24,hwupload=extra_hw_frames=64[outv]`;
-      } else {
-        // Software / NVENC / VideoToolbox / AMF: overlay in system memory, encoder reads it directly
-        filterComplex =
-          `[0:v]${scaleExpr}format=yuv420p[base];` +
-          `[1:v]scale=${wmW}:-1:flags=lanczos,colorchannelmixer=aa=1[wm];` +
-          `[base][wm]overlay=W-w-24:H-h-24[outv]`;
+        hwUpload = 'hwupload=extra_hw_frames=64'
       }
+
+      // Build watermark filter (premium custom or legacy fixed position)
+      const filterComplex = buildWatermarkFilter(
+        options.watermarkSettings,
+        targetHeight || null,
+        sourceHeight,
+        hwUpload
+      )
 
       args.push('-filter_complex', filterComplex);
       args.push('-map', '[outv]');
@@ -383,6 +375,11 @@ export class TranscodeManager {
       } catch {}
     }
     this.activeJobs.clear();
+  }
+
+  /** Check if any transcode jobs are currently running */
+  hasActiveJobs(): boolean {
+    return this.activeJobs.size > 0;
   }
 
   getActiveJobCount(): number {

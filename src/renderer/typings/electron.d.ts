@@ -260,6 +260,20 @@ export interface ElectronApi {
 
   rsyncCancel: (id: string) => void
 
+  // Persisted uploads (detached rsync)
+  listPersistedUploads: () => Promise<Array<{
+    id: string
+    fileName: string
+    fileSize?: number
+    host: string
+    destDir: string
+    startedAt: number
+    status: string
+  }>>
+
+  /** Subscribe to progress for an already-running detached rsync */
+  listenUploadProgress: (id: string, onProgress: (p: RsyncProgress) => void) => () => void
+
   /** -------- Client-side Transcoding -------- */
   transcodeStart: (
     options: TranscodeOptions,
