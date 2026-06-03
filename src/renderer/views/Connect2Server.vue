@@ -626,7 +626,7 @@ async function readHttpError(res: Response): Promise<string> {
     return rid && !String(base).includes(rid) ? `${base} (request ${rid})` : String(base);
 }
 
-async function ensureLicenseActivated(apiBase: string) {
+async function ensureLicenseActivated(apiBase: string, token: string) {
     let statusResp: Response
     try {
         statusResp = await fetch(`${apiBase}/api/license/status`)
@@ -645,7 +645,10 @@ async function ensureLicenseActivated(apiBase: string) {
 
     const activateResp = await fetch(`${apiBase}/api/license/activate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ licenseKey: key.trim() }),
     })
 
@@ -877,9 +880,6 @@ async function connectToServer() {
             unlistenProgress = null;
         }
 
-        // Healthy now — activate license if required, then proceed to login
-        await ensureLicenseActivated(apiBase)
-
         const res = await fetch(`${apiBase}/api/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -912,6 +912,9 @@ async function connectToServer() {
         statusLine.value = '';
         
         try { sessionStorage.setItem('hb_token', token); } catch { /* ignore */ }
+
+        // Activate license if required (must happen after login so we have a token)
+        await ensureLicenseActivated(apiBase, token)
 
         // Seed initial settings only if not already configured
         try {

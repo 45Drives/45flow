@@ -1818,6 +1818,8 @@ function createWindow() {
   const srvByInstance = new Map<string, SrvRec>();   // key: instance (SRV.name)
   const txtByInstance = new Map<string, TxtMap>();   // key: instance (SRV.name)
   const aByHost = new Map<string, string>();         // key: A.name (host) → IPv4
+  const instanceLastSeenAt = new Map<string, number>(); // track freshness of each mDNS instance
+  const ownerInstanceByIp = new Map<string, string>();  // which instance "owns" each IP's name
 
   function parseTxt(answer: any): TxtMap {
     const out: TxtMap = {};
@@ -1869,6 +1871,17 @@ function createWindow() {
       fallbackAdded: false,
     };
 
+    // Track which mDNS instance owns this IP (prefer the most recently seen)
+    const currentOwner = ownerInstanceByIp.get(ip);
+    const currentOwnerTs = currentOwner ? (instanceLastSeenAt.get(currentOwner) || 0) : 0;
+    const thisInstanceTs = instanceLastSeenAt.get(norm(instanceRaw)) || Date.now();
+    if (!currentOwner || thisInstanceTs >= currentOwnerTs) {
+      ownerInstanceByIp.set(ip, norm(instanceRaw));
+    } else {
+      // This instance is stale (old hostname cache) — skip name update
+      s.name = undefined as any; // will be filtered out below
+    }
+
     (async () => {
       try {
         // const r = await fetch(`http://${s.ip}:9095/setup-status`);
@@ -1880,7 +1893,11 @@ function createWindow() {
       // upsert and notify after probe too
       const existing = discoveredServers.find(x => x.ip === s.ip);
       if (!existing) discoveredServers.push(s);
-      else Object.assign(existing, s, { lastSeen: Date.now(), fallbackAdded: false });
+      else {
+        const { name: incomingName, ...rest } = s;
+        Object.assign(existing, rest, { lastSeen: Date.now(), fallbackAdded: false });
+        if (incomingName) existing.name = incomingName;
+      }
 
       safeSend('discovered-servers', discoveredServers);
       safeSend('client-ip', getLocalIP());
@@ -1888,7 +1905,11 @@ function createWindow() {
 
     const existing = discoveredServers.find(x => x.ip === s.ip);
     if (!existing) discoveredServers.push(s);
-    else Object.assign(existing, s, { lastSeen: Date.now(), fallbackAdded: false });
+    else {
+      const { name: incomingName, ...rest } = s;
+      Object.assign(existing, rest, { lastSeen: Date.now(), fallbackAdded: false });
+      if (incomingName) existing.name = incomingName;
+    }
     safeSend('discovered-servers', discoveredServers);
     safeSend('client-ip', getLocalIP());
     attachSetupSSE(s.ip);   // initial status comes via SSE immediately
@@ -1924,12 +1945,15 @@ function createWindow() {
         const data = r.data as any;
         const target = norm(data?.target);
         srvByInstance.set(inst, { target, port: Number(data?.port || 0) });
+        instanceLastSeenAt.set(inst, Date.now());
         mDNSClient.query([
           { name: target, type: 'A' },
           { name: target, type: 'AAAA' },
         ]);
       } else if (r.type === 'TXT' && r.name && r.name.toLowerCase().includes(SERVICE_TYPE)) {
-        txtByInstance.set(norm(r.name), parseTxt(r));
+        const inst = norm(r.name);
+        txtByInstance.set(inst, parseTxt(r));
+        instanceLastSeenAt.set(inst, Date.now());
       } else if (r.type === 'A' && r.name && typeof r.data === 'string') {
         const host = norm(r.name);
         const ip = r.data;

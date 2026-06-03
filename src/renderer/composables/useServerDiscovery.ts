@@ -29,9 +29,17 @@ export function useServerDiscovery() {
       const current = discoveryState.servers[idx]
       // Don't overwrite a real hostname with an IP
       const hasRealHostname = server.name && server.name !== server.ip
+      // Don't let a stale saved/registry name override a live mDNS name
+      const currentIsLive = !current.manuallyAdded && !current.fallbackAdded
+      const incomingIsStale = server.manuallyAdded || server.registryDiscovered
+      const nameToUse = hasRealHostname
+        ? (currentIsLive && incomingIsStale && current.name && current.name !== current.ip
+          ? current.name
+          : server.name)
+        : current.name
       const updated = {
         ...current, ...server,
-        name: hasRealHostname ? server.name : current.name,
+        name: nameToUse,
         fallbackAdded: server.fallbackAdded ?? (hasRealHostname ? false : current.fallbackAdded),
       }
       discoveryState.servers.splice(idx, 1, updated)
