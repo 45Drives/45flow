@@ -5,7 +5,12 @@
       class="fixed right-4 bottom-4 z-[1200] w-[560px] max-w-[calc(100vw-1.5rem)] rounded-xl border border-default bg-default shadow-2xl p-6 text-left"
     >
       <div class="text-xl font-semibold text-default">{{ title }}</div>
-      <div class="text-base leading-relaxed text-default mt-2 break-words">{{ message }}</div>
+      <div 
+        class="text-base leading-relaxed text-default mt-2 break-words"
+        :class="{ 'whitespace-pre-wrap font-mono text-sm': state === 'manual' }"
+      >
+        {{ message }}
+      </div>
 
       <div v-if="state === 'downloading'" class="mt-4">
         <div class="h-3 w-full bg-well rounded overflow-hidden">
@@ -35,12 +40,12 @@
           Download Update
         </button>
         <button
-          v-if="state === 'downloaded'"
+          v-if="state === 'downloaded' || state === 'installing'"
           class="btn btn-success px-4 py-2 text-sm"
           :disabled="busy"
           @click="installNow"
         >
-          Restart & Install
+          {{ state === 'installing' ? 'Installing…' : 'Restart & Install' }}
         </button>
         <button
           class="btn btn-secondary px-4 py-2 text-sm"
@@ -57,7 +62,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
-type UpdateBannerState = 'idle' | 'checking' | 'available' | 'none' | 'downloading' | 'downloaded' | 'error'
+type UpdateBannerState = 'idle' | 'checking' | 'available' | 'none' | 'downloading' | 'downloaded' | 'installing' | 'manual' | 'error'
 
 const enabled = ref(false)
 const busy = ref(false)
@@ -73,7 +78,8 @@ const canCheckNow = computed(() => ['none', 'error'].includes(state.value))
 const title = computed(() => {
   if (state.value === 'checking') return 'Checking for updates...'
   if (state.value === 'available' || state.value === 'downloading') return 'Update Available'
-  if (state.value === 'downloaded') return 'Update Ready'
+  if (state.value === 'downloaded' || state.value === 'installing') return 'Update Ready'
+  if (state.value === 'manual') return 'Manual Installation Required'
   if (state.value === 'error') return 'Update Error'
   if (state.value === 'none') return 'Up To Date'
   return ''
@@ -84,6 +90,8 @@ const message = computed(() => {
   if (state.value === 'available') return latestVersion.value ? `Version ${latestVersion.value} is available. Would you like to download it?` : 'A new version is available. Would you like to download it?'
   if (state.value === 'downloading') return latestVersion.value ? `Downloading version ${latestVersion.value}.` : 'Downloading update package.'
   if (state.value === 'downloaded') return latestVersion.value ? `Version ${latestVersion.value} is ready to install.` : 'The update is ready to install.'
+  if (state.value === 'installing') return 'Installing update…'
+  if (state.value === 'manual') return errorMessage.value || 'The update has been downloaded. Please install it manually using your package manager.'
   if (state.value === 'error') return errorMessage.value || 'Unable to check or download update.'
   if (state.value === 'none') return 'You already have the latest version.'
   return ''
@@ -144,12 +152,32 @@ async function downloadNow() {
 
 async function installNow() {
   busy.value = true
+  setState('installing')
+  
   try {
-    await window.electron?.ipcRenderer.invoke('update:install')
+    const result = await window.electron?.ipcRenderer.invoke('update:install')
+    
+    // If manual installation is required (Linux deb/rpm), show instructions
+    if (result && !result.ok && result.manualInstall) {
+      errorMessage.value = result.error
+      setState('manual')
+      busy.value = false
+      return
+    }
+    
+    // If there's an error but not manual install, show it
+    if (result && !result.ok) {
+      errorMessage.value = result.error || 'Installation failed.'
+      setState('error')
+      busy.value = false
+      return
+    }
+    
+    // Otherwise app is restarting automatically (this won't execute as app quits)
   } catch (err: any) {
+    // App is likely restarting, but handle unexpected errors
     errorMessage.value = toUserFriendlyError(err)
     setState('error')
-  } finally {
     busy.value = false
   }
 }

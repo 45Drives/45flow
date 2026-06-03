@@ -1608,6 +1608,12 @@ function createWindow() {
     return os;
   });
   
+  ipcMain.handle('is-appimage', () => {
+    const isAppImage = !!process.env.APPIMAGE;
+    jl('debug', `ipc.is-appimage: ${isAppImage}`);
+    return isAppImage;
+  });
+  
   ipcMain.handle('scan-network-fallback', async () => {
     jl('info', 'ipc.scan-network-fallback.start');
 

@@ -118,6 +118,46 @@ export function initAutoUpdates(getMainWindow: () => BrowserWindow | null) {
     })
 
     ipcMain.handle('update:install', async () => {
+        // On Linux with deb/rpm installations (not AppImage), the updater cannot
+        // replace system files without sudo. Instead of prompting for elevation,
+        // we direct users to manually install the downloaded package.
+        if (process.platform === 'linux') {
+            // Check if running from AppImage (portable, no sudo needed)
+            const isAppImage = !!process.env.APPIMAGE
+            
+            // Check if the downloaded file is a deb or rpm package
+            const downloadPath = autoUpdater.downloadedUpdateHelper?.downloadedFileInfo?.path || ''
+            const isDebOrRpm = /\.(deb|rpm)$/i.test(downloadPath)
+            
+            if (!isAppImage && isDebOrRpm && downloadPath) {
+                const fileType = downloadPath.endsWith('.deb') ? 'deb' : 'rpm'
+                const installCmd = fileType === 'deb' 
+                    ? `sudo apt install "${downloadPath}"`
+                    : `sudo dnf install "${downloadPath}"`
+                
+                return {
+                    ok: false,
+                    manualInstall: true,
+                    downloadPath,
+                    error: `On Linux with system-installed packages, automatic installation requires administrator access.\n\n` +
+                           `The update has been downloaded to:\n${downloadPath}\n\n` +
+                           `To complete the installation:\n\n` +
+                           `1. Open a terminal\n` +
+                           `2. Run: ${installCmd}\n` +
+                           `3. Enter your password when prompted\n\n` +
+                           `Your settings and data will be preserved during the upgrade.`
+                }
+            }
+            
+            if (!isAppImage && !downloadPath) {
+                return {
+                    ok: false,
+                    error: 'Update downloaded but file path not available. Please download the update manually from the GitHub releases page.'
+                }
+            }
+        }
+        
+        // AppImage or other platforms: proceed with normal auto-install
         autoUpdater.quitAndInstall(false, true)
         return { ok: true }
     })

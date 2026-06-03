@@ -69,6 +69,7 @@ export function useServerDiscovery() {
       const toAdd = fallback.filter(fb => !discoveryState.servers.some(existing => existing.ip === fb.ip))
       if (toAdd.length) {
         discoveryState.servers.push(...toAdd)
+        sortServers()
       }
     } catch (err) {
       console.error('Fallback scan failed:', err)
@@ -116,11 +117,23 @@ export function useServerDiscovery() {
     }
   }
 
-  onMounted(() => {
+  onMounted(async () => {
     window.electron?.ipcRenderer.on('discovered-servers', onDiscovered)
-    // Query VPS registry first (fast, works cross-subnet), then local fallback scan
+    
+    // Query VPS registry first (fast, works cross-subnet)
     queryRegistryServers()
-    setTimeout(runFallbackScanOnce, 1200)
+    
+    // Check if running from AppImage (mDNS won't work, so trigger fallback immediately)
+    const isAppImage = await window.electron?.ipcRenderer.invoke('is-appimage').catch(() => false)
+    
+    if (isAppImage) {
+      // AppImage: mDNS multicast is often blocked, so use fallback network scan immediately
+      console.log('[discovery] AppImage detected - using fallback network scan immediately')
+      setTimeout(runFallbackScanOnce, 300)
+    } else {
+      // Standard install: wait a bit to give mDNS time to discover servers first
+      setTimeout(runFallbackScanOnce, 1200)
+    }
   })
 
   onBeforeUnmount(() => {
