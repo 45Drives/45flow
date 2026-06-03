@@ -19,90 +19,87 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
    - [Activating Your License](#activating-your-license)
 4. [Dashboard Overview](#4-dashboard-overview)
 5. [Port Forwarding for External Sharing](#5-port-forwarding-for-external-sharing)
-6. [Drag and Drop QuickShare](#6-drag-and-drop-quickshare)
-7. [Share Files Remotely (Generate a Share Link)](#7-share-files-remotely-generate-a-share-link)
+6. [Settings](#6-settings)
+   - [URLs & Access](#urls--access)
+   - [SSL Certificate Management](#ssl-certificate-management)
+   - [Link Options](#link-options)
+   - [Project Root](#project-root)
+   - [Preferences & Performance](#preferences--performance)
+   - [Server Health](#server-health)
+   - [Maintenance & Cleanup](#maintenance--cleanup)
+   - [Guides](#guides)
+7. [Custom Branding (White Label)](#7-custom-branding-white-label)
+   - [Enabling Branding](#enabling-branding)
+   - [Company Identity](#company-identity)
+   - [Theme & Colors](#theme--colors)
+   - [Company Logo](#company-logo)
+   - [Support & Contact Information](#support--contact-information)
+   - [Link Preview Metadata](#link-preview-metadata)
+   - [Live Preview](#live-preview)
+   - [Clearing Branding](#clearing-branding)
+8. [Drag and Drop QuickShare](#8-drag-and-drop-quickshare)
+9. [Share Files Remotely (Generate a Share Link)](#9-share-files-remotely-generate-a-share-link)
    - [Step 1: Select a Project](#step-1-select-a-project)
    - [Step 2: Select Files & Configure Link](#step-2-select-files--configure-link)
    - [Link Access Modes](#link-access-modes)
    - [Advanced Video Options](#advanced-video-options)
    - [Generating the Link](#generating-the-link)
-8. [Upload Files Locally](#8-upload-files-locally)
-   - [Step 1: Select Local Files](#step-1-select-local-files)
-   - [Step 2: Choose Destination](#step-2-choose-destination)
-   - [Step 3: Upload & Monitor Progress](#step-3-upload--monitor-progress)
-9. [Create an Upload Link (Remote Upload)](#9-create-an-upload-link-remote-upload)
-   - [Selecting a Destination Folder](#selecting-a-destination-folder)
-   - [Configuring the Upload Link](#configuring-the-upload-link)
-   - [Generating the Upload Link](#generating-the-upload-link)
-10. [Accessing a Shared Link](#10-accessing-a-shared-link)
-    - [Opening the Link](#opening-the-link)
-    - [Password-Protected Links](#password-protected-links)
-    - [User-Restricted Links](#user-restricted-links)
-11. [Transfer Dock](#11-transfer-dock)
+10. [Upload Files Locally](#10-upload-files-locally)
+    - [Step 1: Select Local Files](#step-1-select-local-files)
+    - [Step 2: Choose Destination](#step-2-choose-destination)
+    - [Step 3: Upload & Monitor Progress](#step-3-upload--monitor-progress)
+11. [Create an Upload Link (Remote Upload)](#11-create-an-upload-link-remote-upload)
+    - [Selecting a Destination Folder](#selecting-a-destination-folder)
+    - [Configuring the Upload Link](#configuring-the-upload-link)
+    - [Generating the Upload Link](#generating-the-upload-link)
+12. [Transfer Dock](#12-transfer-dock)
     - [Transfer Dock Overview](#transfer-dock-overview)
     - [Transfer Entry Details](#transfer-entry-details)
     - [Transcode Status](#transcode-status)
-12. [Managing Links](#12-managing-links)
-   - [Searching & Filtering Links](#searching--filtering-links)
-   - [Link Table Columns](#link-table-columns)
-   - [Link Actions](#link-actions)
-13. [Link Details](#13-link-details)
-   - [Link Configuration Summary](#link-configuration-summary)
-   - [Shared Files](#shared-files)
-   - [Access Activity Log](#access-activity-log)
-   - [File Versions](#file-versions)
-14. [Editing a Link](#14-editing-a-link)
-15. [Video Player & Comments](#15-video-player--comments)
+13. [Managing Links](#13-managing-links)
+    - [Searching & Filtering Links](#searching--filtering-links)
+    - [Link Table Columns](#link-table-columns)
+    - [Link Actions](#link-actions)
+14. [Link Details](#14-link-details)
+    - [Link Configuration Summary](#link-configuration-summary)
+    - [Shared Files](#shared-files)
+    - [Access Activity Log](#access-activity-log)
+    - [File Versions](#file-versions)
+    - [Comments Review & Export](#comments-review--export)
+15. [Editing a Link](#15-editing-a-link)
+16. [Accessing a Shared Link](#16-accessing-a-shared-link)
+    - [Opening the Link](#opening-the-link)
+    - [Password-Protected Links](#password-protected-links)
+    - [User-Restricted Links](#user-restricted-links)
+17. [Video Player, Comments & Annotations](#17-video-player-comments--annotations)
     - [Playback Controls](#playback-controls)
     - [Quality Selection](#quality-selection)
     - [Timecoded Comments](#timecoded-comments)
-16. [User Management](#16-user-management)
+    - [Annotations & Drawing Tools](#annotations--drawing-tools)
+    - [Multi-File Shares](#multi-file-shares)
+18. [User Management](#18-user-management)
     - [Viewing Existing Users](#viewing-existing-users)
     - [Creating a New User](#creating-a-new-user)
     - [Managing Groups](#managing-groups)
     - [Editing & Deleting Users](#editing--deleting-users)
-17. [Role Management](#17-role-management)
+19. [Role Management](#19-role-management)
     - [System Roles](#system-roles)
     - [Creating Custom Roles](#creating-custom-roles)
     - [Editing & Deleting Roles](#editing--deleting-roles)
-18. [Settings](#18-settings)
-    - [URLs & Access](#urls--access)
-    - [SSL Certificate Management](#ssl-certificate-management)
-    - [Link Options](#link-options)
-    - [Project Root](#project-root)
-    - [Preferences & Performance](#preferences--performance)
-    - [Server Health](#server-health)
-    - [Maintenance & Cleanup](#maintenance--cleanup)
-    - [Guides](#guides)
-19. [Custom Branding (White Label)](#19-custom-branding-white-label)
-    - [Enabling Branding](#enabling-branding)
-    - [Company Identity](#company-identity)
-    - [Theme & Colors](#theme--colors)
-    - [Company Logo](#company-logo)
-    - [Support & Contact Information](#support--contact-information)
-    - [Link Preview Metadata](#link-preview-metadata)
-    - [Live Preview](#live-preview)
-    - [Clearing Branding](#clearing-branding)
 20. [Multi-Server Management](#20-multi-server-management)
     - [Adding Servers](#adding-servers)
     - [Switching Active Server](#switching-active-server)
     - [Server Filter (All Servers View)](#server-filter-all-servers-view)
-21. [Comments Review & Export](#21-comments-review--export)
-    - [Reviewing Comments](#reviewing-comments)
-    - [Exporting Comments](#exporting-comments)
-22. [Annotations & Drawing Tools](#22-annotations--drawing-tools)
-    - [Creating Annotations](#creating-annotations)
-    - [Viewing Annotations](#viewing-annotations)
-23. [Automatic Updates](#23-automatic-updates)
+21. [Automatic Updates](#21-automatic-updates)
     - [Update Notifications](#update-notifications)
     - [Downloading & Installing Updates](#downloading--installing-updates)
     - [Linux Package Updates](#linux-package-updates)
-24. [View Logs](#24-view-logs)
+22. [View Logs](#22-view-logs)
     - [Client Logs](#client-logs)
     - [Server Logs (Audit Log)](#server-logs-audit-log)
     - [Multi-Server Log Viewer](#multi-server-log-viewer)
     - [Searching & Filtering Logs](#searching--filtering-logs)
-25. [Frequently Asked Questions](#25-frequently-asked-questions)
+23. [Frequently Asked Questions](#23-frequently-asked-questions)
 
 ---
 
@@ -112,7 +109,7 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
 |----------|-------------|
 | **macOS** | macOS 10.15 (Catalina) or later, Intel or Apple Silicon |
 | **Windows** | Windows 10 or later (64-bit) |
-| **Linux** | Ubuntu 20.04+ (DEB) or Rocky/RHEL 8+ (RPM) |
+| **Linux** | Ubuntu 20.04+ (DEB), Rocky/RHEL 8+ (RPM), or any x86_64 Linux (AppImage) |
 | **Network** | LAN access to your 45Drives server. For external sharing, HTTPS port 443 must be forwarded from your router. |
 
 ---
@@ -125,8 +122,8 @@ Download the latest version of 45Flow from the **[Releases page](https://github.
 
 | Chip | File to Download |
 |------|-----------------|
-| Apple Silicon (M1, M2, M3, M4…) | `*-mac-arm64.dmg` |
-| Intel | `*-mac-x64.dmg` |
+| Apple Silicon (M1, M2, M3, M4…) | `45Flow-Pro-Edition-*-mac-arm64.dmg` |
+| Intel | `45Flow-Pro-Edition-*-mac-x64.dmg` |
 
 1. Double-click the downloaded `.dmg` file.
 2. In the window that appears, drag the **45Flow** icon into the **Applications** folder.
@@ -140,7 +137,7 @@ Download the latest version of 45Flow from the **[Releases page](https://github.
 
 | File to Download |
 |-----------------|
-| `*-win-x64.exe` |
+| `45Flow-Pro-Edition-*-win-x64.exe` |
 
 1. Double-click the downloaded `.exe` installer.
 2. Follow the on-screen installation wizard steps.
@@ -150,14 +147,31 @@ Download the latest version of 45Flow from the **[Releases page](https://github.
 
 ### Linux
 
-| Distribution | File to Download | Install Command |
-|-------------|-----------------|-----------------|
-| Ubuntu / Debian | `*-linux-amd64.deb` | `sudo apt install ./45flow-*-linux-amd64.deb` |
-| Rocky / RHEL | `*-linux-x86_64.rpm` | `sudo dnf install ./45flow-*-linux-x86_64.rpm` |
+Three package formats are available:
 
-1. Download the appropriate package file.
-2. Open a terminal and run the install command above, replacing the filename as needed.
+| Distribution | File | Install Command |
+|-------------|------|-----------------|
+| Ubuntu / Debian | `45Flow-Pro-Edition-*-linux-amd64.deb` | `sudo apt install ./45Flow-Pro-Edition-*-linux-amd64.deb` |
+| Rocky / RHEL / Fedora | `45Flow-Pro-Edition-*-linux-x86_64.rpm` | `sudo dnf install ./45Flow-Pro-Edition-*-linux-x86_64.rpm` |
+| Any Linux (portable) | `45Flow-Pro-Edition-*-linux-x86_64.AppImage` | No installation required |
+
+**DEB / RPM Installation:**
+
+1. Download the appropriate package file for your distribution.
+2. Open a terminal and run the install command above, replacing `*` with the version number.
 3. Launch **45Flow** from your application menu.
+
+**AppImage (Portable):**
+
+The AppImage is a self-contained portable executable that runs on any modern x86_64 Linux distribution without installation.
+
+1. Download the `.AppImage` file.
+2. Make it executable: `chmod +x 45Flow-Pro-Edition-*-linux-x86_64.AppImage`
+3. Double-click the file or run it from the terminal: `./45Flow-Pro-Edition-*-linux-x86_64.AppImage`
+
+The AppImage requires no root privileges and does not modify your system. It supports automatic updates — when a new version is available, the app will download and replace itself in place.
+
+> **Tip:** Move the AppImage to a convenient location like `~/Applications/` or `/opt/` for easy access. You can also right-click → "Create Desktop Entry" in many file managers.
 
 ---
 
@@ -194,7 +208,7 @@ In most cases, the default ports work without changes. If your server uses non-s
 | **API** | 9095 | Server communication and link management |
 | **HTTPS** | 443 | Share links, upload links, external access |
 
-> **Important:** For external sharing the HTTPS port (443 by default) must be open/forwarded on your router. See [Port Forwarding](#24-port-forwarding-for-external-sharing) for details.
+> **Important:** For external sharing the HTTPS port (443 by default) must be open/forwarded on your router. See [Port Forwarding](#5-port-forwarding-for-external-sharing) for details.
 
 ### Logging In
 
@@ -261,7 +275,7 @@ Three large action buttons let you perform the core tasks:
 
 ### Active Links Table
 
-Below the action buttons, the Dashboard displays a table of **all links** you've created, with search/filter tools and at-a-glance status information. See [Managing Links](#12-managing-links) for full details.
+Below the action buttons, the Dashboard displays a table of **all links** you've created, with search/filter tools and at-a-glance status information. See [Managing Links](#13-managing-links) for full details.
 
 ### Logging Out
 
@@ -291,661 +305,18 @@ Port forwarding tells your router to direct incoming traffic on a specific port 
 
 ![Port forwarding help modal](images/port-forwarding-help.png)
 
-> **Tip:** After setting up port forwarding, configure your external URL in [Settings](#18-settings) → URLs & Access to ensure links are generated correctly.
+> **Tip:** After setting up port forwarding, configure your external URL in [Settings](#6-settings) → URLs & Access to ensure links are generated correctly.
 
 ---
 
-## 6. Drag and Drop QuickShare
-
-The **QuickShare** feature provides the fastest way to create a share link. Simply drag files from your desktop or file manager directly into 45Flow to instantly generate a shareable link with one click.
-
-![QuickShare drag and drop interface](images/quickshare-dragdrop.png)
-
-### How to Use QuickShare
-
-1. **Drag Files:** From anywhere on your computer, drag one or more files directly into the QuickShare drop zone.
-2. **Files Upload:** The selected files are automatically uploaded to your server.
-3. **One-Click Share:** Once uploaded, click the **"QuickShare"** button to instantly generate a shareable link with default settings.
-
-### QuickShare Link Settings
-
-QuickShare links are created with the following default settings:
-
-- **Expiration:** 7 days from creation
-- **Access Mode:** Anyone with the link (no password required)
-- **Network:** Local network access (LAN/VPN)
-- **Comments:** Enabled by default
-
-These defaults can be customized in [Settings](#18-settings) under **Default Link Options**.
-
-### After Creating a QuickShare Link
-
-Once generated, the share link is:
-- **Automatically copied to your clipboard** — ready to paste into email, chat, or wherever you need
-- **Displayed on screen** — for immediate viewing and verification
-- **Added to your Active Links table** on the Dashboard for management
-
-From the Dashboard, you can find your QuickShare link and:
-- Edit settings (change expiration, access mode, etc.)
-- Copy the link again
-- View access logs
-- Delete the link
-
-> **Tip:** QuickShare is perfect for ad-hoc file sharing when you don't need custom settings. For more control over link configuration, use the [full file share workflow](#7-share-files-remotely-generate-a-share-link) instead.
-
----
-
-## 7. Share Files Remotely (Generate a Share Link)
-
-Use this feature to select files on your server and generate a secure link that others can use to view, download, and optionally comment on those files.
-
-Click **"New File Share Link"** from the Dashboard to begin.
-
-### Step 1: Select a Project
-
-First, choose the storage location where your files reside.
-
-![Project selection with ZFS pools](images/share-select-project.png)
-
-- The screen displays your available **ZFS pools** (storage locations) such as `/media`, `/projects`, etc.
-- Click **"Select"** next to the pool you want to use.
-- Alternatively, check **"Show entire directory tree from root"** to browse the full filesystem.
-
-> **Tip:** You can set a default project root in **Settings → Project Root** to skip this step for future links.
-
-Click **"Return to Dashboard"** at any time to cancel.
-
-### Step 2: Select Files & Configure Link
-
-After choosing a project, you'll see the file selection and link configuration screen.
-
-![File selection and link configuration](images/share-select-files.png)
-
-#### Selecting Files
-
-- Use the **file browser** to navigate folders and select individual files or entire folders.
-- Selected files appear in the **"Selected files"** panel with a count badge.
-- Click **"Show list"** to review your selection, and use the **✕** button to remove individual files.
-- Click **"Clear all"** to start over.
-
-#### Configuring the Link
-
-**Expiration:**
-- Set how long the link stays active using the **"Expires in"** field.
-- Use the number and time unit (hours, days, weeks) or choose a quick preset: **1 hour**, **1 day**, **1 week**, or **Never**.
-- Once expired, the link becomes inaccessible automatically.
-
-**Network Access:**
-- **Share Locally (Over LAN)** — Link accessible only within your local network or VPN.
-- **Share Externally (Over Internet)** — Link accessible from anywhere. Requires port forwarding to be configured.
-- Use the **"Check Port"** button to verify your external port forwarding is working.
-
-**Link Title** (optional):
-- Give the link an internal name to help you identify it later on the Dashboard.
-
-### Link Access Modes
-
-Choose who can access the link:
-
-| Mode | Description |
-|------|-------------|
-| **Anyone with the link** | No login required. Anyone with the URL can access the files. You can optionally enable the **"Allow comments"** toggle so visitors can leave a name and comment. |
-| **Anyone with the link + password** | Requires a shared password. Enter a password in the field that appears. The same password is used by all recipients. |
-| **Only invited users** | Requires each user to log in with their own credentials. Click **"Invite users…"** to select which users can access. Permissions are controlled by their assigned roles. |
-
-![Link access mode options](images/share-access-modes.png)
-
-### Advanced Video Options
-
-When sharing video files, expand the **"Advanced video options"** section for additional controls:
-
-![Advanced video options — review copy and watermark](images/share-video-options.png)
-
-**Use Review Copies:**
-- When enabled, the system generates lower-resolution review copy versions of your videos (720p, 1080p).
-- Shared links serve the review copies instead of the originals, providing faster playback and reduced bandwidth.
-- Select which qualities to generate: **720p**, **1080p**, **Original**, or any combination.
-
-**Watermark Videos:**
-- When enabled, applies a customizable watermark overlay to review copies.
-- Upload a watermark image and configure its appearance using the full customization panel.
-- Control watermark position, scale, opacity, and rotation.
-- Save configurations as presets and reuse them across links.
-- Useful for protecting intellectual property or branding shared content.
-
-**Watermark Position & Style:**
-
-| Setting | Description |
-|---------|-------------|
-| **Position** | Anchor point: top-left, top-right, center, bottom-left, bottom-right, or custom X/Y coordinates. |
-| **Scale** | Size of the watermark relative to the video frame (percentage). |
-| **Opacity** | Transparency level (0% = invisible, 100% = fully opaque). |
-| **Rotation** | Angle of rotation in degrees. |
-
-**Watermark Presets:**
-- **Save as preset** — Give your current configuration a name to reuse on future links.
-- **Load preset** — Apply a previously saved preset with one click.
-- **Delete preset** — Remove presets you no longer need.
-- Presets are stored on the server and available across all your links.
-
-> **Note:** Basic watermarking (enable/disable, select watermark image file) is available in the free edition. Advanced positioning, opacity, scale, rotation, and the preset system require 45Flow Pro.
-
-### Generating the Link
-
-1. Verify all your settings are correct.
-2. Click **"Generate Flow link"**.
-3. The generated URL will appear — use the **"Copy"** button to copy it to your clipboard, or **"Open"** to view it in your browser.
-4. The link is now visible on your Dashboard for ongoing management.
-
-![Generated share link with Copy and Open buttons](images/share-link-generated.png)
-
----
-
-## 8. Upload Files Locally
-
-Use this feature to transfer files from your workstation directly to the server. This is ideal for getting new media onto the server for sharing later.
-
-Click **"Upload Files Locally"** from the Dashboard to begin. A three-step wizard will guide you through the process.
-
-### Step 1: Select Local Files
-
-![Local upload — Step 1: Select files](images/upload-local-step1.png)
-
-1. Click **"Choose Files"** to select individual files, or **"Choose Folder"** to add an entire folder's contents.
-2. Selected files appear in a table showing **Name**, **Size**, and a **Remove** button.
-3. A summary shows the total number of items and combined size.
-4. Use **"Clear"** to remove all selected files and start over.
-5. Click **"Next"** to proceed.
-
-> **Note:** You can select multiple files at once in the file chooser dialog.
-
-### Step 2: Choose Destination
-
-![Local upload — Step 2: Choose destination](images/upload-local-step2.png)
-
-1. Select a **ZFS pool** (storage location) or check **"Show entire directory tree from root"** for full filesystem access.
-2. Navigate the folder browser:
-   - **Single-click** a folder to select it as the destination.
-   - **Double-click** a folder to enter it and browse deeper.
-   - Click **"New Folder"** to create a new directory at the current location.
-3. The selected destination path is shown at the top.
-4. Click **"Change Project Directory"** to go back and select a different pool.
-5. Click **"Next"** to proceed, or **"Back"** to return to file selection.
-
-### Step 3: Upload & Monitor Progress
-
-![Local upload — Step 3: Upload progress](images/upload-local-step3.png)
-
-**Before Uploading:**
-
-If you're uploading video files, you can configure **Advanced Video Options** before starting:
-
-- **Use Review Copies** — Enable to generate review copy versions (720p, 1080p) of your videos during upload. These review copies are used when you share the files later via links.
-- **Watermark Videos** — Apply a watermark overlay to uploaded videos for later sharing.
-
-Click **"Start Upload"** to begin transferring files.
-
-**During Upload:**
-
-The upload table shows each file with real-time status:
-
-| Column | Description |
-|--------|-------------|
-| **Name** | File name with upload percentage |
-| **Size** | File size |
-| **Speed / Time** | Transfer speed during upload, or total time after completion |
-| **Status** | Current state — **Queued**, **Transcoding** (local), **Uploading**, **Done**, **Canceled**, or **Error** |
-| **Action** | Cancel button (available during active transcode or upload) |
-
-A progress bar at the top shows overall completion across all files.
-
-When **client-side transcoding** is enabled (Settings → Performance), video files go through a two-phase workflow:
-1. **Transcode** — The video is processed on your machine (shown as "Transcode XX%")
-2. **Upload** — The processed file is transferred to the server (shown as "Upload XX%")
-
-This offloads video processing from the server to your workstation. If you don't have client-side transcoding enabled, the server handles video processing after upload.
-
-![Upload table with file statuses](images/upload-local-table.png)
-
-**After Upload:**
-
-When all files are complete, click **"Finish"** to return to the Dashboard.
-
-> **Tip:** If any uploads fail, the error message will appear below the file entry. You can address the issue and re-upload those files.
-
----
-
-## 9. Create an Upload Link (Remote Upload)
-
-Use this feature to create a link that allows external collaborators to upload files to a specific folder on your server — without giving them Dashboard access.
-
-Click **"New Upload Link"** from the Dashboard to begin.
-
-![Upload link creation screen](images/upload-link-creation.png)
-
-### Selecting a Destination Folder
-
-1. Select a **ZFS pool** or browse the full directory tree.
-2. Navigate the folder browser to choose where uploaded files should be stored:
-   - **Single-click** to select a folder.
-   - **Double-click** to enter a folder.
-   - **New Folder** to create a new directory.
-
-### Configuring the Upload Link
-
-**Expiration:**
-- Use the **"Expires in"** field with a number and time unit (hours, days, weeks), or choose a preset: **1 hour**, **1 day**, **1 week**, or **Never**.
-- Once expired, no further uploads are allowed through the link.
-
-**Network Access:**
-- **Share Locally (Over LAN)** — Link only works within your local network.
-- **Share Externally (Over Internet)** — Link accessible from anywhere (requires port forwarding).
-
-**Link Title** (optional):
-- Name the link for easy identification on the Dashboard.
-
-**Link Access Mode:**
-
-| Mode | Description |
-|------|-------------|
-| **Anyone with the link** | No login required. **⚠️ Warning:** Anyone with the link can upload files to your server. Use only in trusted scenarios. |
-| **Anyone with the link + password** | Requires a shared password before uploading. |
-| **Only invited users** | Users must log in with their credentials before uploading. Click **"Invite users…"** to add authorized users. |
-
-![Upload link access modes with warning](images/upload-link-access-modes.png)
-
-### Generating the Upload Link
-
-1. Ensure a destination folder is selected and all settings are configured.
-2. Click **"Generate Flow link"**.
-3. Copy or open the generated URL to share with your collaborators.
-
-When someone opens the link, they'll see a drag-and-drop upload page where they can send files directly to the specified folder.
-
-![External upload page — drag and drop interface](images/upload-link-external-view.png)
-
----
-
-## 10. Accessing a Shared Link
-
-When someone opens a share link you've created, their experience depends on the **access mode** you configured. This section explains what recipients see when accessing links with different restriction levels.
-
-### Opening the Link
-
-For **open access** (Anyone with the link) share links, recipients can immediately browse files, play videos, or download content without any login or password.
-
-![Open access share link](images/video-player.png)
-
-### Password-Protected Links
-
-When you protect a link with a password (**Anyone with the link + password**), recipients must enter the correct password before accessing the content.
-
-![Password-protected link entry screen](images/link-password-protected.png)
-
-After entering the correct password, they'll have full access to the shared files according to the permissions you set (view, download, comment, etc.).
-
-### User-Restricted Links
-
-For links restricted to **specific users** or **invited users only**, recipients must log in with their credentials:
-
-1. Click **"Sign In"** on the access screen.
-2. Enter their username and password.
-3. If authenticated and authorized, they'll be granted access to the content.
-
-![User-restricted link login screen](images/link-user-restricted.png)
-
-> **Note:** Users must have been invited to the link (or have appropriate role permissions) to access user-restricted content. See [User Management](#16-user-management) for details on creating and managing user accounts.
-
----
-
-## 11. Transfer Dock
-
-The **Transfer Dock** is a persistent overlay that tracks all active and recently completed transfers — uploads, transcodes, and review copy generation. It remains visible across all screens so you can continue working while monitoring progress.
-
-![Transfer Dock open](images/transfer-dock-open.png)
-
-### Transfer Dock Overview
-
-The Transfer Dock appears at the bottom of the screen whenever a transfer is in progress. It shows:
-
-- **Active transfer count** — e.g., "Transfers (2 active)"
-- **Link grouping** — Transfers are grouped by the link they belong to, with the server name and link URL displayed.
-- **Clear finished** — Remove completed transfers from the dock.
-- **Close** — Collapse the dock (transfers continue in the background).
-
-When collapsed, a minimal indicator remains visible showing active transfer count. Click it to expand the dock again.
-
-![Transfer Dock collapsed](images/transfer-dock-hidden.png)
-
-### Transfer Entry Details
-
-Each file in the Transfer Dock shows:
-
-| Field | Description |
-|-------|-------------|
-| **File name** | The name of the file being transferred. |
-| **Destination** | Server-side path (e.g., `tank/Local Uploads/video.mp4`). |
-| **Status** | Current state: *Running*, *Complete*, *Queued*, *Canceled*, or *Error*. |
-| **Progress** | Percentage bar for the active phase. |
-| **Speed** | Transfer or encode speed (e.g., `95.23 MB/s` for uploads, `1.05x` for transcodes). |
-| **ETA** | Estimated time remaining. |
-| **Action** | Cancel or Dismiss button. |
-
-### Transcode Status
-
-When review copies or streaming proxies are being generated, each transcode entry shows:
-
-- **Transcode source** — `Client` or `Server`, indicating where the processing is running.
-- **Encoder** — The hardware/software encoder in use:
-  - `GPU (QSV)` — Intel Quick Sync Video
-  - `GPU (NVENC)` — NVIDIA hardware encoder
-  - `GPU (AMF)` — AMD hardware encoder
-  - `GPU (VideoToolbox)` — macOS hardware encoder
-  - `CPU` — Software encoding (libx264)
-- **Speed multiplier** — e.g., `1.05x` means encoding at 1.05× real-time.
-- **Progress** — Percentage complete with ETA.
-
-A typical transfer entry for a QuickShare might show multiple sub-items:
-
-```
-Review Copy (Full Res)     Client · GPU (QSV)    1.05x   ETA 2:08   31%
-Stream                     Client · GPU (QSV)    100%
-Upload                     95.23 MB/s            ETA 0:14            100%
-```
-
-> **Tip:** If client-side transcoding is enabled (Settings → Performance), video processing happens on your machine before upload. The Transfer Dock shows both the transcode and upload phases separately so you can track each step.
-
----
-
-## 12. Managing Links
-
-All links you create — both share and upload — appear on the Dashboard in the **links table**. This is your central view for monitoring and managing all active, expired, and disabled links.
-
-![Links table on the Dashboard](images/manage-links-table.png)
-
-### Searching & Filtering Links
-
-At the top of the table:
-
-- **Search bar** — Filter links by title, directory, or file name. Results update as you type.
-- **Type filter** — Show only specific link types: *All types*, *Upload*, *Share (file)*, or *Share (collection)*.
-- **Status filter** — Show only links with a specific status: *All status*, *Active*, *Expired*, or *Disabled*.
-- **Refresh** — Manually reload the link list from the server.
-
-Summary badges show the count of **Total**, **Active**, **Expired**, and **Disabled** links.
-
-### Link Table Columns
-
-| Column | Description |
-|--------|-------------|
-| **Title** | Internal name of the link. Click the edit icon to rename it inline. Click the title to open Link Details. |
-| **Type** | Badge showing **Upload**, **Share (file)**, or **Share (collection)**. |
-| **Link** | The public URL. Click to open in browser, or use the **Copy** button. |
-| **Expires** | Time remaining (e.g., *23 Hours*, *6d 22h*, *Never*). Shown in red when less than 24 hours remain. Click **Edit** to change the expiration. |
-| **Status** | Current state: **ACTIVE** (green), **EXPIRED** (amber), or **DISABLED** (gray). |
-| **Access** | Access mode: **Open** (green), **Password** (amber), or **Users only** (rose). Hover for details. |
-| **Created** | Date and time the link was created. |
-| **Actions** | Action buttons (see below). |
-
-### Link Actions
-
-Each link row provides these actions:
-
-| Action | Description |
-|--------|-------------|
-| **Details** | Opens the full Link Details view with configuration, activity log, and file list. |
-| **Open** | Opens the link in your browser to preview what recipients will see. |
-| **Disable / Enable** | Immediately deactivates or reactivates the link. Disabling blocks access without deleting the link. |
-
----
-
-## 13. Link Details
-
-Click **"Details"** on any link (or click its title) to view comprehensive information.
-
-![Link Details modal](images/link-details.png)
-
-### Link Configuration Summary
-
-The details view displays:
-
-| Field | Description |
-|-------|-------------|
-| **Primary Link** | The full URL with a **Copy** button. |
-| **Access** | Current access mode (Open / Password / Users only). |
-| **Review Copies** | Whether review copy generation is enabled or disabled. |
-| **Watermark** | Whether watermarking is enabled or disabled. |
-| **Type** | Share (download) or Upload. |
-| **Status** | Active, Expired, or Disabled. |
-| **Created** | Creation date and time. |
-| **Expires** | Expiration date/time or "Never". |
-| **Title** | Internal name. |
-| **Notes** | Optional internal notes. |
-
-### Shared Files
-
-A table of all files associated with this link, showing:
-- **Name** — File name
-- **Size** — File size
-- **MIME** — File type (e.g., video/mp4, image/jpeg)
-
-### Access Activity Log
-
-View a log of all actions taken on this link:
-
-| Column | Description |
-|--------|-------------|
-| **When** | Date and time of the activity. |
-| **Action** | What happened — e.g., *Playback requested*, *Download*, *Upload*, *Expiry updated*. |
-| **Actor** | Whether the access was from a *Guest* or an *Authenticated user*. |
-| **Source** | IP address and browser information. |
-| **Summary** | Details of the action performed. |
-
-![Access activity log](images/link-details-activity.png)
-
-### File Versions
-
-If file versioning/snapshots are available, this section shows:
-
-| Column | Description |
-|--------|-------------|
-| **Version** | Version identifier (e.g., v1, v2). |
-| **Created** | When the version was created. |
-| **Snapshot** | Snapshot reference. |
-| **Size** | File size at that version. |
-| **Restore** | Restore this version, replacing the current file. |
-| **Delete** | Remove this version (if permitted). |
-
-Click **"Edit"** at the top of the Link Details view to modify the link's settings (see next section).
-
----
-
-## 14. Editing a Link
-
-From the Link Details view, click **"Edit"** to modify an existing link's configuration.
-
-![Link edit modal](images/link-edit.png)
-
-You can modify:
-
-- **Title** and **Notes** — Update the internal name and documentation.
-- **Restrict Access to Users** — Toggle between open and restricted access.
-- **Allow Comments** — Enable or disable commenting on shared files.
-- **Password Required** — Enable or disable password protection, and set the password.
-- **Generate Review Copies** — Enable/disable review copy generation and select qualities (720p, 1080p, Original).
-- **Apply Watermark** — Enable/disable watermark overlay with full customization controls (position, scale, opacity, rotation, presets). See [Advanced Watermark Customization](#21-advanced-watermark-customization).
-- **Files for This Link** — Add or remove files associated with the link using **"Manage Files"**.
-
-Click **"Save Changes"** to apply. All changes take effect **immediately**.
-
-Click **"Cancel"** or **"Close"** to discard changes and return to Link Details.
-
-> **Important:** Changes to access settings, passwords, and file lists take effect immediately for anyone accessing the link.
-
----
-
-## 15. Video Player & Comments
-
-When someone opens a share link containing video files, they see the **45Flow Video Player** — a browser-based player with collaboration features.
-
-![Video player with sidebar and comments](images/video-player.png)
-
-### Playback Controls
-
-The player supports standard media controls:
-- **Play / Pause**
-- **Seek bar** with timeline scrubbing
-- **Volume control**
-- **Fullscreen** toggle
-- **Playback rate** adjustment (speed up or slow down)
-
-### Quality Selection
-
-If review copies were generated, viewers can choose their preferred quality:
-- **Auto** — Automatically adapts to available bandwidth
-- **720p** — Lower resolution, faster loading
-- **1080p** — Full HD
-- **Original** — Full quality source file (if included)
-
-The player uses **HLS (HTTP Live Streaming)** for adaptive bitrate delivery.
-
-### Timecoded Comments
-
-If comments are enabled on the link, a **Comments Panel** appears alongside the player:
-
-![Comments panel with timecoded threads](images/video-player-comments.png)
-
-- **Viewing comments:** Comments are displayed with the author's name, timecode, and color-coded indicator. Click a timecode to jump to that point in the video.
-- **Adding comments:** Click the comment input area, type your message, and submit. The comment is automatically tagged to the current playback position.
-- **Replies:** Click on any comment to reply, creating threaded conversations.
-- **Timecode markers:** Visual markers appear on the seek bar indicating where comments exist.
-- **SMPTE timecodes:** Comments display professional SMPTE timecodes (HH:MM:SS:FF) when the video's frame rate is detected.
-
-> **Note:** Commenting availability depends on the link's access mode and whether comments were enabled when creating the link.
-
-#### Multi-File Shares
-
-For collection links (multiple files), a sidebar file browser appears on the left. Click any file to load it in the player. Version selection is available if multiple versions exist.
-
----
-
-## 16. User Management
-
-Users are required for the **"Only invited users"** access mode and allow role-based permissions on restricted links. Access user management from the Dashboard by clicking **"Manage Users"**.
-
-![Manage Users modal](images/manage-users.png)
-
-### Viewing Existing Users
-
-The top section lists all currently created users with:
-- **Name** and **Username**
-- **Email** (if provided)
-- **Company** and **Tags** (if provided)
-- **Assigned role**
-- **Color dot** indicating their comment color
-
-Use the **search bar** to filter users by name, username, email, company, or tags.
-
-### Creating a New User
-
-Click **"Create new user"** to expand the creation form.
-
-![Create new user form](images/manage-users-create.png)
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| **Name** | Yes | Display name shown in comments and activity logs. |
-| **Username** | Yes | Login identifier. Must be unique. |
-| **Temporary Password** | Yes | Initial password (4–64 characters). Click **"Generate password"** to auto-generate one. Share this securely with the user. |
-| **Confirm Password** | Yes | Must match the temporary password. |
-| **Email** | No | Email address for identification. |
-| **Company** | No | Company affiliation. |
-| **Tags** | No | Comma-separated tags (e.g., `finance, vip, internal`). |
-| **Default Role** | — | The role automatically assigned when this user is added to restricted links. |
-| **Comment Color** | — | Hex color used to visually distinguish this user's comments. Use the color picker or type a hex value (e.g., `#94ebc8`). |
-
-Click **"Create User"** to save. The user will appear in the existing users list and can now be invited to restricted links.
-
-### Managing Groups
-
-Groups allow you to organize users into logical collections (e.g., **Editors**, **Clients**, **Reviewers**) for easier permission management.
-
-**Creating a Group:**
-
-1. Click **"Create Group"** in the User Management screen.
-2. Enter a **group name** and optional **description**.
-3. Click **"Save"**.
-
-**Adding Users to a Group:**
-
-1. Open the group's detail view.
-2. Click **"Add Users"**.
-3. Select users from the list and confirm.
-
-**Using Groups for Link Access:**
-
-When creating a user-restricted link, you can invite an entire group instead of adding users individually. All group members will automatically have access to the link.
-
-![User groups management](images/manage-groups.png)
-
-> **Tip:** Use groups to streamline link permissions when sharing with the same team repeatedly. Add new members to the group once, and they'll inherit access to all links shared with that group.
-
-### Editing & Deleting Users
-
-- Click the **pencil icon** on any user to edit their name, email, company, tags, comment color, default role, or to reset their password.
-- Click the **red X** to delete a user. A confirmation dialog will appear — **this action cannot be undone**.
-
----
-
-## 17. Role Management
-
-Roles define what users can do when accessing restricted links. Access role management from **Manage Users → Manage Roles**.
-
-![Manage Roles screen](images/manage-roles.png)
-
-### System Roles
-
-45Flow includes three built-in roles that cannot be deleted:
-
-| Role | View | Comment | Download | Upload |
-|------|------|---------|----------|--------|
-| **Editor** | ✅ | ✅ | ✅ | ✅ |
-| **Feedback** | ✅ | ✅ | ✅ | ❌ |
-| **Viewer** | ✅ | ❌ | ❌ | ❌ |
-
-### Permission Definitions
-
-| Permission | What It Allows |
-|------------|----------------|
-| **View** | See files, open media, browse directory contents |
-| **Comment** | Leave timecoded comments and participate in threads |
-| **Download** | Download files to their device |
-| **Upload** | Upload files (on upload-enabled links) |
-
-### Creating Custom Roles
-
-1. Enter a **Role name** (e.g., "Client", "Uploader").
-2. Check the permissions you want to grant.
-3. Click **"Create"**.
-
-### Editing & Deleting Roles
-
-- Click **Edit** on any custom role to modify its name or permissions, then click **Save**.
-- Click **Delete** to remove a custom role (only if it's not currently assigned to users).
-- System roles (Editor, Feedback, Viewer) cannot be deleted or modified.
-
-> **Important:** Role changes apply immediately to all users assigned that role. Removing a permission instantly restricts affected users.
-
----
-
-## 18. Settings
+## 6. Settings
 
 Configure application-wide defaults and server settings. Access Settings from the Dashboard by clicking **"Settings"**.
 
 The Settings panel is organized into sections via the left-hand navigation sidebar:
 
 - **Link Sharing** — URLs & Access, Certificate, Link Options, Project Root
-- **Branding** — White Label (see [Custom Branding](#17-custom-branding-white-label))
+- **Branding** — White Label (see [Custom Branding](#7-custom-branding-white-label))
 - **Application** — Preferences, Server Health, Maintenance
 - **Help** — Guides
 
@@ -1111,7 +482,7 @@ The Guides section provides:
 
 ---
 
-## 19. Custom Branding (White Label)
+## 7. Custom Branding (White Label)
 
 45Flow Pro includes a comprehensive white-label branding system that lets you customize how share links, upload pages, and review pages appear to your clients and collaborators. When enabled, recipients see your company's branding instead of the default 45Flow identity.
 
@@ -1215,6 +586,699 @@ When branding is enabled, recipients viewing your share links will see:
 
 ---
 
+## 8. Drag and Drop QuickShare
+
+The **QuickShare** feature provides the fastest way to create a share link. Simply drag files from your desktop or file manager directly into 45Flow to instantly generate a shareable link with one click.
+
+![QuickShare drag and drop interface](images/quickshare-dragdrop.png)
+
+### How to Use QuickShare
+
+1. **Drag Files:** From anywhere on your computer, drag one or more files directly into the QuickShare drop zone.
+2. **Files Upload:** The selected files are automatically uploaded to your server.
+3. **One-Click Share:** Once uploaded, click the **"QuickShare"** button to instantly generate a shareable link with default settings.
+
+### QuickShare Link Settings
+
+QuickShare links are created with the following default settings:
+
+- **Expiration:** 7 days from creation
+- **Access Mode:** Anyone with the link (no password required)
+- **Network:** Local network access (LAN/VPN)
+- **Comments:** Enabled by default
+
+These defaults can be customized in [Settings](#6-settings) under **Default Link Options**.
+
+### After Creating a QuickShare Link
+
+Once generated, the share link is:
+- **Automatically copied to your clipboard** — ready to paste into email, chat, or wherever you need
+- **Displayed on screen** — for immediate viewing and verification
+- **Added to your Active Links table** on the Dashboard for management
+
+From the Dashboard, you can find your QuickShare link and:
+- Edit settings (change expiration, access mode, etc.)
+- Copy the link again
+- View access logs
+- Delete the link
+
+> **Tip:** QuickShare is perfect for ad-hoc file sharing when you don't need custom settings. For more control over link configuration, use the [full file share workflow](#9-share-files-remotely-generate-a-share-link) instead.
+
+---
+
+## 9. Share Files Remotely (Generate a Share Link)
+
+Use this feature to select files on your server and generate a secure link that others can use to view, download, and optionally comment on those files.
+
+Click **"New File Share Link"** from the Dashboard to begin.
+
+### Step 1: Select a Project
+
+First, choose the storage location where your files reside.
+
+![Project selection with ZFS pools](images/share-select-project.png)
+
+- The screen displays your available **ZFS pools** (storage locations) such as `/media`, `/projects`, etc.
+- Click **"Select"** next to the pool you want to use.
+- Alternatively, check **"Show entire directory tree from root"** to browse the full filesystem.
+
+> **Tip:** You can set a default project root in **Settings → Project Root** to skip this step for future links.
+
+Click **"Return to Dashboard"** at any time to cancel.
+
+### Step 2: Select Files & Configure Link
+
+After choosing a project, you'll see the file selection and link configuration screen.
+
+![File selection and link configuration](images/share-select-files.png)
+
+#### Selecting Files
+
+- Use the **file browser** to navigate folders and select individual files or entire folders.
+- Selected files appear in the **"Selected files"** panel with a count badge.
+- Click **"Show list"** to review your selection, and use the **✕** button to remove individual files.
+- Click **"Clear all"** to start over.
+
+#### Configuring the Link
+
+**Expiration:**
+- Set how long the link stays active using the **"Expires in"** field.
+- Use the number and time unit (hours, days, weeks) or choose a quick preset: **1 hour**, **1 day**, **1 week**, or **Never**.
+- Once expired, the link becomes inaccessible automatically.
+
+**Network Access:**
+- **Share Locally (Over LAN)** — Link accessible only within your local network or VPN.
+- **Share Externally (Over Internet)** — Link accessible from anywhere. Requires port forwarding to be configured.
+- Use the **"Check Port"** button to verify your external port forwarding is working.
+
+**Link Title** (optional):
+- Give the link an internal name to help you identify it later on the Dashboard.
+
+### Link Access Modes
+
+Choose who can access the link:
+
+| Mode | Description |
+|------|-------------|
+| **Anyone with the link** | No login required. Anyone with the URL can access the files. You can optionally enable the **"Allow comments"** toggle so visitors can leave a name and comment. |
+| **Anyone with the link + password** | Requires a shared password. Enter a password in the field that appears. The same password is used by all recipients. |
+| **Only invited users** | Requires each user to log in with their own credentials. Click **"Invite users…"** to select which users can access. Permissions are controlled by their assigned roles. |
+
+![Link access mode options](images/share-access-modes.png)
+
+### Advanced Video Options
+
+When sharing video files, expand the **"Advanced video options"** section for additional controls:
+
+![Advanced video options — review copy and watermark](images/share-video-options.png)
+
+**Use Review Copies:**
+- When enabled, the system generates lower-resolution review copy versions of your videos (720p, 1080p).
+- Shared links serve the review copies instead of the originals, providing faster playback and reduced bandwidth.
+- Select which qualities to generate: **720p**, **1080p**, **Original**, or any combination.
+
+**Watermark Videos:**
+- When enabled, applies a customizable watermark overlay to review copies.
+- Upload a watermark image and configure its appearance using the full customization panel.
+- Control watermark position, scale, opacity, and rotation.
+- Save configurations as presets and reuse them across links.
+- Useful for protecting intellectual property or branding shared content.
+
+**Watermark Position & Style:**
+
+| Setting | Description |
+|---------|-------------|
+| **Position** | Anchor point: top-left, top-right, center, bottom-left, bottom-right, or custom X/Y coordinates. |
+| **Scale** | Size of the watermark relative to the video frame (percentage). |
+| **Opacity** | Transparency level (0% = invisible, 100% = fully opaque). |
+| **Rotation** | Angle of rotation in degrees. |
+
+**Watermark Presets:**
+- **Save as preset** — Give your current configuration a name to reuse on future links.
+- **Load preset** — Apply a previously saved preset with one click.
+- **Delete preset** — Remove presets you no longer need.
+- Presets are stored on the server and available across all your links.
+
+> **Note:** Basic watermarking (enable/disable, select watermark image file) is available in the free edition. Advanced positioning, opacity, scale, rotation, and the preset system require 45Flow Pro.
+
+### Generating the Link
+
+1. Verify all your settings are correct.
+2. Click **"Generate Flow link"**.
+3. The generated URL will appear — use the **"Copy"** button to copy it to your clipboard, or **"Open"** to view it in your browser.
+4. The link is now visible on your Dashboard for ongoing management.
+
+![Generated share link with Copy and Open buttons](images/share-link-generated.png)
+
+---
+
+## 10. Upload Files Locally
+
+Use this feature to transfer files from your workstation directly to the server. This is ideal for getting new media onto the server for sharing later.
+
+Click **"Upload Files Locally"** from the Dashboard to begin. A three-step wizard will guide you through the process.
+
+### Step 1: Select Local Files
+
+![Local upload — Step 1: Select files](images/upload-local-step1.png)
+
+1. Click **"Choose Files"** to select individual files, or **"Choose Folder"** to add an entire folder's contents.
+2. Selected files appear in a table showing **Name**, **Size**, and a **Remove** button.
+3. A summary shows the total number of items and combined size.
+4. Use **"Clear"** to remove all selected files and start over.
+5. Click **"Next"** to proceed.
+
+> **Note:** You can select multiple files at once in the file chooser dialog.
+
+### Step 2: Choose Destination
+
+![Local upload — Step 2: Choose destination](images/upload-local-step2.png)
+
+1. Select a **ZFS pool** (storage location) or check **"Show entire directory tree from root"** for full filesystem access.
+2. Navigate the folder browser:
+   - **Single-click** a folder to select it as the destination.
+   - **Double-click** a folder to enter it and browse deeper.
+   - Click **"New Folder"** to create a new directory at the current location.
+3. The selected destination path is shown at the top.
+4. Click **"Change Project Directory"** to go back and select a different pool.
+5. Click **"Next"** to proceed, or **"Back"** to return to file selection.
+
+### Step 3: Upload & Monitor Progress
+
+![Local upload — Step 3: Upload progress](images/upload-local-step3.png)
+
+**Before Uploading:**
+
+If you're uploading video files, you can configure **Advanced Video Options** before starting:
+
+- **Use Review Copies** — Enable to generate review copy versions (720p, 1080p) of your videos during upload. These review copies are used when you share the files later via links.
+- **Watermark Videos** — Apply a watermark overlay to uploaded videos for later sharing.
+
+Click **"Start Upload"** to begin transferring files.
+
+**During Upload:**
+
+The upload table shows each file with real-time status:
+
+| Column | Description |
+|--------|-------------|
+| **Name** | File name with upload percentage |
+| **Size** | File size |
+| **Speed / Time** | Transfer speed during upload, or total time after completion |
+| **Status** | Current state — **Queued**, **Transcoding** (local), **Uploading**, **Done**, **Canceled**, or **Error** |
+| **Action** | Cancel button (available during active transcode or upload) |
+
+A progress bar at the top shows overall completion across all files.
+
+When **client-side transcoding** is enabled (Settings → Performance), video files go through a two-phase workflow:
+1. **Transcode** — The video is processed on your machine (shown as "Transcode XX%")
+2. **Upload** — The processed file is transferred to the server (shown as "Upload XX%")
+
+This offloads video processing from the server to your workstation. If you don't have client-side transcoding enabled, the server handles video processing after upload.
+
+![Upload table with file statuses](images/upload-local-table.png)
+
+**After Upload:**
+
+When all files are complete, click **"Finish"** to return to the Dashboard.
+
+> **Tip:** If any uploads fail, the error message will appear below the file entry. You can address the issue and re-upload those files.
+
+---
+
+## 11. Create an Upload Link (Remote Upload)
+
+Use this feature to create a link that allows external collaborators to upload files to a specific folder on your server — without giving them Dashboard access.
+
+Click **"New Upload Link"** from the Dashboard to begin.
+
+![Upload link creation screen](images/upload-link-creation.png)
+
+### Selecting a Destination Folder
+
+1. Select a **ZFS pool** or browse the full directory tree.
+2. Navigate the folder browser to choose where uploaded files should be stored:
+   - **Single-click** to select a folder.
+   - **Double-click** to enter a folder.
+   - **New Folder** to create a new directory.
+
+### Configuring the Upload Link
+
+**Expiration:**
+- Use the **"Expires in"** field with a number and time unit (hours, days, weeks), or choose a preset: **1 hour**, **1 day**, **1 week**, or **Never**.
+- Once expired, no further uploads are allowed through the link.
+
+**Network Access:**
+- **Share Locally (Over LAN)** — Link only works within your local network.
+- **Share Externally (Over Internet)** — Link accessible from anywhere (requires port forwarding).
+
+**Link Title** (optional):
+- Name the link for easy identification on the Dashboard.
+
+**Link Access Mode:**
+
+| Mode | Description |
+|------|-------------|
+| **Anyone with the link** | No login required. **⚠️ Warning:** Anyone with the link can upload files to your server. Use only in trusted scenarios. |
+| **Anyone with the link + password** | Requires a shared password before uploading. |
+| **Only invited users** | Users must log in with their credentials before uploading. Click **"Invite users…"** to add authorized users. |
+
+![Upload link access modes with warning](images/upload-link-access-modes.png)
+
+### Generating the Upload Link
+
+1. Ensure a destination folder is selected and all settings are configured.
+2. Click **"Generate Flow link"**.
+3. Copy or open the generated URL to share with your collaborators.
+
+When someone opens the link, they'll see a drag-and-drop upload page where they can send files directly to the specified folder.
+
+![External upload page — drag and drop interface](images/upload-link-external-view.png)
+
+---
+
+## 12. Transfer Dock
+
+The **Transfer Dock** is a persistent overlay that tracks all active and recently completed transfers — uploads, transcodes, and review copy generation. It remains visible across all screens so you can continue working while monitoring progress.
+
+![Transfer Dock open](images/transfer-dock-open.png)
+
+### Transfer Dock Overview
+
+The Transfer Dock appears at the bottom of the screen whenever a transfer is in progress. It shows:
+
+- **Active transfer count** — e.g., "Transfers (2 active)"
+- **Link grouping** — Transfers are grouped by the link they belong to, with the server name and link URL displayed.
+- **Clear finished** — Remove completed transfers from the dock.
+- **Close** — Collapse the dock (transfers continue in the background).
+
+When collapsed, a minimal indicator remains visible showing active transfer count. Click it to expand the dock again.
+
+![Transfer Dock collapsed](images/transfer-dock-hidden.png)
+
+### Transfer Entry Details
+
+Each file in the Transfer Dock shows:
+
+| Field | Description |
+|-------|-------------|
+| **File name** | The name of the file being transferred. |
+| **Destination** | Server-side path (e.g., `tank/Local Uploads/video.mp4`). |
+| **Status** | Current state: *Running*, *Complete*, *Queued*, *Canceled*, or *Error*. |
+| **Progress** | Percentage bar for the active phase. |
+| **Speed** | Transfer or encode speed (e.g., `95.23 MB/s` for uploads, `1.05x` for transcodes). |
+| **ETA** | Estimated time remaining. |
+| **Action** | Cancel or Dismiss button. |
+
+### Transcode Status
+
+When review copies or streaming proxies are being generated, each transcode entry shows:
+
+- **Transcode source** — `Client` or `Server`, indicating where the processing is running.
+- **Encoder** — The hardware/software encoder in use:
+  - `GPU (QSV)` — Intel Quick Sync Video
+  - `GPU (NVENC)` — NVIDIA hardware encoder
+  - `GPU (AMF)` — AMD hardware encoder
+  - `GPU (VideoToolbox)` — macOS hardware encoder
+  - `CPU` — Software encoding (libx264)
+- **Speed multiplier** — e.g., `1.05x` means encoding at 1.05× real-time.
+- **Progress** — Percentage complete with ETA.
+
+A typical transfer entry for a QuickShare might show multiple sub-items:
+
+```
+Review Copy (Full Res)     Client · GPU (QSV)    1.05x   ETA 2:08   31%
+Stream                     Client · GPU (QSV)    100%
+Upload                     95.23 MB/s            ETA 0:14            100%
+```
+
+> **Tip:** If client-side transcoding is enabled (Settings → Performance), video processing happens on your machine before upload. The Transfer Dock shows both the transcode and upload phases separately so you can track each step.
+
+---
+
+## 13. Managing Links
+
+All links you create — both share and upload — appear on the Dashboard in the **links table**. This is your central view for monitoring and managing all active, expired, and disabled links.
+
+![Links table on the Dashboard](images/manage-links-table.png)
+
+### Searching & Filtering Links
+
+At the top of the table:
+
+- **Search bar** — Filter links by title, directory, or file name. Results update as you type.
+- **Type filter** — Show only specific link types: *All types*, *Upload*, *Share (file)*, or *Share (collection)*.
+- **Status filter** — Show only links with a specific status: *All status*, *Active*, *Expired*, or *Disabled*.
+- **Refresh** — Manually reload the link list from the server.
+
+Summary badges show the count of **Total**, **Active**, **Expired**, and **Disabled** links.
+
+### Link Table Columns
+
+| Column | Description |
+|--------|-------------|
+| **Title** | Internal name of the link. Click the edit icon to rename it inline. Click the title to open Link Details. |
+| **Type** | Badge showing **Upload**, **Share (file)**, or **Share (collection)**. |
+| **Link** | The public URL. Click to open in browser, or use the **Copy** button. |
+| **Expires** | Time remaining (e.g., *23 Hours*, *6d 22h*, *Never*). Shown in red when less than 24 hours remain. Click **Edit** to change the expiration. |
+| **Status** | Current state: **ACTIVE** (green), **EXPIRED** (amber), or **DISABLED** (gray). |
+| **Access** | Access mode: **Open** (green), **Password** (amber), or **Users only** (rose). Hover for details. |
+| **Created** | Date and time the link was created. |
+| **Actions** | Action buttons (see below). |
+
+### Link Actions
+
+Each link row provides these actions:
+
+| Action | Description |
+|--------|-------------|
+| **Details** | Opens the full Link Details view with configuration, activity log, and file list. |
+| **Open** | Opens the link in your browser to preview what recipients will see. |
+| **Disable / Enable** | Immediately deactivates or reactivates the link. Disabling blocks access without deleting the link. |
+
+---
+
+## 14. Link Details
+
+Click **"Details"** on any link (or click its title) to view comprehensive information.
+
+![Link Details modal](images/link-details.png)
+
+### Link Configuration Summary
+
+The details view displays:
+
+| Field | Description |
+|-------|-------------|
+| **Primary Link** | The full URL with a **Copy** button. |
+| **Access** | Current access mode (Open / Password / Users only). |
+| **Review Copies** | Whether review copy generation is enabled or disabled. |
+| **Watermark** | Whether watermarking is enabled or disabled. |
+| **Type** | Share (download) or Upload. |
+| **Status** | Active, Expired, or Disabled. |
+| **Created** | Creation date and time. |
+| **Expires** | Expiration date/time or "Never". |
+| **Title** | Internal name. |
+| **Notes** | Optional internal notes. |
+
+### Shared Files
+
+A table of all files associated with this link, showing:
+- **Name** — File name
+- **Size** — File size
+- **MIME** — File type (e.g., video/mp4, image/jpeg)
+
+### Access Activity Log
+
+View a log of all actions taken on this link:
+
+| Column | Description |
+|--------|-------------|
+| **When** | Date and time of the activity. |
+| **Action** | What happened — e.g., *Playback requested*, *Download*, *Upload*, *Expiry updated*. |
+| **Actor** | Whether the access was from a *Guest* or an *Authenticated user*. |
+| **Source** | IP address and browser information. |
+| **Summary** | Details of the action performed. |
+
+![Access activity log](images/link-details-activity.png)
+
+### File Versions
+
+If file versioning/snapshots are available, this section shows:
+
+| Column | Description |
+|--------|-------------|
+| **Version** | Version identifier (e.g., v1, v2). |
+| **Created** | When the version was created. |
+| **Snapshot** | Snapshot reference. |
+| **Size** | File size at that version. |
+| **Restore** | Restore this version, replacing the current file. |
+| **Delete** | Remove this version (if permitted). |
+
+### Comments Review & Export
+
+From the Link Details view, click the **"Comments"** button to review and manage all comments on a link.
+
+![Comments panel in Link Details](images/comments-review-modal.png)
+
+**Reviewing Comments:**
+
+- View all comments across all files in a link in one place.
+- **Filter** by file, by resolved/unresolved status, or by user.
+- **Resolve/Unresolve** individual comments or bulk-resolve all.
+- Each comment shows its timecode, author, annotation indicator, and tags.
+- If a comment has an annotation, click **"View Annotation"** to see the drawing overlaid on the video frame at that timecode.
+
+**Exporting Comments:**
+
+Export comments in multiple formats for use in external tools:
+
+| Format | Description |
+|--------|-------------|
+| **JSON** | Structured data with all fields — timestamps, authors, annotations, tags, resolved status. |
+| **CSV** | Spreadsheet-compatible tabular export. |
+| **Markdown** | Human-readable formatted list, suitable for reports or emails. |
+| **WebVTT** | Subtitle/caption format — timecoded comments as VTT cues for use in NLEs or other players. |
+
+Click **"Edit"** at the top of the Link Details view to modify the link's settings (see next section).
+
+---
+
+## 15. Editing a Link
+
+From the Link Details view, click **"Edit"** to modify an existing link's configuration.
+
+![Link edit modal](images/link-edit.png)
+
+You can modify:
+
+- **Title** and **Notes** — Update the internal name and documentation.
+- **Restrict Access to Users** — Toggle between open and restricted access.
+- **Allow Comments** — Enable or disable commenting on shared files.
+- **Password Required** — Enable or disable password protection, and set the password.
+- **Generate Review Copies** — Enable/disable review copy generation and select qualities (720p, 1080p, Original).
+- **Apply Watermark** — Enable/disable watermark overlay with full customization controls (position, scale, opacity, rotation, presets).
+- **Files for This Link** — Add or remove files associated with the link using **"Manage Files"**.
+
+Click **"Save Changes"** to apply. All changes take effect **immediately**.
+
+Click **"Cancel"** or **"Close"** to discard changes and return to Link Details.
+
+> **Important:** Changes to access settings, passwords, and file lists take effect immediately for anyone accessing the link.
+
+---
+
+## 16. Accessing a Shared Link
+
+When someone opens a share link you've created, their experience depends on the **access mode** you configured. This section explains what recipients see when accessing links with different restriction levels.
+
+### Opening the Link
+
+For **open access** (Anyone with the link) share links, recipients can immediately browse files, play videos, or download content without any login or password.
+
+![Open access share link](images/video-player.png)
+
+### Password-Protected Links
+
+When you protect a link with a password (**Anyone with the link + password**), recipients must enter the correct password before accessing the content.
+
+![Password-protected link entry screen](images/link-password-protected.png)
+
+After entering the correct password, they'll have full access to the shared files according to the permissions you set (view, download, comment, etc.).
+
+### User-Restricted Links
+
+For links restricted to **specific users** or **invited users only**, recipients must log in with their credentials:
+
+1. Click **"Sign In"** on the access screen.
+2. Enter their username and password.
+3. If authenticated and authorized, they'll be granted access to the content.
+
+![User-restricted link login screen](images/link-user-restricted.png)
+
+> **Note:** Users must have been invited to the link (or have appropriate role permissions) to access user-restricted content. See [User Management](#18-user-management) for details on creating and managing user accounts.
+
+---
+
+## 17. Video Player, Comments & Annotations
+
+When someone opens a share link containing video files, they see the **45Flow Video Player** — a browser-based player with collaboration features.
+
+![Video player with sidebar and comments](images/video-player.png)
+
+### Playback Controls
+
+The player supports standard media controls:
+- **Play / Pause**
+- **Seek bar** with timeline scrubbing
+- **Volume control**
+- **Fullscreen** toggle
+- **Playback rate** adjustment (speed up or slow down)
+
+### Quality Selection
+
+If review copies were generated, viewers can choose their preferred quality:
+- **Auto** — Automatically adapts to available bandwidth
+- **720p** — Lower resolution, faster loading
+- **1080p** — Full HD
+- **Original** — Full quality source file (if included)
+
+The player uses **HLS (HTTP Live Streaming)** for adaptive bitrate delivery.
+
+### Timecoded Comments
+
+If comments are enabled on the link, a **Comments Panel** appears alongside the player:
+
+![Comments panel with timecoded threads](images/video-player-comments.png)
+
+- **Viewing comments:** Comments are displayed with the author's name, timecode, and color-coded indicator. Click a timecode to jump to that point in the video.
+- **Adding comments:** Click the comment input area, type your message, and submit. The comment is automatically tagged to the current playback position.
+- **Replies:** Click on any comment to reply, creating threaded conversations.
+- **Timecode markers:** Visual markers appear on the seek bar indicating where comments exist.
+- **SMPTE timecodes:** Comments display professional SMPTE timecodes (HH:MM:SS:FF) when the video's frame rate is detected.
+
+> **Note:** Commenting availability depends on the link's access mode and whether comments were enabled when creating the link.
+
+### Annotations & Drawing Tools
+
+45Flow Pro includes built-in annotation tools for drawing directly on video frames. Annotations are created alongside comments in the review player.
+
+![Annotation drawing tools](images/annotation-tools.png)
+
+**Creating Annotations:**
+
+1. Pause the video at the frame you want to annotate.
+2. Click the **annotation/draw tool** in the comment area.
+3. Use the available tools:
+   - **Freehand** — Draw freeform paths
+   - **Rectangle** — Draw rectangular highlights
+   - **Circle/Ellipse** — Draw circular highlights
+   - **Arrow/Line** — Draw directional arrows or straight lines
+4. Choose a color for your annotation.
+5. Submit the comment — the annotation is saved alongside the timecoded comment.
+
+**Viewing Annotations:**
+
+- **In the review player** — Navigate to a comment with an annotation and the drawing renders on top of the video at the correct timecode.
+- **In Link Details → Comments** — Click **"View Annotation"** on any comment that has one. The **Annotation Viewer** modal shows a full-size view of the annotated frame with all drawing data rendered.
+
+![Annotation viewer modal](images/annotation-viewer.png)
+
+### Multi-File Shares
+
+For collection links (multiple files), a sidebar file browser appears on the left. Click any file to load it in the player. Version selection is available if multiple versions exist.
+
+---
+
+## 18. User Management
+
+Users are required for the **"Only invited users"** access mode and allow role-based permissions on restricted links. Access user management from the Dashboard by clicking **"Manage Users"**.
+
+![Manage Users modal](images/manage-users.png)
+
+### Viewing Existing Users
+
+The top section lists all currently created users with:
+- **Name** and **Username**
+- **Email** (if provided)
+- **Company** and **Tags** (if provided)
+- **Assigned role**
+- **Color dot** indicating their comment color
+
+Use the **search bar** to filter users by name, username, email, company, or tags.
+
+### Creating a New User
+
+Click **"Create new user"** to expand the creation form.
+
+![Create new user form](images/manage-users-create.png)
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| **Name** | Yes | Display name shown in comments and activity logs. |
+| **Username** | Yes | Login identifier. Must be unique. |
+| **Temporary Password** | Yes | Initial password (4–64 characters). Click **"Generate password"** to auto-generate one. Share this securely with the user. |
+| **Confirm Password** | Yes | Must match the temporary password. |
+| **Email** | No | Email address for identification. |
+| **Company** | No | Company affiliation. |
+| **Tags** | No | Comma-separated tags (e.g., `finance, vip, internal`). |
+| **Default Role** | — | The role automatically assigned when this user is added to restricted links. |
+| **Comment Color** | — | Hex color used to visually distinguish this user's comments. Use the color picker or type a hex value (e.g., `#94ebc8`). |
+
+Click **"Create User"** to save. The user will appear in the existing users list and can now be invited to restricted links.
+
+### Managing Groups
+
+Groups allow you to organize users into logical collections (e.g., **Editors**, **Clients**, **Reviewers**) for easier permission management.
+
+**Creating a Group:**
+
+1. Click **"Create Group"** in the User Management screen.
+2. Enter a **group name** and optional **description**.
+3. Click **"Save"**.
+
+**Adding Users to a Group:**
+
+1. Open the group's detail view.
+2. Click **"Add Users"**.
+3. Select users from the list and confirm.
+
+**Using Groups for Link Access:**
+
+When creating a user-restricted link, you can invite an entire group instead of adding users individually. All group members will automatically have access to the link.
+
+![User groups management](images/manage-groups.png)
+
+> **Tip:** Use groups to streamline link permissions when sharing with the same team repeatedly. Add new members to the group once, and they'll inherit access to all links shared with that group.
+
+### Editing & Deleting Users
+
+- Click the **pencil icon** on any user to edit their name, email, company, tags, comment color, default role, or to reset their password.
+- Click the **red X** to delete a user. A confirmation dialog will appear — **this action cannot be undone**.
+
+---
+
+## 19. Role Management
+
+Roles define what users can do when accessing restricted links. Access role management from **Manage Users → Manage Roles**.
+
+![Manage Roles screen](images/manage-roles.png)
+
+### System Roles
+
+45Flow includes three built-in roles that cannot be deleted:
+
+| Role | View | Comment | Download | Upload |
+|------|------|---------|----------|--------|
+| **Editor** | ✅ | ✅ | ✅ | ✅ |
+| **Feedback** | ✅ | ✅ | ✅ | ❌ |
+| **Viewer** | ✅ | ❌ | ❌ | ❌ |
+
+### Permission Definitions
+
+| Permission | What It Allows |
+|------------|----------------|
+| **View** | See files, open media, browse directory contents |
+| **Comment** | Leave timecoded comments and participate in threads |
+| **Download** | Download files to their device |
+| **Upload** | Upload files (on upload-enabled links) |
+
+### Creating Custom Roles
+
+1. Enter a **Role name** (e.g., "Client", "Uploader").
+2. Check the permissions you want to grant.
+3. Click **"Create"**.
+
+### Editing & Deleting Roles
+
+- Click **Edit** on any custom role to modify its name or permissions, then click **Save**.
+- Click **Delete** to remove a custom role (only if it's not currently assigned to users).
+- System roles (Editor, Feedback, Viewer) cannot be deleted or modified.
+
+> **Important:** Role changes apply immediately to all users assigned that role. Removing a permission instantly restricts affected users.
+
+---
+
 ## 20. Multi-Server Management
 
 45Flow Pro supports connecting to and managing **multiple servers** simultaneously.
@@ -1246,66 +1310,7 @@ This is useful for managing links across multiple servers from a single view.
 
 ---
 
-## 21. Comments Review & Export
-
-45Flow Pro lets you review and manage all comments on a link from the **Link Details** view. Open any link's details from the Dashboard, then click the **"Comments"** button at the top to open the comments panel.
-
-![Comments panel in Link Details](images/comments-review-modal.png)
-
-### Reviewing Comments
-
-- View all comments across all files in a link in one place.
-- **Filter** by file, by resolved/unresolved status, or by user.
-- **Resolve/Unresolve** individual comments or bulk-resolve all.
-- Each comment shows its timecode, author, annotation indicator, and tags.
-- If a comment has an annotation, click **"View Annotation"** to see the drawing overlaid on the video frame at that timecode.
-
-### Exporting Comments
-
-Export comments in multiple formats for use in external tools:
-
-| Format | Description |
-|--------|-------------|
-| **JSON** | Structured data with all fields — timestamps, authors, annotations, tags, resolved status. |
-| **CSV** | Spreadsheet-compatible tabular export. |
-| **Markdown** | Human-readable formatted list, suitable for reports or emails. |
-| **WebVTT** | Subtitle/caption format — timecoded comments as VTT cues for use in NLEs or other players. |
-
----
-
-## 22. Annotations & Drawing Tools
-
-45Flow Pro includes built-in annotation tools for drawing directly on video frames. Annotations are created in the **link's review UI** (the shared video player).
-
-![Annotation drawing tools](images/annotation-tools.png)
-
-### Creating Annotations
-
-Annotations are created by reviewers when leaving a comment on a shared link:
-
-1. Open the shared link in a browser (the review player).
-2. Pause the video at the frame you want to annotate.
-3. Click the **annotation/draw tool** in the comment area.
-4. Use the available tools:
-   - **Freehand** — Draw freeform paths
-   - **Rectangle** — Draw rectangular highlights
-   - **Circle/Ellipse** — Draw circular highlights
-   - **Arrow/Line** — Draw directional arrows or straight lines
-5. Choose a color for your annotation.
-6. Submit the comment — the annotation is saved alongside the timecoded comment.
-
-### Viewing Annotations
-
-Annotations can be viewed in two places:
-
-- **In the review player** — Navigate to a comment with an annotation and the drawing renders on top of the video at the correct timecode.
-- **In Link Details → Comments** — Click **"View Annotation"** on any comment that has one. The **Annotation Viewer** modal shows a full-size view of the annotated frame with all drawing data rendered.
-
-![Annotation viewer modal](images/annotation-viewer.png)
-
----
-
-## 23. Automatic Updates
+## 21. Automatic Updates
 
 45Flow Pro includes built-in automatic update detection and installation. When a new version is available, a banner appears at the top of the application window.
 
@@ -1336,8 +1341,8 @@ On Linux systems using `.deb` or `.rpm` packages, automatic installation require
 
 1. The update is downloaded to your Downloads folder.
 2. A yellow instruction box shows the exact command to run:
-   - **Debian/Ubuntu:** `sudo apt install /path/to/45flow-premium_x.x.x_amd64.deb`
-   - **RHEL/Rocky/Fedora:** `sudo dnf install /path/to/45flow-premium-x.x.x.x86_64.rpm`
+   - **Debian/Ubuntu:** `sudo apt install /path/to/45Flow-Pro-Edition-x.x.x-linux-amd64.deb`
+   - **RHEL/Rocky/Fedora:** `sudo dnf install /path/to/45Flow-Pro-Edition-x.x.x-linux-x86_64.rpm`
 3. Open a terminal, paste the command, and enter your password.
 4. Relaunch 45Flow after the package is installed.
 
@@ -1345,7 +1350,7 @@ On Linux systems using `.deb` or `.rpm` packages, automatic installation require
 
 ---
 
-## 24. View Logs
+## 22. View Logs
 
 The Log Viewer lets you inspect application activity, identify errors, and troubleshoot issues. Access it from the Dashboard by clicking **"View Logs"**.
 
@@ -1416,7 +1421,7 @@ When connected to multiple servers, a **server selector dropdown** appears in th
 
 ---
 
-## 25. Frequently Asked Questions
+## 23. Frequently Asked Questions
 
 **Q: My server doesn't appear in the auto-discovery dropdown. What do I do?**  
 A: The `houston-broadcaster` service must be running on the server. Try connecting manually using the server's IP address via the **"Connect manually via IP"** field.
