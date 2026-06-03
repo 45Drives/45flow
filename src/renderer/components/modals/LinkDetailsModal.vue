@@ -3517,10 +3517,7 @@ async function saveAll() {
       startLinkTranscodeTracking({
         resp: trackingResp,
         wantsProxy: shouldUpdateFiles ? !!wantsProxy : !!draftGenerateReviewProxy.value,
-        wantsProxy: shouldUpdateFiles ? !!wantsProxy : !!draftGenerateReviewProxy.value,
         wantsHls: true,
-        addedPaths: shouldUpdateFiles ? addedPaths.slice() : draftFilePaths.value.slice(),
-        proxyQualities: (shouldUpdateFiles ? wantsProxy : draftGenerateReviewProxy.value) ? nextProxyQualities : [],
         addedPaths: shouldUpdateFiles ? addedPaths.slice() : draftFilePaths.value.slice(),
         proxyQualities: (shouldUpdateFiles ? wantsProxy : draftGenerateReviewProxy.value) ? nextProxyQualities : [],
       })
