@@ -131,7 +131,7 @@ Download the latest version of 45Flow from the **[Releases page](https://github.
 
 > **Tip:** If macOS warns the app is from an unidentified developer, go to **System Preferences → Security & Privacy** and click **Open Anyway**.
 
-![macOS DMG install — drag 45Flow into Applications](images/install-macos-dmg.png)
+![macOS DMG install — drag 45Flow into Applications](images/install-macos-dmg-v2.png)
 
 ### Windows
 
@@ -143,7 +143,7 @@ Download the latest version of 45Flow from the **[Releases page](https://github.
 2. Follow the on-screen installation wizard steps.
 3. Once complete, launch **45Flow** from the Start Menu or Desktop shortcut.
 
-![Windows installer wizard](images/install-windows.png)
+![Windows installer wizard](images/install-windows-v2.png)
 
 ### Linux
 
@@ -179,7 +179,7 @@ The AppImage requires no root privileges and does not modify your system. It sup
 
 When you first open 45Flow, you'll see the **Login Screen**. This is where you connect the desktop client to your 45Drives server.
 
-![Login Screen](images/login-screen.png)
+![Login Screen](images/login-screen-v2.png)
 
 ### Automatic Server Discovery
 
@@ -187,7 +187,7 @@ If your server is running the **houston-broadcaster** service on the same networ
 
 Simply select your server from the dropdown to populate the connection.
 
-![Server auto-discovery dropdown](images/login-server-discovery.png)
+![Server auto-discovery dropdown](images/login-server-discovery-v2.png)
 
 > **Note:** If no servers appear, the houston-broadcaster service may not be running, or you may be on a different subnet. Use the manual connection method below.
 
@@ -223,13 +223,13 @@ The app will display status messages as it connects:
 
 On success, you'll be taken to the **Dashboard**.
 
-![Connecting to server with status messages](images/login-connecting.png)
+![Connecting to server with status messages](images/login-connecting-v2.png)
 
 ### Activating Your License
 
 After successfully connecting to your server for the first time, you'll need to activate your 45Flow license. **This is a one-time activation per server.**
 
-![License activation screen](images/license-activation.png)
+![License activation screen](images/license-activation-v2.png)
 
 1. When prompted, enter your **License Key** provided by 45Drives.
 2. Click **"Activate License"** to validate your key with the licensing server.
@@ -249,7 +249,7 @@ After activation is complete, you'll be automatically directed to the **Dashboar
 
 The **Dashboard** (also called the **Control Center**) is your central hub for managing all file sharing operations.
 
-![Dashboard overview](images/dashboard-overview.png)
+![Dashboard overview](images/dashboard-overview-v2.png)
 
 ### Top Navigation
 
@@ -271,7 +271,7 @@ Three large action buttons let you perform the core tasks:
 | **Upload Files Locally** | Transfer files from your workstation directly to the server |
 | **New Upload Link** | Create a link that allows external collaborators to upload files to your server |
 
-![Dashboard action buttons](images/dashboard-action-buttons.png)
+![Dashboard action buttons](images/dashboard-action-buttons-v2.png)
 
 ### Active Links Table
 
@@ -303,7 +303,7 @@ Port forwarding tells your router to direct incoming traffic on a specific port 
 
 > **Note:** Port forwarding configuration varies by router manufacturer and model. Some ISPs or shared building networks may restrict port forwarding. If you're unsure whether your network supports it, contact your ISP or network administrator.
 
-![Port forwarding help modal](images/port-forwarding-help.png)
+![Port forwarding help modal](images/port-forwarding-help-v2.png)
 
 > **Tip:** After setting up port forwarding, configure your external URL in [Settings](#6-settings) → URLs & Access to ensure links are generated correctly.
 
@@ -320,7 +320,7 @@ The Settings panel is organized into sections via the left-hand navigation sideb
 - **Application** — Preferences, Server Health, Maintenance
 - **Help** — Guides
 
-![Settings modal](images/settings.png)
+![Settings modal](images/settings-v2.png)
 
 ### URLs & Access
 
@@ -356,7 +356,7 @@ A **Preview** section shows the currently active external and internal URLs so y
 
 The **Certificate** tab lets you upgrade from the default self-signed certificate to a trusted **Let's Encrypt** certificate for your custom domain. A trusted certificate eliminates browser security warnings when clients open share links.
 
-![Certificate management](images/settings-certificate.png)
+![Certificate management](images/settings-certificate-v2.png)
 
 **Certificate Status:**
 
@@ -430,7 +430,7 @@ These defaults are applied automatically when creating new links, but can be cha
 
 The **Server Health** section provides real-time resource statistics from your connected server.
 
-![Server Health panel](images/settings-server-health.png)
+![Server Health panel](images/settings-server-health-v2.png)
 
 Server Health auto-loads when you navigate to the section and shows the following:
 
@@ -463,7 +463,7 @@ For administrators to manage server health:
 - Click **"Run Scan"** to preview what would be cleaned, then **"Apply Cleanup"** to execute.
 - Use **"Export JSON"** to save scan results.
 
-![Maintenance and cleanup scan results](images/settings-maintenance.png)
+![Maintenance and cleanup scan results](images/settings-maintenance-v2.png)
 
 ### Guides
 
@@ -488,7 +488,7 @@ The Guides section provides:
 
 Access branding configuration from **Settings → White Label**.
 
-![Custom Branding configuration panel](images/settings-branding.png)
+![Custom Branding configuration panel](images/settings-branding-v2.png)
 
 ### Enabling Branding
 
@@ -590,7 +590,7 @@ When branding is enabled, recipients viewing your share links will see:
 
 The **QuickShare** feature provides the fastest way to create a share link. Simply drag files from your desktop or file manager directly into 45Flow to instantly generate a shareable link with one click.
 
-![QuickShare drag and drop interface](images/quickshare-dragdrop.png)
+![QuickShare drag and drop interface](images/quickshare-dragdrop-v2.png)
 
 ### How to Use QuickShare
 
@@ -636,7 +636,7 @@ Click **"New File Share Link"** from the Dashboard to begin.
 
 First, choose the storage location where your files reside.
 
-![Project selection with ZFS pools](images/share-select-project.png)
+![Project selection with ZFS pools](images/share-select-project-v2.png)
 
 - The screen displays your available **ZFS pools** (storage locations) such as `/media`, `/projects`, etc.
 - Click **"Select"** next to the pool you want to use.
@@ -650,7 +650,7 @@ Click **"Return to Dashboard"** at any time to cancel.
 
 After choosing a project, you'll see the file selection and link configuration screen.
 
-![File selection and link configuration](images/share-select-files.png)
+![File selection and link configuration](images/share-select-files-v2.png)
 
 #### Selecting Files
 
@@ -684,13 +684,13 @@ Choose who can access the link:
 | **Anyone with the link + password** | Requires a shared password. Enter a password in the field that appears. The same password is used by all recipients. |
 | **Only invited users** | Requires each user to log in with their own credentials. Click **"Invite users…"** to select which users can access. Permissions are controlled by their assigned roles. |
 
-![Link access mode options](images/share-access-modes.png)
+![Link access mode options](images/share-access-modes-v2.png)
 
 ### Advanced Video Options
 
 When sharing video files, expand the **"Advanced video options"** section for additional controls:
 
-![Advanced video options — review copy and watermark](images/share-video-options.png)
+![Advanced video options — review copy and watermark](images/share-video-options-v2.png)
 
 **Use Review Copies:**
 - When enabled, the system generates lower-resolution review copy versions of your videos (720p, 1080p).
@@ -728,7 +728,7 @@ When sharing video files, expand the **"Advanced video options"** section for ad
 3. The generated URL will appear — use the **"Copy"** button to copy it to your clipboard, or **"Open"** to view it in your browser.
 4. The link is now visible on your Dashboard for ongoing management.
 
-![Generated share link with Copy and Open buttons](images/share-link-generated.png)
+![Generated share link with Copy and Open buttons](images/share-link-generated-v2.png)
 
 ---
 
@@ -740,7 +740,7 @@ Click **"Upload Files Locally"** from the Dashboard to begin. A three-step wizar
 
 ### Step 1: Select Local Files
 
-![Local upload — Step 1: Select files](images/upload-local-step1.png)
+![Local upload — Step 1: Select files](images/upload-local-step1-v2.png)
 
 1. Click **"Choose Files"** to select individual files, or **"Choose Folder"** to add an entire folder's contents.
 2. Selected files appear in a table showing **Name**, **Size**, and a **Remove** button.
@@ -752,7 +752,7 @@ Click **"Upload Files Locally"** from the Dashboard to begin. A three-step wizar
 
 ### Step 2: Choose Destination
 
-![Local upload — Step 2: Choose destination](images/upload-local-step2.png)
+![Local upload — Step 2: Choose destination](images/upload-local-step2-v2.png)
 
 1. Select a **ZFS pool** (storage location) or check **"Show entire directory tree from root"** for full filesystem access.
 2. Navigate the folder browser:
@@ -765,7 +765,7 @@ Click **"Upload Files Locally"** from the Dashboard to begin. A three-step wizar
 
 ### Step 3: Upload & Monitor Progress
 
-![Local upload — Step 3: Upload progress](images/upload-local-step3.png)
+![Local upload — Step 3: Upload progress](images/upload-local-step3-v2.png)
 
 **Before Uploading:**
 
@@ -796,7 +796,7 @@ When **client-side transcoding** is enabled (Settings → Performance), video fi
 
 This offloads video processing from the server to your workstation. If you don't have client-side transcoding enabled, the server handles video processing after upload.
 
-![Upload table with file statuses](images/upload-local-table.png)
+![Upload table with file statuses](images/upload-local-table-v2.png)
 
 **After Upload:**
 
@@ -812,7 +812,7 @@ Use this feature to create a link that allows external collaborators to upload f
 
 Click **"New Upload Link"** from the Dashboard to begin.
 
-![Upload link creation screen](images/upload-link-creation.png)
+![Upload link creation screen](images/upload-link-creation-v2.png)
 
 ### Selecting a Destination Folder
 
@@ -843,7 +843,7 @@ Click **"New Upload Link"** from the Dashboard to begin.
 | **Anyone with the link + password** | Requires a shared password before uploading. |
 | **Only invited users** | Users must log in with their credentials before uploading. Click **"Invite users…"** to add authorized users. |
 
-![Upload link access modes with warning](images/upload-link-access-modes.png)
+![Upload link access modes with warning](images/upload-link-access-modes-v2.png)
 
 ### Generating the Upload Link
 
@@ -853,7 +853,7 @@ Click **"New Upload Link"** from the Dashboard to begin.
 
 When someone opens the link, they'll see a drag-and-drop upload page where they can send files directly to the specified folder.
 
-![External upload page — drag and drop interface](images/upload-link-external-view.png)
+![External upload page — drag and drop interface](images/upload-link-external-view-v2.png)
 
 ---
 
@@ -861,7 +861,7 @@ When someone opens the link, they'll see a drag-and-drop upload page where they 
 
 The **Transfer Dock** is a persistent overlay that tracks all active and recently completed transfers — uploads, transcodes, and review copy generation. It remains visible across all screens so you can continue working while monitoring progress.
 
-![Transfer Dock open](images/transfer-dock-open.png)
+![Transfer Dock open](images/transfer-dock-open-v2.png)
 
 ### Transfer Dock Overview
 
@@ -874,7 +874,7 @@ The Transfer Dock appears at the bottom of the screen whenever a transfer is in 
 
 When collapsed, a minimal indicator remains visible showing active transfer count. Click it to expand the dock again.
 
-![Transfer Dock collapsed](images/transfer-dock-hidden.png)
+![Transfer Dock collapsed](images/transfer-dock-hidden-v2.png)
 
 ### Transfer Entry Details
 
@@ -920,7 +920,7 @@ Upload                     95.23 MB/s            ETA 0:14            100%
 
 All links you create — both share and upload — appear on the Dashboard in the **links table**. This is your central view for monitoring and managing all active, expired, and disabled links.
 
-![Links table on the Dashboard](images/manage-links-table.png)
+![Links table on the Dashboard](images/manage-links-table-v2.png)
 
 ### Searching & Filtering Links
 
@@ -962,7 +962,7 @@ Each link row provides these actions:
 
 Click **"Details"** on any link (or click its title) to view comprehensive information.
 
-![Link Details modal](images/link-details.png)
+![Link Details modal](images/link-details-v2.png)
 
 ### Link Configuration Summary
 
@@ -1000,7 +1000,7 @@ View a log of all actions taken on this link:
 | **Source** | IP address and browser information. |
 | **Summary** | Details of the action performed. |
 
-![Access activity log](images/link-details-activity.png)
+![Access activity log](images/link-details-activity-v2.png)
 
 ### File Versions
 
@@ -1019,7 +1019,7 @@ If file versioning/snapshots are available, this section shows:
 
 From the Link Details view, click the **"Comments"** button to review and manage all comments on a link.
 
-![Comments panel in Link Details](images/comments-review-modal.png)
+![Comments panel in Link Details](images/comments-review-modal-v2.png)
 
 **Reviewing Comments:**
 
@@ -1048,7 +1048,7 @@ Click **"Edit"** at the top of the Link Details view to modify the link's settin
 
 From the Link Details view, click **"Edit"** to modify an existing link's configuration.
 
-![Link edit modal](images/link-edit.png)
+![Link edit modal](images/link-edit-v2.png)
 
 You can modify:
 
@@ -1076,13 +1076,13 @@ When someone opens a share link you've created, their experience depends on the 
 
 For **open access** (Anyone with the link) share links, recipients can immediately browse files, play videos, or download content without any login or password.
 
-![Open access share link](images/video-player.png)
+![Open access share link](images/video-player-v2.png)
 
 ### Password-Protected Links
 
 When you protect a link with a password (**Anyone with the link + password**), recipients must enter the correct password before accessing the content.
 
-![Password-protected link entry screen](images/link-password-protected.png)
+![Password-protected link entry screen](images/link-password-protected-v2.png)
 
 After entering the correct password, they'll have full access to the shared files according to the permissions you set (view, download, comment, etc.).
 
@@ -1094,7 +1094,7 @@ For links restricted to **specific users** or **invited users only**, recipients
 2. Enter their username and password.
 3. If authenticated and authorized, they'll be granted access to the content.
 
-![User-restricted link login screen](images/link-user-restricted.png)
+![User-restricted link login screen](images/link-user-restricted-v2.png)
 
 > **Note:** Users must have been invited to the link (or have appropriate role permissions) to access user-restricted content. See [User Management](#18-user-management) for details on creating and managing user accounts.
 
@@ -1104,7 +1104,7 @@ For links restricted to **specific users** or **invited users only**, recipients
 
 When someone opens a share link containing video files, they see the **45Flow Video Player** — a browser-based player with collaboration features.
 
-![Video player with sidebar and comments](images/video-player.png)
+![Video player with sidebar and comments](images/video-player-v2.png)
 
 ### Playback Controls
 
@@ -1129,7 +1129,7 @@ The player uses **HLS (HTTP Live Streaming)** for adaptive bitrate delivery.
 
 If comments are enabled on the link, a **Comments Panel** appears alongside the player:
 
-![Comments panel with timecoded threads](images/video-player-comments.png)
+![Comments panel with timecoded threads](images/video-player-comments-v2.png)
 
 - **Viewing comments:** Comments are displayed with the author's name, timecode, and color-coded indicator. Click a timecode to jump to that point in the video.
 - **Adding comments:** Click the comment input area, type your message, and submit. The comment is automatically tagged to the current playback position.
@@ -1143,7 +1143,7 @@ If comments are enabled on the link, a **Comments Panel** appears alongside the 
 
 45Flow Pro includes built-in annotation tools for drawing directly on video frames. Annotations are created alongside comments in the review player.
 
-![Annotation drawing tools](images/annotation-tools.png)
+![Annotation drawing tools](images/annotation-tools-v2.png)
 
 **Creating Annotations:**
 
@@ -1162,7 +1162,7 @@ If comments are enabled on the link, a **Comments Panel** appears alongside the 
 - **In the review player** — Navigate to a comment with an annotation and the drawing renders on top of the video at the correct timecode.
 - **In Link Details → Comments** — Click **"View Annotation"** on any comment that has one. The **Annotation Viewer** modal shows a full-size view of the annotated frame with all drawing data rendered.
 
-![Annotation viewer modal](images/annotation-viewer.png)
+![Annotation viewer modal](images/annotation-viewer-v2.png)
 
 ### Multi-File Shares
 
@@ -1174,7 +1174,7 @@ For collection links (multiple files), a sidebar file browser appears on the lef
 
 Users are required for the **"Only invited users"** access mode and allow role-based permissions on restricted links. Access user management from the Dashboard by clicking **"Manage Users"**.
 
-![Manage Users modal](images/manage-users.png)
+![Manage Users modal](images/manage-users-v2.png)
 
 ### Viewing Existing Users
 
@@ -1191,7 +1191,7 @@ Use the **search bar** to filter users by name, username, email, company, or tag
 
 Click **"Create new user"** to expand the creation form.
 
-![Create new user form](images/manage-users-create.png)
+![Create new user form](images/manage-users-create-v2.png)
 
 | Field | Required | Description |
 |-------|----------|-------------|
@@ -1227,7 +1227,7 @@ Groups allow you to organize users into logical collections (e.g., **Editors**, 
 
 When creating a user-restricted link, you can invite an entire group instead of adding users individually. All group members will automatically have access to the link.
 
-![User groups management](images/manage-groups.png)
+![User groups management](images/manage-groups-v2.png)
 
 > **Tip:** Use groups to streamline link permissions when sharing with the same team repeatedly. Add new members to the group once, and they'll inherit access to all links shared with that group.
 
@@ -1242,7 +1242,7 @@ When creating a user-restricted link, you can invite an entire group instead of 
 
 Roles define what users can do when accessing restricted links. Access role management from **Manage Users → Manage Roles**.
 
-![Manage Roles screen](images/manage-roles.png)
+![Manage Roles screen](images/manage-roles-v2.png)
 
 ### System Roles
 
@@ -1283,7 +1283,7 @@ Roles define what users can do when accessing restricted links. Access role mana
 
 45Flow Pro supports connecting to and managing **multiple servers** simultaneously.
 
-![Multi-server connection switcher](images/multi-server-switcher.png)
+![Multi-server connection switcher](images/multi-server-switcher-v2.png)
 
 ### Adding Servers
 
@@ -1295,7 +1295,7 @@ Roles define what users can do when accessing restricted links. Access role mana
 
 The **active server** is displayed in the header bar. Click the dropdown to switch between connected servers. The active server is where all your actions take effect — creating links, uploading files, managing users, etc.
 
-![Connection Manager modal](images/connection-manager-modal.png)
+![Connection Manager modal](images/connection-manager-modal-v2.png)
 
 ### Server Filter (All Servers View)
 
@@ -1306,7 +1306,7 @@ When multiple servers are connected, the **"Show links from"** filter appears on
 
 This is useful for managing links across multiple servers from a single view.
 
-![Server filter dropdown](images/server-filter-dropdown.png)
+![Server filter dropdown](images/server-filter-dropdown-v2.png)
 
 ---
 
@@ -1314,7 +1314,7 @@ This is useful for managing links across multiple servers from a single view.
 
 45Flow Pro includes built-in automatic update detection and installation. When a new version is available, a banner appears at the top of the application window.
 
-![Update banner showing available update](images/update-banner.png)
+![Update banner showing available update](images/update-banner-v2.png)
 
 ### Update Notifications
 
@@ -1356,7 +1356,7 @@ The Log Viewer lets you inspect application activity, identify errors, and troub
 
 The Log Viewer has two tabs: **Client Logs** and **Server Logs**.
 
-![Log Viewer with tabs](images/log-viewer-tabs.png)
+![Log Viewer with tabs](images/log-viewer-tabs-v2.png)
 
 ### Client Logs
 
@@ -1378,7 +1378,7 @@ At the top, you'll see:
 
 The Server Logs tab retrieves structured audit log entries from the connected server. These entries record every significant action taken on the server — link creation, file changes, transcode operations, user actions, branding updates, license activations, and more.
 
-![Server Logs tab](images/log-viewer-server.png)
+![Server Logs tab](images/log-viewer-server-v2.png)
 
 At the top, you'll see:
 
@@ -1404,7 +1404,7 @@ Server logs support **pagination** — use the Previous/Next buttons at the bott
 
 When connected to multiple servers, a **server selector dropdown** appears in the Server Logs tab. This lets you choose which server's audit log to view without disconnecting or switching your active server.
 
-![Server selector in log viewer](images/log-viewer-server-selector.png)
+![Server selector in log viewer](images/log-viewer-server-selector-v2.png)
 
 ### Searching & Filtering Logs
 
