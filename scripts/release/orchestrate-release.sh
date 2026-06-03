@@ -449,7 +449,8 @@ run_windows_flow() {
 
     if [[ "$WIN_PHASE" != "finalize" ]]; then
       # Clean stale unsigned files before a new stage run (preserve Signed directory)
-      find "$WIN_SAMBA_UNSIGNED_LOCAL" -maxdepth 1 -type f -name '*.exe' -delete 2>/dev/null || true
+      # Only delete files matching this build edition (Pro Edition)
+      find "$WIN_SAMBA_UNSIGNED_LOCAL" -maxdepth 1 -type f -name '45Flow-Pro-Edition-*.exe' -delete 2>/dev/null || true
 
       # SSH: git pull
       ssh_run "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" "$WIN_BUILD_GIT_PULL_CMD"
