@@ -761,6 +761,7 @@ async function connectToServer() {
 
         // Ensure SSH is ready early so any later SSH operations can use keys reliably
         statusLine.value = 'Preparing SSH…';
+        let verifiedKeyPath: string | undefined;
         try {
             const r = await window.electron?.ipcRenderer.invoke('ensure-ssh-ready', {
                 host: ip,
@@ -777,6 +778,8 @@ async function connectToServer() {
                 pushNotification(new Notification('Error', userMsg, 'error', 12000));
                 return;
             }
+            // Store the verified key path for later use in uploads
+            verifiedKeyPath = r?.keyPath;
         } catch (e: any) {
             statusLine.value = '';
             window.appLog?.error('ensure-ssh-ready.failed', { error: e?.message });
@@ -785,7 +788,24 @@ async function connectToServer() {
             return;
         }
 
-        // AppShell will update currentServer and connectionMeta from activeConnection
+        // Set current server (avoid creating a "manual" entry if we already discovered it)
+        providedCurrentServer.value = effectiveServer ?? {
+            ip, name: ip, lastSeen: Date.now(), status: 'unknown', manuallyAdded: true
+        };
+
+        connectionMeta.value = {
+            ...connectionMeta.value,
+            port: apiPortToUse,
+            apiBase,
+            httpsHost: undefined,
+            ssh: {
+                server: ip,
+                username: username.value,
+                port: sshPortToUse,
+                keyPath: verifiedKeyPath,
+            },
+        };
+
         window.appLog?.info('login.resolveApiBase', { isDev, ip, port: apiPortToUse, apiBase, href: location.href });
         window.appLog?.info('login.request', { url: `${apiBase}/api/login`, ip });
 

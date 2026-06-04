@@ -247,8 +247,10 @@
                                     :description="`${hardwareCapabilities?.hardwareDescription || 'Detecting...'}`"
                                 >
                                     <div class="flex items-center gap-3">
-                                        <span class="text-sm" :class="!hwAccelEnabled ? 'opacity-60' : 'font-semibold'">
-                                            {{ hwAccelEnabled ? '✓ GPU' : '⚠ CPU only' }}
+                                        <span class="text-sm" :class="!hwAccelEnabled || !hardwareCapabilities?.hasHardwareAccel ? 'opacity-60' : 'font-semibold'">
+                                            {{ hardwareCapabilities?.hasHardwareAccel 
+                                                ? (hwAccelEnabled ? '✓ GPU' : '⚠ CPU only') 
+                                                : '⚠ No GPU detected' }}
                                         </span>
                                         <Switch v-model="hwAccelEnabled" :class="[
                                             hwAccelEnabled ? 'bg-primary' : 'bg-well',
@@ -1025,12 +1027,20 @@ const hardwareCapabilities = ref<any>(null);
 onMounted(async () => {
 	try {
 		hardwareCapabilities.value = await window.electron.getTranscodeCapabilities();
+		// If no hardware acceleration available, force the toggle off
+		if (!hardwareCapabilities.value?.hasHardwareAccel && hwAccelEnabled.value) {
+			hwAccelEnabled.value = false;
+		}
 	} catch (e) {
 		console.warn('Failed to detect hardware capabilities:', e);
 		hardwareCapabilities.value = {
 			hasHardwareAccel: false,
 			hardwareDescription: 'Detection failed',
 		};
+		// Force toggle off if detection failed
+		if (hwAccelEnabled.value) {
+			hwAccelEnabled.value = false;
+		}
 	}
 });
 
