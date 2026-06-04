@@ -804,33 +804,33 @@ async function connectToServer() {
         }
 
         /**
-         * If this IP came from discovery, check whether the modern "houston-broadcaster"
-         * package is installed (vs. just the legacy service). If not installed → force bootstrap.
+         * Check whether the modern "houston-broadcaster" package is installed
+         * (vs. just the legacy service). If not installed → force bootstrap.
+         * Run this for ALL connections (discovered or manually-typed) so that
+         * manually-typed IPs also get the package check and bootstrap if needed.
          */
         let mustBootstrap = false;
-        if (effectiveServer) {
-            try {
-                const preflight = await window.electron?.ipcRenderer.invoke(
-                    'remote-check-broadcaster',
-                    {
-                        host: ip,
-                        username: username.value,
-                        password: password.value,
-                        sshPort: sshPortToUse,
-                    }
-                );
-
-                // If package not installed (likely legacy present), we must bootstrap.
-                if (preflight && preflight.hasPackage === false) {
-                    mustBootstrap = true;
-                    window.appLog?.info('preflight', { ip, reason: 'no-package-installed', preflight });
-                } else {
-                    window.appLog?.info('preflight', { ip, reason: 'package-present', preflight });
+        try {
+            const preflight = await window.electron?.ipcRenderer.invoke(
+                'remote-check-broadcaster',
+                {
+                    host: ip,
+                    username: username.value,
+                    password: password.value,
+                    sshPort: sshPortToUse,
                 }
-            } catch (err: any) {
-                // If SSH preflight fails, fall back to the old rule (health decides).
-                window.appLog?.warn('preflight.error', { ip, error: err?.message });
+            );
+
+            // If package not installed (likely legacy present), we must bootstrap.
+            if (preflight && preflight.hasPackage === false) {
+                mustBootstrap = true;
+                window.appLog?.info('preflight', { ip, reason: 'no-package-installed', preflight });
+            } else {
+                window.appLog?.info('preflight', { ip, reason: 'package-present', preflight });
             }
+        } catch (err: any) {
+            // If SSH preflight fails, fall back to the old rule (health decides).
+            window.appLog?.warn('preflight.error', { ip, error: err?.message });
         }
 
         // Decide whether to bootstrap:
