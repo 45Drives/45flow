@@ -98,12 +98,37 @@ export class TranscodeManager {
     onProgress: (progress: TranscodeProgress) => void
   ): Promise<void> {
     return new Promise((resolve, reject) => {
-      const child = spawn(ffmpegPath, args, {
+      // Spawn with low priority on Unix systems to prevent CPU lockup
+      const spawnOptions: any = {
         env: process.env,
         stdio: ['ignore', 'pipe', 'pipe']
-      });
+      };
 
-      this.activeJobs.set(jobId, { process: child, outputPath });
+      // On Unix, use 'nice' to lower process priority (19 = lowest)
+      // This prevents FFmpeg from monopolizing CPU and causing system sluggishness
+      if (process.platform !== 'win32') {
+        const niceCmd = 'nice';
+        const niceArgs = ['-n', '10', ffmpegPath, ...args];
+        const child = spawn(niceCmd, niceArgs, spawnOptions);
+        this.activeJobs.set(jobId, { process: child, outputPath });
+        this.setupFfmpegHandlers(child, jobId, outputPath, onProgress, resolve, reject);
+      } else {
+        // Windows: just spawn normally (no 'nice' equivalent easily available)
+        const child = spawn(ffmpegPath, args, spawnOptions);
+        this.activeJobs.set(jobId, { process: child, outputPath });
+        this.setupFfmpegHandlers(child, jobId, outputPath, onProgress, resolve, reject);
+      }
+    });
+  }
+
+  private setupFfmpegHandlers(
+    child: ChildProcess,
+    jobId: string,
+    outputPath: string,
+    onProgress: (progress: TranscodeProgress) => void,
+    resolve: () => void,
+    reject: (err: Error) => void
+  ): void {
 
       let stderr = ''; // FFmpeg writes progress to stderr!
       let duration = 0;
@@ -339,6 +364,10 @@ export class TranscodeManager {
       args.push('-tag:v', 'hvc1');
     }
     args.push('-movflags', '+faststart');
+
+    // CPU/thread limits to prevent system lockup
+    // Limit to 4 threads for balanced performance without monopolizing CPU
+    args.push('-threads', '4');
 
     // Output
     args.push('-y');

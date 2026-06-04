@@ -7,8 +7,9 @@ const HW_KEY = '45flow:client_transcode_hw_accel';
 
 export type TranscodePreset = 'fast' | 'balanced' | 'quality';
 
-// Default: enabled, balanced preset, hardware on
-const enabled = ref(loadBool(ENABLED_KEY, true));
+// Default: DISABLED (opt-in), balanced preset, hardware on
+// Client-side transcoding can consume significant CPU - users should explicitly enable it
+const enabled = ref(loadBool(ENABLED_KEY, false));
 const preset = ref<TranscodePreset>(loadPreset());
 const hwAccel = ref(loadBool(HW_KEY, true));
 

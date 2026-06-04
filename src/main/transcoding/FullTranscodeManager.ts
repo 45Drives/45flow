@@ -588,6 +588,10 @@ export class FullTranscodeManager {
     }
 
     args.push('-movflags', '+faststart');
+    
+    // CPU/thread limits to prevent system lockup
+    args.push('-threads', '4');
+    
     args.push(ffp(outputPath));
 
     return args;
@@ -699,6 +703,9 @@ export class FullTranscodeManager {
       '-hls_segment_filename', ffp(path.join(variantDir, 'seg_%05d.m4s')),
       ffp(path.join(variantDir, 'index.m3u8')),
     );
+
+    // CPU/thread limits to prevent system lockup
+    args.push('-threads', '4');
 
     return args;
   }
@@ -868,6 +875,9 @@ export class FullTranscodeManager {
       ffp(path.join(hlsOutDir, 'v%v', 'index.m3u8')),
     );
 
+    // CPU/thread limits to prevent system lockup
+    args.push('-threads', '4');
+
     return args;
   }
 
@@ -923,10 +933,24 @@ export class FullTranscodeManager {
     onProgress: (pct: number, fps: number, speed: string, eta: string) => void,
   ): Promise<void> {
     return new Promise((resolve, reject) => {
-      const child = spawn(ffmpegPath, args, {
+      // Spawn with low priority on Unix systems to prevent CPU lockup
+      const spawnOptions: any = {
         env: process.env,
         stdio: ['ignore', 'pipe', 'pipe'],
-      });
+      };
+
+      let child: ChildProcess;
+
+      // On Unix, use 'nice' to lower process priority (19 = lowest)
+      // This prevents FFmpeg from monopolizing CPU and causing system sluggishness
+      if (process.platform !== 'win32') {
+        const niceCmd = 'nice';
+        const niceArgs = ['-n', '10', ffmpegPath, ...args];
+        child = spawn(niceCmd, niceArgs, spawnOptions);
+      } else {
+        // Windows: just spawn normally (no 'nice' equivalent easily available)
+        child = spawn(ffmpegPath, args, spawnOptions);
+      }
 
       this.activeProcess = child;
 

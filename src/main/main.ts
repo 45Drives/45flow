@@ -1337,7 +1337,7 @@ function createWindow() {
       contextIsolation: true,
       webviewTag: true,
       javascript: true,
-      backgroundThrottling: false,  // Disable throttling
+      backgroundThrottling: true,  // Enable throttling to reduce CPU when minimized
       webSecurity: true,                  // Enforces origin security
       allowRunningInsecureContent: false, // Prevents HTTP inside HTTPS
     }
