@@ -78,8 +78,38 @@ export async function runWinSftp(o: WinSftpOpts): Promise<number> {
     jl('info', 'sftp.complete', { id: o.id });
     return 0;
   } catch (err: any) {
-    jl('error', 'sftp.error', { id: o.id, error: err?.message || String(err) });
-    throw err;
+    const msg = err?.message || String(err);
+    let detailedError = `SFTP upload failed for ${o.user}@${o.host}:${o.port ?? 22}.`;
+    
+    if (msg.includes('ETIMEDOUT') || msg.includes('timeout') || msg.includes('timed out')) {
+      detailedError += ` Connection timed out - server may be unreachable or SSH port blocked by firewall.`;
+    } else if (msg.includes('ECONNREFUSED')) {
+      detailedError += ` Connection refused - SSH server not running on port ${o.port ?? 22}.`;
+    } else if (msg.includes('EHOSTUNREACH') || msg.includes('ENETUNREACH')) {
+      detailedError += ` Network unreachable - check server IP and network settings.`;
+    } else if (msg.includes('All configured authentication methods failed')) {
+      detailedError += ` Authentication failed - SSH key not deployed on server. Reconnect from the Connections page to set up authentication.`;
+    } else if (msg.includes('No such file')) {
+      detailedError += ` Destination directory does not exist or is not accessible.`;
+    } else if (msg.includes('Permission denied')) {
+      detailedError += ` Permission denied - check file/directory permissions on server.`;
+    } else {
+      detailedError += ` Error: ${msg}`;
+    }
+    
+    jl('error', 'sftp.error', { 
+      id: o.id, 
+      host: o.host, 
+      user: o.user, 
+      port: o.port ?? 22,
+      hasKey: !!privateKey,
+      error: detailedError,
+      originalError: msg
+    });
+    
+    const enhancedError = new Error(detailedError);
+    (enhancedError as any).originalError = err;
+    throw enhancedError;
   } finally {
     try {
       await sftp.end();

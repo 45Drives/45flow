@@ -38,8 +38,26 @@ export async function connectWithPassword(args: { host: string; username: string
     return ssh;
   } catch (err: any) {
     const msg = err?.message || String(err);
-    console.error(`[SSH] Password auth failed for ${username}@${host}:${port ?? 22} - ${msg}`);
-    throw err;
+    let detailedError = `SSH password authentication failed for ${username}@${host}:${port ?? 22}.`;
+    
+    if (msg.includes('ETIMEDOUT') || msg.includes('timeout')) {
+      detailedError += ` Connection timed out - check server IP and network connectivity.`;
+    } else if (msg.includes('ECONNREFUSED')) {
+      detailedError += ` Connection refused - SSH server may not be running on port ${port ?? 22}.`;
+    } else if (msg.includes('EHOSTUNREACH') || msg.includes('ENETUNREACH')) {
+      detailedError += ` Host unreachable - check network/firewall settings.`;
+    } else if (msg.includes('All configured authentication methods failed')) {
+      detailedError += ` Wrong username or password.`;
+    } else if (msg.includes('publickey')) {
+      detailedError += ` Server requires key-based authentication (password auth disabled).`;
+    } else {
+      detailedError += ` Error: ${msg}`;
+    }
+    
+    console.error(`[SSH] ${detailedError}`);
+    const enhancedError = new Error(detailedError);
+    (enhancedError as any).originalError = err;
+    throw enhancedError;
   }
 }
 
@@ -53,17 +71,43 @@ export async function connectWithKey(args: { host: string; username: string; pri
     : fs.readFileSync(privateKey, 'utf8');
 
   const ssh = new NodeSSH();
-  await ssh.connect({
-    host,
-    username,
-    privateKey: keyData,
-    agent,
-    port: port ?? 22,
-    tryKeyboard: false,
-    readyTimeout: 20_000,
-    debug: (m: string) => console.debug(`ssh.debug ${scrubSecrets(m)}`),
-  });
-  return ssh;
+  try {
+    await ssh.connect({
+      host,
+      username,
+      privateKey: keyData,
+      agent,
+      port: port ?? 22,
+      tryKeyboard: false,
+      readyTimeout: 20_000,
+      debug: (m: string) => console.debug(`ssh.debug ${scrubSecrets(m)}`),
+    });
+    return ssh;
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    let detailedError = `SSH key authentication failed for ${username}@${host}:${port ?? 22}.`;
+    
+    if (msg.includes('ETIMEDOUT') || msg.includes('timeout')) {
+      detailedError += ` Connection timed out - check server IP and network connectivity.`;
+    } else if (msg.includes('ECONNREFUSED')) {
+      detailedError += ` Connection refused - SSH server may not be running on port ${port ?? 22}.`;
+    } else if (msg.includes('EHOSTUNREACH') || msg.includes('ENETUNREACH')) {
+      detailedError += ` Host unreachable - check network/firewall settings.`;
+    } else if (msg.includes('All configured authentication methods failed')) {
+      detailedError += ` SSH key not authorized on server. The key may not be in ~/.ssh/authorized_keys, or the username may be incorrect. Try reconnecting from the Connections page to re-deploy the key.`;
+    } else if (msg.includes('Cannot parse privateKey')) {
+      detailedError += ` Private key format invalid or corrupted.`;
+    } else if (msg.includes('PEM_read_bio') || msg.includes('unsupported key format')) {
+      detailedError += ` SSH key format not supported by server. Try regenerating keys.`;
+    } else {
+      detailedError += ` Error: ${msg}`;
+    }
+    
+    console.error(`[SSH] ${detailedError}`);
+    const enhancedError = new Error(detailedError);
+    (enhancedError as any).originalError = err;
+    throw enhancedError;
+  }
 }
 
 
