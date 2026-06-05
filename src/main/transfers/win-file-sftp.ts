@@ -32,6 +32,9 @@ export async function runWinSftp(o: WinSftpOpts): Promise<number> {
     destDir: o.destDir,
     host: o.host,
     user: o.user,
+    port: o.port ?? 22,
+    keyPath: o.keyPath,
+    keyExists: o.keyPath ? fs.existsSync(o.keyPath) : false,
   });
 
   const st = fs.statSync(o.src);
@@ -39,6 +42,22 @@ export async function runWinSftp(o: WinSftpOpts): Promise<number> {
 
   const destDir = o.destDir.replace(/\\/g, '/').replace(/\/+$/, '');
   const privateKey = o.keyPath ? fs.readFileSync(o.keyPath) : undefined;
+  
+  // Log key details for debugging
+  if (o.keyPath && privateKey) {
+    jl('info', 'sftp.key-loaded', {
+      id: o.id,
+      keyPath: o.keyPath,
+      keySize: privateKey.length,
+    });
+  } else if (!o.keyPath) {
+    jl('warn', 'sftp.no-keypath', {
+      id: o.id,
+      host: o.host,
+      user: o.user,
+      message: 'No keyPath provided - SFTP will fail without authentication',
+    });
+  }
 
   const sftp = new SftpClient();
 

@@ -1607,6 +1607,44 @@ async function startUploads() {
 	failedSinceStart = 0
 	let watermarkRelPathForIngest = ''
 
+	// Ensure SSH keys are deployed before uploading
+	const host = ssh?.server
+	const user = ssh?.username
+	const port = serverPort ?? 22
+	if (host && user) {
+		try {
+			const sshReady = await window.electron.ensureSshReady({
+				host,
+				username: user,
+				password: undefined, // No password available; rely on existing keys/agent
+				sshPort: port,
+			})
+			if (!sshReady?.ok) {
+				pushNotification(
+					new Notification(
+						'Upload Failed',
+						'SSH authentication setup failed. Please reconnect to the server from the Connections page to re-establish SSH keys.',
+						'error',
+						10000
+					)
+				)
+				isUploading.value = false
+				return
+			}
+		} catch (e: any) {
+			pushNotification(
+				new Notification(
+					'Upload Failed',
+					`SSH setup error: ${e?.message || String(e)}. Please reconnect to the server.`,
+					'error',
+					10000
+				)
+			)
+			isUploading.value = false
+			return
+		}
+	}
+
 	if (watermarkAfterUpload.value) {
 		isUploading.value = true
 		const selectedServerWatermark = String(selectedExistingWatermark.value || '').trim()

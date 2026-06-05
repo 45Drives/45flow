@@ -1009,6 +1009,43 @@ async function startUploadAndShare() {
     return
   }
 
+  // Ensure SSH keys are deployed before uploading
+  try {
+    const sshReady = await electron.ensureSshReady({
+      host,
+      username: user,
+      password: undefined, // No password available; rely on existing keys/agent
+      sshPort: port,
+    })
+    if (!sshReady?.ok) {
+      uploadPhase.value = 'error'
+      errorMsg.value = 'SSH authentication setup failed. Please reconnect to the server from the Connections page to re-establish SSH keys.'
+      busy.value = false
+      pushNotification(
+        new Notification(
+          'Quick Share Failed',
+          'SSH authentication is not configured. Please reconnect to the server.',
+          'error',
+          10000
+        )
+      )
+      return
+    }
+  } catch (e: any) {
+    uploadPhase.value = 'error'
+    errorMsg.value = `SSH setup error: ${e?.message || String(e)}`
+    busy.value = false
+    pushNotification(
+      new Notification(
+        'Quick Share Failed',
+        'Could not verify SSH authentication. Please reconnect to the server.',
+        'error',
+        10000
+      )
+    )
+    return
+  }
+
   const destDir = `/${(destFolder.value || '').replace(/^\/+/, '')}` || '/'
 
   try {

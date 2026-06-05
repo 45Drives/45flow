@@ -929,6 +929,17 @@ async function connectToServer() {
         const loginData = await res.json();
         const token = loginData.token;
 
+        connectionMeta.value = {
+            ...connectionMeta.value,
+            token,
+            ssh: {
+                server: ip,
+                username: username.value,
+                port: sshPortToUse,
+                keyPath: verifiedKeyPath,  // Preserve the key path from ensure-ssh-ready
+            },
+        };
+
         statusLine.value = '';
         
         try { sessionStorage.setItem('hb_token', token); } catch { /* ignore */ }

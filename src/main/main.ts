@@ -2842,6 +2842,18 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
   const keyPath = opts.keyPath || defaultClientKey()
   const src = opts.src
 
+  jl('info', 'upload.start', { 
+    id, 
+    host: opts.host, 
+    user: opts.user, 
+    src: opts.src, 
+    destDir: opts.destDir,
+    keyPathProvided: !!opts.keyPath,
+    keyPathResolved: keyPath,
+    keyExists: keyPath ? fs.existsSync(keyPath) : false,
+    platform: process.platform,
+  })
+
   if (!isOwnedByCurrentUser(src)) {
     const msg = 'Source is not owned by this user or is not readable.'
     jl('warn', 'upload.src.denied', { id, src })
