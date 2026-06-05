@@ -135,6 +135,14 @@ export type ElectronApi = {
   getOS: () => Promise<string>
   isFirstRunNeeded: (host: string, share: string, smbUser: string) => Promise<boolean>
 
+  // SSH setup
+  ensureSshReady: (opts: {
+    host: string
+    username: string
+    password?: string
+    sshPort?: number
+  }) => Promise<{ ok: boolean; keyPath?: string; via?: string; error?: string }>
+
   // local picks
   pickFiles: () => Promise<Array<{ path: string; name: string; size: number }>>
   pickFolder: () => Promise<Array<{ path: string; name: string; size: number }>>
@@ -239,6 +247,9 @@ const api: ElectronApi = {
   selectFolder: () => ipcRenderer.invoke('dialog:openFolder'),
   getOS: () => ipcRenderer.invoke('get-os'),
   isFirstRunNeeded: (host, share, smbUser) => ipcRenderer.invoke('backup:isFirstRunNeeded', host, share, smbUser),
+
+  // SSH setup
+  ensureSshReady: (opts) => ipcRenderer.invoke('ensure-ssh-ready', opts),
 
   // local picks
   pickFiles: () => ipcRenderer.invoke('dialog:pickFiles'),
