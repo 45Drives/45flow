@@ -129,8 +129,7 @@ export class TranscodeManager {
     resolve: () => void,
     reject: (err: Error) => void
   ): void {
-
-      let stderr = ''; // FFmpeg writes progress to stderr!
+    let stderr = ''; // FFmpeg writes progress to stderr!
       let duration = 0;
       let stderrBuffer = ''; // Buffer for incomplete lines
 
@@ -208,7 +207,6 @@ export class TranscodeManager {
       child.on('error', (err) => {
         this.activeJobs.delete(jobId);
         reject(err);
-      });
     });
   }
 
