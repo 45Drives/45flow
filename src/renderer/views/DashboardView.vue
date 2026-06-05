@@ -11,6 +11,7 @@
 					<button @click="goToManageUsers" data-tour="manage-users" class="btn btn-secondary px-5 py-2.5">Manage Access</button>
 					<button @click="goToLogs" data-tour="view-logs" class="btn btn-secondary px-5 py-2.5">View Logs</button>
 					<button @click="goToSettings" data-tour="settings" class="btn btn-secondary px-5 py-2.5">Settings</button>
+					<button @click="leaveServer" class="btn btn-danger px-5 py-2.5">Log Out</button>
 					<!-- <button @click="openUserGuide" class="btn btn-secondary px-5 py-2.5">User Guide</button> -->
 				</div>
 			</div>
@@ -34,14 +35,6 @@
 		<div class="dashboard-links-wrap" data-tour="manage-links">
 			<ManageLinks :tourActive="tourShowDemoLinks"/>
 		</div>
-
-		<template #footer>
-			<div class="dashboard-footer">
-				<button @click="leaveServer" data-tour="logout" class="btn btn-danger px-6 py-2.5 rounded-md">
-					Log Out
-				</button>
-			</div>
-		</template>
 	</CardContainer>
 	<SettingsModal v-if="showSettings" @close="showSettings = false" />
 	<LogViewModal v-if="showLogs" @close="showLogs = false" />
