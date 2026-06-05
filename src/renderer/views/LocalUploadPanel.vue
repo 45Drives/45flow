@@ -473,13 +473,24 @@ type UploadRow = {
 }
 const uploads = ref<UploadRow[]>([])
 
-// from step 1
-const serverPort = 22
-const privateKeyPath = undefined // or "~/.ssh/id_ed25519"
-
 const hasRunOnce = computed(() =>
 	uploads.value.some(u => u.status !== 'queued')
 )
+
+function resetUploadState() {
+	uploads.value = []
+	isUploading.value = false
+	activeUploads.value = 0
+	completedSinceStart = 0
+	failedSinceStart = 0
+	if (batchNotifyTimer) { clearTimeout(batchNotifyTimer); batchNotifyTimer = null }
+	rafState.clear()
+}
+
+// from step 1
+const serverPort = 22
+const privateKeyPath = computed(() => ssh?.keyPath)
+
 
 const allTerminal = computed(() =>
 	uploads.value.length > 0 &&
@@ -889,7 +900,7 @@ async function runClientFullTranscode(opts: {
 			host: ssh?.server || '',
 			user: ssh?.username || '',
 			port: serverPort,
-			keyPath: privateKeyPath,
+			keyPath: privateKeyPath.value!,
 		},
 		apiFetch,
 	})
@@ -1141,15 +1152,6 @@ function prepareRows(): UploadRow[] {
 	})
 }
 
-function resetUploadState() {
-	uploads.value = []
-	isUploading.value = false
-	activeUploads.value = 0
-	completedSinceStart = 0
-	failedSinceStart = 0
-	if (batchNotifyTimer) { clearTimeout(batchNotifyTimer); batchNotifyTimer = null }
-	rafState.clear()
-}
 
 function finish() {
 	// Reset the wizard (or route away)
@@ -1398,7 +1400,7 @@ function uploadOneFile(
 				src: filePathToUpload,
 				destDir: row.dest,
 				port: serverPort,
-				keyPath: privateKeyPath,
+				keyPath: privateKeyPath.value,
 				transcodeProxy: transcodeProxyAfterUpload.value, // Server generates proxy variants (scaling) even when client transcoded
 				proxyQualities: proxyQualities.value.slice(),
 				watermark: enableWatermark,
@@ -1688,7 +1690,7 @@ async function startUploads() {
 					src: watermarkFile.value.path,
 					destDir: watermarkDestDir,
 					port: serverPort,
-					keyPath: privateKeyPath,
+					keyPath: privateKeyPath.value,
 					noIngest: true,
 				}
 			)
@@ -1780,7 +1782,7 @@ async function startUploads() {
 				user: ssh?.username,
 				destDir: row.dest,
 				port: serverPort,
-				keyPath: privateKeyPath,
+				keyPath: privateKeyPath.value,
 				transcodeProxy: transcodeProxyAfterUpload.value,
 				proxyQualities: proxyQualities.value.slice(),
 				watermark: enableWm,

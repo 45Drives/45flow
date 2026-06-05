@@ -923,7 +923,29 @@ ipcMain.handle('ensure-ssh-ready', async (_e, { host, username, password, sshPor
         }
       }
 
-      // 2) No agent or agent failed → plant ed25519 using password
+      // 2) Try existing key file (if it exists) before requiring password
+      if (fs.existsSync(edPriv)) {
+        jl('info', 'ensure-ssh-ready.try-existing-key', { keyPath: edPriv });
+        const keyTest = new NodeSSH();
+        try {
+          await keyTest.connect({
+            host, username,
+            privateKey: fs.readFileSync(edPriv, 'utf8'),
+            port,
+            tryKeyboard: false,
+            readyTimeout: 20_000,
+          });
+          jl('info', 'ensure-ssh-ready.existing-key.ok', { algo: 'ed25519' });
+          try { keyTest.dispose(); } catch { }
+          return { ok: true, keyPath: edPriv, via: 'existing-ed25519' };
+        } catch (e: any) {
+          jl('warn', 'ensure-ssh-ready.existing-key.fail', { error: e?.message || String(e) });
+          try { keyTest.dispose(); } catch { }
+          // Fall through to password-based key planting
+        }
+      }
+
+      // 3) No agent, no existing key (or existing key failed) → require password to plant new key
       if (!password) {
         const msg = 'No SSH agent and no password provided for initial key install.';
         jl('warn', 'ensure-ssh-ready.no-creds', { host, username });
@@ -933,7 +955,7 @@ ipcMain.handle('ensure-ssh-ready', async (_e, { host, username, password, sshPor
       await setupSshKey(host, username, password, edPub, undefined, port);
       jl('info', 'ensure-ssh-ready.plant.ed25519.ok', { pub: edPub });
 
-      // 3) Verify with ed25519 file key
+      // 4) Verify newly planted ed25519 file key
       const verify = new NodeSSH();
       try {
         await verify.connect({
@@ -950,7 +972,7 @@ ipcMain.handle('ensure-ssh-ready', async (_e, { host, username, password, sshPor
         const msg = String(e?.message || e);
         jl('warn', 'ensure-ssh-ready.verify.ed25519.fail', { error: msg });
 
-        // 4) Fallback once: generate RSA at the *RSA* filename
+        // 5) Fallback once: generate RSA at the *RSA* filename
         jl('info', 'ensure-ssh-ready.rsa.fallback.begin', { rsaPriv });
         await regeneratePemKeyPair(rsaPriv);          // writes rsaPriv and rsaPriv.pub
         await setupSshKey(host, username, password, rsaPub, undefined, port);

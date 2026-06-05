@@ -925,7 +925,7 @@ async function uploadWatermarkToProject() {
     src: watermarkFile.value.path,
     destDir,
     port: ssh.value?.port ?? 22,
-    keyPath: undefined,
+    keyPath: ssh.value?.keyPath,
     noIngest: true,
   })
   const res = await done
@@ -1510,7 +1510,7 @@ async function startUploadAndShare() {
               host: host || '',
               user: user || '',
               port,
-              keyPath: undefined,
+              keyPath: ssh.value?.keyPath,
             },
             apiFetch,
           })
