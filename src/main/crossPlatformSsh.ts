@@ -34,10 +34,36 @@ async function resolveSshKeygen(): Promise<string> {
 /* ---------- AGENT HANDLING ---------- */
 export function getAgentSocket(): string | undefined {
     // Standard Un*x → honour whatever the shell exported
-    if (process.env.SSH_AUTH_SOCK) return process.env.SSH_AUTH_SOCK;
+    if (process.env.SSH_AUTH_SOCK) {
+        // On Windows, differentiate between:
+        // - Windows OpenSSH agent: \\.\pipe\openssh-ssh-agent (named pipe - GOOD)
+        // - WSL ssh-agent: /tmp/... or /mnt/... (Unix socket - BAD, inaccessible)
+        if (process.platform === 'win32') {
+            const sock = process.env.SSH_AUTH_SOCK;
+            // WSL sets Unix socket paths starting with / which Windows Node.js can't access
+            if (sock.startsWith('/') || sock.startsWith('\\mnt\\') || sock.startsWith('\\tmp\\')) {
+                jl('warn', 'ssh.agent.wsl-socket-ignored', { 
+                    sock,
+                    reason: 'WSL Unix socket incompatible with Windows Node.js - falling back to Pageant'
+                });
+                // Fall through to try Pageant instead
+            } else {
+                // Valid Windows agent socket (OpenSSH named pipe like \\.\pipe\openssh-ssh-agent)
+                jl('info', 'ssh.agent.windows', { sock });
+                return sock;
+            }
+        } else {
+            // Unix/Mac - use as-is
+            return process.env.SSH_AUTH_SOCK;
+        }
+    }
 
-    // Windows: ssh2 understands the literal string "pageant"
-    if (process.platform === "win32") return "pageant";
+    // Windows fallback: try Pageant (PuTTY agent)
+    // ssh2 library understands the literal string "pageant"
+    if (process.platform === "win32") {
+        jl('info', 'ssh.agent.pageant-fallback', { reason: 'No SSH_AUTH_SOCK or WSL socket detected' });
+        return "pageant";
+    }
     
     return undefined;                 // fall back to password / key upload
 }

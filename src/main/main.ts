@@ -900,7 +900,7 @@ ipcMain.handle('ensure-ssh-ready', async (_e, { host, username, password, sshPor
 
       const agentSock = getAgentSocket();
 
-      // 1) Try agent first
+      // 1) Try agent first (Pageant on Windows, ssh-agent on Unix)
       if (agentSock) {
         jl('info', 'ensure-ssh-ready.agent.try', { agentSock, port });
         const trial = new NodeSSH();
@@ -948,10 +948,11 @@ ipcMain.handle('ensure-ssh-ready', async (_e, { host, username, password, sshPor
       // 3) No agent, no existing key (or existing key failed) → require password to plant new key
       if (!password) {
         const msg = 'No SSH agent and no password provided for initial key install.';
-        jl('warn', 'ensure-ssh-ready.no-creds', { host, username });
+        jl('warn', 'ensure-ssh-ready.no-creds', { host, username, platform: process.platform, hasWSL: !!process.env.WSL_DISTRO_NAME });
         return { ok: false, error: msg };
       }
 
+      jl('info', 'ensure-ssh-ready.planting-key', { host, username, port, platform: process.platform });
       await setupSshKey(host, username, password, edPub, undefined, port);
       jl('info', 'ensure-ssh-ready.plant.ed25519.ok', { pub: edPub });
 
@@ -970,7 +971,7 @@ ipcMain.handle('ensure-ssh-ready', async (_e, { host, username, password, sshPor
         return { ok: true, keyPath: edPriv, via: 'password+ed25519' };
       } catch (e: any) {
         const msg = String(e?.message || e);
-        jl('warn', 'ensure-ssh-ready.verify.ed25519.fail', { error: msg });
+        jl('warn', 'ensure-ssh-ready.verify.ed25519.fail', { error: msg, platform: process.platform, host, username, port });
 
         // 5) Fallback once: generate RSA at the *RSA* filename
         jl('info', 'ensure-ssh-ready.rsa.fallback.begin', { rsaPriv });
