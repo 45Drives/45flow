@@ -758,9 +758,19 @@ function defaultClientKey(): string | undefined {
     const dir = getKeyDir();
     const ed = path.join(dir, 'id_ed25519');
     const rs = path.join(dir, 'id_rsa');
-    if (fs.existsSync(ed)) return ed;
-    if (fs.existsSync(rs)) return rs;
-    return undefined;
+    
+    const edExists = fs.existsSync(ed);
+    const rsExists = fs.existsSync(rs);
+    
+    // If only one exists, return it
+    if (edExists && !rsExists) return ed;
+    if (rsExists && !edExists) return rs;
+    if (!edExists && !rsExists) return undefined;
+    
+    // Both exist: prefer the most recently modified (most recently planted/verified)
+    const edStat = fs.statSync(ed);
+    const rsStat = fs.statSync(rs);
+    return edStat.mtimeMs > rsStat.mtimeMs ? ed : rs;
   } catch { return undefined; }
 }
 
@@ -923,7 +933,8 @@ ipcMain.handle('ensure-ssh-ready', async (_e, { host, username, password, sshPor
         }
       }
 
-      // 2) Try existing key file (if it exists) before requiring password
+      // 2) Try existing key files (if they exist) before requiring password
+      // Try ed25519 first (preferred)
       if (fs.existsSync(edPriv)) {
         jl('info', 'ensure-ssh-ready.try-existing-key', { keyPath: edPriv });
         const keyTest = new NodeSSH();
@@ -939,13 +950,35 @@ ipcMain.handle('ensure-ssh-ready', async (_e, { host, username, password, sshPor
           try { keyTest.dispose(); } catch { }
           return { ok: true, keyPath: edPriv, via: 'existing-ed25519' };
         } catch (e: any) {
-          jl('warn', 'ensure-ssh-ready.existing-key.fail', { error: e?.message || String(e) });
+          jl('warn', 'ensure-ssh-ready.existing-key.fail', { error: e?.message || String(e), algo: 'ed25519' });
+          try { keyTest.dispose(); } catch { }
+          // Fall through to try RSA
+        }
+      }
+
+      // Try RSA fallback if ed25519 failed or doesn't exist
+      if (fs.existsSync(rsaPriv)) {
+        jl('info', 'ensure-ssh-ready.try-existing-key', { keyPath: rsaPriv });
+        const keyTest = new NodeSSH();
+        try {
+          await keyTest.connect({
+            host, username,
+            privateKey: fs.readFileSync(rsaPriv, 'utf8'),
+            port,
+            tryKeyboard: false,
+            readyTimeout: 20_000,
+          });
+          jl('info', 'ensure-ssh-ready.existing-key.ok', { algo: 'rsa' });
+          try { keyTest.dispose(); } catch { }
+          return { ok: true, keyPath: rsaPriv, via: 'existing-rsa' };
+        } catch (e: any) {
+          jl('warn', 'ensure-ssh-ready.existing-key.fail', { error: e?.message || String(e), algo: 'rsa' });
           try { keyTest.dispose(); } catch { }
           // Fall through to password-based key planting
         }
       }
 
-      // 3) No agent, no existing key (or existing key failed) → require password to plant new key
+      // 3) No agent, no existing keys (or all existing keys failed) → require password to plant new key
       if (!password) {
         const msg = 'No SSH agent and no password provided for initial key install.';
         jl('warn', 'ensure-ssh-ready.no-creds', { host, username, platform: process.platform, hasWSL: !!process.env.WSL_DISTRO_NAME });
