@@ -8,6 +8,7 @@ import fs from 'fs';
 import { app } from 'electron';
 import { getFfmpegPath, getFfprobePath } from './ffmpeg-paths';
 import { detectHardwareCapabilities } from './hardware-detect';
+import { acquire, release } from './ffmpeg-semaphore';
 import type { FullTranscodeOptions, FullTranscodeProgress, FullTranscodeResult, WatermarkSettings } from '../preload';
 import { buildWatermarkFilter } from './watermark-filter';
 
@@ -1034,6 +1035,7 @@ export class FullTranscodeManager {
     onProgress: (pct: number, fps: number, speed: string, eta: string) => void,
     currentCodec: string,
   ): Promise<void> {
+    await acquire();
     try {
       await this.runFfmpeg(ffmpegPath, args, durationSeconds, onProgress);
     } catch (err: any) {
@@ -1063,6 +1065,8 @@ export class FullTranscodeManager {
 
       // Not a hardware crash, propagate original error
       throw err;
+    } finally {
+      release();
     }
   }
 }
