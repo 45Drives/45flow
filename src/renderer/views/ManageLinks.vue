@@ -793,6 +793,11 @@ async function toggleDisable(it: LinkItem) {
 		it.isDisabled = disable
 		appLog.info('link.toggled', { linkId: it.id, disabled: disable })
 
+		// Cancel any active client-side transcodes when a link is disabled
+		if (disable && window.electron?.transcodeCancelAllActive) {
+			window.electron.transcodeCancelAllActive().catch(() => {})
+		}
+
 		pushNotification(
 			new Notification(
 				disable ? 'Link Disabled' : 'Link Enabled',

@@ -3414,6 +3414,16 @@ ipcMain.handle('transcode:cancel', async (_event, { jobId }) => {
   return { canceled };
 });
 
+// Cancel all active client transcodes (used when a link is disabled)
+ipcMain.handle('transcode:cancel-all-active', async () => {
+  const simpleCount = transcodeManager.getActiveJobCount();
+  const fullActive = fullTranscodeManager.hasActiveJob();
+  transcodeManager.cancelAll();
+  if (fullActive) fullTranscodeManager.cancel();
+  jl('info', 'transcode.cancel-all-active', { simpleCount, fullActive });
+  return { canceled: simpleCount + (fullActive ? 1 : 0) };
+});
+
 // ── Debug: clear all orphaned transfers ──────────────────────────────────────
 ipcMain.handle('transfers:cleanup-orphaned', async () => {
   jl('info', 'transfers.cleanup-orphaned');

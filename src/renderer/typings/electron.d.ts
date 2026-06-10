@@ -283,6 +283,9 @@ export interface ElectronApi {
 
   transcodeCancel: (jobId: string) => void
 
+  /** Cancel ALL active client transcodes (used when link is disabled) */
+  transcodeCancelAllActive: () => Promise<{ canceled: number }>
+
   /** Full multi-output transcode (proxies + HLS) */
   fullTranscodeStart: (
     options: FullTranscodeOptions,

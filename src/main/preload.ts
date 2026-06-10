@@ -180,6 +180,9 @@ export type ElectronApi = {
   /** Cancel an active transcode job */
   transcodeCancel: (jobId: string) => void
 
+  /** Cancel ALL active client transcodes (used when link is disabled) */
+  transcodeCancelAllActive: () => Promise<{ canceled: number }>
+
   /** Full transcode: generate all proxy variants + HLS from one source */
   fullTranscodeStart: (
     options: FullTranscodeOptions,
@@ -332,6 +335,8 @@ const api: ElectronApi = {
   },
 
   transcodeCancel: (jobId: string) => ipcRenderer.invoke('transcode:cancel', { jobId }),
+
+  transcodeCancelAllActive: () => ipcRenderer.invoke('transcode:cancel-all-active'),
 
   fullTranscodeStart: (options: FullTranscodeOptions, onProgress?: (p: FullTranscodeProgress) => void) => {
     const jobId = genId()
