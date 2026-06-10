@@ -691,9 +691,10 @@ export function useTransferProgress() {
             try { window.electron?.fullTranscodeCancel?.(clientJobId) } catch { }
         }
 
-        // Cancel on the server for each tracked asset version
+        // Cancel on the server ONLY if this is a server-side transcode
+        // Client-side transcodes (transcoder === 'client') don't exist on the server
         const apiFetch = t._apiFetch
-        if (apiFetch) {
+        if (apiFetch && t.transcoder !== 'client') {
             const versionIds = t.assetVersionIds || []
             for (const vId of versionIds) {
                 const kinds = t.jobKind === 'any' ? ['proxy_mp4', 'hls'] : [t.jobKind || 'proxy_mp4']
