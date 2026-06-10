@@ -71,6 +71,16 @@
           </div>
 
           <div class="rounded-lg border border-default bg-default/20 p-3 space-y-2">
+            <!-- Thumbnail preview -->
+            <div v-if="link?.thumbnailUrl" class="mb-2 h-24 rounded border border-default bg-well overflow-hidden">
+              <img v-if="thumbnailSrc" :src="thumbnailSrc" class="w-full h-full object-contain" />
+              <div v-else-if="thumbnailLoading" class="w-full h-full flex items-center justify-center text-xs opacity-50">
+                Loading thumbnail...
+              </div>
+              <div v-else-if="thumbnailFailed" class="w-full h-full flex items-center justify-center text-xs opacity-50">
+                Failed to load
+              </div>
+            </div>
             <div class="flex items-center gap-2">
               <span class="text-default font-bold">Type:</span>
               <span :class="badgeClass(link?.type!)">{{ link?.type?.toUpperCase() }}</span>
@@ -899,6 +909,35 @@ watch(() => props.modelValue, (open) => {
 const transfer = useTransferProgress()
 const { activeConnection } = useConnections()
 const connectionMeta = inject(connectionMetaInjectionKey, null)
+
+const thumbnailSrc = ref('')
+const thumbnailLoading = ref(false)
+const thumbnailFailed = ref(false)
+watch(() => props.link?.thumbnailUrl, async (url) => {
+  thumbnailSrc.value = ''
+  thumbnailLoading.value = false
+  thumbnailFailed.value = false
+  if (!url) return
+  thumbnailLoading.value = true
+  try {
+    const base = connectionMeta?.value?.apiBase ?? ''
+    const token = connectionMeta?.value?.token ?? ''
+    const headers: Record<string, string> = {}
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    const res = await fetch(`${base}${url}`, { headers })
+    if (!res.ok) {
+      thumbnailFailed.value = true
+      thumbnailLoading.value = false
+      return
+    }
+    const blob = await res.blob()
+    thumbnailSrc.value = URL.createObjectURL(blob)
+    thumbnailLoading.value = false
+  } catch {
+    thumbnailFailed.value = true
+    thumbnailLoading.value = false
+  }
+}, { immediate: true })
 
 const detailsLoading = ref(false)
 const files = ref<any[]>([])

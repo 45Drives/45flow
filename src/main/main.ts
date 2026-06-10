@@ -732,7 +732,7 @@ async function connectForPreflight(host: string, username: string, password: str
   }
 )}
 
-function isOwnedByCurrentUser(filePath: string): boolean {
+function checkFileAccess(filePath: string): { canAccess: boolean; reason?: string; error?: string; userMessage?: string } {
   try {
     const st = fs.statSync(filePath);
 
@@ -740,16 +740,69 @@ function isOwnedByCurrentUser(filePath: string): boolean {
     if (typeof process.getuid === 'function') {
       const uid = process.getuid();
       if (st.uid !== uid) {
-        return false;
+        jl('warn', 'upload.ownership.mismatch', {
+          filePath,
+          fileUid: st.uid,
+          processUid: uid,
+          platform: process.platform,
+        });
+        return {
+          canAccess: false,
+          reason: 'ownership_mismatch',
+          userMessage: 'This file is owned by a different user. Please copy it to your home directory and try again.',
+        };
       }
     }
 
-    // Also ensure we can read it (defensive)
+    // Ensure we can read it
     fs.accessSync(filePath, fs.constants.R_OK);
-    return true;
-  } catch {
-    // stat/access failed, treat as not allowed
-    return false;
+    return { canAccess: true };
+  } catch (e: any) {
+    const errMsg = e?.message || String(e);
+    const errCode = e?.code;
+
+    jl('warn', 'upload.ownership.check-failed', {
+      filePath,
+      platform: process.platform,
+      error: errMsg,
+      code: errCode,
+    });
+
+    // Provide specific guidance based on error type
+    if (errCode === 'EACCES' || errMsg.includes('permission denied')) {
+      return {
+        canAccess: false,
+        reason: 'permission_denied',
+        error: errMsg,
+        userMessage: 'Access denied. This file may be protected by Windows security policies or antivirus software. Try moving the file to your Desktop or Documents folder and upload from there.',
+      };
+    }
+
+    if (errCode === 'ENOENT' || errMsg.includes('no such file')) {
+      return {
+        canAccess: false,
+        reason: 'file_not_found',
+        error: errMsg,
+        userMessage: 'File not found. If this file is in OneDrive or cloud storage, make sure it is fully downloaded to your computer first.',
+      };
+    }
+
+    if (errCode === 'EBUSY' || errMsg.includes('resource busy')) {
+      return {
+        canAccess: false,
+        reason: 'file_locked',
+        error: errMsg,
+        userMessage: 'File is locked by another program. Close any applications using this file and try again.',
+      };
+    }
+
+    // Generic error
+    return {
+      canAccess: false,
+      reason: 'unknown',
+      error: errMsg,
+      userMessage: `Cannot access file: ${errMsg}. Try moving the file to your Desktop or Documents folder.`,
+    };
   }
 }
 
@@ -2244,6 +2297,21 @@ app.whenReady().then(() => {
   resumeDetachedTransfers() // reattach to any still-running rsync processes
 });
 
+/** Check if the current process user owns the file (Unix) or can read it (Windows). */
+function isOwnedByCurrentUser(filePath: string): boolean {
+  try {
+    const st = fs.statSync(filePath);
+    if (process.platform === 'win32') {
+      // On Windows, just check we can read it
+      fs.accessSync(filePath, fs.constants.R_OK);
+      return true;
+    }
+    return st.uid === process.getuid!();
+  } catch {
+    return false;
+  }
+}
+
 ipcMain.handle('dialog:pickFiles', async () => {
   jl('debug', 'dialog.pickFiles.open');
 
@@ -2910,11 +2978,43 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
     platform: process.platform,
   })
 
-  if (!isOwnedByCurrentUser(src)) {
-    const msg = 'Source is not owned by this user or is not readable.'
-    jl('warn', 'upload.src.denied', { id, src })
-    event.sender.send(`upload:done:${id}`, { error: msg })
-    return
+  // Log detailed path info before ownership check
+  jl('info', 'upload.ownership.check', {
+    id,
+    src,
+    srcExists: fs.existsSync(src),
+    platform: process.platform,
+    hasGetuid: typeof process.getuid === 'function',
+  });
+
+  const accessCheck = checkFileAccess(src);
+  let actualSrc = src;
+  let isTempCopy = false;
+  
+  if (!accessCheck.canAccess) {
+    // If permission denied, try copying to temp as fallback
+    if (accessCheck.reason === 'permission_denied') {
+      try {
+        const tempDir = app.getPath('temp');
+        const tempFileName = `45flow-upload-${Date.now()}-${path.basename(src)}`;
+        const tempPath = path.join(tempDir, tempFileName);
+        
+        jl('info', 'upload.temp-copy.attempt', { id, src, tempPath });
+        fs.copyFileSync(src, tempPath);
+        
+        actualSrc = tempPath;
+        isTempCopy = true;
+        jl('info', 'upload.temp-copy.success', { id, originalSrc: src, tempSrc: tempPath });
+      } catch (copyErr: any) {
+        jl('error', 'upload.temp-copy.failed', { id, src, error: copyErr?.message || String(copyErr) });
+        event.sender.send(`upload:done:${id}`, { error: accessCheck.userMessage });
+        return;
+      }
+    } else {
+      jl('warn', 'upload.src.denied', { id, src, reason: accessCheck.reason, error: accessCheck.error });
+      event.sender.send(`upload:done:${id}`, { error: accessCheck.userMessage });
+      return;
+    }
   }
 
   try { if (!fs.existsSync(knownHostsPath)) fs.writeFileSync(knownHostsPath, '') } catch { }
@@ -2939,13 +3039,13 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
     // ─────────────────────────────────────────────────────────────────────────
     if (isLocalHost(opts.host)) {
       // ── Same-machine: direct file copy, no SSH/rsync needed ──────────
-      jl('info', 'upload.local', { id, src, destDir: opts.destDir })
+      jl('info', 'upload.local', { id, src: actualSrc, destDir: opts.destDir, isTempCopy })
       inflightRsync.delete(id)
       removeQueuedMatch(src, opts.host, opts.destDir)
 
       const ok = await runLocalCopy({
         id,
-        src,
+        src: actualSrc,
         destDir: opts.destDir,
         host: opts.host,
         shareRoot: opts.shareRoot,
@@ -2953,10 +3053,16 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
       })
 
       if (!ok) {
+        markTransfer(id, 'failed')
         event.sender.send(`upload:done:${id}`, { error: 'local copy failed' })
         jl('info', 'upload.local.failed', { id })
+        if (isTempCopy) {
+          try { fs.unlinkSync(actualSrc); } catch {}
+        }
         return
       }
+      
+      markTransfer(id, 'completed')
     } else if (process.platform === 'win32') {
       event.sender.send(`upload:progress:${id}`, { percent: 0, raw: 'starting' })
 
@@ -2967,7 +3073,7 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
 
       await runWinSftp({
         id,
-        src: opts.src,
+        src: actualSrc,
         host: opts.host,
         user: opts.user,
         destDir: opts.destDir,
@@ -2979,9 +3085,10 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
       })
 
       event.sender.send(`upload:progress:${id}`, { percent: 100, raw: 'done' })
+      markTransfer(id, 'completed')
       // Do NOT return; ingest below must run for Windows too.
     } else {
-      const picked = buildRsyncCmdAndArgs({ ...opts, keyPath, knownHostsPath })
+      const picked = buildRsyncCmdAndArgs({ ...opts, src: actualSrc, keyPath, knownHostsPath })
 
       // ── Detached spawn: survives app closure ─────────────────────────
       const logFile = makeLogPath(id)
@@ -3232,6 +3339,16 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
     inflightPids.delete(id)
     inflightTailers.delete(id)
     pendingRsyncCancel.delete(id)
+    
+    // Clean up temp copy if one was created
+    if (isTempCopy && actualSrc && actualSrc !== src) {
+      try {
+        fs.unlinkSync(actualSrc);
+        jl('info', 'upload.temp-copy.cleanup', { id, tempSrc: actualSrc });
+      } catch (cleanupErr: any) {
+        jl('warn', 'upload.temp-copy.cleanup-failed', { id, tempSrc: actualSrc, error: cleanupErr?.message });
+      }
+    }
   }
 })
 
