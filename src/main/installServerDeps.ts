@@ -7,9 +7,9 @@ import { getAgentSocket, getKeyDir, ensureKeyPair, regeneratePemKeyPair } from "
 type ProgressFn = (p: { step: string; label: string }) => void;
 
 export async function installServerDepsRemotely(opts: {
-    host: string; username: string; password: string; sshPort?: number; bcastPort?: number, httpsPort?: number, onProgress?: ProgressFn;
+    host: string; username: string; password: string; sshPort?: number; bcastPort?: number, httpsPort?: number, sshKeyComment?: string; onProgress?: ProgressFn;
 }) {
-    const { host, username, password, sshPort, bcastPort, httpsPort, onProgress } = opts;
+    const { host, username, password, sshPort, bcastPort, httpsPort, sshKeyComment, onProgress } = opts;
     const apiPort = bcastPort ?? 9095;
     const send = (step: string, label: string) => onProgress?.({ step, label });
     const shQ = (s: string) => `'${s.replace(/'/g, `'\"'\"'`)}'`;
@@ -58,7 +58,7 @@ export async function installServerDepsRemotely(opts: {
 
         if (!hasAuth) {
             send("key", "Creating/planting SSH key…");
-            await setupSshKey(host, username, password, undefined, undefined, port);
+            await setupSshKey(host, username, password, undefined, sshKeyComment, port);
         }
 
         async function tryConnectWithCurrentKey() {

@@ -399,6 +399,15 @@ import { TranscodeManager } from './transcoding/TranscodeManager';
 import { FullTranscodeManager } from './transcoding/FullTranscodeManager';
 import { initAutoUpdates } from './updates';
 
+// ── Client install ID (must be initialized early for SSH key comments) ──
+const idFile = path.join(app.getPath('userData'), 'client-id.txt');
+let installId = fs.existsSync(idFile) ? fs.readFileSync(idFile, 'utf-8').trim() : '';
+if (!installId) { installId = uuidv4(); fs.writeFileSync(idFile, installId, 'utf-8'); }
+const clientIdent = { installId };
+
+// Unique SSH key comment for this client (prevents multi-client key conflicts)
+const sshKeyComment = `45studio@client-${installId.substring(0, 8)}`;
+
 let discoveredServers: Server[] = [];
 export let jsonLogger: ReturnType<typeof createLogger>;
 export function jl(level: 'info' | 'warn' | 'error' | 'debug', event: string, extra: Record<string, any> = {}) {
@@ -973,8 +982,8 @@ ipcMain.handle('ensure-ssh-ready', async (_e, { host, username, password, sshPor
 
           // Even if agent works, plant our app key idempotently so future non-agent ops work
           if (password) {
-            await setupSshKey(host, username, password, edPub, undefined, port);
-            jl('info', 'ensure-ssh-ready.plant.after-agent', { pub: edPub });
+            await setupSshKey(host, username, password, edPub, sshKeyComment, port);
+            jl('info', 'ensure-ssh-ready.plant.after-agent', { pub: edPub, comment: sshKeyComment });
           }
 
           try { trial.dispose(); } catch { }
@@ -1039,8 +1048,8 @@ ipcMain.handle('ensure-ssh-ready', async (_e, { host, username, password, sshPor
       }
 
       jl('info', 'ensure-ssh-ready.planting-key', { host, username, port, platform: process.platform });
-      await setupSshKey(host, username, password, edPub, undefined, port);
-      jl('info', 'ensure-ssh-ready.plant.ed25519.ok', { pub: edPub });
+      await setupSshKey(host, username, password, edPub, sshKeyComment, port);
+      jl('info', 'ensure-ssh-ready.plant.ed25519.ok', { pub: edPub, comment: sshKeyComment });
 
       // 4) Verify newly planted ed25519 file key
       const verify = new NodeSSH();
@@ -1062,8 +1071,8 @@ ipcMain.handle('ensure-ssh-ready', async (_e, { host, username, password, sshPor
         // 5) Fallback once: generate RSA at the *RSA* filename
         jl('info', 'ensure-ssh-ready.rsa.fallback.begin', { rsaPriv });
         await regeneratePemKeyPair(rsaPriv);          // writes rsaPriv and rsaPriv.pub
-        await setupSshKey(host, username, password, rsaPub, undefined, port);
-        jl('info', 'ensure-ssh-ready.rsa.plant.ok', { pub: rsaPub });
+        await setupSshKey(host, username, password, rsaPub, sshKeyComment, port);
+        jl('info', 'ensure-ssh-ready.rsa.plant.ok', { pub: rsaPub, comment: sshKeyComment });
 
         // Retry with RSA
         try {
@@ -1092,11 +1101,7 @@ ipcMain.handle('ensure-ssh-ready', async (_e, { host, username, password, sshPor
   })
 });
 
-const idFile = path.join(app.getPath('userData'), 'client-id.txt');
-let installId = fs.existsSync(idFile) ? fs.readFileSync(idFile, 'utf-8').trim() : '';
-if (!installId) { installId = uuidv4(); fs.writeFileSync(idFile, installId, 'utf-8'); }
-
-const clientIdent = { installId };
+// installId and clientIdent moved to top of file (before SSH setup code)
 
 ipcMain.on('renderer-ready', (e) => {
   e.sender.send('client-ident', clientIdent);
@@ -1695,6 +1700,7 @@ function createWindow() {
         sshPort: port,
         bcastPort,
         httpsPort,
+        sshKeyComment,
         onProgress: ({ step, label }: any) => send(label, step),
       });
 
