@@ -211,6 +211,10 @@ export function useConnections() {
   })
   
   function addConnection(conn: Connection): string {
+    // Normalize for comparison
+    const normalizedIp = conn.serverIp.trim().toLowerCase()
+    const normalizedUsername = conn.username.trim().toLowerCase()
+    
     // Check for duplicate connectionId
     const existingById = _state.connections.find(c => c.connectionId === conn.connectionId)
     if (existingById) {
@@ -218,13 +222,17 @@ export function useConnections() {
       return existingById.connectionId
     }
     
-    // Check for existing connection to same server+username
+    // Check for existing connection to same server+username (case-insensitive)
     const existingByServer = _state.connections.find(c => 
-      c.serverIp === conn.serverIp && c.username === conn.username
+      c.serverIp.trim().toLowerCase() === normalizedIp && 
+      c.username.trim().toLowerCase() === normalizedUsername
     )
     
     if (existingByServer) {
-      console.log('[connections] updating existing connection:', conn.name, conn.serverIp)
+      console.log('[connections] updating existing connection:', {
+        existing: { id: existingByServer.connectionId, name: existingByServer.name, ip: existingByServer.serverIp, user: existingByServer.username },
+        new: { name: conn.name, ip: conn.serverIp, user: conn.username }
+      })
       // Update existing connection with new token and metadata
       Object.assign(existingByServer, {
         ...conn,
@@ -243,7 +251,7 @@ export function useConnections() {
       _state.activeConnectionId = conn.connectionId
     }
     
-    console.log('[connections] added:', conn.name, conn.serverIp)
+    console.log('[connections] added new connection:', { id: conn.connectionId, name: conn.name, ip: conn.serverIp, user: conn.username })
     persist()
     return conn.connectionId  // Return the new ID
   }

@@ -907,7 +907,7 @@ watch(() => props.modelValue, (open) => {
 })
 
 const transfer = useTransferProgress()
-const { activeConnection } = useConnections()
+const { activeConnection, connections } = useConnections()
 const connectionMeta = inject(connectionMetaInjectionKey, null)
 
 const thumbnailSrc = ref('')
@@ -920,8 +920,14 @@ watch(() => props.link?.thumbnailUrl, async (url) => {
   if (!url) return
   thumbnailLoading.value = true
   try {
-    const base = connectionMeta?.value?.apiBase ?? ''
-    const token = connectionMeta?.value?.token ?? ''
+    // Use the link's own connection, not the active connection
+    const linkConnectionId = (props.link as any)?._connectionId
+    const linkConnection = connections.find(c => c.connectionId === linkConnectionId)
+    
+    // Fall back to active connection if link's connection not found
+    const base = linkConnection?.baseUrl || connectionMeta?.value?.apiBase || ''
+    const token = linkConnection?.token || connectionMeta?.value?.token || ''
+    
     const headers: Record<string, string> = {}
     if (token) headers['Authorization'] = `Bearer ${token}`
     const res = await fetch(`${base}${url}`, { headers })

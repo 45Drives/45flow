@@ -402,7 +402,10 @@ let _tourStep2Shown = false
 let _tourNextHint2Shown = false
 let _tourStep3Shown = false
 
-onMounted(() => {
+onMounted(async () => {
+	await loadExistingWatermarkFiles()
+	await loadDefaultWatermarkSettings()
+	
 	if (!onboarding.value.localUploadTourDone) {
 		setTimeout(() => requestStepTour(), 300)
 	}
@@ -659,7 +662,7 @@ async function loadExistingWatermarkFiles() {
 		const token = connectionMeta.value.token ?? ''
 		const builtinChecks = await Promise.allSettled(
 			DEFAULT_45FLOW_WATERMARKS.map(async (wm) => {
-				const url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(wm.path)}`
+				const url = `${base}/api/watermarks/defaults/${wm.id}/stream`
 				const res = await fetch(url, { method: 'HEAD', headers: { 'Authorization': `Bearer ${token}` } })
 				return res.ok ? wm.path : null
 			})
@@ -679,7 +682,15 @@ async function fetchExistingWatermarkPreview(relPath: string) {
 	try {
 		const base = connectionMeta.value.apiBase ?? ''
 		const token = connectionMeta.value.token ?? ''
-		const url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(relPath)}`
+		
+		// Check if it's a built-in watermark (by ID or path)
+		const builtinById = DEFAULT_45FLOW_WATERMARKS.find(wm => wm.id === relPath)
+		const builtinByPath = DEFAULT_45FLOW_WATERMARKS.find(wm => wm.path === relPath)
+		const builtin = builtinById || builtinByPath
+		const url = builtin
+			? `${base}/api/watermarks/defaults/${builtin.id}/stream`
+			: `${base}/api/files/watermark-preview?path=${encodeURIComponent(relPath)}`
+		
 		const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } })
 		if (!res.ok) { existingWatermarkPreviewUrl.value = null; return }
 		const blob = await res.blob()
@@ -691,6 +702,39 @@ async function fetchExistingWatermarkPreview(relPath: string) {
 		})
 	} catch {
 		existingWatermarkPreviewUrl.value = null
+	}
+}
+
+async function loadDefaultWatermarkSettings() {
+	try {
+		const settings = await apiFetch('/api/settings')
+		if (settings?.defaultWatermarkId) {
+			// Apply watermark customization settings if available (premium feature)
+			if (settings.defaultWatermarkSettings && typeof settings.defaultWatermarkSettings === 'object') {
+				watermarkSettings.value = { ...createDefaultWatermarkSettings(), ...settings.defaultWatermarkSettings }
+			}
+			
+			// If default is a built-in watermark, ensure built-ins are shown
+			const isBuiltin = DEFAULT_45FLOW_WATERMARKS.some(wm => wm.id === settings.defaultWatermarkId)
+			if (isBuiltin) showDefaultWatermarks.value = true
+			
+			// Load list first so dropdown has options
+			await loadExistingWatermarkFiles()
+			// Convert ID to path so it matches dropdown values
+			const resolvedPath = resolveWatermarkPathForApi(settings.defaultWatermarkId)
+			selectedExistingWatermark.value = resolvedPath
+			// Only auto-enable if there are video files selected
+			if (hasVideoSelected.value) {
+				watermarkAfterUpload.value = true
+			}
+		} else {
+			// No default watermark configured — ensure watermark is off
+			watermarkAfterUpload.value = false
+			selectedExistingWatermark.value = ''
+			existingWatermarkPreviewUrl.value = null
+		}
+	} catch (err) {
+		console.warn('[localupload] Failed to load default watermark settings:', err)
 	}
 }
 
@@ -762,6 +806,13 @@ function resolveWatermarkRelPath() {
 	const name = String(watermarkFile.value?.name || '').replace(/\\/g, '/').replace(/^\/+/, '').trim()
 	if (!name) return ''
 	return `${resolveWatermarkDirRel()}/${name}`
+}
+
+/** Convert a watermark ID (e.g. '45flow-grad') to the path the dropdown/server expects */
+function resolveWatermarkPathForApi(idOrPath: string) {
+	const builtin = DEFAULT_45FLOW_WATERMARKS.find(wm => wm.id === idOrPath)
+	if (builtin) return builtin.path
+	return idOrPath
 }
 
 function resolveWatermarkProjectRoot() {
@@ -1178,6 +1229,10 @@ watch(selected, () => {
 		transcodeProxyAfterUpload.value = true
 		if (!proxyQualities.value.includes('original')) {
 			proxyQualities.value = ['original']
+		}
+		// Auto-enable watermark if default is configured
+		if (selectedExistingWatermark.value && !watermarkAfterUpload.value) {
+			watermarkAfterUpload.value = true
 		}
 	}
 }, { deep: true })

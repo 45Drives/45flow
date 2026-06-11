@@ -1453,7 +1453,8 @@ function createWindow() {
       javascript: true,
       backgroundThrottling: true,  // Enable throttling to reduce CPU when minimized
       webSecurity: true,                  // Enforces origin security
-      allowRunningInsecureContent: false, // Prevents HTTP inside HTTPS
+      // Allow HTTP connections to local servers in development (e.g., houston-broadcaster at 192.168.x.x)
+      allowRunningInsecureContent: process.env.NODE_ENV === 'development',
     }
   });
   mainWindowRef = mainWindow
@@ -3500,7 +3501,17 @@ ipcMain.handle('watermark:download', async (_event, opts: { apiBase: string; tok
   const { apiBase, token, relPath } = opts;
   if (!apiBase || !relPath) return null;
   try {
-    const url = `${apiBase}/api/files/watermark-preview?path=${encodeURIComponent(relPath)}`;
+    // Built-in watermarks use a different API endpoint
+    const isBuiltIn = relPath.startsWith('/.watermarks-builtin/') || relPath.startsWith('.watermarks-builtin/');
+    let url: string;
+    if (isBuiltIn) {
+      const filename = relPath.replace(/^\.?\/?\.watermarks-builtin\//, '').replace(/\.[^.]+$/, '');
+      // Find matching watermark ID from filename
+      const id = filename.toLowerCase().replace(/[^a-z0-9-]/g, '');
+      url = `${apiBase}/api/watermarks/defaults/${id}/stream`;
+    } else {
+      url = `${apiBase}/api/files/watermark-preview?path=${encodeURIComponent(relPath)}`;
+    }
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(url, { headers });

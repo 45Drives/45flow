@@ -168,7 +168,7 @@ import { useRoute } from 'vue-router'
 import { useHeader } from '../composables/useHeader'
 import { currentServerInjectionKey, discoveryStateInjectionKey, connectionMetaInjectionKey } from '../keys/injection-keys'
 import { EyeIcon, EyeSlashIcon } from "@heroicons/vue/20/solid";
-import { DiscoveryState, Server } from '../types'
+import type { DiscoveryState, Server } from '../types'
 import { pushNotification, Notification, CardContainer, useDarkModeState } from '@45drives/houston-common-ui'
 import PortForwardingModal from '../components/modals/PortForwardingModal.vue' 
 import { useResilientNav } from '../composables/useResilientNav';
@@ -666,7 +666,17 @@ async function ensureLicenseActivated(apiBase: string, token: string) {
         throw new Error(`License activation failed: ${msg}`)
     }
 
-    pushNotification(new Notification('License Activated', 'This server is now licensed for perpetual use.', 'success', 6000))
+    // Build license status message based on expiry
+    const licenseInfo = activateBody?.license
+    let licenseMsg = 'Server has been activated.'
+    if (licenseInfo?.perpetual) {
+        licenseMsg = 'Perpetual license — never expires. Server has been activated.'
+    } else if (licenseInfo?.expiresAt) {
+        const expiryDate = new Date(licenseInfo.expiresAt).toLocaleDateString()
+        licenseMsg = `License valid until ${expiryDate}. Server has been activated.`
+    }
+    
+    pushNotification(new Notification('License Activated', licenseMsg, 'success', 6000))
 }
 
 function translateSshError(errorMsg: string): string {
@@ -996,10 +1006,10 @@ async function connectToServer() {
         const newConnection: Connection = {
             connectionId: crypto.randomUUID(),
             name: effectiveServer?.name || ip,
-            serverIp: ip,
+            serverIp: ip.trim(),
             serverName: effectiveServer?.name,
             baseUrl: apiBase,
-            username: username.value,
+            username: username.value.trim(),
             token,
             tokenIssuedAt: Date.now(),
             apiPort: apiPortToUse,
@@ -1007,7 +1017,7 @@ async function connectToServer() {
             httpsPort: httpsPort.value ?? 443,
             ssh: {
                 server: ip,
-                username: username.value,
+                username: username.value.trim(),
                 port: sshPortToUse
             },
             serverInfo: effectiveServer?.serverInfo,
@@ -1042,7 +1052,7 @@ async function connectToServer() {
             .catch(() => { /* best-effort */ })
 
         // Fire-and-forget: check for broadcaster package updates via API (runs in background)
-        checkBroadcasterUpdateInBackground(apiBase, token);
+        checkBroadcasterUpdateInBackground(apiBase, token, effectiveServer?.name || ip);
 
         to('dashboard');
     } catch (e: any) {
@@ -1066,6 +1076,34 @@ onMounted(async () => {
     // Skip auto-login if user explicitly clicked "Add Connection"
     if (route.query.skipAutoLogin === 'true') {
         window.appLog?.info('auto-login.skipped', { reason: 'user adding new connection' })
+        return
+    }
+
+    // Handle reconnect from connection manager
+    if (route.query.reconnect && route.query.serverIp && route.query.username) {
+        window.appLog?.info('reconnect.initiated', { 
+            connectionId: route.query.reconnect,
+            serverIp: route.query.serverIp 
+        })
+        
+        // Pre-fill the form with reconnect details
+        const serverIp = String(route.query.serverIp)
+        const existingServer = discoveryState.servers.find(s => s.ip === serverIp)
+        if (existingServer) {
+            selectedServerIp.value = existingServer.ip
+        } else {
+            manualIp.value = serverIp
+        }
+        username.value = String(route.query.username)
+        
+        // Find the connection to get port details
+        const conn = connections.find(c => c.connectionId === route.query.reconnect)
+        if (conn) {
+            if (conn.sshPort) sshPort.value = conn.sshPort
+            if (conn.apiPort && conn.apiPort !== DEFAULT_API_PORT) broadcasterPort.value = conn.apiPort
+            if (conn.httpsPort && conn.httpsPort !== DEFAULT_HTTPS_PORT) httpsPort.value = conn.httpsPort
+        }
+        
         return
     }
 
@@ -1139,10 +1177,10 @@ onMounted(async () => {
         const restoredConnection: Connection = {
             connectionId: crypto.randomUUID(),
             name: saved.serverName || saved.serverIp,
-            serverIp: saved.serverIp,
+            serverIp: saved.serverIp.trim(),
             serverName: saved.serverName,
             baseUrl: saved.apiBase,
-            username: saved.username,
+            username: saved.username.trim(),
             token: saved.token,
             tokenIssuedAt: saved.savedAt || Date.now(),
             apiPort: saved.apiPort,
@@ -1150,7 +1188,7 @@ onMounted(async () => {
             httpsPort: saved.httpsPort,
             ssh: {
                 server: saved.serverIp,
-                username: saved.username,
+                username: saved.username.trim(),
                 port: saved.sshPort || 22
             },
             status: 'connected',
@@ -1168,7 +1206,7 @@ onMounted(async () => {
         statusLine.value = ''
         isBusy.value = false
 
-        checkBroadcasterUpdateInBackground(saved.apiBase, saved.token)
+        checkBroadcasterUpdateInBackground(saved.apiBase, saved.token, saved.serverName || saved.serverIp)
         to('dashboard')
     } catch (err: any) {
         // Network error (server unreachable) — keep saved credentials so user
@@ -1193,7 +1231,7 @@ onUnmounted(() => {
  * Fires after login — never blocks the user. Shows a persistent notification
  * with an "Install Update" action if a newer version is available.
  */
-async function checkBroadcasterUpdateInBackground(apiBase: string, token: string) {
+async function checkBroadcasterUpdateInBackground(apiBase: string, token: string, serverName: string) {
     try {
         const hdrs = { 'Authorization': `Bearer ${token}` };
 
@@ -1222,7 +1260,7 @@ async function checkBroadcasterUpdateInBackground(apiBase: string, token: string
 
         // Show a persistent notification with an install button
         const msg = `Broadcaster update available: ${data.installedVersion ?? '?'} → ${data.candidateVersion ?? '?'}.\n Clicking Update will log you out while the server updates.`;
-        const notif = new Notification('Server Update Available', msg, 'warning', 15000);
+        const notif = new Notification(`Server Update Available - ${serverName}`, msg, 'warning', 15000);
 
         notif.addAction('Update', async () => {
             // Dismiss the "update available" notification immediately

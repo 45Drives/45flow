@@ -163,6 +163,67 @@
                                     </Switch>
                                 </SettingRow>
                             </div>
+                            
+                            <!-- Default Watermark -->
+                            <div class="mt-4 pt-4 border-t border-default">
+                                <div class="px-1 py-2">
+                                    <p class="font-semibold text-sm mb-3">Default Watermark</p>
+                                    
+                                    <div class="flex items-center gap-3 mb-3">
+                                        <Switch v-model="defaultWatermarkEnabled" :disabled="busy" :class="[
+                                            defaultWatermarkEnabled ? 'bg-primary' : 'bg-well',
+                                            'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
+                                        ]">
+                                            <span class="sr-only">Toggle default watermark</span>
+                                            <span :class="[
+                                                defaultWatermarkEnabled ? 'translate-x-4' : 'translate-x-0',
+                                                'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
+                                            ]" />
+                                        </Switch>
+                                        <span class="text-sm text-default">Apply watermark to new video links</span>
+                                    </div>
+                                    
+                                    <div v-if="defaultWatermarkEnabled" class="space-y-2">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <label class="inline-flex items-center gap-1.5 text-xs">
+                                                <input type="checkbox" v-model="showDefaultWatermarksInSettings" class="rounded" />
+                                                <span>Include 45Flow defaults</span>
+                                            </label>
+                                        </div>
+                                        
+                                        <div class="flex flex-row items-center gap-2 mb-2">
+                                            <button class="btn btn-secondary text-xs" @click="pickDefaultWatermark">Browse…</button>
+                                            <!-- <span class="text-sm truncate min-w-0" :title="defaultWatermarkName || 'No image selected'">
+                                                {{ defaultWatermarkName || 'No image selected' }}
+                                            </span> -->
+                                            <select v-model="selectedExistingWatermark" @change="onSelectExistingWatermark"
+                                                class="input-textlike border rounded px-2 py-1 text-xs min-w-[14rem]">
+                                                <option value="">Select existing watermark…</option>
+                                                <optgroup v-if="showDefaultWatermarksInSettings && defaultWatermarkPresets.length" label="45Flow Defaults">
+                                                    <option v-for="preset in defaultWatermarkPresets" :key="preset.id" :value="preset.id">{{ preset.name }}</option>
+                                                </optgroup>
+                                                <optgroup v-if="existingWatermarkFiles.length" label="Server Watermarks">
+                                                    <option v-for="wm in existingWatermarkFiles" :key="wm" :value="wm">{{ wm.split('/').pop() }}</option>
+                                                </optgroup>
+                                            </select>
+                                            <button class="btn btn-secondary px-2 py-1 text-xs" @click="refreshWatermarks">Refresh</button>
+                                        </div>
+                                        
+                                        <p v-if="!defaultWatermarkFile && !selectedExistingWatermark" class="text-xs text-amber-700 dark:text-amber-300">
+                                            Select a watermark image to continue.
+                                        </p>
+                                        
+                                        <!-- Watermark Customizer (premium feature) -->
+                                        <div v-if="defaultWatermarkFile || selectedExistingWatermark" class="mt-4 border-t border-default pt-4 min-w-0">
+                                            <WatermarkCustomizer 
+                                                v-model="watermarkSettings"
+                                                :watermarkPreviewUrl="effectiveWatermarkPreviewUrl"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <p class="text-xs text-accent mt-3">
                                 These defaults apply when creating new links and can be changed per link.
                             </p>
@@ -461,92 +522,102 @@
                                 <button class="btn btn-secondary text-sm" type="button" @click="fetchHealth" :disabled="healthLoading">
                                     {{ healthLoading ? 'Loading…' : 'Refresh' }}
                                 </button>
-                                <span v-if="healthData?.version" class="text-xs text-muted">houston-broadcaster v{{ healthData.version }}</span>
                             </div>
 
                             <div v-if="healthError" class="text-danger text-xs mb-3">{{ healthError }}</div>
 
-                            <div v-if="healthData" class="space-y-4">
+                            <!-- Multi-server health display -->
+                            <div v-if="serverHealthData.length" class="space-y-4">
+                                <div v-for="(server, idx) in serverHealthData" :key="server.connection.connectionId" class="space-y-4">
+                                    <!-- Server Header -->
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <div class="text-sm font-semibold text-default">{{ server.connection.name }}</div>
+                                        <div class="text-xs text-muted">{{ server.connection.serverIp }}</div>
+                                        <div v-if="server.connection.isActive" class="text-xs px-2 py-0.5 rounded bg-primary/20 text-primary">Active</div>
+                                    </div>
+                                    
+                                    <div v-if="server.error" class="text-danger text-xs">{{ server.error }}</div>
+                                    
+                                    <template v-else>
+                                        <!-- License Status -->
+                                        <div v-if="server.license" class="rounded-lg border border-default bg-default/40 p-3">
+                                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">License Status</p>
+                                            <div class="grid grid-cols-2 gap-3 text-sm">
+                                                <div>
+                                                    <span class="text-muted">Status:</span>
+                                                    <span class="ml-1 font-mono">
+                                                        <span v-if="server.license.licensed" class="text-green-500">Licensed</span>
+                                                        <span v-else class="text-red-500">{{ server.license.needsActivation ? 'Not Activated' : 'Unlicensed' }}</span>
+                                                    </span>
+                                                </div>
+                                                <div v-if="server.license.licensed && server.license.license">
+                                                    <span class="text-muted">Type:</span>
+                                                    <span class="ml-1 font-mono">{{ server.license.license.perpetual ? 'Perpetual' : 'Subscription' }}</span>
+                                                </div>
+                                                <div v-if="server.license.licensed && server.license.license && !server.license.license.perpetual && server.license.license.expiresAt" class="col-span-2">
+                                                    <span class="text-muted">Expires:</span>
+                                                    <span class="ml-1 font-mono">{{ new Date(server.license.license.expiresAt).toLocaleDateString() }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Uptime -->
+                                        <div v-if="server.health" class="rounded-lg border border-default bg-default/40 p-3">
+                                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Uptime</p>
+                                            <div class="grid grid-cols-2 gap-3 text-sm">
+                                                <div>
+                                                    <span class="text-muted">Process:</span>
+                                                    <span class="ml-1 font-mono">{{ formatUptime(server.health.uptime?.process) }}</span>
+                                                </div>
+                                                <div>
+                                                    <span class="text-muted">System:</span>
+                                                    <span class="ml-1 font-mono">{{ formatUptime(server.health.uptime?.system) }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- CPU -->
+                                        <div v-if="server.health" class="rounded-lg border border-default bg-default/40 p-3">
+                                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">CPU</p>
+                                            <div class="grid grid-cols-2 gap-3 text-sm">
+                                                <div>
+                                                    <span class="text-muted">Cores:</span>
+                                                    <span class="ml-1 font-mono">{{ server.health.cpu?.cores }}</span>
+                                                </div>
+                                                <div>
+                                                    <span class="text-muted">Load (1/5/15m):</span>
+                                                    <span class="ml-1 font-mono">{{ server.health.cpu?.loadAvg1?.toFixed(2) }} / {{ server.health.cpu?.loadAvg5?.toFixed(2) }} / {{ server.health.cpu?.loadAvg15?.toFixed(2) }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Memory -->
+                                        <div v-if="server.health" class="rounded-lg border border-default bg-default/40 p-3">
+                                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Memory</p>
+                                            <div class="grid grid-cols-2 gap-3 text-sm">
+                                                <div>
+                                                    <span class="text-muted">System:</span>
+                                                    <span class="ml-1 font-mono">{{ formatBytes(server.health.memory?.systemFree) }} free / {{ formatBytes(server.health.memory?.systemTotal) }}</span>
+                                                </div>
+                                                <div>
+                                                    <span class="text-muted">Process RSS:</span>
+                                                    <span class="ml-1 font-mono">{{ formatBytes(server.health.memory?.rss) }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                    
+                                    <!-- Separator between servers -->
+                                    <div v-if="idx < serverHealthData.length - 1" class="border-t border-default mt-4 pt-4"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Legacy single-server display (fallback, hidden when multi-server data available) -->
+                            <div v-if="!serverHealthData.length" class="space-y-4">
                                 <!-- Uptime -->
                                 <div class="rounded-lg border border-default bg-default/40 p-3">
-                                    <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Uptime</p>
-                                    <div class="grid grid-cols-2 gap-3 text-sm">
-                                        <div>
-                                            <span class="text-muted">Process:</span>
-                                            <span class="ml-1 font-mono">{{ formatUptime(healthData.uptime?.process) }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="text-muted">System:</span>
-                                            <span class="ml-1 font-mono">{{ formatUptime(healthData.uptime?.system) }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- CPU -->
-                                <div class="rounded-lg border border-default bg-default/40 p-3">
-                                    <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">CPU</p>
-                                    <div class="grid grid-cols-2 gap-3 text-sm">
-                                        <div>
-                                            <span class="text-muted">Cores:</span>
-                                            <span class="ml-1 font-mono">{{ healthData.cpu?.cores }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="text-muted">Load (1/5/15m):</span>
-                                            <span class="ml-1 font-mono">{{ healthData.cpu?.loadAvg1?.toFixed(2) }} / {{ healthData.cpu?.loadAvg5?.toFixed(2) }} / {{ healthData.cpu?.loadAvg15?.toFixed(2) }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Memory -->
-                                <div class="rounded-lg border border-default bg-default/40 p-3">
-                                    <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Memory</p>
-                                    <div class="grid grid-cols-2 gap-3 text-sm">
-                                        <div>
-                                            <span class="text-muted">System:</span>
-                                            <span class="ml-1 font-mono">{{ formatBytes(healthData.memory?.systemFree) }} free / {{ formatBytes(healthData.memory?.systemTotal) }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="text-muted">Process RSS:</span>
-                                            <span class="ml-1 font-mono">{{ formatBytes(healthData.memory?.rss) }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Disk -->
-                                <div v-if="healthData.disk" class="rounded-lg border border-default bg-default/40 p-3">
-                                    <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Disk (Share Root)</p>
-                                    <div class="text-xs text-muted mb-2 font-mono">{{ healthData.disk.path }}</div>
-                                    <div class="w-full h-3 rounded-full bg-well overflow-hidden mb-2">
-                                        <div class="h-full rounded-full transition-all"
-                                            :class="healthData.disk.usedPercent > 90 ? 'bg-red-500' : healthData.disk.usedPercent > 75 ? 'bg-amber-500' : 'bg-blue-500'"
-                                            :style="{ width: healthData.disk.usedPercent + '%' }" />
-                                    </div>
-                                    <div class="grid grid-cols-3 gap-3 text-sm">
-                                        <div><span class="text-muted">Used:</span> <span class="font-mono">{{ formatBytes(healthData.disk.usedBytes) }}</span></div>
-                                        <div><span class="text-muted">Free:</span> <span class="font-mono">{{ formatBytes(healthData.disk.availBytes) }}</span></div>
-                                        <div><span class="text-muted">Total:</span> <span class="font-mono">{{ formatBytes(healthData.disk.totalBytes) }}</span></div>
-                                    </div>
-                                </div>
-
-                                <!-- Transcodes -->
-                                <div class="rounded-lg border border-default bg-default/40 p-3">
-                                    <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Transcode Queue</p>
-                                    <div class="grid grid-cols-4 gap-3 text-sm">
-                                        <div><span class="text-muted">Queued:</span> <span class="font-mono">{{ healthData.transcodes?.queued ?? 0 }}</span></div>
-                                        <div><span class="text-muted">Running:</span> <span class="font-mono">{{ healthData.transcodes?.running ?? 0 }}</span></div>
-                                        <div><span class="text-muted">Done:</span> <span class="font-mono">{{ healthData.transcodes?.done ?? 0 }}</span></div>
-                                        <div><span class="text-muted">Failed:</span> <span class="font-mono text-red-400">{{ healthData.transcodes?.failed ?? 0 }}</span></div>
-                                    </div>
-                                </div>
-
-                                <!-- Links & Connections -->
-                                <div class="rounded-lg border border-default bg-default/40 p-3">
-                                    <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Links & Connections</p>
-                                    <div class="grid grid-cols-3 gap-3 text-sm">
-                                        <div><span class="text-muted">Active links:</span> <span class="font-mono">{{ healthData.links?.active ?? 0 }}</span></div>
-                                        <div><span class="text-muted">Total links:</span> <span class="font-mono">{{ healthData.links?.total ?? 0 }}</span></div>
-                                        <div><span class="text-muted">WebSocket:</span> <span class="font-mono">{{ healthData.connections?.websocket ?? 0 }}</span></div>
-                                    </div>
+                                    <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">No health data</p>
+                                    <p class="text-xs text-muted">Click Refresh to load server health information.</p>
                                 </div>
                             </div>
                         </template>
@@ -996,6 +1067,10 @@ import { useTourManager, type TourStep } from "../../composables/useTourManager"
 import { useTourPreferences } from "../../composables/useTourPreferences";
 import { appLog } from "../../composables/useLog";
 import { useThemeFromAlias } from "../../composables/useThemeFromAlias";
+import { useConnections } from "../../composables/useConnections";
+import WatermarkCustomizer from "../WatermarkCustomizer.vue";
+import type { WatermarkSettings } from "../../types/watermark";
+import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from "../../types/watermark";
 
 const emit = defineEmits<{
     (e: "close"): void;
@@ -1014,13 +1089,14 @@ const emit = defineEmits<{
     }): void;
 }>();
 
-const { apiFetch, baseUrl } = useApi();
+const { apiFetch, baseUrl, meta } = useApi();
 const { onboarding, resetAll: resetOnboarding, markDone } = useOnboarding();
 const { hour12 } = useTimeFormat();
 const { enabled: clientTranscodeEnabled, preset: transcodePreset, hwAccel: hwAccelEnabled } = useClientTranscode();
 const { requestTour } = useTourManager();
 const { setCustomThemeColors, setCustomThemeEnabled } = useThemeFromAlias();
 const { toursDisabled } = useTourPreferences();
+const { connections } = useConnections();
 
 const hardwareCapabilities = ref<any>(null);
 
@@ -1148,8 +1224,20 @@ const savedExternalBase = ref("");
 const defaultRestrictAccess = ref(false);
 const defaultAllowComments = ref(true);
 const defaultUseProxyFiles = ref(false);
+const defaultWatermarkEnabled = ref(false);
+const defaultWatermarkId = ref('');
+const availableWatermarks = ref<string[]>([]);
+const defaultWatermarkPreview = ref<string | null>(null);
+const showDefaultWatermarksInSettings = ref(true);
+const defaultWatermarkPresets = ref<Array<{ id: string; name: string; path?: string }>>([]);
+type LocalFile = { path: string; name: string; size: number; dataUrl?: string | null };
+const defaultWatermarkFile = ref<LocalFile | null>(null);
+const existingWatermarkFiles = ref<string[]>([]);
+const selectedExistingWatermark = ref('');
+const watermarkSettings = ref<WatermarkSettings>(createDefaultWatermarkSettings());
 const projectRoot = ref<string>("");
 const forceProjectRoot = ref(false);
+const settingsLoaded = ref(false);
 
 const cleanupBusy = ref(false);
 const cleanupMode = ref<"scan" | "apply" | null>(null);
@@ -1164,22 +1252,72 @@ const cleanupOrphanMinAgeHours = ref(24);
 // ── Server Health ──
 const healthLoading = ref(false);
 const healthError = ref<string | null>(null);
-const healthData = ref<any | null>(null);
+const serverHealthData = ref<Array<{
+    connection: any;
+    health: any | null;
+    license: any | null;
+    error: string | null;
+}>>([])
 
 async function fetchHealth() {
     healthLoading.value = true;
     healthError.value = null;
+    serverHealthData.value = [];
+    
     try {
-        const res = await apiFetch('/api/admin/health');
-        if (!res?.ok) throw new Error(res?.error || 'Failed to fetch health');
-        healthData.value = res;
-    } catch (e: any) {
-        if (e?.status === 401 || e?.status === 403) {
-            healthError.value = 'Admin access required. Log in with a system (PAM) account.';
-        } else {
-            healthError.value = e?.message || String(e);
+        // Fetch health for all connected servers
+        if (!connections || !Array.isArray(connections)) {
+            healthError.value = 'Connections not initialized';
+            healthLoading.value = false;
+            return;
         }
-        healthData.value = null;
+        
+        const connectedServers = connections.filter((c: any) => c.status === 'connected');
+        
+        if (!connectedServers.length) {
+            healthError.value = 'No connected servers';
+            healthLoading.value = false;
+            return;
+        }
+        
+        const results = await Promise.all(
+            connectedServers.map(async (conn: any) => {
+                try {
+                    // Build API base for this connection
+                    const connBaseUrl = conn.baseUrl || `http://${conn.serverIp}:${conn.apiPort || 9095}`;
+                    
+                    // Fetch health
+                    const healthRes = await fetch(`${connBaseUrl}/api/admin/health`, {
+                        headers: { 'Authorization': `Bearer ${conn.token}` }
+                    });
+                    const health = healthRes.ok ? await healthRes.json() : null;
+                    
+                    // Fetch license status
+                    const licenseRes = await fetch(`${connBaseUrl}/api/license/status`, {
+                        headers: { 'Authorization': `Bearer ${conn.token}` }
+                    });
+                    const license = licenseRes.ok ? await licenseRes.json() : null;
+                    
+                    return {
+                        connection: conn,
+                        health: health?.ok ? health : null,
+                        license: license?.ok ? license : null,
+                        error: null
+                    };
+                } catch (err: any) {
+                    return {
+                        connection: conn,
+                        health: null,
+                        license: null,
+                        error: err?.message || 'Failed to fetch'
+                    };
+                }
+            })
+        );
+        
+        serverHealthData.value = results;
+    } catch (e: any) {
+        healthError.value = e?.message || String(e);
     } finally {
         healthLoading.value = false;
     }
@@ -1204,10 +1342,201 @@ function formatBytes(bytes: number | undefined) {
 }
 
 watch(activeSection, (section) => {
-    if (section === 'health' && !healthData.value && !healthLoading.value) {
+    if (section === 'health' && serverHealthData.value.length === 0 && !healthLoading.value) {
         fetchHealth();
     }
+    
+    // Load available watermarks when navigating to Link Options
+    if (section === 'linkOptions' && existingWatermarkFiles.value.length === 0) {
+        loadExistingWatermarkFiles();
+        loadDefaultWatermarkPresets();
+    }
 });
+
+watch(defaultWatermarkId, async (newId) => {
+    if (!newId) {
+        defaultWatermarkPreview.value = null;
+        return;
+    }
+    try {
+        const base = baseUrl.value;
+        const token = meta.value?.token || '';
+        // Check if it's a default preset (by ID or from static list)
+        const isPreset = defaultWatermarkPresets.value.some(p => p.id === newId) ||
+            DEFAULT_45FLOW_WATERMARKS.some(wm => wm.id === newId);
+        let url: string;
+        if (isPreset) {
+            url = `${base}/api/watermarks/defaults/${newId}/stream`;
+        } else {
+            url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(newId)}`;
+        }
+        
+        // Fetch and convert to data URL (raw URLs fail without auth headers)
+        const res = await fetch(url, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        });
+        if (!res.ok) {
+            defaultWatermarkPreview.value = null;
+            return;
+        }
+        const blob = await res.blob();
+        defaultWatermarkPreview.value = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (err) {
+        console.warn('[settings] Failed to load watermark preview:', err);
+        defaultWatermarkPreview.value = null;
+    }
+});
+
+async function loadAvailableWatermarks() {
+    try {
+        const res = await apiFetch('/api/files/watermarks');
+        if (res?.ok && Array.isArray(res.watermarks)) {
+            availableWatermarks.value = res.watermarks;
+        }
+    } catch (err) {
+        console.warn('[settings] Failed to load watermarks:', err);
+    }
+}
+
+async function loadDefaultWatermarkPresets() {
+    try {
+        // console.log('[settings] Loading default watermark presets...');
+        const res = await apiFetch('/api/watermarks/defaults');
+        // console.log('[settings] Presets API response:', res);
+        if (res?.ok && Array.isArray(res.defaults)) {
+            defaultWatermarkPresets.value = res.defaults;
+            // console.log('[settings] Loaded presets:', res.defaults);
+        } else {
+            console.warn('[settings] Invalid presets response:', res);
+        }
+    } catch (err) {
+        console.warn('[settings] Failed to load default watermark presets:', err);
+    }
+}
+
+const defaultWatermarkName = computed(() => {
+    if (defaultWatermarkFile.value) return defaultWatermarkFile.value.name;
+    if (selectedExistingWatermark.value) {
+        // Check if it's a preset
+        const preset = defaultWatermarkPresets.value.find(p => p.id === selectedExistingWatermark.value);
+        if (preset) return preset.name;
+        return selectedExistingWatermark.value.split('/').pop() || '';
+    }
+    return '';
+});
+
+const effectiveWatermarkPreviewUrl = computed(() =>
+    defaultWatermarkFile.value?.dataUrl || defaultWatermarkPreview.value || null
+);
+
+function pickDefaultWatermark() {
+    (window.electron as any)?.pickWatermark().then((f: any) => {
+        if (f) {
+            defaultWatermarkFile.value = f;
+            selectedExistingWatermark.value = '';
+            if (f.dataUrl) {
+                defaultWatermarkPreview.value = f.dataUrl;
+            }
+        }
+    }).catch((err: any) => {
+        console.warn('[settings] Failed to pick watermark:', err);
+    });
+}
+
+function clearDefaultWatermark() {
+    defaultWatermarkFile.value = null;
+    defaultWatermarkPreview.value = null;
+    selectedExistingWatermark.value = '';
+    defaultWatermarkId.value = '';
+}
+
+async function onSelectExistingWatermark() {
+    const selected = selectedExistingWatermark.value;
+    if (!selected) {
+        defaultWatermarkPreview.value = null;
+        defaultWatermarkFile.value = null;
+        return;
+    }
+    
+    defaultWatermarkFile.value = null;
+    
+    try {
+        const base = baseUrl.value;
+        const token = meta.value?.token || '';
+        
+        // Check if it's a default preset
+        const isPreset = defaultWatermarkPresets.value.some(p => p.id === selected);
+        let url: string;
+        if (isPreset) {
+            url = `${base}/api/watermarks/defaults/${selected}/stream`;
+        } else {
+            url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(selected)}`;
+        }
+        
+        // console.log('[settings] Fetching watermark preview from:', url);
+        
+        const res = await fetch(url, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        });
+        
+        if (!res.ok) {
+            console.warn('[settings] Failed to fetch watermark preview:', res.status);
+            defaultWatermarkPreview.value = null;
+            return;
+        }
+        
+        const blob = await res.blob();
+        // console.log('[settings] Loaded blob:', blob.size, 'bytes');
+        
+        // Convert blob to data URL
+        defaultWatermarkPreview.value = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+        
+        // console.log('[settings] Preview URL created');
+    } catch (err) {
+        console.warn('[settings] Failed to load watermark preview:', err);
+        defaultWatermarkPreview.value = null;
+    }
+}
+
+async function loadExistingWatermarkFiles() {
+    try {
+        // console.log('[settings] Loading existing watermark files...');
+        // Load server watermarks
+        const dirRel = '.45flow/watermarks';
+        const data = await apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`);
+        // console.log('[settings] API response:', data);
+        const entries = Array.isArray(data?.entries) ? data.entries : [];
+        const serverWatermarks = entries
+            .filter((e: any) => !e?.isDir && typeof e?.name === 'string' && String(e.name).trim())
+            .map((e: any) => `${dirRel}/${String(e.name).trim()}`)
+            .sort((a: string, b: string) => a.localeCompare(b));
+        
+        existingWatermarkFiles.value = serverWatermarks;
+        // console.log('[settings] Loaded watermark files:', serverWatermarks);
+    } catch (err) {
+        console.warn('[settings] Failed to load watermarks:', err);
+        existingWatermarkFiles.value = [];
+    }
+}
+
+async function refreshWatermarks() {
+    // console.log('[settings] Refreshing all watermarks...');
+    await Promise.all([
+        loadExistingWatermarkFiles(),
+        loadDefaultWatermarkPresets()
+    ]);
+    // console.log('[settings] Refresh complete. Presets:', defaultWatermarkPresets.value.length, 'Files:', existingWatermarkFiles.value.length);
+}
 
 const cleanupTranscodeFixes = computed(() =>
     Array.isArray(cleanupResult.value?.transcodeFixes) ? cleanupResult.value.transcodeFixes : []
@@ -1854,6 +2183,9 @@ const internalPreview = computed(() => {
 });
 
 const validationError = computed(() => {
+    // Don't show validation errors until settings are loaded from server
+    if (!settingsLoaded.value) return null;
+    
     if (!isValidPort(externalHttpsPort.value)) {
         return "External HTTPS port must be between 1 and 65535.";
     }
@@ -1914,10 +2246,53 @@ async function reload() {
             typeof data.defaultRestrictAccess === "boolean" ? data.defaultRestrictAccess : false;
         defaultAllowComments.value =
             typeof data.defaultAllowComments === "boolean" ? data.defaultAllowComments : true;
+        defaultWatermarkId.value = data.defaultWatermarkId || '';
+        defaultWatermarkEnabled.value = !!defaultWatermarkId.value;
+        
+        // Load watermark settings or use defaults
+        if (data.defaultWatermarkSettings && typeof data.defaultWatermarkSettings === 'object') {
+            watermarkSettings.value = { ...createDefaultWatermarkSettings(), ...data.defaultWatermarkSettings };
+        } else {
+            watermarkSettings.value = createDefaultWatermarkSettings();
+        }
+        
+        // Load existing watermark files and sync the selection
+        await loadExistingWatermarkFiles();
+        await loadDefaultWatermarkPresets();
+        if (defaultWatermarkId.value) {
+            selectedExistingWatermark.value = defaultWatermarkId.value;
+            // Ensure preview is loaded (watcher may have fired before baseUrl/token were ready)
+            if (!defaultWatermarkPreview.value) {
+                const base = baseUrl.value;
+                const token = meta.value?.token || '';
+                const isPreset = defaultWatermarkPresets.value.some(p => p.id === defaultWatermarkId.value) ||
+                    DEFAULT_45FLOW_WATERMARKS.some(wm => wm.id === defaultWatermarkId.value);
+                const url = isPreset
+                    ? `${base}/api/watermarks/defaults/${defaultWatermarkId.value}/stream`
+                    : `${base}/api/files/watermark-preview?path=${encodeURIComponent(defaultWatermarkId.value)}`;
+                try {
+                    const res = await fetch(url, {
+                        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                    });
+                    if (res.ok) {
+                        const blob = await res.blob();
+                        defaultWatermarkPreview.value = await new Promise<string>((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result as string);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(blob);
+                        });
+                    }
+                } catch { /* watcher will retry if needed */ }
+            }
+        }
+        
         defaultUseProxyFiles.value =
             typeof data.defaultUseProxyFiles === "boolean" ? data.defaultUseProxyFiles : false;
         projectRoot.value = typeof data.projectRoot === "string" ? data.projectRoot : "";
         forceProjectRoot.value = typeof data.forceProjectRoot === "boolean" ? data.forceProjectRoot : false;
+        
+        settingsLoaded.value = true;
     } catch (e: any) {
         loadError.value = e?.message ? `Failed to load settings: ${e.message}` : "Failed to load settings.";
     } finally {
@@ -1952,6 +2327,8 @@ async function save() {
             defaultRestrictAccess: !!defaultRestrictAccess.value,
             defaultAllowComments: !!defaultAllowComments.value,
             defaultUseProxyFiles: !!defaultUseProxyFiles.value,
+            defaultWatermarkId: defaultWatermarkEnabled.value ? (selectedExistingWatermark.value || defaultWatermarkId.value) : null,
+            defaultWatermarkSettings: defaultWatermarkEnabled.value ? watermarkSettings.value : null,
             projectRoot: (projectRoot.value || "").trim() || null,
             forceProjectRoot: !!forceProjectRoot.value,
         };

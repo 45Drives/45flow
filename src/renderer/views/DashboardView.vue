@@ -55,6 +55,7 @@ import { ref, onMounted } from 'vue'
 import { useApi } from '../composables/useApi'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { clearLastSession } from '../composables/useSessionPersistence'
+import { useConnections } from '../composables/useConnections'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
 
@@ -62,6 +63,7 @@ useHeader('Dashboard')
 const { to } = useResilientNav()
 const { apiFetch } = useApi()
 const transfer = useTransferProgress()
+const { activeConnection, updateConnection } = useConnections()
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()
 
@@ -151,8 +153,15 @@ onMounted(() => {
 })
 
 const leaveServer = () => {
+	// Mark the active connection as disconnected
+	if (activeConnection.value) {
+		updateConnection(activeConnection.value.connectionId, {
+			status: 'disconnected',
+			lastError: 'User logged out'
+		})
+	}
 	clearLastSession()
-	to('server-selection');
+	to('server-selection')
 }
 
 const showSettings = ref(false);

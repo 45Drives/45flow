@@ -114,7 +114,7 @@
 
 					<tbody class="bg-accent">
 						<tr v-if="loading">
-							<td colspan="9" class="p-0 border border-default">
+							<td colspan="10" class="p-0 border border-default">
 								<div class="w-full min-h-[140px] flex items-center justify-center">
 									<div
 										class="flex items-center gap-3 px-4 py-3 rounded-lg bg-default/60 border border-default shadow-sm">
@@ -130,7 +130,7 @@
 						</tr>
 
 						<tr v-else-if="filteredRows.length === 0 && !showingDemoData">
-							<td colspan="9"
+							<td colspan="10"
 								class="px-2 py-4 text-center text-default font-bold border border-default align-middle whitespace-nowrap">
 								No links found.
 							</td>
@@ -366,7 +366,7 @@
 							</td>
 						</tr>
 						<tr v-for="n in emptyRowCount" :key="`empty-${n}`" class="h-12">
-							<td colspan="9" class="p-0 bg-well">&nbsp;</td>
+							<td colspan="10" class="p-0 bg-well">&nbsp;</td>
 						</tr>
 					</tbody>
 				</table>
@@ -654,10 +654,16 @@ async function loadThumbnail(it: LinkItem) {
 	if (thumbCache.value[key] || thumbFailed.value.has(key)) return
 
 	try {
-		const base = baseUrl.value || ''
+		// Use the link's own connection, not the active connection
+		const linkConnectionId = (it as any)._connectionId
+		const linkConnection = connections.find(c => c.connectionId === linkConnectionId)
+		
+		// Fall back to current connection if link's connection not found
+		const base = linkConnection?.baseUrl || baseUrl.value || ''
+		const token = linkConnection?.token || meta.value?.token
+		
 		const url = `${base}${it.thumbnailUrl}`
 		const headers: Record<string, string> = {}
-		const token = meta.value?.token
 		if (token) headers['Authorization'] = `Bearer ${token}`
 
 		const res = await fetch(url, { headers })

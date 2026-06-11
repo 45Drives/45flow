@@ -78,6 +78,13 @@
               <!-- Actions -->
               <div class="flex items-center gap-2">
                 <button
+                  class="btn btn-sm btn-secondary"
+                  @click.stop="reconnect(conn)"
+                  :title="'Reconnect to ' + conn.name"
+                >
+                  Reconnect
+                </button>
+                <button
                   v-if="!conn.isActive"
                   class="btn btn-sm btn-primary"
                   @click.stop="switchTo(conn.connectionId)"
@@ -173,6 +180,19 @@ function removeConnection() {
 function addServer() {
   close()
   router.push({ name: 'server-selection', query: { skipAutoLogin: 'true' } })
+}
+
+function reconnect(conn: Connection) {
+  close()
+  // Navigate to server selection with pre-filled connection details
+  router.push({ 
+    name: 'server-selection', 
+    query: { 
+      reconnect: conn.connectionId,
+      serverIp: conn.serverIp,
+      username: conn.username
+    } 
+  })
 }
 
 function formatDate(timestamp: number) {

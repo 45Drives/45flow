@@ -546,11 +546,13 @@ function onDocDrop(e: DragEvent) {
 }
 
 // ── Document-level drag listeners ──
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('dragenter', onDocDragEnter)
   document.addEventListener('dragover', onDocDragOver)
   document.addEventListener('dragleave', onDocDragLeave)
   document.addEventListener('drop', onDocDrop)
+  
+  await loadDefaultWatermarkSettings()
 })
 onBeforeUnmount(() => {
   document.removeEventListener('dragenter', onDocDragEnter)
@@ -733,6 +735,7 @@ function resetWizard() {
   errorMsg.value = ''
   busy.value = false
   loadLinkDefaults()
+  void loadDefaultWatermarkSettings()
 }
 
 function cancel() {
@@ -752,10 +755,7 @@ watch(accessMode, (mode) => {
 
 watch(watermarkEnabled, (enabled) => {
   if (enabled) loadExistingWatermarkFiles()
-  if (!enabled) {
-    selectedExistingWatermark.value = ''
-    existingWatermarkPreviewUrl.value = null
-  }
+  // Don't clear selectedExistingWatermark when disabled - preserve default selection
 })
 
 watch(showDefaultWatermarks, () => {
@@ -841,6 +841,45 @@ function resolveWatermarkRelPath() {
   return `${resolveWatermarkDirRel()}/${name}`
 }
 
+/** Convert a watermark ID (e.g. '45flow-grad') to the path the dropdown/server expects */
+function resolveWatermarkPathForApi(idOrPath: string) {
+  const builtin = DEFAULT_45FLOW_WATERMARKS.find(wm => wm.id === idOrPath)
+  if (builtin) return builtin.path
+  return idOrPath
+}
+
+async function loadDefaultWatermarkSettings() {
+  try {
+    const settings = await apiFetch('/api/settings')
+    if (settings?.defaultWatermarkId) {
+      // Apply watermark customization settings if available (premium feature)
+      if (settings.defaultWatermarkSettings && typeof settings.defaultWatermarkSettings === 'object') {
+        watermarkSettings.value = { ...createDefaultWatermarkSettings(), ...settings.defaultWatermarkSettings }
+      }
+      
+      // Load list first so dropdown has options
+      await loadExistingWatermarkFiles()
+      // Convert ID to path so it matches dropdown values
+      const resolvedPath = resolveWatermarkPathForApi(settings.defaultWatermarkId)
+      selectedExistingWatermark.value = resolvedPath
+      // Only enable if there are video files
+      if (hasVideo.value) {
+        watermarkEnabled.value = true
+      }
+      
+      // Load the preview for the selected watermark
+      await fetchExistingWatermarkPreview(resolvedPath)
+    } else {
+      // No default watermark configured — ensure watermark is off
+      watermarkEnabled.value = false
+      selectedExistingWatermark.value = ''
+      existingWatermarkPreviewUrl.value = null
+    }
+  } catch (err) {
+    console.warn('[quickshare] Failed to load default watermark settings:', err)
+  }
+}
+
 async function ensureServerDirExists(dir: string) {
   const clean = String(dir || '').replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '')
   try {
@@ -866,7 +905,7 @@ async function loadExistingWatermarkFiles() {
     const token = connectionMeta.value.token ?? ''
     const builtinChecks = await Promise.allSettled(
       DEFAULT_45FLOW_WATERMARKS.map(async (wm) => {
-        const url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(wm.path)}`
+        const url = `${base}/api/watermarks/defaults/${wm.id}/stream`
         const res = await fetch(url, { method: 'HEAD', headers: { 'Authorization': `Bearer ${token}` } })
         return res.ok ? wm.path : null
       })
@@ -895,7 +934,15 @@ async function fetchExistingWatermarkPreview(relPath: string) {
   try {
     const base = connectionMeta.value.apiBase ?? ''
     const token = connectionMeta.value.token ?? ''
-    const url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(relPath)}`
+    
+    // Check if it's a built-in watermark (by ID or path)
+    const builtinById = DEFAULT_45FLOW_WATERMARKS.find(wm => wm.id === relPath)
+    const builtinByPath = DEFAULT_45FLOW_WATERMARKS.find(wm => wm.path === relPath)
+    const builtin = builtinById || builtinByPath
+    const url = builtin
+      ? `${base}/api/watermarks/defaults/${builtin.id}/stream`
+      : `${base}/api/files/watermark-preview?path=${encodeURIComponent(relPath)}`
+    
     const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } })
     if (!res.ok) { existingWatermarkPreviewUrl.value = null; return }
     const blob = await res.blob()
@@ -1234,7 +1281,8 @@ async function startUploadAndShare() {
     if (watermarkEnabled.value && hasVideo.value) {
       const selectedServerWm = String(selectedExistingWatermark.value || '').trim()
       if (selectedServerWm) {
-        watermarkRelPath = selectedServerWm
+        // Convert watermark ID to path for API if it's a built-in watermark
+        watermarkRelPath = resolveWatermarkPathForApi(selectedServerWm)
       } else if (watermarkFile.value) {
         const wmUp = await uploadWatermarkToProject()
         if (!wmUp.ok) {
