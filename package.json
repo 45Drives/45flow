@@ -1,6 +1,6 @@
 {
   "name": "45flow",
-  "version": "0.9.6",
+  "version": "0.9.7",
   "description": "Client app allowing users to create/manage collaborator user accounts and send Flow links to collaborators allowing them to view/interact/comment on multimedia files for review.",
   "main": "main/src/main/main.js",
   "workspaces": [
