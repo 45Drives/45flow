@@ -392,6 +392,7 @@ These defaults are applied automatically when creating new links, but can be cha
 | **Restrict access to users** | New links default to restricted (invited users only) mode. |
 | **Allow comments on open links** | Enable comments by default on open (unauthenticated) links. |
 | **Generate review copies by default** | Automatically enable review copy generation for new links. |
+| **Default watermark settings** | Configure default watermark image and settings for new links. See [Advanced Video Options](#advanced-video-options) for details on watermark configuration and customization. |
 
 ### Project Root
 
