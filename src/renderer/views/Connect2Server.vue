@@ -679,6 +679,19 @@ async function ensureLicenseActivated(apiBase: string, token: string) {
     pushNotification(new Notification('License Activated', licenseMsg, 'success', 6000))
 }
 
+async function fetchLicenseStatusSafe(apiBase: string, token: string) {
+    try {
+        const res = await fetch(`${apiBase}/api/license/status`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        })
+        if (!res.ok) return null
+        const body = await res.json().catch(() => null)
+        return body?.ok ? body : null
+    } catch {
+        return null
+    }
+}
+
 function translateSshError(errorMsg: string): string {
     const msg = String(errorMsg || '').toLowerCase();
     
@@ -939,6 +952,8 @@ async function connectToServer() {
         const loginData = await res.json();
         const token = loginData.token;
 
+        const loginLicenseStatus = await fetchLicenseStatusSafe(apiBase, token)
+
         connectionMeta.value = {
             ...connectionMeta.value,
             token,
@@ -1022,6 +1037,8 @@ async function connectToServer() {
             },
             serverInfo: effectiveServer?.serverInfo,
             setupComplete: effectiveServer?.setupComplete,
+            licensed: typeof loginLicenseStatus?.licensed === 'boolean' ? !!loginLicenseStatus.licensed : undefined,
+            licenseCheckedAt: loginLicenseStatus ? Date.now() : undefined,
             status: 'connected',
             lastConnectedAt: Date.now(),
             isActive: true
@@ -1164,6 +1181,8 @@ onMounted(async () => {
         }
 
         // Token is valid — restore the full session and navigate
+        const restoredLicenseStatus = await fetchLicenseStatusSafe(saved.apiBase, saved.token)
+
         const serverObj: Server = existingServer ?? {
             ip: saved.serverIp,
             name: saved.serverName,
@@ -1191,6 +1210,8 @@ onMounted(async () => {
                 username: saved.username.trim(),
                 port: saved.sshPort || 22
             },
+            licensed: typeof restoredLicenseStatus?.licensed === 'boolean' ? !!restoredLicenseStatus.licensed : undefined,
+            licenseCheckedAt: restoredLicenseStatus ? Date.now() : undefined,
             status: 'connected',
             lastConnectedAt: Date.now(),
             isActive: true
@@ -1203,6 +1224,16 @@ onMounted(async () => {
         try { sessionStorage.setItem('hb_token', saved.token) } catch { /* ignore */ }
 
         window.appLog?.info('auto-login.restored', { ip: saved.serverIp, connectionId: actualConnectionId })
+
+        if (restoredLicenseStatus?.enforcement && !restoredLicenseStatus?.licensed) {
+            pushNotification(new Notification(
+                'Server Unlicensed',
+                'Connected successfully, but this server is not currently licensed. Premium features are disabled until re-activated.',
+                'warning',
+                9000,
+            ))
+        }
+
         statusLine.value = ''
         isBusy.value = false
 

@@ -559,6 +559,34 @@
                                                     <span class="ml-1 font-mono">{{ new Date(server.license.license.expiresAt).toLocaleDateString() }}</span>
                                                 </div>
                                             </div>
+
+                                            <div v-if="!server.license.licensed && server.license.enforcement" class="mt-3 border-t border-default pt-3 space-y-2">
+                                                <p class="text-xs text-accent">Enter a 45Flow license key to activate this server.</p>
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <input
+                                                        v-model="licenseKeyInputs[server.connection.connectionId]"
+                                                        type="text"
+                                                        class="input-textlike border border-default px-2 py-1 rounded text-sm min-w-[18rem]"
+                                                        placeholder="Paste license key"
+                                                        :disabled="!!licenseActivationBusy[server.connection.connectionId]"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-primary h-fit"
+                                                        :disabled="!!licenseActivationBusy[server.connection.connectionId] || !String(licenseKeyInputs[server.connection.connectionId] || '').trim()"
+                                                        @click="activateLicenseForServer(server)"
+                                                    >
+                                                        <span v-if="licenseActivationBusy[server.connection.connectionId]">Activating…</span>
+                                                        <span v-else>Activate License</span>
+                                                    </button>
+                                                </div>
+                                                <p v-if="licenseActivationError[server.connection.connectionId]" class="text-danger text-xs">
+                                                    {{ licenseActivationError[server.connection.connectionId] }}
+                                                </p>
+                                                <p v-if="licenseActivationOk[server.connection.connectionId]" class="text-success text-xs">
+                                                    {{ licenseActivationOk[server.connection.connectionId] }}
+                                                </p>
+                                            </div>
                                         </div>
                                         
                                         <!-- Uptime -->
@@ -1248,6 +1276,103 @@ const cleanupDeleteOrphans = ref(true);
 const cleanupPruneMissingFiles = ref(false);
 const cleanupMaxMissingFiles = ref(200);
 const cleanupOrphanMinAgeHours = ref(24);
+
+const licenseKeyInputs = ref<Record<string, string>>({});
+const licenseActivationBusy = ref<Record<string, boolean>>({});
+const licenseActivationError = ref<Record<string, string | null>>({});
+const licenseActivationOk = ref<Record<string, string | null>>({});
+
+function setLicenseActivationState(connectionId: string, patch: {
+    busy?: boolean;
+    error?: string | null;
+    ok?: string | null;
+}) {
+    if (patch.busy !== undefined) {
+        licenseActivationBusy.value[connectionId] = patch.busy;
+    }
+    if (patch.error !== undefined) {
+        licenseActivationError.value[connectionId] = patch.error;
+    }
+    if (patch.ok !== undefined) {
+        licenseActivationOk.value[connectionId] = patch.ok;
+    }
+}
+
+function buildActivateErrorMessage(resp: Response, body: any, rawText: string) {
+    const requestId = String(
+        resp.headers.get('x-request-id') ||
+        (typeof body?.requestId === 'string' ? body.requestId : '')
+    ).trim();
+    const base = body?.error || body?.detail?.error || body?.message || rawText || `HTTP ${resp.status}`;
+    return requestId && !String(base).includes(requestId)
+        ? `${base} (request ${requestId})`
+        : String(base);
+}
+
+async function activateLicenseForServer(server: {
+    connection: any;
+    license: any;
+}) {
+    const connectionId = String(server?.connection?.connectionId || '');
+    if (!connectionId) return;
+
+    const key = String(licenseKeyInputs.value[connectionId] || '').trim();
+    if (!key) {
+        setLicenseActivationState(connectionId, { error: 'Please enter a license key.', ok: null });
+        return;
+    }
+
+    const conn = server.connection;
+    const connBaseUrl = conn.baseUrl || `http://${conn.serverIp}:${conn.apiPort || 9095}`;
+
+    setLicenseActivationState(connectionId, { busy: true, error: null, ok: null });
+    try {
+        const activateResp = await fetch(`${connBaseUrl}/api/license/activate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${conn.token}`,
+            },
+            body: JSON.stringify({ licenseKey: key }),
+        });
+
+        const rawText = await activateResp.text().catch(() => '');
+        let body: any = null;
+        try { body = rawText ? JSON.parse(rawText) : null; } catch { body = null; }
+
+        if (!activateResp.ok || !body?.ok) {
+            throw new Error(buildActivateErrorMessage(activateResp, body, rawText));
+        }
+
+        licenseKeyInputs.value[connectionId] = '';
+        const licenseInfo = body?.license;
+        let okMsg = 'License activated.';
+        if (licenseInfo?.perpetual) {
+            okMsg = 'Perpetual license activated.';
+        } else if (licenseInfo?.expiresAt) {
+            okMsg = `License valid until ${new Date(licenseInfo.expiresAt).toLocaleDateString()}.`;
+        }
+        setLicenseActivationState(connectionId, { ok: okMsg, error: null });
+
+        pushNotification(new Notification('License Activated', `${conn.name || conn.serverIp}: ${okMsg}`, 'success', 6000));
+
+        const statusResp = await fetch(`${connBaseUrl}/api/license/status`, {
+            headers: { 'Authorization': `Bearer ${conn.token}` }
+        });
+        if (statusResp.ok) {
+            const statusBody = await statusResp.json().catch(() => null);
+            if (statusBody?.ok) {
+                server.license = statusBody;
+            }
+        }
+    } catch (err: any) {
+        const msg = err?.message || 'License activation failed.';
+        setLicenseActivationState(connectionId, { error: msg, ok: null });
+        pushNotification(new Notification('License Activation Failed', msg, 'error', 7000));
+    } finally {
+        setLicenseActivationState(connectionId, { busy: false });
+    }
+}
 
 // ── Server Health ──
 const healthLoading = ref(false);

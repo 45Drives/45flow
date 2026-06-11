@@ -16,6 +16,13 @@
 				</div>
 			</div>
 
+			<div v-if="showUnlicensedBanner" class="dashboard-license-banner">
+				<div class="dashboard-license-copy">
+					{{ unlicensedBannerMessage }}
+				</div>
+				<button type="button" class="btn btn-secondary h-fit" @click="goToSettings">Open Settings</button>
+			</div>
+
 			<div class="dashboard-actions" data-tour="action-cards">
 				<button @click="goToShareFiles" class="btn btn-primary dashboard-action" data-tour="new-share-link">
 					<span class="dashboard-action-title">New File Share Link</span>
@@ -51,7 +58,7 @@ import SettingsModal from '../components/modals/SettingsModal.vue'
 import AddUsersModal from '../components/modals/AddUsersModal.vue'
 import LogViewModal from '../components/modals/LogViewModal.vue'
 // import { Cog6ToothIcon } from '@heroicons/vue/24/solid'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useApi } from '../composables/useApi'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { clearLastSession } from '../composables/useSessionPersistence'
@@ -66,6 +73,51 @@ const transfer = useTransferProgress()
 const { activeConnection, updateConnection } = useConnections()
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()
+const showUnlicensedBanner = ref(false)
+const unlicensedBannerMessage = ref('')
+
+async function refreshActiveConnectionLicenseStatus() {
+	const conn = activeConnection.value
+	if (!conn?.baseUrl || !conn?.token) {
+		showUnlicensedBanner.value = false
+		unlicensedBannerMessage.value = ''
+		return
+	}
+
+	try {
+		const res = await fetch(`${conn.baseUrl}/api/license/status`, {
+			headers: { 'Authorization': `Bearer ${conn.token}` },
+		})
+		if (!res.ok) {
+			showUnlicensedBanner.value = false
+			unlicensedBannerMessage.value = ''
+			return
+		}
+		const body = await res.json().catch(() => null)
+		if (!body?.ok) {
+			showUnlicensedBanner.value = false
+			unlicensedBannerMessage.value = ''
+			return
+		}
+
+		updateConnection(conn.connectionId, {
+			licensed: !!body.licensed,
+			licenseCheckedAt: Date.now(),
+		})
+
+		if (body.enforcement && !body.licensed) {
+			showUnlicensedBanner.value = true
+			unlicensedBannerMessage.value =
+				`Connected to ${conn.name || conn.serverIp}, but the server license is not active. Premium features are disabled until re-activated.`
+		} else {
+			showUnlicensedBanner.value = false
+			unlicensedBannerMessage.value = ''
+		}
+	} catch {
+		showUnlicensedBanner.value = false
+		unlicensedBannerMessage.value = ''
+	}
+}
 
 /** When true, ManageLinks shows demo rows so the tour can highlight them */
 const tourShowDemoLinks = ref(false)
@@ -144,12 +196,17 @@ const dashboardTourSteps: TourStep[] = [
 onMounted(() => {
 	transfer.restoreActiveTranscodes(apiFetch)
 	transfer.restorePersistedUploads()
+	void refreshActiveConnectionLicenseStatus()
 
 	if (!onboarding.value.dashboardTourDone) {
 		setTimeout(() => {
 			requestTour('dashboard', dashboardTourSteps, () => markDone('dashboardTourDone'))
 		}, 500)
 	}
+})
+
+watch(() => activeConnection.value?.connectionId, () => {
+	void refreshActiveConnectionLicenseStatus()
 })
 
 const leaveServer = () => {
@@ -243,6 +300,24 @@ const goToLinkUploadPanel = () => {
 	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: 0.65rem;
 	margin-bottom: 0.95rem;
+}
+
+.dashboard-license-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.65rem 0.8rem;
+	margin-bottom: 0.8rem;
+	border: 1px solid color-mix(in srgb, #d97706 45%, var(--local-border));
+	border-radius: 0.72rem;
+	background: color-mix(in srgb, #f59e0b 14%, transparent);
+}
+
+.dashboard-license-copy {
+	font-size: 0.82rem;
+	line-height: 1.35;
+	opacity: 0.95;
 }
 
 .dashboard-action {
