@@ -12,7 +12,6 @@
 					<button @click="goToLogs" data-tour="view-logs" class="btn btn-secondary px-5 py-2.5">View Logs</button>
 					<button @click="goToSettings" data-tour="settings" class="btn btn-secondary px-5 py-2.5">Settings</button>
 					<button @click="leaveServer" class="btn btn-danger px-5 py-2.5">Log Out</button>
-					<!-- <button @click="openUserGuide" class="btn btn-secondary px-5 py-2.5">User Guide</button> -->
 				</div>
 			</div>
 
@@ -24,40 +23,145 @@
 			</div>
 
 			<div class="dashboard-actions" data-tour="action-cards">
-				<button @click="goToShareFiles" class="btn btn-primary dashboard-action" data-tour="new-share-link">
-					<span class="dashboard-action-title">New File Share Link</span>
-					<span class="dashboard-action-copy">Generate a secure download or review link.</span>
+				<button @click="goToCreateLink" class="btn btn-primary dashboard-action" data-tour="create-link">
+					<span class="dashboard-action-title">Create Link</span>
+					<span class="dashboard-action-copy">Create a shareable link for users to upload or review.</span>
 				</button>
 				<button @click="goToUploadFiles" class="btn btn-primary dashboard-action" data-tour="upload-files">
-					<span class="dashboard-action-title">Upload Files Locally</span>
+					<span class="dashboard-action-title">Upload Files</span>
 					<span class="dashboard-action-copy">Send files from this workstation to the server.</span>
-				</button>
-				<button @click="goToLinkUploadPanel" class="btn btn-primary dashboard-action" data-tour="new-upload-link">
-					<span class="dashboard-action-title">New Upload Link</span>
-					<span class="dashboard-action-copy">Create an intake link for collaborators.</span>
 				</button>
 			</div>
 		</template>
 
-		<div class="dashboard-links-wrap" data-tour="manage-links">
-			<ManageLinks :tourActive="tourShowDemoLinks"/>
+		<!-- ═══════════ Project List View ═══════════ -->
+		<div v-if="!activeProject" class="dashboard-content-wrap" data-tour="project-list">
+			<div class="flex items-center justify-between gap-3 mb-3 px-1">
+				<h3 class="text-base font-semibold">Projects</h3>
+				<button class="btn btn-secondary text-xs px-3 py-1.5" @click="showCreateProjectModal = true">+ New Project</button>
+			</div>
+
+			<div v-if="projectsLoading" class="flex items-center justify-center py-8">
+				<span class="text-sm text-muted">Loading projects…</span>
+			</div>
+
+			<div v-else-if="projects.length === 0" class="flex flex-col items-center justify-center py-12 gap-3">
+				<p class="text-muted text-sm">No projects yet. Create your first project to get started.</p>
+				<button class="btn btn-primary px-4 py-2 text-sm" @click="showCreateProjectModal = true">Create Project</button>
+			</div>
+
+			<div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+				<div
+					v-for="project in projects"
+					:key="project.id"
+					class="project-card panel rounded-xl p-4 cursor-pointer border border-default bg-default"
+					@click="openProject(project)"
+				>
+					<div class="flex items-start justify-between gap-2 mb-2">
+						<h4 class="font-semibold text-sm truncate">{{ project.name }}</h4>
+						<div class="flex flex-row items-end gap-1.5 mb-2">
+							<span class="ss-chip ss-chip--neutral text-xs">Total Links: {{ project.link_count ?? 0 }}</span>
+							<span class="ss-chip ss-chip--success text-xs">Active {{ project.active_count ?? 0 }}</span>
+							<span class="ss-chip ss-chip--warning text-xs">Expired {{ project.expired_count ?? 0 }}</span>
+							<span class="ss-chip ss-chip--danger text-xs">Disabled {{ project.disabled_count ?? 0 }}</span>
+						</div>
+					</div>
+					<div class="text-xs truncate" :title="project.root_dir">Directory: {{ project.root_dir }}</div>
+					<p v-if="project.description" class="text-xs line-clamp-2 mb-2">Description: {{ project.description }}</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- ═══════════ Project Detail View (Links) ═══════════ -->
+		<div v-else class="dashboard-content-wrap" data-tour="manage-links">
+			<!-- Breadcrumb -->
+			<div class="flex items-center gap-2 mb-3 px-1">
+				<button class="text-sm text-primary hover:underline cursor-pointer" @click="backToProjects">Projects</button>
+				<span class="text-muted text-sm">›</span>
+				<span class="text-sm font-semibold truncate">{{ activeProject.name }}</span>
+				<div class="button-group-row ml-auto text-xs">
+					<button class="btn btn-secondary" @click="startEditProject">Edit Project</button>
+					<button class="btn btn-danger" @click="backToProjects">Close Project</button>
+				</div>
+			</div>
+			<div class="flex flex-row justify-start text-default border-b border-default">
+				<p class="text-xs mb-3 px-1 truncate" :title="activeProject.root_dir">Directory: {{ activeProject.root_dir }}</p>
+				<p v-if="activeProject.description" class="text-xs mb-1 px-1">|</p>
+				<p v-if="activeProject.description" class="text-xs mb-1 px-1">Description: {{ activeProject.description }}</p>
+			</div>
+
+			<ManageLinks :projectId="activeProject.id" :key="activeProject.id" :tourActive="tourShowDemoLinks"/>
 		</div>
 	</CardContainer>
+
 	<SettingsModal v-if="showSettings" @close="showSettings = false" />
 	<LogViewModal v-if="showLogs" @close="showLogs = false" />
 	<AddUsersModal v-model="usersModalOpen" :apiFetch="apiFetch" />
+	<CreateProjectModal v-model="showCreateProjectModal" @created="onProjectCreated" />
 
+	<!-- Edit Project Modal -->
+	<Teleport to="body">
+		<div v-if="showEditProjectModal && activeProject" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 text-default" @click.self="showEditProjectModal = false">
+			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-4xl mx-4 bg-accent">
+				<h3 class="text-lg font-semibold mb-4">Edit Project</h3>
+				<form @submit.prevent="saveProject" class="flex flex-col gap-4">
+					<div>
+						<label class="block text-sm font-medium mb-1">Project Name</label>
+						<input
+							v-model="editProjectName"
+							type="text"
+							class="input-textlike w-full px-3 py-2 rounded-lg border border-default"
+							required
+						/>
+					</div>
+					<div>
+						<label class="block text-sm font-medium mb-1">Project Root Directory</label>
+						<FolderPicker
+							:key="editKey"
+							v-model="editProjectRoot"
+							:apiFetch="apiFetch"
+							useCase="upload"
+							subtitle="Change the root directory for this project."
+							:auto-detect-roots="true"
+							:allow-entire-tree="true"
+							:startDir="editProjectRoot"
+							v-model:project="editProjectPickerBase"
+							v-model:dest="editProjectRoot"
+						/>
+					</div>
+					<div>
+						<label class="block text-sm font-medium mb-1">Description (optional)</label>
+						<textarea
+							v-model="editProjectDescription"
+							class="input-textlike w-full px-3 py-2 rounded-lg border border-default resize-none"
+							rows="2"
+							placeholder="Brief description…"
+						/>
+					</div>
+					<div class="flex items-center justify-end gap-2 mt-2">
+						<button type="button" class="btn btn-secondary px-4 py-2" @click="showEditProjectModal = false">Cancel</button>
+						<button type="submit" class="btn btn-primary px-4 py-2" :disabled="!editProjectName.trim() || !editProjectRoot.trim() || savingProject">
+							{{ savingProject ? 'Saving…' : 'Save' }}
+						</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</Teleport>
 </template>
 
 <script setup lang="ts">
 import { CardContainer } from '@45drives/houston-common-ui'
+import { Notification } from '@45drives/houston-common-ui'
 import { useHeader } from '../composables/useHeader'
 import { useResilientNav } from '../composables/useResilientNav'
+import { pushNotification } from '../composables/useNotificationQueue'
 import ManageLinks from './ManageLinks.vue'
 import SettingsModal from '../components/modals/SettingsModal.vue'
 import AddUsersModal from '../components/modals/AddUsersModal.vue'
 import LogViewModal from '../components/modals/LogViewModal.vue'
-// import { Cog6ToothIcon } from '@heroicons/vue/24/solid'
+import CreateProjectModal from '../components/modals/CreateProjectModal.vue'
+import FolderPicker from '../components/FolderPicker.vue'
 import { ref, onMounted, watch } from 'vue'
 import { useApi } from '../composables/useApi'
 import { useTransferProgress } from '../composables/useTransferProgress'
@@ -65,6 +169,7 @@ import { clearLastSession } from '../composables/useSessionPersistence'
 import { useConnections } from '../composables/useConnections'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
+import { useActiveProject } from '../composables/useActiveProject'
 
 useHeader('Dashboard')
 const { to } = useResilientNav()
@@ -73,6 +178,9 @@ const transfer = useTransferProgress()
 const { activeConnection, updateConnection } = useConnections()
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()
+const { activeProject: globalActiveProject, setActiveProject: setGlobalActiveProject } = useActiveProject()
+
+// ── License Banner ──
 const showUnlicensedBanner = ref(false)
 const unlicensedBannerMessage = ref('')
 
@@ -119,84 +227,144 @@ async function refreshActiveConnectionLicenseStatus() {
 	}
 }
 
-/** When true, ManageLinks shows demo rows so the tour can highlight them */
+// ── Projects ──
+interface Project {
+	id: number
+	name: string
+	root_dir: string
+	description: string | null
+	link_count: number
+	active_count: number
+	expired_count: number
+	disabled_count: number
+}
+
+const projects = ref<Project[]>([])
+const projectsLoading = ref(true)
+const activeProject = ref<Project | null>(null)
+
+const showCreateProjectModal = ref(false)
+
+const showEditProjectModal = ref(false)
+const editProjectName = ref('')
+const editProjectRoot = ref('')
+const editProjectPickerBase = ref('')
+const editProjectDescription = ref('')
+const savingProject = ref(false)
+const editKey = ref(0)
+
+async function fetchProjects() {
+	projectsLoading.value = true
+	try {
+		const data = await apiFetch('/api/projects')
+		projects.value = data.projects || []
+	} catch {
+		projects.value = []
+	} finally {
+		projectsLoading.value = false
+	}
+}
+
+function openProject(project: Project) {
+	activeProject.value = project
+}
+
+function backToProjects() {
+	activeProject.value = null
+	fetchProjects()
+}
+
+watch(activeProject, (p) => setGlobalActiveProject(p))
+
+// Close active project when switching servers (projects are server-specific)
+watch(activeConnection, (newConn, oldConn) => {
+	// Only close if actually switching between different servers
+	if (oldConn && newConn && oldConn.connectionId !== newConn.connectionId) {
+		if (activeProject.value) {
+			activeProject.value = null
+		}
+	}
+})
+
+function onProjectCreated(project: any) {
+	fetchProjects().then(() => {
+		const created = projects.value.find(p => p.id === project?.id)
+		if (created) openProject(created)
+	})
+}
+
+function startEditProject() {
+	if (!activeProject.value) return
+	editProjectName.value = activeProject.value.name
+	editProjectRoot.value = activeProject.value.root_dir
+	editProjectPickerBase.value = activeProject.value.root_dir
+	editProjectDescription.value = activeProject.value.description || ''
+	editKey.value++
+	showEditProjectModal.value = true
+}
+
+async function saveProject() {
+	if (!activeProject.value || !editProjectName.value.trim() || !editProjectRoot.value.trim()) return
+	savingProject.value = true
+	try {
+		await apiFetch(`/api/projects/${activeProject.value.id}`, {
+			method: 'PATCH',
+			body: JSON.stringify({
+				name: editProjectName.value.trim(),
+				rootDir: editProjectRoot.value.trim(),
+				description: editProjectDescription.value.trim() || null,
+			}),
+		})
+		activeProject.value = {
+			...activeProject.value,
+			name: editProjectName.value.trim(),
+			root_dir: editProjectRoot.value.trim(),
+			description: editProjectDescription.value.trim() || null,
+		}
+		showEditProjectModal.value = false
+		pushNotification(new Notification('Project Updated', '', 'success', 4000))
+	} catch (e: any) {
+		pushNotification(new Notification('Failed to update project', e?.message || '', 'error', 8000))
+	} finally {
+		savingProject.value = false
+	}
+}
+
+// ── Tour ──
 const tourShowDemoLinks = ref(false)
 
 const dashboardTourSteps: TourStep[] = [
-	// ── Welcome ──────────────────────
 	{
 		target: '[data-tour="flow-logo"]',
-		message: 'Welcome to 45Flow!\n\nTip: You can drag and drop files anywhere onto the app to open Quick Share — the fastest way to upload and share files. A guided tour of Quick Share will appear the first time you drop a file.\n\nLet\'s explore the dashboard.',
-		beforeShow: () => { transfer.setOpen(false) }, // Close transfer dock if open
+		message: 'Welcome to 45Flow!\n\nTip: You can drag and drop files anywhere onto the app to open Quick Share — the fastest way to upload and share files.\n\nLet\'s explore the dashboard.',
+		beforeShow: () => { transfer.setOpen(false) },
 	},
-	// ── Multi-Server Features ──────────────────────
 	{
 		target: '[data-tour="connection-switcher"]',
-		message: 'This is your Active Server selector.\n\n45Flow can connect to multiple servers at once. The server shown here is where your actions will take effect — creating links, uploading files, managing users, etc.\n\nClick the dropdown to switch between connected servers or add new ones.',
+		message: 'This is your Active Server selector.\n\n45Flow can connect to multiple servers at once. The server shown here is where your actions will take effect.',
 	},
-	// ── Dashboard actions ──────────────────────
 	{
 		target: '[data-tour="action-cards"]',
-		message: 'These are your three main actions: create a File Share Link for review, upload files directly from your workstation, or generate an Upload Link for collaborators.',
+		message: 'These are your main actions: create a Link for sharing/uploading, or upload files directly from your workstation.',
 	},
 	{
-		target: '[data-tour="new-share-link"]',
-		message: 'Click here to create a new File Share Link.\n\nYou\'ll select files from your server, set an expiry, and choose access controls. Recipients get a secure link to view and download the files.',
-	},
-	{
-		target: '[data-tour="upload-files"]',
-		message: 'Upload Files Locally lets you transfer files from this computer directly to the server.\n\nA step-by-step wizard walks you through selecting files (or drag-and-drop them), choosing a destination folder, and monitoring the upload. When client-side transcoding is enabled, video files are processed on your machine first (Transcode → Upload).',
-	},
-	{
-		target: '[data-tour="new-upload-link"]',
-		message: 'New Upload Link creates a shareable link that others can use to upload files to a specific folder on your server.\n\nGreat for collecting media from collaborators.',
-	},
-	{
-		target: '[data-tour="manage-users"]',
-		message: 'Manage Users lets you create and manage collaborator accounts and groups.\n\nYou can assign roles, set passwords, and control which users and groups have access to your shared links. A detailed tour will appear when you first open it.',
-	},
-	{
-		target: '[data-tour="view-logs"]',
-		message: 'View Logs opens the client log viewer — useful for troubleshooting or tracking link usage.\n\nFilter by level, search events, and expand entries for details.',
-	},
-	{
-		target: '[data-tour="settings"]',
-		message: 'Settings lets you configure external/internal URLs, default link options, project roots, and maintenance cleanup.\n\nYou can also re-enable all guided tours from Settings → Guides.',
-	},
-	{
-		target: '[data-tour="manage-links"]',
-		message: 'This is your link management table.\n\nAll your share and upload links appear here. You can search, filter by type or status, edit titles, copy links, enable/disable access, and view details.\n\nLet\'s walk through the key features with some example links.',
-		beforeShow: () => { tourShowDemoLinks.value = true },
-	},
-	{
-		target: '[data-tour="server-filter"]',
-		message: 'The "Show links from" filter lets you view links from all connected servers at once, or filter to just one server.\n\nWhen viewing "All Servers", links are aggregated and each row shows which server it belongs to. This is useful for managing links across multiple servers from one view.',
-		beforeShow: () => { tourShowDemoLinks.value = true },
-	},
-	{
-		target: '[data-tour="manage-links-toolbar"]',
-		message: 'Use the toolbar to search links by title, directory, or file name.\n\nYou can also filter by link type (Upload, Share) and status (Active, Expired, Disabled). The Refresh button fetches the latest data from all filtered servers.',
-		beforeShow: () => { tourShowDemoLinks.value = true },
-	},
-	{
-		target: '[data-tour="manage-links-table"]',
-		message: 'The table shows all your links at a glance.\n\nEach row displays the link\'s title, type, a short URL you can copy, expiry countdown, status badge, access mode, creation date, server name/IP, and action buttons.\n\nWhen viewing links from multiple servers, the Server column shows which server each link belongs to. Click any column header to sort. These are example links for the tour — your real links will appear here.',
-		beforeShow: () => { tourShowDemoLinks.value = true },
-	},
-	{
-		target: '[data-tour="manage-links-actions"]',
-		message: 'Each link has three action buttons:\n\n• Details — opens a full modal with all link settings, access logs, file lists, and version management.\n• Open — opens the link in a new browser tab (disabled when the link is disabled).\n• Disable/Enable — toggles the link on or off without deleting it.',
-		beforeShow: () => { tourShowDemoLinks.value = true },
-		cleanup: () => { tourShowDemoLinks.value = false },
+		target: '[data-tour="project-list"]',
+		message: 'Your projects appear here. Each project organizes links under a shared root directory. Click a project to see its links.',
 	},
 ]
 
-// Restore any active transcodes from the server (survives logout/app restart)
-// Also restore persisted uploads (detached rsync that survived app closure)
-onMounted(() => {
+// ── Lifecycle ──
+onMounted(async () => {
 	transfer.restoreActiveTranscodes(apiFetch)
 	transfer.restorePersistedUploads()
 	void refreshActiveConnectionLicenseStatus()
+	await fetchProjects()
+
+	// Restore active project from global state after projects list is available
+	if (!activeProject.value && globalActiveProject.value) {
+		const match = projects.value.find(p => p.id === globalActiveProject.value!.id)
+		if (match) activeProject.value = match
+	}
 
 	if (!onboarding.value.dashboardTourDone) {
 		setTimeout(() => {
@@ -207,10 +375,11 @@ onMounted(() => {
 
 watch(() => activeConnection.value?.connectionId, () => {
 	void refreshActiveConnectionLicenseStatus()
+	fetchProjects() // Reload projects when switching servers
 })
 
+// ── Navigation ──
 const leaveServer = () => {
-	// Mark the active connection as disconnected
 	if (activeConnection.value) {
 		updateConnection(activeConnection.value.connectionId, {
 			status: 'disconnected',
@@ -221,41 +390,17 @@ const leaveServer = () => {
 	to('server-selection')
 }
 
-const showSettings = ref(false);
-const goToSettings = () => {
-	showSettings.value = true;
-}
+const showSettings = ref(false)
+const goToSettings = () => { showSettings.value = true }
 
-const showLogs = ref(false);
-const goToLogs = () => {
-	showLogs.value = true;
-}
+const showLogs = ref(false)
+const goToLogs = () => { showLogs.value = true }
 
-const usersModalOpen = ref(false);
-const goToManageUsers = () => {
-	usersModalOpen.value = true;
-}
+const usersModalOpen = ref(false)
+const goToManageUsers = () => { usersModalOpen.value = true }
 
-const openUserGuide = () => {
-	window.open('https://github.com/45Drives/45flow-premium-dev/blob/main/docs/45Flow_User_Guide.md', '_blank', 'noopener,noreferrer');
-}
-
-const goToShareFiles = () => {
-	// router.push({ name: 'select-file'})
-	to('select-file');
-}
-
-const goToUploadFiles = () => {
-	// router.push({ name: 'upload-file'});
-	to('upload-file');
-
-}
-
-const goToLinkUploadPanel = () => {
-	// router.push({ name: 'create-upload-link' });
-	to('create-upload-link');
-}
-
+const goToUploadFiles = () => { to('upload-file') }
+const goToCreateLink = () => { to('create-link', undefined, activeProject.value ? { projectId: String(activeProject.value.id) } : undefined) }
 </script>
 
 <style scoped>
@@ -297,7 +442,7 @@ const goToLinkUploadPanel = () => {
 
 .dashboard-actions {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 0.65rem;
 	margin-bottom: 0.95rem;
 }
@@ -343,23 +488,31 @@ const goToLinkUploadPanel = () => {
 	opacity: 0.86;
 }
 
-.dashboard-links-wrap {
+.dashboard-content-wrap {
 	border: 1px solid var(--local-border);
 	border-radius: 0.85rem;
-	padding: 0.45rem;
+	padding: 0.65rem;
 	background: color-mix(in srgb, var(--btn-primary-bg) 8%, transparent);
 }
 
-.dashboard-footer {
+.project-card {
 	display: flex;
-	align-items: center;
-	justify-content: space-between;
+	flex-direction: column;
+	transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
-@media (max-width: 1100px) {
-	.dashboard-actions {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
+.project-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+	border-color: var(--btn-primary-bg);
+}
+
+.line-clamp-2 {
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
 }
 
 @media (max-width: 780px) {

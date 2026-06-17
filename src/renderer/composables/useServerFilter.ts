@@ -52,6 +52,26 @@ export function useServerFilter() {
   }
   
   /**
+   * Auto-select active server when filter hasn't been explicitly set
+   * and there are multiple connected servers
+   */
+  const connectedCount = computed(() => connections.filter(c => c.status === 'connected').length)
+  
+  // On first access: if filter is 'all' but wasn't explicitly saved, default to active server
+  if (selectedFilter.value === 'all' && !localStorage.getItem(STORAGE_KEY) && activeConnection.value) {
+    selectedFilter.value = activeConnection.value.connectionId
+  }
+  
+  // When active connection changes and filter is set to a different server that's no longer active,
+  // auto-switch to match (only when there's more than 1 connected server)
+  watch(() => activeConnection.value?.connectionId, (newActiveId) => {
+    if (!newActiveId) return
+    if (connectedCount.value > 1 && selectedFilter.value !== 'all' && selectedFilter.value !== newActiveId) {
+      selectedFilter.value = newActiveId
+    }
+  })
+  
+  /**
    * Filtered list of connections based on current filter
    * Returns all connections if filter is 'all', otherwise just the selected one
    */

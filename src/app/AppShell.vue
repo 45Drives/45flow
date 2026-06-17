@@ -7,21 +7,31 @@
     >
       <!-- Left (logo) -->
       <div class="justify-self-start">
-        <DynamicBrandingLogo :division="divisionCode" :height="12"/>
+        <!-- <DynamicBrandingLogo :division="divisionCode" :height="12"/> -->
+        <div class="flow-logo-gradient mx-auto my-auto ml-2" role="img" aria-label="45Flow" data-tour="flow-logo"
+          :style="{
+            '--flow-logo-src': `url(${flowLogo})`,
+          }" />
       </div>
 
       <!-- Center (title) -->
       <div class="justify-self-center text-center items-center text-2xl font-semibold whitespace-nowrap">
         <!-- {{ headerTitle || (route.meta.title as string) || '45Flow' }} -->
-        <div class="flow-logo-gradient mx-auto my-auto ml-2" role="img" aria-label="45Flow" data-tour="flow-logo" :style="{
+        <!-- <div class="flow-logo-gradient mx-auto my-auto ml-2" role="img" aria-label="45Flow" data-tour="flow-logo" :style="{
           '--flow-logo-src': `url(${flowLogo})`,
-        }" />
+        }" /> -->
+        <DynamicBrandingLogo :division="divisionCode" :height="12" />
+        
       </div>
 
       <!-- Right (menu) -->
       <div class="justify-self-end text-right flex items-center gap-2">
         <div data-tour="connection-switcher">
           <ConnectionSwitcher v-if="route.name !== 'server-selection'" />
+          <!-- <div v-if="activeProject" class="text-xs font-normal text-muted truncate max-w-[16rem]"
+            :title="`Project: ${activeProject.name} (${activeProject.root_dir})`">
+            {{ activeProject.name }}
+          </div> -->
         </div>
         <GlobalMenu />
         <button
@@ -61,6 +71,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useHeaderTitle } from '../renderer/composables/useHeaderTitle'
 import { registerIpcActionListener } from "../renderer/composables/registerIpcActionListener";
 import { useConnections } from '../renderer/composables/useConnections'
+import { useActiveProject } from '../renderer/composables/useActiveProject'
 import { useWebSocketManager } from '../renderer/composables/useWebSocketManager'
 import TransferProgressDock from '../renderer/components/TransferProgressDock.vue'
 import UpdateBanner from '../renderer/components/UpdateBanner.vue'
@@ -78,6 +89,7 @@ const { activeTour, finishTour, cancelTour } = useTourManager()
 
 // Initialize multi-server connection management
 const { activeConnection } = useConnections()
+const { activeProject } = useActiveProject()
 
 // Initialize WebSocket manager (auto-connects to active connection)
 useWebSocketManager()

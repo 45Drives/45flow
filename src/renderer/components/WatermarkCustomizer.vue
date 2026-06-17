@@ -1,5 +1,18 @@
 <template>
   <div class="watermark-customizer p-4 border border-default rounded-lg bg-default/20">
+    <!-- Unlicensed: show basic watermark info -->
+    <div v-if="!isPremium" class="text-center py-4">
+      <p class="text-sm font-semibold mb-2">Basic Watermark</p>
+      <p class="text-xs text-muted">
+        Watermark will be applied at the bottom-right corner with default sizing.
+      </p>
+      <p class="text-xs text-muted mt-1">
+        Upgrade to a licensed server for custom position, scale, opacity, and rotation controls.
+      </p>
+    </div>
+
+    <!-- Licensed: full customization UI -->
+    <template v-else>
     <div class="flex items-center justify-between mb-4">
       <h3 class="text-sm font-bold">Watermark Customization</h3>
     </div>
@@ -100,7 +113,19 @@
           <div class="space-y-1">
             <div class="flex items-center justify-between">
               <label class="text-xs text-muted">Horizontal Offset</label>
-              <span class="text-xs font-mono">{{ settings.position.x }}{{ settings.position.xUnit }}</span>
+              <div class="flex items-center gap-1">
+                <input
+                  type="number"
+                  :min="0"
+                  :max="settings.position.xUnit === '%' ? 50 : 200"
+                  :step="settings.position.xUnit === '%' ? 0.5 : 5"
+                  :value="settings.position.x"
+                  @input="updatePosition({ x: clampInput(parseFloat(($event.target as HTMLInputElement).value), 0, settings.position.xUnit === '%' ? 50 : 200) })"
+                  :disabled="settings.position.anchor === 'center'"
+                  class="w-14 px-1.5 py-0.5 text-xs font-mono text-right border border-default rounded bg-default"
+                />
+                <span class="text-xs text-muted">{{ settings.position.xUnit }}</span>
+              </div>
             </div>
             <input
               type="range"
@@ -137,7 +162,19 @@
           <div class="space-y-1">
             <div class="flex items-center justify-between">
               <label class="text-xs text-muted">Vertical Offset</label>
-              <span class="text-xs font-mono">{{ settings.position.y }}{{ settings.position.yUnit }}</span>
+              <div class="flex items-center gap-1">
+                <input
+                  type="number"
+                  :min="0"
+                  :max="settings.position.yUnit === '%' ? 50 : 200"
+                  :step="settings.position.yUnit === '%' ? 0.5 : 5"
+                  :value="settings.position.y"
+                  @input="updatePosition({ y: clampInput(parseFloat(($event.target as HTMLInputElement).value), 0, settings.position.yUnit === '%' ? 50 : 200) })"
+                  :disabled="settings.position.anchor === 'center'"
+                  class="w-14 px-1.5 py-0.5 text-xs font-mono text-right border border-default rounded bg-default"
+                />
+                <span class="text-xs text-muted">{{ settings.position.yUnit }}</span>
+              </div>
             </div>
             <input
               type="range"
@@ -176,7 +213,18 @@
         <div class="space-y-1">
           <div class="flex items-center justify-between">
             <label class="text-xs font-semibold">Scale</label>
-            <span class="text-xs font-mono">{{ settings.scale }}%</span>
+            <div class="flex items-center gap-1">
+              <input
+                type="number"
+                min="10"
+                max="100"
+                step="1"
+                :value="settings.scale"
+                @input="updateScale(clampInput(parseInt(($event.target as HTMLInputElement).value), 10, 100))"
+                class="w-14 px-1.5 py-0.5 text-xs font-mono text-right border border-default rounded bg-default"
+              />
+              <span class="text-xs text-muted">%</span>
+            </div>
           </div>
           <input
             type="range"
@@ -198,7 +246,18 @@
         <div class="space-y-1">
           <div class="flex items-center justify-between">
             <label class="text-xs font-semibold">Opacity</label>
-            <span class="text-xs font-mono">{{ settings.opacity }}%</span>
+            <div class="flex items-center gap-1">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                :value="settings.opacity"
+                @input="updateOpacity(clampInput(parseInt(($event.target as HTMLInputElement).value), 0, 100))"
+                class="w-14 px-1.5 py-0.5 text-xs font-mono text-right border border-default rounded bg-default"
+              />
+              <span class="text-xs text-muted">%</span>
+            </div>
           </div>
           <input
             type="range"
@@ -220,7 +279,18 @@
         <div class="space-y-1">
           <div class="flex items-center justify-between">
             <label class="text-xs font-semibold">Rotation</label>
-            <span class="text-xs font-mono">{{ settings.rotation }}°</span>
+            <div class="flex items-center gap-1">
+              <input
+                type="number"
+                min="0"
+                max="360"
+                step="1"
+                :value="settings.rotation"
+                @input="updateRotation(clampInput(parseInt(($event.target as HTMLInputElement).value), 0, 360))"
+                class="w-14 px-1.5 py-0.5 text-xs font-mono text-right border border-default rounded bg-default"
+              />
+              <span class="text-xs text-muted">°</span>
+            </div>
           </div>
           <input
             type="range"
@@ -285,6 +355,9 @@
           <span v-else-if="settings.position.anchor === 'center'" class="opacity-60">Center position is fixed — use advanced controls to adjust offsets</span>
           <span v-else>Drag the watermark to position it or use advanced controls</span>
         </p>
+        <p class="text-[10px] text-muted/50 italic">
+          For images, actual placement may vary slightly depending on dimensions and aspect ratio.
+        </p>
       </div>
     </div>
 
@@ -341,6 +414,7 @@
         </div>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
@@ -355,9 +429,12 @@ const props = withDefaults(defineProps<{
   modelValue?: WatermarkSettings | null
   /** URL for watermark image preview */
   watermarkPreviewUrl?: string | null
+  /** Whether the server is licensed for premium watermark features */
+  isPremium?: boolean
 }>(), {
   modelValue: null,
   watermarkPreviewUrl: null,
+  isPremium: true,
 })
 
 const emit = defineEmits<{
@@ -625,6 +702,14 @@ const computedPreviewStyle = computed(() => {
 })
 
 /**
+ * Clamp a number input value to min/max, handling NaN from empty inputs
+ */
+const clampInput = (value: number, min: number, max: number): number => {
+  if (isNaN(value)) return min
+  return Math.min(max, Math.max(min, value))
+}
+
+/**
  * Calculate slider track fill percentage for dynamic styling
  * Handles sliders with non-zero min values (like scale: 10-100)
  * Uses theme gradient colors from btn-primary
@@ -652,6 +737,7 @@ input[type="range"].slider {
   height: 6px;
   border-radius: 3px;
   outline: none;
+  touch-action: none;
   /* No background transition - causes lag during drag */
 }
 

@@ -233,14 +233,14 @@
                                             />
                                         </div>
                                  
-                                        <!-- Advanced Video Options -->
-                                        <div v-if="hasVideoSelected || tourSpoofing" data-tour="share-advanced-video" class="border-t border-default mt-2 pt-2 min-w-0">
+                                        <!-- Advanced Media Options (Video/Image) -->
+                                        <div v-if="hasMediaSelected || tourSpoofing" data-tour="share-advanced-video" class="border-t border-default mt-2 pt-2 min-w-0">
                                             <Disclosure v-slot="{ open }" as="div" :defaultOpen="true"
                                                 class="ss-toned-panel min-w-0">
                                                 <DisclosureButton
                                                     class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left min-w-0 rounded-md">
                                                     <div class="min-w-0">
-                                                        <p class="font-semibold">Video options</p>
+                                                        <p class="font-semibold">{{ hasVideoSelected ? 'Video options' : 'Image options' }}</p>
                                                         <p class="text-xs text-muted truncate">
                                                             <span v-if="usingExistingProxy">Existing review copies found.</span>
                                                             <span v-else>Review copies will be generated after upload.</span>
@@ -261,8 +261,9 @@
                                                         :effectiveWatermarkName="effectiveWatermarkName"
                                                         :usingExistingWatermark="usingExistingWatermark"
                                                         :showHeading="false"
-                                                        watermarkLabel="Watermark Videos"
+                                                        :watermarkLabel="hasVideoSelected ? 'Watermark Videos' : 'Watermark Images'"
                                                         :pickButtonLabel="usingExistingWatermark ? 'Replace...' : 'Browse...'"
+                                                        :hideProxyQualities="!hasVideoSelected"
                                                         :watermarkSwitchDisabled="watermarkSwitchDisabled"
                                                         :watermarkSwitchTitle="watermarkSwitchTitle"
                                                         :watermarkStatusText="watermarkEnabled ? (usingExistingWatermark ? 'Use existing watermark' : 'Apply watermark') : 'No watermark'"
@@ -836,12 +837,23 @@ const videoExts = new Set([
     'ogv', 'vob', 'divx', 'f4v', 'asf', 'rm', 'rmvb', 'm4s',
     'r3d', 'braw', 'ari', 'cine', 'dav',
 ])
+const imageExts = new Set([
+    'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif',
+    'avif', 'heic', 'heif', 'jp2', 'jxl', 'svg',
+])
 const hasVideoSelected = computed(() =>
     files.value.some(f => {
         const ext = String(f || '').toLowerCase().split('.').pop() || ''
         return videoExts.has(ext)
     })
 )
+const hasImageSelected = computed(() =>
+    files.value.some(f => {
+        const ext = String(f || '').toLowerCase().split('.').pop() || ''
+        return imageExts.has(ext)
+    })
+)
+const hasMediaSelected = computed(() => hasVideoSelected.value || hasImageSelected.value)
 
 const proxyBlockReason = computed(() => {
     if (!preflightProxyBlocked.value) return ''
@@ -1019,16 +1031,21 @@ watch(transcodeProxy, (v) => {
 
 
 watch(files, () => {
-    if (!hasVideoSelected.value) {
+    if (!hasMediaSelected.value) {
         transcodeProxy.value = false
         watermarkEnabled.value = false
         watermarkFile.value = null
-    } else {
+    } else if (hasVideoSelected.value) {
         transcodeProxy.value = true
         if (!proxyQualities.value.includes('original')) {
             proxyQualities.value = ['original']
         }
         // Auto-enable watermark if default is configured
+        if (selectedExistingWatermark.value && !watermarkEnabled.value) {
+            watermarkEnabled.value = true
+        }
+    } else {
+        // Image-only: auto-enable watermark if configured
         if (selectedExistingWatermark.value && !watermarkEnabled.value) {
             watermarkEnabled.value = true
         }
@@ -1068,12 +1085,22 @@ function clearWatermark() {
 async function loadExistingWatermarkFiles() {
     try {
         const dirRel = resolveWatermarkDirRel()
-        const data = await apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' })
-        const entries = Array.isArray(data?.entries) ? data.entries : []
-        const serverWatermarks = entries
+        const [dirData, globalData] = await Promise.all([
+            apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' }).catch(() => null),
+            apiFetch('/api/files/watermarks', { method: 'GET' }).catch(() => null),
+        ])
+        
+        // Directory-specific watermarks
+        const dirEntries = Array.isArray(dirData?.entries) ? dirData.entries : []
+        const dirWatermarks = dirEntries
             .filter((e: any) => !e?.isDir && typeof e?.name === 'string' && String(e.name).trim())
             .map((e: any) => `${dirRel}/${String(e.name).trim()}`)
-            .sort((a: string, b: string) => a.localeCompare(b))
+        
+        // Global watermarks from all .45flow/watermarks/ dirs
+        const globalWatermarks = Array.isArray(globalData?.watermarks) ? globalData.watermarks : []
+        
+        // Merge and deduplicate
+        const allCustom = [...new Set([...dirWatermarks, ...globalWatermarks])].sort()
         
         // Check which built-in watermarks actually exist on the server
         const base = connectionMeta.value.apiBase ?? ''
@@ -1090,7 +1117,7 @@ async function loadExistingWatermarkFiles() {
             .map(r => r.value)
         
         // User watermarks first, default watermarks last
-        existingWatermarkFiles.value = showDefaultWatermarks.value ? [...serverWatermarks, ...validBuiltins] : serverWatermarks
+        existingWatermarkFiles.value = showDefaultWatermarks.value ? [...allCustom, ...validBuiltins] : allCustom
 
         // Auto-select: prefer detected watermark from preflight (what's actually in the video),
         // then fall back to localStorage last-used, then first in list

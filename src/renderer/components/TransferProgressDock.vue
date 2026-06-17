@@ -96,6 +96,12 @@
                                             @click="cancelTranscode(t.taskId)">
                                             Cancel
                                         </button>
+                                        <button
+                                            v-if="t.kind === 'transcode' && (t.status === 'failed' || t.status === 'error')"
+                                            class="btn btn-primary px-1.5 py-0 text-[9px] leading-tight"
+                                            @click="retryTranscode(t.taskId)">
+                                            Retry
+                                        </button>
                                     </div>
                                     <div class="flex items-center gap-2 flex-shrink-0 text-[10px] opacity-60 tabular-nums">
                                         <span v-if="t.speed">{{ t.speed }}</span>
@@ -145,6 +151,7 @@ const {
     clearFinished,
     cancelUpload,
     cancelTranscode,
+    retryTranscode,
 } = useTransferProgress()
 
 const { requestTour } = useTourManager()

@@ -68,6 +68,10 @@
                 </div>
               </div>
             </div>
+            <div v-if="linkServerPath" class="pt-2 border-t border-default/70 text-xs">
+              <span class="opacity-70">Server Path</span>
+              <div class="font-mono font-semibold truncate" :title="linkServerPath">{{ linkServerPath }}</div>
+            </div>
           </div>
 
           <div class="rounded-lg border border-default bg-default/20 p-3 space-y-2">
@@ -353,10 +357,10 @@
               <div class="flex flex-wrap items-center gap-3 min-w-0">
                 <label class="font-semibold sm:whitespace-nowrap">Apply Watermark</label>
                 <template v-if="editMode">
-                  <Switch id="link-watermark-switch" v-model="draftWatermarkEnabled" :disabled="!draftGenerateReviewProxy"
+                  <Switch id="link-watermark-switch" v-model="draftWatermarkEnabled" :disabled="linkHasVideoFiles && !draftGenerateReviewProxy"
                     :class="[
                       draftWatermarkEnabled ? 'bg-secondary' : 'bg-well',
-                      !draftGenerateReviewProxy ? 'opacity-50 cursor-not-allowed' : '',
+                      (linkHasVideoFiles && !draftGenerateReviewProxy) ? 'opacity-50 cursor-not-allowed' : '',
                       'relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-600 focus:ring-offset-2'
                     ]">
                     <span class="sr-only">Toggle watermark</span>
@@ -805,6 +809,7 @@
             v-if="draftWatermarkFile || draftWatermarkLocalFile"
             v-model="draftWatermarkSettings"
             :watermarkPreviewUrl="watermarkPreviewUrl || null"
+            :isPremium="isServerLicensed"
           />
           <div v-else class="p-4 text-center text-sm opacity-70">
             Select a watermark file to configure customization settings.
@@ -909,6 +914,7 @@ watch(() => props.modelValue, (open) => {
 const transfer = useTransferProgress()
 const { activeConnection, connections } = useConnections()
 const connectionMeta = inject(connectionMetaInjectionKey, null)
+const isServerLicensed = computed(() => activeConnection.value?.licensed !== false)
 
 const thumbnailSrc = ref('')
 const thumbnailLoading = ref(false)
@@ -1062,6 +1068,25 @@ const draftUploadDir = ref('')
 const originalUploadDir = ref('')
 
 const isDownloadish = computed(() => props.link?.type === 'download' || props.link?.type === 'collection')
+
+const linkServerPath = computed(() => {
+  const target = (props.link as any)?.target
+  if (target?.dirRel) return target.dirRel
+  const files = target?.files || draftFilePaths.value
+  if (Array.isArray(files) && files.length === 1) {
+    const f = files[0]
+    return f?.relPath || f?.path || f?.p || f?.name || ''
+  }
+  if (Array.isArray(files) && files.length > 1) {
+    const first = files[0]
+    const p = first?.relPath || first?.path || first?.p || ''
+    if (p) {
+      const dir = p.replace(/\\/g, '/').replace(/\/[^/]+$/, '')
+      return dir || '/'
+    }
+  }
+  return ''
+})
 const supportsComments = computed(() => props.link?.type !== 'upload')
 const supportsPassword = computed(() => effectiveAccessMode.value === 'open')
 const currentAccessMode = computed<'open' | 'restricted'>(() => props.link?.access_mode || 'open')
@@ -1195,6 +1220,7 @@ const fallbackLinkFiles = computed(() => {
 
 const displayFiles = computed(() => (files.value.length ? files.value : fallbackLinkFiles.value))
 const usingFallbackFiles = computed(() => !detailsLoading.value && files.value.length === 0 && fallbackLinkFiles.value.length > 0)
+const linkHasVideoFiles = computed(() => displayFiles.value.some(isVideoishFile))
 
 const currentUploadDir = computed(() => {
   const it = props.link
@@ -1288,6 +1314,9 @@ function assignMediaSettingsFromSource(src: any) {
 
   const wmFile = src.watermarkFile ?? src.watermark_file
   if (wmFile != null) target.watermarkFile = String(wmFile || '')
+
+  const wmSettings = src.watermarkSettings ?? src.watermark_settings
+  if (wmSettings && typeof wmSettings === 'object') target.watermarkSettings = wmSettings
 }
 
 const _videoExts = new Set([
@@ -1438,6 +1467,13 @@ function seedDraftMediaSettings() {
   originalWatermarkFile.value = currentWatermarkFile.value
   originalWatermarkFile.value = currentWatermarkFile.value
   draftWatermarkLocalFile.value = null
+  // Initialize watermark settings from stored link data
+  const storedSettings = (props.link as any)?.watermarkSettings
+  if (storedSettings && typeof storedSettings === 'object' && storedSettings.position) {
+    draftWatermarkSettings.value = JSON.parse(JSON.stringify(storedSettings))
+  } else {
+    draftWatermarkSettings.value = createDefaultWatermarkSettings()
+  }
 }
 
 function pickLocalWatermark() {
@@ -1453,11 +1489,19 @@ function clearLocalWatermark() {
 }
 
 function openWatermarkConfigModal() {
-  // Initialize with current settings if they exist
-  // Try to get settings from the link's current watermark configuration
-  // For now, reset to defaults - settings will be loaded when component mounts
-  draftWatermarkSettings.value = createDefaultWatermarkSettings()
+  // Initialize with stored settings from the link if available, otherwise defaults
+  const storedSettings = (props.link as any)?.watermarkSettings
+  if (storedSettings && typeof storedSettings === 'object' && storedSettings.position) {
+    draftWatermarkSettings.value = JSON.parse(JSON.stringify(storedSettings))
+  } else {
+    draftWatermarkSettings.value = createDefaultWatermarkSettings()
+  }
   watermarkConfigModalOpen.value = true
+  // Refresh available watermark files and preview when modal opens
+  void loadExistingWatermarkFilesForEdit()
+  if (draftWatermarkFile.value && !draftWatermarkLocalFile.value) {
+    fetchWatermarkPreviewForEdit(draftWatermarkFile.value)
+  }
 }
 
 function cancelWatermarkConfig() {
@@ -1465,7 +1509,13 @@ function cancelWatermarkConfig() {
   // Reset to current values
   draftWatermarkFile.value = currentWatermarkFile.value
   draftWatermarkLocalFile.value = null
-  draftWatermarkSettings.value = createDefaultWatermarkSettings()
+  // Restore stored settings from the link if available
+  const storedSettings = (props.link as any)?.watermarkSettings
+  if (storedSettings && typeof storedSettings === 'object' && storedSettings.position) {
+    draftWatermarkSettings.value = JSON.parse(JSON.stringify(storedSettings))
+  } else {
+    draftWatermarkSettings.value = createDefaultWatermarkSettings()
+  }
 }
 
 async function saveWatermarkConfig() {
@@ -2277,6 +2327,7 @@ async function reprocessMedia() {
       watermark: !!draftWatermarkEnabled.value,
       watermarkFile: draftWatermarkEnabled.value ? draftWatermarkFile.value.trim() : null,
       watermarkProxyQualities: draftWatermarkEnabled.value ? nextProxyQualities : [],
+      watermarkSettings: draftWatermarkEnabled.value ? JSON.parse(JSON.stringify(draftWatermarkSettings.value)) : null,
       overwrite: true,
     }
     const resp = await props.apiFetch(`/api/links/${id}`, {
@@ -3380,7 +3431,7 @@ async function saveAll() {
       draftWatermarkFile.value = up.relPath || draftWatermarkFile.value
     }
 
-    if (draftWatermarkEnabled.value && !draftGenerateReviewProxy.value) {
+    if (draftWatermarkEnabled.value && !draftGenerateReviewProxy.value && linkHasVideoFiles.value) {
       pushNotification(
         new Notification(
           'Invalid Media Settings',
@@ -3444,13 +3495,15 @@ async function saveAll() {
       }
 
       try {
-        // console.log('[link-details:save] PATCH /api/links/:id request', {
-        //   id,
-        //   body,
-        //   mediaSettingsDirty: mediaSettingsDirty.value,
-        //   draftGenerateReviewProxy: draftGenerateReviewProxy.value,
-        //   draftProxyQualities: draftProxyQualities.value.slice(),
-        // })
+        console.log('[link-details:save] PATCH /api/links/:id request', {
+          id,
+          watermarkSettings: body.watermarkSettings,
+          watermarkFile: body.watermarkFile,
+          watermark: body.watermark,
+          watermarkChanged,
+          saveSettingsOnly: body.saveSettingsOnly,
+          draftWatermarkSettings: JSON.parse(JSON.stringify(draftWatermarkSettings.value)),
+        })
         detailsResp = await apiFetchWithOutputConflictRetry(`/api/links/${id}`, {
           method: 'PATCH',
           body: JSON.stringify(body),

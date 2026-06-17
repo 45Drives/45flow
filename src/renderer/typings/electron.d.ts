@@ -40,7 +40,7 @@ export type RsyncOpts = {
   /** JWT token for authenticated ingest/register calls */
   apiToken?: string
 }
-export type LinkType = 'upload' | 'download' | 'collection'
+export type LinkType = 'upload' | 'download' | 'collection' | 'combined'
 export type Status = 'active' | 'expired' | 'disabled'
 
 export type LinkItem = {

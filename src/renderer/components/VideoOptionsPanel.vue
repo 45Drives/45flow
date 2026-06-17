@@ -3,8 +3,8 @@
     <span v-if="showHeading" class="font-semibold" :class="compact ? 'text-sm' : ''">Video Options</span>
 
     <div :class="compact ? 'grid grid-cols-3 gap-4 items-start' : 'grid grid-cols-3 gap-4 items-start'">
-      <!-- Review Copies column -->
-      <div :class="compact ? 'min-w-0' : 'rounded-md p-2.5 min-w-0'">
+      <!-- Review Copies column (hidden when no video) -->
+      <div v-if="!hideProxyQualities" :class="compact ? 'min-w-0' : 'rounded-md p-2.5 min-w-0'">
         <label class="font-semibold block" :class="compact ? 'text-sm mb-1' : 'mb-2'">Review Copies</label>
 
         <div v-if="proxyBlockReason" class="text-xs text-amber-700 dark:text-amber-300 mb-2">
@@ -40,7 +40,7 @@
       </div>
 
       <!-- Watermark column -->
-      <div :class="compact ? 'col-span-2 min-w-0' : 'col-span-2 rounded-md p-2.5 min-w-0'">
+      <div :class="[compact ? 'min-w-0' : 'rounded-md p-2.5 min-w-0', hideProxyQualities ? 'col-span-3' : 'col-span-2']">
         <div class="flex flex-wrap items-center gap-2 mb-2">
           <label class="font-semibold whitespace-nowrap" :class="compact ? 'text-sm' : ''">
             {{ watermarkLabel }}:
@@ -141,6 +141,8 @@ const props = withDefaults(defineProps<{
   watermarkBlockReason?: string
   /** Help text below review copies */
   reviewCopyHelpText?: string
+  /** Hide proxy/review copy quality section (for image-only uploads) */
+  hideProxyQualities?: boolean
 }>(), {
   dataTour: '',
   compact: false,
@@ -155,6 +157,7 @@ const props = withDefaults(defineProps<{
   proxyBlockReason: '',
   watermarkBlockReason: '',
   reviewCopyHelpText: 'Lightweight MP4s for downloading & offline review. A browser stream is always generated separately. The original file is always preserved.',
+  hideProxyQualities: false,
 })
 
 const emit = defineEmits<{

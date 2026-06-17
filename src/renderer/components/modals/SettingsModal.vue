@@ -869,7 +869,7 @@
                                                     Remove
                                                 </button>
                                             </div>
-                                            <div v-if="brandingLogoLight && brandingLogoLightPreview" class="flex items-start gap-3 p-2 border border-default rounded bg-well/30">
+                                            <div v-if="brandingLogoLightPreview" class="flex items-start gap-3 p-2 border border-default rounded bg-well/30">
                                                 <img :src="brandingLogoLightPreview" alt="Logo preview" class="w-16 h-16 object-contain rounded border border-default bg-default" />
                                                 <div class="flex-1 min-w-0 text-xs space-y-0.5">
                                                     <div v-if="brandingLogoLightInfo?.name" class="font-medium text-fg truncate">{{ brandingLogoLightInfo.name }}</div>
@@ -879,7 +879,8 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div v-else-if="!brandingLogoLight" class="text-xs text-accent">No logo uploaded</div>
+                                            <div v-else-if="brandingLogoLight" class="text-xs text-accent">Logo saved: {{ brandingLogoLight }}</div>
+                                            <div v-else-if="!brandingBusy" class="text-xs text-accent">No logo uploaded</div>
                                         </div>
                                     </SettingRow>
                                     <SettingRow label="Use separate logo for dark backgrounds" description="Recommended if your default logo has poor contrast on dark backgrounds.">
@@ -908,7 +909,7 @@
                                                     Remove
                                                 </button>
                                             </div>
-                                            <div v-if="brandingLogoDark && brandingLogoDarkPreview" class="flex items-start gap-3 p-2 border border-default rounded bg-well/30">
+                                            <div v-if="brandingLogoDarkPreview" class="flex items-start gap-3 p-2 border border-default rounded bg-well/30">
                                                 <img :src="brandingLogoDarkPreview" alt="Logo preview" class="w-16 h-16 object-contain rounded border border-default bg-default" />
                                                 <div class="flex-1 min-w-0 text-xs space-y-0.5">
                                                     <div v-if="brandingLogoDarkInfo?.name" class="font-medium text-fg truncate">{{ brandingLogoDarkInfo.name }}</div>
@@ -918,7 +919,8 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div v-else-if="!brandingLogoDark" class="text-xs text-accent">No dark logo uploaded</div>
+                                            <div v-else-if="brandingLogoDark" class="text-xs text-accent">Logo saved: {{ brandingLogoDark }}</div>
+                                            <div v-else-if="!brandingBusy" class="text-xs text-accent">No dark logo uploaded</div>
                                         </div>
                                     </SettingRow>
                                 </div>
@@ -1939,7 +1941,9 @@ async function uploadBrandingLogo(slot: 'logo_light' | 'logo_dark', file: File) 
             height: dimensions.height,
         };
 
+        // Set preview and ref optimistically so UI updates immediately
         setBrandingLogoPreview(slot, previewUrl, info);
+        setBrandingLogoRef(slot, '__uploading__');
 
         const formData = new FormData();
         formData.append('logo', file);
@@ -1955,6 +1959,9 @@ async function uploadBrandingLogo(slot: 'logo_light' | 'logo_dark', file: File) 
         );
     } catch (e: any) {
         brandingError.value = e?.message || 'Logo upload failed.';
+        // Reset ref on failure (preview stays for visual feedback)
+        setBrandingLogoRef(slot, null);
+        setBrandingLogoPreview(slot, null, null);
     } finally {
         brandingBusy.value = false;
     }

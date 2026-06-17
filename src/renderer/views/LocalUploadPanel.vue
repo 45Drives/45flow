@@ -1,7 +1,7 @@
 <template>
 	<div class="h-full overflow-y-auto pt-3 pb-4">
 		<div class="ss-page-frame grid grid-cols-1 gap-3 text-xl">
-			<CardContainer class="local-upload-card ss-surface bg-accent rounded-md shadow-xl h-[calc(100vh-10rem)] flex flex-col">
+			<CardContainer class="local-upload-card ss-surface bg-accent rounded-md shadow-xl h-[calc(100vh-10rem)] min-h-[32rem] flex flex-col">
 				<template #header>
 					<div class="wizard-head" data-tour="upload-wizard-header">
 						<h2 class="wizard-main-title">
@@ -111,7 +111,11 @@
 						<div data-tour="upload-folder-picker" class="flex flex-col flex-1 min-h-0">
 							<FolderPicker v-model="destFolderRel" :apiFetch="apiFetch" useCase="upload"
 								subtitle="Pick the folder on the server where these files will be uploaded."
-								:auto-detect-roots="true" :allow-entire-tree="true" v-model:project="projectBase"
+								:auto-detect-roots="!activeProject"
+								:allow-entire-tree="!activeProject"
+								:hide-project-controls="!!activeProject"
+								:startDir="activeProject?.root_dir || undefined"
+								v-model:project="projectBase"
 								v-model:dest="destFolderRel" heightClass="flex-1 min-h-0" />
 						</div>
 					</section>
@@ -233,11 +237,12 @@
 								</table>
 							</div>
 
-							<div v-if="hasVideoSelected" data-tour="upload-advanced-video" class="advanced-video-card ss-toned-panel">
+							<div v-if="hasMediaSelected" data-tour="upload-advanced-video" class="advanced-video-card ss-toned-panel">
 								<div class="advanced-video-header">
-									<p class="font-semibold">Video options</p>
+									<p class="font-semibold">{{ hasVideoSelected ? 'Video options' : 'Image options' }}</p>
 									<p class="text-xs text-muted">
-										Review copies will be generated for streaming after upload.
+										<span v-if="hasVideoSelected">Review copies will be generated for streaming after upload.</span>
+										<span v-else>Image watermarks will be applied after upload.</span>
 										<span v-if="watermarkAfterUpload"> · Watermark enabled.</span>
 									</p>
 								</div>
@@ -249,6 +254,11 @@
 									v-model:showDefaultWatermarks="showDefaultWatermarks"
 									:watermarkFile="watermarkFile"
 									:existingWatermarkFiles="existingWatermarkFiles"
+									:hideProxyQualities="!hasVideoSelected"
+									:showHeading="false"
+									:watermarkLabel="hasVideoSelected ? 'Watermark Videos' : 'Watermark Images'"
+									:effectiveWatermarkName="watermarkFile ? watermarkFile.name : (selectedExistingWatermark ? selectedExistingWatermark.split('/').pop() || '' : '')"
+									:usingExistingWatermark="!watermarkFile && !!selectedExistingWatermark"
 
 									@pickWatermark="pickWatermark"
 									@clearWatermark="clearWatermark"
@@ -260,6 +270,7 @@
 									<WatermarkCustomizer 
 										v-model="watermarkSettings"
 										:watermarkPreviewUrl="watermarkFile?.dataUrl || existingWatermarkPreviewUrl || null"
+										:isPremium="isServerLicensed"
 									/>
 								</div>
 							</div>
@@ -297,6 +308,7 @@
 import { ref, computed, inject, watch, onMounted, nextTick } from 'vue'
 import { useApi } from '../composables/useApi'
 import { useConnections } from '../composables/useConnections'
+import { useActiveProject } from '../composables/useActiveProject'
 import FolderPicker from '../components/FolderPicker.vue'
 import VideoOptionsPanel from '../components/VideoOptionsPanel.vue'
 import WatermarkCustomizer from '../components/WatermarkCustomizer.vue'
@@ -316,6 +328,7 @@ import { useUploadTranscode } from '../composables/useUploadTranscode'
 const { to } = useResilientNav()
 useHeader('Upload Files')
 const transfer = useTransferProgress()
+const { activeProject } = useActiveProject()
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()
 
@@ -419,6 +432,7 @@ const isUploading = ref(false)
 
 const { apiFetch } = useApi()
 const { activeConnection } = useConnections()
+const isServerLicensed = computed(() => activeConnection.value?.licensed !== false)
 
 /** ── Step control ───────────────────────────────────────── */
 const step = ref<1 | 2 | 3>(1)
@@ -540,12 +554,23 @@ const videoExts = new Set([
 	'ogv', 'vob', 'divx', 'f4v', 'asf', 'rm', 'rmvb', 'm4s',
 	'r3d', 'braw', 'ari', 'cine', 'dav',
 ])
+const imageExts = new Set([
+	'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif',
+	'avif', 'heic', 'heif', 'jp2', 'jxl', 'svg',
+])
 const hasVideoSelected = computed(() =>
 	selected.value.some(f => {
 		const ext = String(f.name || '').toLowerCase().split('.').pop() || '';
 		return videoExts.has(ext);
 	})
 )
+const hasImageSelected = computed(() =>
+	selected.value.some(f => {
+		const ext = String(f.name || '').toLowerCase().split('.').pop() || '';
+		return imageExts.has(ext);
+	})
+)
+const hasMediaSelected = computed(() => hasVideoSelected.value || hasImageSelected.value)
 
 const nextLabel = computed(() => {
 	if (step.value === 1) return 'Next';
@@ -650,12 +675,22 @@ function clearWatermark() {
 async function loadExistingWatermarkFiles() {
 	try {
 		const dirRel = resolveWatermarkDirRel()
-		const data = await apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' })
-		const entries = Array.isArray(data?.entries) ? data.entries : []
-		const serverWatermarks = entries
+		const [dirData, globalData] = await Promise.all([
+			apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' }).catch(() => null),
+			apiFetch('/api/files/watermarks', { method: 'GET' }).catch(() => null),
+		])
+		
+		// Directory-specific watermarks
+		const dirEntries = Array.isArray(dirData?.entries) ? dirData.entries : []
+		const dirWatermarks = dirEntries
 			.filter((e: any) => !e?.isDir && typeof e?.name === 'string' && String(e.name).trim())
 			.map((e: any) => `${dirRel}/${String(e.name).trim()}`)
-			.sort((a: string, b: string) => a.localeCompare(b))
+		
+		// Global watermarks from all .45flow/watermarks/ dirs
+		const globalWatermarks = Array.isArray(globalData?.watermarks) ? globalData.watermarks : []
+		
+		// Merge and deduplicate
+		const allCustom = [...new Set([...dirWatermarks, ...globalWatermarks])].sort()
 		
 		// Check which built-in watermarks actually exist on the server
 		const base = connectionMeta.value.apiBase ?? ''
@@ -672,7 +707,7 @@ async function loadExistingWatermarkFiles() {
 			.map(r => r.value)
 		
 		// User watermarks first, default watermarks last
-		existingWatermarkFiles.value = showDefaultWatermarks.value ? [...serverWatermarks, ...validBuiltins] : serverWatermarks
+		existingWatermarkFiles.value = showDefaultWatermarks.value ? [...allCustom, ...validBuiltins] : allCustom
 	} catch {
 		existingWatermarkFiles.value = []
 	}
@@ -1221,16 +1256,21 @@ function goBack() {
 }
 
 watch(selected, () => {
-	if (!hasVideoSelected.value) {
+	if (!hasMediaSelected.value) {
 		transcodeProxyAfterUpload.value = false
 		watermarkAfterUpload.value = false
 		watermarkFile.value = null
-	} else {
+	} else if (hasVideoSelected.value) {
 		transcodeProxyAfterUpload.value = true
 		if (!proxyQualities.value.includes('original')) {
 			proxyQualities.value = ['original']
 		}
 		// Auto-enable watermark if default is configured
+		if (selectedExistingWatermark.value && !watermarkAfterUpload.value) {
+			watermarkAfterUpload.value = true
+		}
+	} else {
+		// Image-only: auto-enable watermark if configured
 		if (selectedExistingWatermark.value && !watermarkAfterUpload.value) {
 			watermarkAfterUpload.value = true
 		}
@@ -1988,20 +2028,24 @@ function cancelOne(row: UploadRow) {
 }
 
 .wizard-table-shell {
-	@apply border rounded overflow-auto flex-1 min-h-0;
+	@apply border rounded overflow-auto flex-1;
+	min-height: 12rem;
 	border-color: color-mix(in srgb, var(--btn-primary-bg) 24%, #4f5160);
 }
 
 .wizard-table-shell--filled {
-	@apply flex-1 min-h-0;
+	@apply flex-1;
+	min-height: 12rem;
 }
 
 .wizard-table-shell--empty {
-	@apply flex-1 min-h-0;
+	@apply flex-1;
+	min-height: 12rem;
 }
 
 .wizard-table-shell--uploads {
-	@apply flex-1 min-h-[16rem];
+	@apply flex-1;
+	min-height: 16rem;
 }
 
 .wizard-step3-body {
@@ -2118,6 +2162,20 @@ function cancelOne(row: UploadRow) {
 @media (max-height: 860px) {
 	.wizard-table-shell--uploads {
 		min-height: 12rem;
+	}
+	
+	.wizard-table-shell {
+		min-height: 10rem;
+	}
+}
+
+@media (max-height: 640px) {
+	.wizard-table-shell {
+		min-height: 8rem;
+	}
+	
+	.wizard-table-shell--uploads {
+		min-height: 10rem;
 	}
 }
 

@@ -1,7 +1,7 @@
 <template>
   <section class="fp-shell bg-accent flex flex-col gap-2 text-left text-base rounded-md min-h-0">
     <div class="fp-meta flex flex-col gap-2 text-sm">
-      <label v-if="allowEntireTree" class="flex items-center gap-2 cursor-pointer select-none">
+      <label v-if="allowEntireTree && !hideProjectControls" class="flex items-center gap-2 cursor-pointer select-none">
         <input type="checkbox" v-model="showEntireTree" @change="changeProject" />
         <span>Show entire directory tree from root</span>
       </label>
@@ -9,7 +9,7 @@
       <div v-if="subtitle" class="opacity-80">{{ subtitle }}</div>
 
       <div class="text-sm opacity-80 -mb-1 flex items-center justify-start gap-3 flex-wrap"
-        v-if="internalProject && internalProject.trim().length > 0">
+        v-if="!hideProjectControls && internalProject && internalProject.trim().length > 0">
         <span class="font-semibold">Project:</span>
         <code>{{ internalProject }}</code>
         <button class="btn btn-secondary" @click="changeProject()">Change Project Directory</button>
@@ -21,7 +21,7 @@
       </div>
       <div v-else class="text-xs opacity-70">Loading destination...</div>
 
-      <div v-if="(autoDetectRoots ?? true) && !showEntireTree" class="text-xs opacity-70">
+      <div v-if="!hideProjectControls && (autoDetectRoots ?? true) && !showEntireTree" class="text-xs opacity-70">
         <template v-if="useConfiguredProjectRoot && configuredProjectRoot">
           Using configured project root: <code>{{ configuredProjectRoot }}</code>
         </template>
@@ -30,7 +30,7 @@
       </div>
 
       <label
-        v-if="hasConfiguredProjectRoot && !showEntireTree && (autoDetectRoots ?? true)"
+        v-if="!hideProjectControls && hasConfiguredProjectRoot && !showEntireTree && (autoDetectRoots ?? true)"
         class="flex items-center gap-2 cursor-pointer select-none text-xs opacity-80"
       >
         <input type="checkbox" v-model="useConfiguredProjectRoot" />
@@ -38,7 +38,7 @@
       </label>
 
       <label
-        v-if="showDefaultRootOption"
+        v-if="!hideProjectControls && showDefaultRootOption"
         class="flex items-center gap-2 cursor-pointer select-none text-xs opacity-80"
       >
         <input type="checkbox" v-model="rememberProjectAsDefault" :disabled="savingDefaultRoot" />
@@ -207,6 +207,7 @@ const props = defineProps<{
   uploadLink?: boolean
   project?: string
   dest?: string
+  hideProjectControls?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -315,7 +316,11 @@ onMounted(async () => {
   pickerReady.value = false
   await loadProjectChoices()
 
-  if (internalProject.value) {
+  if (props.startDir) {
+    browseMode.value = 'dir'
+    browseCwd.value = ensureSlash(props.startDir)
+    clampBase.value = props.startDir.replace(/\/+$/, '')
+  } else if (internalProject.value) {
     browseMode.value = 'dir'
     browseCwd.value = ensureSlash(internalProject.value)
   } else if (
@@ -373,6 +378,10 @@ watch(browseCwd, (v) => {
 })
 
 watch(useConfiguredProjectRoot, async () => {
+  // Don't override if startDir is explicitly provided (e.g. from active project)
+  if (props.startDir) return
+  // Don't fight initial mount logic
+  if (!pickerReady.value) return
   pickerReady.value = false
   await loadProjectChoices()
   if (!showEntireTree.value && useConfiguredProjectRoot.value && configuredProjectRoot.value) {

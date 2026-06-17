@@ -83,12 +83,15 @@
       <!-- ===== STEP 1: Destination ===== -->
       <section v-show="wizardStep === 1" data-tour="qs-step-destination">
         <FolderPicker
+          :key="destPickerKey"
           v-model="destFolder"
           :apiFetch="apiFetch"
           useCase="upload"
           subtitle="Choose where to upload on the server."
-          :auto-detect-roots="true"
-          :allow-entire-tree="true"
+          :auto-detect-roots="!activeProject"
+          :allow-entire-tree="!activeProject"
+          :hide-project-controls="!!activeProject"
+          :startDir="activeProject?.root_dir || undefined"
           v-model:project="projectBase"
           v-model:dest="destFolder"
         />
@@ -141,7 +144,7 @@
         <div class="text-xs text-muted flex flex-wrap gap-x-4 gap-y-1">
           <span>Access: {{ accessMode === 'open' ? 'Anyone' : accessMode === 'open_password' ? 'Password' : `${accessUsers.length} user(s)${accessGroups.length ? `, ${accessGroups.length} group(s)` : ''}` }}</span>
           <span v-if="hasVideo">Review Copies: {{ proxyQualities.join(', ') || 'none' }}</span>
-          <span v-if="hasVideo">Watermark: {{ watermarkEnabled ? 'on' : 'off' }}</span>
+          <span v-if="hasMedia">Watermark: {{ watermarkEnabled ? 'on' : 'off' }}</span>
         </div>
 
         <!-- ── Advanced Options (collapsible) ── -->
@@ -149,7 +152,7 @@
           <DisclosureButton class="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left rounded-lg hover:bg-well/30 transition" data-tour="qs-advanced-btn">
             <div class="min-w-0">
               <span class="font-semibold text-sm">Advanced Options</span>
-              <span class="text-xs text-muted ml-2">Title, access control{{ hasVideo ? ', video options' : '' }}</span>
+              <span class="text-xs text-muted ml-2">Title, access control{{ hasMedia ? ', media options' : '' }}</span>
             </div>
             <ChevronDownIcon class="h-5 w-5 text-muted transition-transform duration-200" :class="open ? 'rotate-180' : ''" />
           </DisclosureButton>
@@ -178,9 +181,9 @@
               @openUserModal="userModalOpen = true"
             />
 
-            <!-- Video options (only shown for video files) -->
+            <!-- Video/Image options (shown for media files) -->
             <VideoOptionsPanel
-              v-if="hasVideo"
+              v-if="hasMedia"
               v-model:proxyQualities="proxyQualities"
               v-model:watermarkEnabled="watermarkEnabled"
               v-model:selectedExistingWatermark="selectedExistingWatermark"
@@ -190,18 +193,20 @@
               :effectiveWatermarkName="watermarkFile ? watermarkFile.name : (selectedExistingWatermark ? selectedExistingWatermark.split('/').pop() || '' : '')"
               dataTour="qs-video-options"
               :compact="true"
-              watermarkLabel="Watermark"
+              :watermarkLabel="hasVideo ? 'Watermark Videos' : 'Watermark Images'"
               :watermarkStatusText="watermarkEnabled ? 'On' : 'Off'"
+              :hideProxyQualities="!hasVideo"
               @pickWatermark="pickWatermark"
               @clearWatermark="clearWatermark"
               @refreshWatermarks="loadExistingWatermarkFiles"
             />
 
             <!-- Premium Watermark Customization -->
-            <div v-if="hasVideo && watermarkEnabled && (watermarkFile || selectedExistingWatermark)" class="mt-3 border-t border-default pt-3">
+            <div v-if="hasMedia && watermarkEnabled && (watermarkFile || selectedExistingWatermark)" class="mt-3 border-t border-default pt-3">
               <WatermarkCustomizer 
                 v-model="watermarkSettings" 
                 :watermarkPreviewUrl="watermarkPreviewUrl"
+                :isPremium="isServerLicensed"
               />
             </div>
           </DisclosurePanel>
@@ -297,6 +302,7 @@ import { appLog } from '../composables/useLog'
 import { connectionMetaInjectionKey, currentServerInjectionKey } from '../keys/injection-keys'
 import { useApi } from '../composables/useApi'
 import { useConnections } from '../composables/useConnections'
+import { useActiveProject } from '../composables/useActiveProject'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { useClientTranscode } from '../composables/useClientTranscode'
 import { useUploadTranscode } from '../composables/useUploadTranscode'
@@ -322,10 +328,12 @@ type DroppedFile = { path: string; name: string; size: number }
 const route = useRoute()
 const { apiFetch } = useApi()
 const { activeConnection } = useConnections()
+const { activeProject } = useActiveProject()
 const transfer = useTransferProgress()
 const currentServer = inject(currentServerInjectionKey)!
 const connectionMeta = inject(connectionMetaInjectionKey)!
 const ssh = computed(() => connectionMeta.value.ssh)
+const isServerLicensed = computed(() => activeConnection.value?.licensed !== false)
 
 // ── Tour ──
 const { requestTour } = useTourManager()
@@ -611,6 +619,7 @@ watch(tourQuickShareShowDone, (done) => {
 // Step 1: Destination
 const destFolder = ref('')
 const projectBase = ref('')
+const destPickerKey = ref(0)
 
 // Step 2: Link options
 const expiresValue = ref(1)
@@ -671,12 +680,26 @@ const videoExts = new Set([
   'r3d', 'braw', 'ari', 'cine', 'dav',
 ])
 
+const imageExts = new Set([
+  'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif',
+  'avif', 'heic', 'heif', 'jp2', 'jxl', 'svg',
+])
+
 const hasVideo = computed(() =>
   droppedFiles.value.some(f => {
     const ext = f.name.toLowerCase().split('.').pop() || ''
     return videoExts.has(ext)
   })
 )
+
+const hasImage = computed(() =>
+  droppedFiles.value.some(f => {
+    const ext = f.name.toLowerCase().split('.').pop() || ''
+    return imageExts.has(ext)
+  })
+)
+
+const hasMedia = computed(() => hasVideo.value || hasImage.value)
 
 const UNIT_TO_SECONDS = { hours: 3600, days: 86400, weeks: 604800 } as const
 
@@ -709,6 +732,7 @@ function resetWizard() {
   minimized.value = false
   destFolder.value = ''
   projectBase.value = ''
+  destPickerKey.value++
   expiresValue.value = 1
   expiresUnit.value = 'days'
   linkTitle.value = ''
@@ -892,13 +916,24 @@ async function ensureServerDirExists(dir: string) {
 
 async function loadExistingWatermarkFiles() {
   try {
+    // Fetch custom watermarks from both the specific directory AND the global search
     const dirRel = resolveWatermarkDirRel()
-    const data = await apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' })
-    const entries = Array.isArray(data?.entries) ? data.entries : []
-    const serverWatermarks = entries
+    const [dirData, globalData] = await Promise.all([
+      apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' }).catch(() => null),
+      apiFetch('/api/files/watermarks', { method: 'GET' }).catch(() => null),
+    ])
+    
+    // Directory-specific watermarks
+    const dirEntries = Array.isArray(dirData?.entries) ? dirData.entries : []
+    const dirWatermarks = dirEntries
       .filter((e: any) => !e?.isDir && typeof e?.name === 'string' && String(e.name).trim())
       .map((e: any) => `${dirRel}/${String(e.name).trim()}`)
-      .sort((a: string, b: string) => a.localeCompare(b))
+    
+    // Global watermarks from all .45flow/watermarks/ dirs
+    const globalWatermarks = Array.isArray(globalData?.watermarks) ? globalData.watermarks : []
+    
+    // Merge and deduplicate
+    const allCustom = [...new Set([...dirWatermarks, ...globalWatermarks])].sort()
     
     // Check which built-in watermarks actually exist on the server
     const base = connectionMeta.value.apiBase ?? ''
@@ -915,7 +950,7 @@ async function loadExistingWatermarkFiles() {
       .map(r => r.value)
     
     // User watermarks first, default watermarks last
-    existingWatermarkFiles.value = showDefaultWatermarks.value ? [...serverWatermarks, ...validBuiltins] : serverWatermarks
+    existingWatermarkFiles.value = showDefaultWatermarks.value ? [...allCustom, ...validBuiltins] : allCustom
     
     // Auto-select last used watermark if available
     try {
@@ -1278,7 +1313,7 @@ async function startUploadAndShare() {
     // Upload watermark if needed
     let watermarkRelPath = ''
     let watermarkUploadId: string | undefined
-    if (watermarkEnabled.value && hasVideo.value) {
+    if (watermarkEnabled.value && hasMedia.value) {
       const selectedServerWm = String(selectedExistingWatermark.value || '').trim()
       if (selectedServerWm) {
         // Convert watermark ID to path for API if it's a built-in watermark
@@ -1351,7 +1386,9 @@ async function startUploadAndShare() {
     if (watermarkEnabled.value && watermarkRelPath) {
       body.watermark = true
       body.watermarkFile = watermarkRelPath
-      body.watermarkProxyQualities = proxyQualities.value.slice()
+      if (hasVideo.value) {
+        body.watermarkProxyQualities = proxyQualities.value.slice()
+      }
       // Premium: Pass custom watermark settings to server
       if (watermarkSettings.value) {
         body.watermarkSettings = watermarkSettings.value
@@ -1369,9 +1406,8 @@ async function startUploadAndShare() {
       body.clientTranscode = true
     }
 
-    // Reuse existing transcodes instead of failing with outputs_exist;
-    // the server will still queue any missing quality variants.
-    body.keepExistingOutputs = true
+    // QuickShare always uploads fresh files — overwrite existing outputs
+    body.overwrite = true
 
     const data = await apiFetch('/api/magic-link', {
       method: 'POST',

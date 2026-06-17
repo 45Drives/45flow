@@ -56,7 +56,7 @@ export type TransferTask =
         completedAt?: number
         stop?: () => void
         _apiFetch?: (path: string, init?: any) => Promise<any>
-        jobKind?: 'proxy_mp4' | 'hls' | 'any'
+        jobKind?: 'proxy_mp4' | 'hls' | 'watermark_image' | 'any'
         context?: TransferContext
         transcoder?: 'client' | 'server'
         encoder?: string
@@ -463,7 +463,7 @@ function isFinishedTask(t: TransferTask) {
     return t.status === 'done' || t.status === 'failed'
 }
 
-function jobKindMatches(taskKind?: 'proxy_mp4' | 'hls' | 'any', want?: 'proxy_mp4' | 'hls' | 'any') {
+function jobKindMatches(taskKind?: 'proxy_mp4' | 'hls' | 'watermark_image' | 'any', want?: 'proxy_mp4' | 'hls' | 'watermark_image' | 'any') {
     if (!want || want === 'any') return true
     if (!taskKind || taskKind === 'any') return true
     return taskKind === want
@@ -480,7 +480,7 @@ function taskHasFile(t: Extract<TransferTask, { kind: 'transcode' }>, file: stri
 function hasActiveTranscode(opts: {
     assetVersionIds?: number[]
     file?: string
-    jobKind?: 'proxy_mp4' | 'hls' | 'any'
+    jobKind?: 'proxy_mp4' | 'hls' | 'watermark_image' | 'any'
 }) {
     const ids = Array.from(new Set((opts.assetVersionIds || [])
         .map(n => Number(n))
@@ -506,12 +506,12 @@ function hasActiveTranscode(opts: {
     })
 }
 
-function hasActiveTranscodeForFile(file: string, jobKind?: 'proxy_mp4' | 'hls' | 'any') {
+function hasActiveTranscodeForFile(file: string, jobKind?: 'proxy_mp4' | 'hls' | 'watermark_image' | 'any') {
     if (!file) return false
     return hasActiveTranscode({ file, jobKind })
 }
 
-function hasActiveTranscodeForFileId(fileId: number, jobKind?: 'proxy_mp4' | 'hls' | 'any') {
+function hasActiveTranscodeForFileId(fileId: number, jobKind?: 'proxy_mp4' | 'hls' | 'watermark_image' | 'any') {
     const fid = Number(fileId)
     if (!Number.isFinite(fid) || fid <= 0) return false
     return _state.tasks.some(t => {
@@ -526,7 +526,7 @@ function hasActiveTranscodeForFileId(fileId: number, jobKind?: 'proxy_mp4' | 'hl
 function findActiveTranscodeTaskByIds(opts: {
     mode: 'file' | 'version'
     ids: number[]
-    jobKind?: 'proxy_mp4' | 'hls' | 'any'
+    jobKind?: 'proxy_mp4' | 'hls' | 'watermark_image' | 'any'
 }) {
     const ids = Array.from(new Set((opts.ids || [])
         .map(n => Number(n))
@@ -548,7 +548,7 @@ function findActiveTranscodeTaskByIds(opts: {
     return null
 }
 
-function splitActiveTranscodeAssetVersions(assetVersionIds: number[], jobKind?: 'proxy_mp4' | 'hls' | 'any') {
+function splitActiveTranscodeAssetVersions(assetVersionIds: number[], jobKind?: 'proxy_mp4' | 'hls' | 'watermark_image' | 'any') {
     const ids = Array.from(new Set((assetVersionIds || [])
         .map(n => Number(n))
         .filter(n => Number.isFinite(n) && n > 0)))
@@ -715,6 +715,36 @@ export function useTransferProgress() {
         t.completedAt = now()
     }
 
+    async function retryTranscode(taskId: string) {
+        const t = _state.tasks.find(x => x.taskId === taskId && x.kind === 'transcode') as
+            | Extract<TransferTask, { kind: 'transcode' }>
+            | undefined
+        if (!t) return
+
+        const apiFetch = t._apiFetch
+        if (!apiFetch) return
+
+        const versionIds = t.assetVersionIds || []
+        for (const vId of versionIds) {
+            const kinds = t.jobKind === 'any' ? ['proxy_mp4', 'hls'] : [t.jobKind || 'proxy_mp4']
+            for (const kind of kinds) {
+                try {
+                    await apiFetch(`/api/transcodes/${vId}/${kind}/retry`, { method: 'POST' })
+                } catch (e) {
+                    console.warn(`[retryTranscode] failed to retry ${vId}/${kind}:`, e)
+                }
+            }
+        }
+
+        // Reset task state
+        t.status = 'queued'
+        t.progress = 0
+        t.error = null
+        t.speed = null
+        t.eta = null
+        t.completedAt = undefined
+    }
+
     // Aggregate transcode progress from items:
     // - if any failed => failed
     // - else if any running/queued => running
@@ -858,7 +888,7 @@ export function useTransferProgress() {
         title: string
         detail?: string
         intervalMs?: number
-        jobKind?: 'proxy_mp4' | 'hls' | 'any'
+        jobKind?: 'proxy_mp4' | 'hls' | 'watermark_image' | 'any'
         context?: TransferContext
         mode: 'file' | 'version'
         summarizeItems: (
@@ -1191,7 +1221,7 @@ export function useTransferProgress() {
         title: string
         detail?: string
         intervalMs?: number
-        jobKind?: 'proxy_mp4' | 'hls' | 'any'
+        jobKind?: 'proxy_mp4' | 'hls' | 'watermark_image' | 'any'
         context?: TransferContext
     }) {
         return startTranscodeTaskBase<VersionProgressItem>({
@@ -1212,7 +1242,7 @@ export function useTransferProgress() {
         title: string
         detail?: string
         intervalMs?: number
-        jobKind?: 'proxy_mp4' | 'hls' | 'any'
+        jobKind?: 'proxy_mp4' | 'hls' | 'watermark_image' | 'any'
         context?: TransferContext
         assetVersionId?: number
         fetchSnapshot: () => Promise<PlaybackProgressSnapshot | null>
@@ -1397,7 +1427,7 @@ export function useTransferProgress() {
         title: string
         detail?: string
         intervalMs?: number
-        jobKind?: 'proxy_mp4' | 'hls' | 'any'
+        jobKind?: 'proxy_mp4' | 'hls' | 'watermark_image' | 'any'
         context?: TransferContext
     }) {
         return startTranscodeTaskBase<ProgressItem>({
@@ -1642,6 +1672,7 @@ export function useTransferProgress() {
         finishUpload,
         cancelUpload,
         cancelTranscode,
+        retryTranscode,
 
         startTranscodeTask,
         startAssetVersionTranscodeTask,

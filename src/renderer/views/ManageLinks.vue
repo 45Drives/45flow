@@ -15,16 +15,14 @@
 
 		<div class="manage-surface p-2 bg-well rounded-md min-w-0 flex flex-col">
 			<div data-tour="manage-links-toolbar" class="manage-toolbar">
-				<div data-tour="server-filter">
-					<ServerFilterDropdown />
-				</div>
 				<input v-model="q" type="search" placeholder="Search title, directory, file..."
 					class="input-textlike px-3 py-2 border border-default rounded-lg bg-default text-default w-72" />
 				<select v-model="typeFilter" class="px-3 py-2 border border-default rounded-lg bg-default">
 					<option value="">All types</option>
 					<option value="upload">Upload</option>
-					<option value="download">Share (file)</option>
-					<option value="collection">Share (collection)</option>
+					<option value="download">Review (file)</option>
+					<option value="collection">Review (collection)</option>
+					<option value="combined">Review + Upload</option>
 				</select>
 				<select v-model="statusFilter" class="px-3 w-36 py-2 border border-default rounded-lg bg-default">
 					<option value="">All status</option>
@@ -45,15 +43,15 @@
 				<table class="manage-table min-w-[1320px] text-sm border-collapse">
 					<colgroup>
 						<col class="thumb-col" /> <!-- Thumbnail -->
-						<col class="w-[20%]" /> <!-- Title -->
-						<col class="w-[7%]" /> <!-- Type -->
-						<col class="w-[16%]" /> <!-- Short Link -->
-						<col class="w-[11%]" /> <!-- Expires -->
-						<col class="w-[6%]" /> <!-- Status -->
-						<col class="w-[7%]" /> <!-- Access -->
-						<col class="w-[9%]" /> <!-- Created -->
-						<col class="w-[11%]" /> <!-- Server -->
-						<col class="w-[13%]" /> <!-- Actions -->
+						<col class="w-[18%]" /> <!-- Title -->
+						<col class="w-[6%]" /> <!-- Type -->
+						<col class="w-[16%]" /> <!-- Link -->
+						<col class="w-[18%]" /> <!-- Expires -->
+						<col class="w-[5%]" /> <!-- Status -->
+						<col class="w-[5%]" /> <!-- Access -->
+						<col class="w-[8%]" /> <!-- Created -->
+						<col class="w-[8%]" /> <!-- Server -->
+						<col class="w-[14%]" /> <!-- Actions -->
 					</colgroup>
 					<thead>
 						<tr class="manage-table-head-row border-b border-default">
@@ -161,8 +159,14 @@
 							</td>
 							<!-- Type -->
 							<td class="p-2 border border-default align-middle whitespace-nowrap">
-								<span class="bg-default dark:bg-well/75 px-2 py-0.5 rounded-full text-xs font-semibold"
-									:class="badgeClass(it.type)">{{ typeLabel(it.type) }}</span>
+								<div class="flex flex-col gap-0.5">
+									<span class="px-2 py-0.5 rounded-full text-[10px] font-bold leading-tight text-center"
+										:class="hasShareCap(it) ? 'bg-emerald-500/20 text-emerald-400' : 'bg-well/50 text-muted/40'"
+									>Review</span>
+									<span class="px-2 py-0.5 rounded-full text-[10px] font-bold leading-tight text-center"
+										:class="hasUploadCap(it) ? 'bg-blue-500/20 text-blue-400' : 'bg-well/50 text-muted/40'"
+									>Upload</span>
+								</div>
 							</td>
 							<!-- Link -->
 							<td class="p-2 border border-default align-middle overflow-hidden min-w-0">
@@ -246,8 +250,14 @@
 
 							<!-- Type -->
 							<td class="p-2 border border-default align-middle whitespace-nowrap">
-								<span class="bg-default dark:bg-well/75 px-2 py-0.5 rounded-full text-xs font-semibold"
-									:class="badgeClass(it.type)">{{ typeLabel(it.type) }}</span>
+								<div class="flex flex-col gap-0.5">
+									<span class="px-2 py-0.5 rounded-full text-[10px] font-bold leading-tight text-center"
+										:class="hasShareCap(it) ? 'bg-emerald-500/20 text-emerald-400' : 'bg-well/50 text-muted/40'"
+									>Review</span>
+									<span class="px-2 py-0.5 rounded-full text-[10px] font-bold leading-tight text-center"
+										:class="hasUploadCap(it) ? 'bg-blue-500/20 text-blue-400' : 'bg-well/50 text-muted/40'"
+									>Upload</span>
+								</div>
 							</td>
 
 
@@ -395,22 +405,19 @@
 	
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useApi, apiFetchAll, type ServerResult } from '../composables/useApi'
-import { useServerFilter } from '../composables/useServerFilter'
+import { useApi } from '../composables/useApi'
 import { useConnections } from '../composables/useConnections'
 import { useLinkRefreshSignal } from '../composables/useLinkRefresh'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { appLog } from '../composables/useLog'
 import LinkDetailsModal from "../components/modals/LinkDetailsModal.vue"
-// import CommentsReviewModal from "../components/modals/CommentsReviewModal.vue"
-import ServerFilterDropdown from '../components/ServerFilterDropdown.vue'
 import type { LinkItem, LinkType, Status } from '../typings/electron'
 import { useTime } from '../composables/useTime'
 import { useTimeFormat } from '../composables/useTimeFormat'
 type SortKey = 'title' | 'type' | 'url' | 'expires' | 'status' | 'access' | 'created'
 type SortDir = 'asc' | 'desc'
 
-const props = withDefaults(defineProps<{ tourActive?: boolean }>(), { tourActive: false })
+const props = withDefaults(defineProps<{ tourActive?: boolean; projectId?: number | null }>(), { tourActive: false, projectId: null })
 
 /** Demo rows shown during the guided tour when no real links exist */
 const DEMO_LINKS: LinkItem[] = [
@@ -462,17 +469,17 @@ const DEMO_LINKS: LinkItem[] = [
 const showingDemoData = computed(() => props.tourActive && rows.value.length === 0 && !loading.value)
 
 const { apiFetch, baseUrl, meta } = useApi()
-const { filteredConnections } = useServerFilter()
-const { connections } = useConnections()
-const serverErrors = ref<Array<{ serverName: string; error: string }>>([])
+const { activeConnection, connections } = useConnections()
 
 async function refresh() {
 	loading.value = true
 	error.value = null
-	serverErrors.value = []
 	
 	try {
-		// Fetch from all filtered servers in parallel
+		if (!activeConnection.value) {
+			throw new Error('No active server connection')
+		}
+		
 		const params = {
 			q: q.value.trim() || undefined,
 			type: typeFilter.value || undefined,
@@ -485,46 +492,19 @@ async function refresh() {
 		if (params.type) qs.set('type', params.type)
 		if (params.status) qs.set('status', params.status)
 		if (params.limit) qs.set('limit', String(params.limit))
+		if (props.projectId) qs.set('project_id', String(props.projectId))
 		
-		const results = await apiFetchAll<{ items: LinkItem[] }>(
-			filteredConnections.value,
-			`/api/links?${qs.toString()}`
-		)
+		const data = await apiFetch(`/api/links?${qs.toString()}`) as { items: LinkItem[] }
 		
-		// Aggregate links from all servers
-		const allLinks: LinkItem[] = []
+		// Add server metadata to each link
+		const linksWithServer = (data?.items || []).map((link: LinkItem) => ({
+			...link,
+			_serverName: activeConnection.value!.name,
+			_serverIp: activeConnection.value!.serverIp,
+			_connectionId: activeConnection.value!.connectionId
+		}))
 		
-		for (const result of results) {
-			if (result.success && result.data?.items) {
-				// Add server metadata to each link
-				const linksWithServer = result.data.items.map(link => ({
-					...link,
-					_serverName: result.serverName,
-					_serverIp: result.serverIp,
-					_connectionId: result.connectionId
-				}))
-				allLinks.push(...linksWithServer)
-			} else if (!result.success) {
-				// Track errors for unreachable servers
-				serverErrors.value.push({
-					serverName: result.serverName,
-					error: result.error || 'Unknown error'
-				})
-			}
-		}
-		
-		rows.value = allLinks
-		
-		// Show notification for unreachable servers
-		if (serverErrors.value.length > 0) {
-			const serverNames = serverErrors.value.map(e => e.serverName).join(', ')
-			pushNotification(new Notification(
-				'Server Unreachable',
-				`Could not fetch links from: ${serverNames}`,
-				'warning',
-				8000
-			))
-		}
+		rows.value = linksWithServer
 	} catch (e: any) {
 		error.value = e?.message || String(e)
 	} finally {
@@ -582,8 +562,8 @@ onMounted(refresh);
 const { linkVersion } = useLinkRefreshSignal()
 watch(linkVersion, () => refresh())
 
-// Refresh when server filter changes
-watch(filteredConnections, () => refresh(), { deep: true })
+// Refresh when active connection changes
+watch(activeConnection, () => refresh())
 
 /* ----------- fetch/list endpoints ----------- */
 async function listLinks(params: { q?: string; type?: '' | LinkType; status?: '' | Status; limit?: number; offset?: number }) {
@@ -633,15 +613,22 @@ function fallbackTitle(it: LinkItem) {
 }
 
 function typeLabel(t: LinkType) {
-	return t === 'upload' ? 'Upload' : t === 'download' ? 'Share (file)' : 'Share (collection)'
+	if (t === 'upload') return 'Upload'
+	if (t === 'download') return 'Review (file)'
+	if (t === 'combined') return 'Review + Upload'
+	return 'Review (collection)'
 }
 
-function badgeClass(t: LinkType) {
-	return t === 'upload'
-		? 'text-blue-500'
-		: t === 'download'
-			? 'text-emerald-500'
-			: 'text-cyan-400'
+function hasShareCap(it: LinkItem) {
+	const anyIt = it as any
+	if (anyIt.share_enabled != null) return !!anyIt.share_enabled
+	return it.type === 'download' || it.type === 'collection' || it.type === 'combined'
+}
+
+function hasUploadCap(it: LinkItem) {
+	const anyIt = it as any
+	if (anyIt.upload_enabled != null) return !!anyIt.upload_enabled
+	return it.type === 'upload' || it.type === 'combined'
 }
 
 /* ------------------- thumbnail helpers ------------------- */

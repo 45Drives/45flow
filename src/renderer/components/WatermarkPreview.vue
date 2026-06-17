@@ -19,6 +19,9 @@
         :style="computedImageStyle"
       />
     </div>
+    <p v-if="showDisclaimer" class="text-[10px] text-muted/50 mt-1 italic">
+      Actual placement may vary slightly depending on image dimensions and aspect ratio.
+    </p>
   </div>
 </template>
 
@@ -36,6 +39,8 @@ const props = withDefaults(defineProps<{
   size?: 'small' | 'large'
   /** Premium: Custom watermark settings */
   settings?: WatermarkSettings | null
+  /** Show disclaimer about image aspect ratio differences */
+  showDisclaimer?: boolean
 }>(), {
   label: 'Preview (approximate)',
   showClear: false,
@@ -43,6 +48,7 @@ const props = withDefaults(defineProps<{
   maxWidth: '18rem',
   size: 'large',
   settings: null,
+  showDisclaimer: false,
 })
 
 defineEmits<{
@@ -92,8 +98,8 @@ const computedImageStyle = computed(() => {
     
     return {
       ...positionStyles,
-      maxHeight: `${scale}%`,
-      maxWidth: `${scale}%`,
+      height: `${scale}%`,
+      width: 'auto',
       opacity: opacity / 100,
     }
   }
