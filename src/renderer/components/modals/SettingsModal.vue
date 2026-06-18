@@ -1622,7 +1622,7 @@ watch(activeSection, (section) => {
     // Load available watermarks when navigating to Link Options
     if (section === 'linkOptions' && existingWatermarkFiles.value.length === 0) {
         loadExistingWatermarkFiles();
-        if (isPremiumActive.value) loadDefaultWatermarkPresets();
+        loadDefaultWatermarkPresets();
     }
 });
 
@@ -2536,7 +2536,7 @@ async function reload() {
         
         // Load existing watermark files and sync the selection
         await loadExistingWatermarkFiles();
-        if (isPremiumActive.value) await loadDefaultWatermarkPresets();
+        await loadDefaultWatermarkPresets();
         if (defaultWatermarkId.value) {
             selectedExistingWatermark.value = defaultWatermarkId.value;
             // Ensure preview is loaded (watcher may have fired before baseUrl/token were ready)
@@ -2606,10 +2606,14 @@ async function save() {
             defaultAllowComments: !!defaultAllowComments.value,
             defaultUseProxyFiles: !!defaultUseProxyFiles.value,
             defaultWatermarkId: defaultWatermarkEnabled.value ? (selectedExistingWatermark.value || defaultWatermarkId.value) : null,
-            defaultWatermarkSettings: defaultWatermarkEnabled.value ? watermarkSettings.value : null,
             projectRoot: (projectRoot.value || "").trim() || null,
             forceProjectRoot: !!forceProjectRoot.value,
         };
+
+        // Only send watermark settings if premium (server enforces license check)
+        if (isPremiumActive.value) {
+            payload.defaultWatermarkSettings = defaultWatermarkEnabled.value ? watermarkSettings.value : null;
+        }
 
         await apiFetch("/api/settings", {
             method: "POST",
