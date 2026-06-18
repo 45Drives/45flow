@@ -130,7 +130,7 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
 
 ## 2. Installation
 
-Download the latest version of 45Flow from the **[Releases page](https://github.com/45Drives/45flow-premium-dev/releases)**. Under the **Assets** section of the latest release, download the file matching your operating system.
+Download the latest version of 45Flow from the **[Releases page](https://github.com/45Drives/45flow/releases)**. Under the **Assets** section of the latest release, download the file matching your operating system.
 
 ### macOS
 

@@ -22,3 +22,5 @@ IMPLEMENTATION_*.md
 *.dmg
 *.zip
 .github/prompts/plan*
+
+.github/agents/*

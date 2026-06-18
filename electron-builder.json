@@ -3,7 +3,7 @@
   "productName": "45Flow",
   "directories": { "output": "dist" },
   "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
-  "publish": { "provider": "github", "owner": "45Drives", "repo": "45flow-premium-dev" },
+  "publish": { "provider": "github", "owner": "45Drives", "repo": "45flow" },
   "afterSign": "scripts/afterSign-verify.js",
   "afterPack": "scripts/afterPack-fix-native.js",
   "nsis": {

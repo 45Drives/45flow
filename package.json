@@ -32,7 +32,7 @@
     "mac:dir:x64": "yarn build:common && node scripts/build.js && CSC_IDENTITY_AUTO_DISCOVERY=false SKIP_AFTER_SIGN=1 electron-builder --mac --x64 --dir",
     "mac:dir:universal": "yarn build:common && node scripts/build.js && CSC_IDENTITY_AUTO_DISCOVERY=false SKIP_AFTER_SIGN=1 electron-builder --mac --universal --dir"
   },
-  "repository": "https://github.com/45Drives/45flow-premium-dev",
+  "repository": "https://github.com/45Drives/45flow",
   "author": {
     "name": "Jordan Keough",
     "email": "jkeough@45drives.com"

@@ -13,7 +13,7 @@ The shared server/API package is `houston-broadcaster`. It supports both the fre
 There are two app editions:
 
 - `studio-share`: free/community version
-- `45flow-premium-dev`: paid/pro version
+- `45flow`: paid/pro version
 
 Premium features should be implemented in this repo unless the feature clearly belongs in shared infrastructure or the server API.
 

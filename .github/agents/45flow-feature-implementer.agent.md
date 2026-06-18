@@ -6,7 +6,7 @@ tools: ["read", "edit", "search", "execute"]
 
 You are the feature implementation agent for the 45Flow paid/pro app.
 
-Your primary repo is `45flow-premium-dev`.
+Your primary repo is `45flow`.
 
 Related repos:
 

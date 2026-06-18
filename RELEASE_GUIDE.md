@@ -5,8 +5,8 @@
 This guide covers the release process for **45Flow** in this repository.
 
 ### Repository Structure
-- **45flow-premium-dev**: Source + releases
-- **GitHub target**: `45Drives/45flow-premium-dev`
+- **45flow**: Source + releases
+- **GitHub target**: `45Drives/45flow`
 
 ### Downstream Sync Status
 
@@ -94,12 +94,12 @@ bash scripts/release/release.sh --bump minor --dry-run
 
 ## Configuration Files
 
-### 45flow-premium-dev
+### 45flow
 - **Config**: `.env.orchestrator.premium`
-- **GitHub Target**: `45Drives/45flow-premium-dev`
+- **GitHub Target**: `45Drives/45flow`
 - **Title Format**: `45Flow vX.Y.Z`
 
-`GH_REPO` defaults to `45Drives/45flow-premium-dev`.
+`GH_REPO` defaults to `45Drives/45flow`.
 
 ---
 
@@ -290,12 +290,12 @@ yarn release:windows:stage
 
 ## Summary
 
-### 45Flow Version (45flow-premium-dev)
+### 45Flow Version (45flow)
 ```bash
-cd ~/45flow-premium-dev
+cd ~/45flow
 
 yarn release:patch              # Bump + build all platforms
-# Releases to: 45Drives/45flow-premium-dev
+# Releases to: 45Drives/45flow
 ```
 
 ### Key Points

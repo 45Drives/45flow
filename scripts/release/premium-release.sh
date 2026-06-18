@@ -52,7 +52,7 @@ EXAMPLES:
 
 NOTES:
   - Version is always read from package.json
-  - Releases are published to 45Drives/45flow-premium-dev
+  - Releases are published to 45Drives/45flow
 HELP
 }
 
@@ -245,7 +245,7 @@ main() {
   fi
   
   # Standalone target repo
-  export GH_REPO="45Drives/45flow-premium-dev"
+  export GH_REPO="45Drives/45flow"
   
   echo "Config: $CONFIG_FILE"
   echo "Target GitHub repo: $GH_REPO"

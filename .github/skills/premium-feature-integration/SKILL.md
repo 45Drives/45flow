@@ -5,7 +5,7 @@ description: Use this skill when implementing a paid/pro 45Flow feature that may
 
 # Premium Feature Integration
 
-Use this workflow for paid/pro feature work in `45flow-premium-dev`.
+Use this workflow for paid/pro feature work in `45flow`.
 
 ## 1. Classify the feature
 
