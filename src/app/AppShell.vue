@@ -101,8 +101,8 @@ useWebSocketManager()
 watch(isPremiumActive, (licensed) => {
   const version = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : ''
   document.title = licensed
-    ? `45Flow v${version}`
-    : `45Flow (Unlicensed) v${version}`
+    ? `45Flow (Pro Edition) v${version}`
+    : `45Flow (Community Edition) v${version}`
 }, { immediate: true })
 
 // Legacy provide for backwards compatibility during migration

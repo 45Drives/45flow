@@ -55,7 +55,7 @@ require_cmd yarn
 RELEASE_DIR="${RELEASE_DIR:-${ROOT_DIR}/builds/release}"
 VERSION="${RELEASE_VERSION:-$(node -p "require('./package.json').version")}"
 RELEASE_TAG="${RELEASE_TAG:-v${VERSION}}"
-GH_REPO="${GH_REPO:-45Drives/45Flow}"
+GH_REPO="${GH_REPO:-45Drives/45flow-premium-dev}"
 GH_CREATE_DRAFT="${GH_CREATE_DRAFT:-1}"
 GH_UPLOAD_RELEASE="${GH_UPLOAD_RELEASE:-1}"
 GH_PUBLISH_RELEASE="${GH_PUBLISH_RELEASE:-0}"

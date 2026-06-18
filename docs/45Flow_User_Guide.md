@@ -2,6 +2,17 @@
 
 Welcome to **45Flow** — the secure file sharing and collaboration platform by 45Drives. This guide walks you through installing the application, connecting to your server, and using every feature from start to finish.
 
+## About 45Flow Editions
+
+45Flow is available in two editions:
+
+- **Community Edition** — Free and open source. Includes all core file sharing, review, and upload features with basic watermarking.
+- **Pro Edition** — Unlocked when your server is licensed. Adds custom branding (white label), advanced watermark customization, image watermarking, timecoded comments, annotations, and priority support.
+
+**The app works the same way for everyone** — it starts in Community mode by default, and automatically upgrades to Pro when connected to a licensed server. No separate downloads or builds. When unlicensed, Pro features are simply hidden or disabled in the UI.
+
+**Licensing is server-side** — your 45Flow license is tied to your houston-broadcaster server, not to individual user accounts. Once a server is licensed, all users connecting to it gain access to Pro features automatically.
+
 ---
 
 ## Table of Contents
@@ -16,10 +27,14 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
    - [Manual Connection via IP](#manual-connection-via-ip)
    - [Custom Port Configuration](#custom-port-configuration)
    - [Logging In](#logging-in)
-   - [Activating Your License](#activating-your-license)
+   - [License Status & Activation](#license-status--activation)
 4. [Dashboard Overview](#4-dashboard-overview)
-5. [Port Forwarding for External Sharing](#5-port-forwarding-for-external-sharing)
-6. [Settings](#6-settings)
+5. [Projects — Organizing Your Links](#5-projects--organizing-your-links)
+   - [What Are Projects](#what-are-projects)
+   - [Creating a Project](#creating-a-project)
+   - [Managing Projects](#managing-projects)
+6. [Port Forwarding for External Sharing](#6-port-forwarding-for-external-sharing)
+7. [Settings](#7-settings)
    - [URLs & Access](#urls--access)
    - [SSL Certificate Management](#ssl-certificate-management)
    - [Link Options](#link-options)
@@ -27,8 +42,9 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
    - [Preferences & Performance](#preferences--performance)
    - [Server Health](#server-health)
    - [Maintenance & Cleanup](#maintenance--cleanup)
+   - [Go Pro — License Activation](#go-pro--license-activation)
    - [Guides](#guides)
-7. [Custom Branding (White Label)](#7-custom-branding-white-label)
+8. [Custom Branding (White Label) — Pro Feature](#8-custom-branding-white-label--pro-feature)
    - [Enabling Branding](#enabling-branding)
    - [Company Identity](#company-identity)
    - [Theme & Colors](#theme--colors)
@@ -37,21 +53,19 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
    - [Link Preview Metadata](#link-preview-metadata)
    - [Live Preview](#live-preview)
    - [Clearing Branding](#clearing-branding)
-8. [Drag and Drop QuickShare](#8-drag-and-drop-quickshare)
-9. [Share Files Remotely (Generate a Share Link)](#9-share-files-remotely-generate-a-share-link)
-   - [Step 1: Select a Project](#step-1-select-a-project)
-   - [Step 2: Select Files & Configure Link](#step-2-select-files--configure-link)
-   - [Link Access Modes](#link-access-modes)
-   - [Advanced Video Options](#advanced-video-options)
-   - [Generating the Link](#generating-the-link)
-10. [Upload Files Locally](#10-upload-files-locally)
+9. [Drag and Drop QuickShare](#9-drag-and-drop-quickshare)
+10. [Creating Links — Share, Upload, or Combined](#10-creating-links--share-upload-or-combined)
+    - [Step 1: Select a Project or Destination](#step-1-select-a-project-or-destination)
+    - [Step 2: Configure Link Settings](#step-2-configure-link-settings)
+    - [Link Types — Share, Upload, Combined](#link-types--share-upload-combined)
+    - [Link Access Modes](#link-access-modes)
+    - [Advanced Video Options](#advanced-video-options)
+    - [Watermark Settings — Video and Image Support](#watermark-settings--video-and-image-support)
+    - [Generating the Link](#generating-the-link)
+11. [Upload Files Locally](#11-upload-files-locally)
     - [Step 1: Select Local Files](#step-1-select-local-files)
     - [Step 2: Choose Destination](#step-2-choose-destination)
     - [Step 3: Upload & Monitor Progress](#step-3-upload--monitor-progress)
-11. [Create an Upload Link (Remote Upload)](#11-create-an-upload-link-remote-upload)
-    - [Selecting a Destination Folder](#selecting-a-destination-folder)
-    - [Configuring the Upload Link](#configuring-the-upload-link)
-    - [Generating the Upload Link](#generating-the-upload-link)
 12. [Transfer Dock](#12-transfer-dock)
     - [Transfer Dock Overview](#transfer-dock-overview)
     - [Transfer Entry Details](#transfer-entry-details)
@@ -225,23 +239,34 @@ On success, you'll be taken to the **Dashboard**.
 
 ![Connecting to server with status messages](images/login-connecting-v2.png)
 
-### Activating Your License
+### License Status & Activation
 
-After successfully connecting to your server for the first time, you'll need to activate your 45Flow license. **This is a one-time activation per server.**
+After connecting to your server, 45Flow automatically checks the server's license status in the background. **Login is never blocked** — you can start using the app immediately, even if the server is unlicensed.
 
-![License activation screen](images/license-activation-v2.png)
+#### Community vs Pro Mode
 
-1. When prompted, enter your **License Key** provided by 45Drives.
-2. Click **"Activate License"** to validate your key with the licensing server.
-3. Once validated, your license will be permanently associated with this server.
+- **Unlicensed server** — The app runs in Community mode. Pro features (custom branding, advanced watermarks, comments, annotations) are hidden or disabled.
+- **Licensed server** — The app automatically upgrades to Pro mode. All Pro features become available.
+- **Trial license** — If your server has an active trial license, the app shows "Pro Trial — X days left" in the header. When the trial expires, the app reverts to Community mode.
 
-> **Important Notes:**
-> - Each license key can only be activated on **one server**.
-> - The license is tied to the server, not to individual user accounts.
-> - If you need to transfer a license to a different server, contact 45Drives support.
-> - Once activated, all users connecting to this server will have full access to 45Flow features.
+#### Activating a License
 
-After activation is complete, you'll be automatically directed to the **Dashboard** to begin using 45Flow.
+If your server is unlicensed, you can activate a license at any time:
+
+1. Open **Settings** from the Dashboard.
+2. Navigate to **Go Pro** in the left sidebar.
+3. Enter your **License Key** provided by 45Drives.
+4. Click **"Activate License"** to validate and activate.
+
+Once activated, the app immediately upgrades to Pro mode and all Pro features unlock.
+
+> **Note:** Licenses are tied to the server, not individual users. Once a server is licensed, all users connecting to it automatically gain Pro features.
+
+#### Starting a Trial
+
+If you don't have a license key yet, you can start a **30-day free trial** directly from the Go Pro settings section. Trials give you full access to all Pro features for evaluation.
+
+After successful login, you'll be directed to the **Dashboard** to begin using 45Flow.
 
 ---
 
@@ -267,9 +292,9 @@ Three large action buttons let you perform the core tasks:
 
 | Button | Description |
 |--------|-------------|
-| **New File Share Link** | Generate a secure link for others to view, download, or comment on your files |
+| **New Link** | Create a link for sharing files, uploading files, or both (combined mode). Configure all link settings in one unified interface. |
 | **Upload Files Locally** | Transfer files from your workstation directly to the server |
-| **New Upload Link** | Create a link that allows external collaborators to upload files to your server |
+| **Manage Projects** | Organize your links into projects for better organization |
 
 ![Dashboard action buttons](images/dashboard-action-buttons-v2.png)
 
@@ -283,7 +308,64 @@ Click **"Log Out"** at the bottom of the Dashboard to disconnect from the server
 
 ---
 
-## 5. Port Forwarding for External Sharing
+## 5. Projects — Organizing Your Links
+
+**Projects** let you organize your links into logical groups, making it easier to manage shares for different clients, departments, or workflows. Each project has its own root directory on your server and tracks all links associated with it.
+
+### What Are Projects
+
+A project is a named container that:
+
+- **Groups related links** — Keep all links for a client, campaign, or workflow together in one place.
+- **Has a root directory** — Each project points to a specific folder on your server. When creating links within a project, you start browsing from that root.
+- **Tracks link counts** — See at a glance how many active, expired, or disabled links each project has.
+- **Can be archived** — Archive completed projects to hide them from the active list without deleting the links.
+
+### Creating a Project
+
+To create a new project:
+
+1. From the Dashboard, click **"Manage Projects"** (or navigate to **Settings → Projects**).
+2. Click **"New Project"**.
+3. Enter:
+   - **Project Name** — A descriptive name (e.g., "Acme Corp Review", "Q1 Marketing Assets").
+   - **Root Directory** — The absolute path on the server where this project's files live (e.g., `/tank/projects/acme`).
+   - **Description** (optional) — Notes about the project's purpose.
+4. Click **"Create Project"**.
+
+The new project appears in the projects list and is immediately available when creating links.
+
+### Managing Projects
+
+**Viewing Projects:**
+
+The Projects panel shows all active projects with:
+- Project name
+- Root directory path
+- Link counts (total, active, expired, disabled)
+- Created date
+
+**Editing a Project:**
+
+Click the **edit icon** next to a project to update its name, root directory, or description.
+
+**Archiving a Project:**
+
+Click the **archive icon** to soft-delete a project. Archived projects are hidden from the active list but can be restored later. All links in an archived project remain accessible — archiving does not delete links.
+
+**Restoring an Archived Project:**
+
+Toggle **"Show archived"** to view archived projects, then click **"Restore"** to unarchive.
+
+**Deleting a Project (Hard Delete):**
+
+To permanently delete a project and all its links, select the project and choose **"Delete Permanently"**. This action cannot be undone.
+
+> **Tip:** Projects are optional. You can still create links without associating them to a project — they'll appear in the "All Links" view on the Dashboard.
+
+---
+
+## 6. Port Forwarding for External Sharing
 
 To share files externally (over the internet), HTTPS port **443** (or your custom HTTPS port) must be forwarded from your router to your server. **This is a critical setup step for external sharing** — complete it before creating external links.
 
@@ -309,7 +391,7 @@ Port forwarding tells your router to direct incoming traffic on a specific port 
 
 ---
 
-## 6. Settings
+## 7. Settings
 
 Configure application-wide defaults and server settings. Access Settings from the Dashboard by clicking **"Settings"**.
 
@@ -390,9 +472,9 @@ These defaults are applied automatically when creating new links, but can be cha
 | Option | Description |
 |--------|-------------|
 | **Restrict access to users** | New links default to restricted (invited users only) mode. |
-| **Allow comments on open links** | Enable comments by default on open (unauthenticated) links. |
+| **Allow comments on open links** | Enable comments by default on open (unauthenticated) links. **Pro feature only.** |
 | **Generate review copies by default** | Automatically enable review copy generation for new links. |
-| **Default watermark settings** | Configure default watermark image and settings for new links. See [Advanced Video Options](#advanced-video-options) for details on watermark configuration and customization. |
+| **Default watermark settings** | Configure default watermark image and settings for new links. See [Watermark Settings — Video and Image Support](#watermark-settings--video-and-image-support) for details on Community vs Pro watermark features. |
 
 ### Project Root
 
@@ -481,11 +563,42 @@ The Guides section provides:
 
 > **Important:** Settings changes affect only **newly created links**. Existing links are not modified retroactively.
 
+### Go Pro — License Activation
+
+The **Go Pro** section appears in Settings when your server is unlicensed or running on a trial license. Use this section to activate a full license or start a free trial.
+
+**License Activation:**
+
+1. Enter your **License Key** in the input field.
+2. Click **"Activate License"**.
+3. The app validates your key with the licensing server.
+4. On success, your server is permanently licensed and the app immediately upgrades to Pro mode.
+
+**Start a Free Trial:**
+
+If you don't have a license key yet:
+
+1. Click **"Start Free Trial"**.
+2. Enter your email address.
+3. A 30-day trial license is generated and activated automatically.
+4. You'll receive a confirmation email with trial details.
+
+**Trial Status:**
+
+When running on a trial license, this section shows:
+- Trial expiration date
+- Days remaining
+- Option to upgrade to a full license before the trial expires
+
+When a trial expires, the app reverts to Community mode and Pro features are disabled until a full license is activated.
+
+> **Note:** The Go Pro section is hidden once your server is fully licensed. To check license status or manage your license, contact 45Drives support.
+
 ---
 
-## 7. Custom Branding (White Label)
+## 8. Custom Branding (White Label) — Pro Feature
 
-45Flow Pro includes a comprehensive white-label branding system that lets you customize how share links, upload pages, and review pages appear to your clients and collaborators. When enabled, recipients see your company's branding instead of the default 45Flow identity.
+**Custom branding requires a Pro license.** This feature lets you customize how share links, upload pages, and review pages appear to your clients and collaborators. When enabled, recipients see your company's branding instead of the default 45Flow identity.
 
 Access branding configuration from **Settings → White Label**.
 
@@ -587,7 +700,7 @@ When branding is enabled, recipients viewing your share links will see:
 
 ---
 
-## 8. Drag and Drop QuickShare
+## 9. Drag and Drop QuickShare
 
 The **QuickShare** feature provides the fastest way to create a share link. Simply drag files from your desktop or file manager directly into 45Flow to instantly generate a shareable link with one click.
 
@@ -627,40 +740,59 @@ From the Dashboard, you can find your QuickShare link and:
 
 ---
 
-## 9. Share Files Remotely (Generate a Share Link)
+## 10. Creating Links — Share, Upload, or Combined
 
-Use this feature to select files on your server and generate a secure link that others can use to view, download, and optionally comment on those files.
+45Flow uses a **unified link system** — every link can be configured to support file sharing (review/download), upload, or both simultaneously. You no longer need to create separate "share links" and "upload links" — a single link can do both.
 
-Click **"New File Share Link"** from the Dashboard to begin.
+Click **"New Link"** from the Dashboard to begin.
 
-### Step 1: Select a Project
+### Step 1: Select a Project or Destination
 
-First, choose the storage location where your files reside.
+First, choose where the link will operate:
+
+**For share links (or combined):**
+- Select a **Project** if you're organizing links into projects.
+- Or select a **ZFS pool** or **root directory** to browse the full filesystem.
+
+**For upload-only links:**
+- Choose the destination folder where uploaded files will be saved.
 
 ![Project selection with ZFS pools](images/share-select-project-v2.png)
 
-- The screen displays your available **ZFS pools** (storage locations) such as `/media`, `/projects`, etc.
-- Click **"Select"** next to the pool you want to use.
-- Alternatively, check **"Show entire directory tree from root"** to browse the full filesystem.
+The screen displays your available **ZFS pools** (storage locations) such as `/media`, `/projects`, etc. Click **"Select"** next to the pool you want to use. Alternatively, check **"Show entire directory tree from root"** to browse the full filesystem.
 
 > **Tip:** You can set a default project root in **Settings → Project Root** to skip this step for future links.
 
 Click **"Return to Dashboard"** at any time to cancel.
 
-### Step 2: Select Files & Configure Link
+### Step 2: Configure Link Settings
 
-After choosing a project, you'll see the file selection and link configuration screen.
+After choosing a location, you'll see the link configuration screen.
 
 ![File selection and link configuration](images/share-select-files-v2.png)
 
-#### Selecting Files
+### Link Types — Share, Upload, Combined
+
+45Flow links support three modes:
+
+| Mode | Description |
+|------|-------------|
+| **Share only** | Recipients can view, download, and comment on files. You select which files to share. |
+| **Upload only** | Recipients can upload files to a specified destination folder. No files are pre-selected. |
+| **Combined (Share + Upload)** | Recipients can both review your shared files AND upload their own files to the same location. Perfect for collaborative workflows. |
+
+Toggle **"Enable file sharing"** and **"Enable uploads"** to choose the link mode.
+
+#### Selecting Files (Share Mode)
+
+When file sharing is enabled:
 
 - Use the **file browser** to navigate folders and select individual files or entire folders.
 - Selected files appear in the **"Selected files"** panel with a count badge.
 - Click **"Show list"** to review your selection, and use the **✕** button to remove individual files.
 - Click **"Clear all"** to start over.
 
-#### Configuring the Link
+#### Configuring Basic Settings
 
 **Expiration:**
 - Set how long the link stays active using the **"Expires in"** field.
@@ -674,6 +806,9 @@ After choosing a project, you'll see the file selection and link configuration s
 
 **Link Title** (optional):
 - Give the link an internal name to help you identify it later on the Dashboard.
+
+**Project Assignment** (optional):
+- Assign the link to a Project for organization. Select from the dropdown or leave unassigned.
 
 ### Link Access Modes
 
@@ -698,29 +833,42 @@ When sharing video files, expand the **"Advanced video options"** section for ad
 - Shared links serve the review copies instead of the originals, providing faster playback and reduced bandwidth.
 - Select which qualities to generate: **720p**, **1080p**, **Original**, or any combination.
 
-**Watermark Videos:**
-- When enabled, applies a customizable watermark overlay to review copies.
-- Upload a watermark image and configure its appearance using the full customization panel.
-- Control watermark position, scale, opacity, and rotation.
-- Save configurations as presets and reuse them across links.
-- Useful for protecting intellectual property or branding shared content.
+### Watermark Settings — Video and Image Support
 
-**Watermark Position & Style:**
+45Flow supports watermarking for both **video files** and **image files**. When enabled, watermarks are applied to review copies (for videos) or directly to the shared image (for images).
+
+**Enable Watermark:**
+- Toggle **"Apply watermark"** to enable watermarking.
+- Upload a watermark image or choose from built-in presets.
+
+**Community vs Pro Watermarking:**
+
+| Feature | Community | Pro |
+|---------|-----------|-----|
+| Enable/disable watermark | ✅ Yes | ✅ Yes |
+| Select watermark image | ✅ Yes | ✅ Yes |
+| Position control (9 anchor points) | ❌ Bottom-right only | ✅ Full control |
+| Scale, opacity, rotation | ❌ Fixed | ✅ Customizable |
+| Watermark presets | ❌ No | ✅ Yes |
+| Image watermarking | ❌ No | ✅ Yes |
+
+**Watermark Position & Style (Pro):**
 
 | Setting | Description |
 |---------|-------------|
-| **Position** | Anchor point: top-left, top-right, center, bottom-left, bottom-right, or custom X/Y coordinates. |
-| **Scale** | Size of the watermark relative to the video frame (percentage). |
+| **Position** | Nine anchor points: Top-Left, Top-Center, Top-Right, Center-Left, Center, Center-Right, Bottom-Left, Bottom-Center, Bottom-Right. |
+| **Scale** | Size of the watermark relative to the frame (percentage). |
 | **Opacity** | Transparency level (0% = invisible, 100% = fully opaque). |
-| **Rotation** | Angle of rotation in degrees. |
+| **Rotation** | Angle in degrees (e.g., 45° for diagonal placement). |
 
-**Watermark Presets:**
-- **Save as preset** — Give your current configuration a name to reuse on future links.
-- **Load preset** — Apply a previously saved preset with one click.
-- **Delete preset** — Remove presets you no longer need.
-- Presets are stored on the server and available across all your links.
+**Watermark Presets (Pro):**
 
-> **Note:** Basic watermarking (enable/disable, select watermark image file) is available in the free edition. Advanced positioning, opacity, scale, rotation, and the preset system require 45Flow Pro.
+- The preset dropdown shows all available watermark images with saved settings.
+- Select a preset to instantly apply a predefined watermark configuration.
+- Upload your own watermark image by clicking **"Upload custom watermark"**.
+- Presets can be saved and reused across multiple links.
+
+> **Note:** In Community mode, watermarks are applied to videos only, fixed at bottom-right position with default scale/opacity. Upgrade to Pro for full customization and image watermarking.
 
 ### Generating the Link
 
@@ -770,10 +918,10 @@ Click **"Upload Files Locally"** from the Dashboard to begin. A three-step wizar
 
 **Before Uploading:**
 
-If you're uploading video files, you can configure **Advanced Video Options** before starting:
+If you're uploading video or image files, you can configure **Advanced Options** before starting:
 
 - **Use Review Copies** — Enable to generate review copy versions (720p, 1080p) of your videos during upload. These review copies are used when you share the files later via links.
-- **Watermark Videos** — Apply a watermark overlay to uploaded videos for later sharing.
+- **Watermark Media** — Apply a watermark overlay to uploaded videos and images (Pro: images supported with full customization; Community: videos only with basic positioning).
 
 Click **"Start Upload"** to begin transferring files.
 
@@ -804,57 +952,6 @@ This offloads video processing from the server to your workstation. If you don't
 When all files are complete, click **"Finish"** to return to the Dashboard.
 
 > **Tip:** If any uploads fail, the error message will appear below the file entry. You can address the issue and re-upload those files.
-
----
-
-## 11. Create an Upload Link (Remote Upload)
-
-Use this feature to create a link that allows external collaborators to upload files to a specific folder on your server — without giving them Dashboard access.
-
-Click **"New Upload Link"** from the Dashboard to begin.
-
-![Upload link creation screen](images/upload-link-creation-v2.png)
-
-### Selecting a Destination Folder
-
-1. Select a **ZFS pool** or browse the full directory tree.
-2. Navigate the folder browser to choose where uploaded files should be stored:
-   - **Single-click** to select a folder.
-   - **Double-click** to enter a folder.
-   - **New Folder** to create a new directory.
-
-### Configuring the Upload Link
-
-**Expiration:**
-- Use the **"Expires in"** field with a number and time unit (hours, days, weeks), or choose a preset: **1 hour**, **1 day**, **1 week**, or **Never**.
-- Once expired, no further uploads are allowed through the link.
-
-**Network Access:**
-- **Share Locally (Over LAN)** — Link only works within your local network.
-- **Share Externally (Over Internet)** — Link accessible from anywhere (requires port forwarding).
-
-**Link Title** (optional):
-- Name the link for easy identification on the Dashboard.
-
-**Link Access Mode:**
-
-| Mode | Description |
-|------|-------------|
-| **Anyone with the link** | No login required. **⚠️ Warning:** Anyone with the link can upload files to your server. Use only in trusted scenarios. |
-| **Anyone with the link + password** | Requires a shared password before uploading. |
-| **Only invited users** | Users must log in with their credentials before uploading. Click **"Invite users…"** to add authorized users. |
-
-![Upload link access modes with warning](images/upload-link-access-modes-v2.png)
-
-### Generating the Upload Link
-
-1. Ensure a destination folder is selected and all settings are configured.
-2. Click **"Generate Flow link"**.
-3. Copy or open the generated URL to share with your collaborators.
-
-When someone opens the link, they'll see a drag-and-drop upload page where they can send files directly to the specified folder.
-
-![External upload page — drag and drop interface](images/upload-link-external-view-v2.png)
 
 ---
 
@@ -919,7 +1016,7 @@ Upload                     95.23 MB/s            ETA 0:14            100%
 
 ## 13. Managing Links
 
-All links you create — both share and upload — appear on the Dashboard in the **links table**. This is your central view for monitoring and managing all active, expired, and disabled links.
+All links you create — whether Share, Upload, or Combined — appear on the Dashboard in the **links table**. This is your central view for monitoring and managing all active, expired, and disabled links.
 
 ![Links table on the Dashboard](images/manage-links-table-v2.png)
 
@@ -928,7 +1025,7 @@ All links you create — both share and upload — appear on the Dashboard in th
 At the top of the table:
 
 - **Search bar** — Filter links by title, directory, or file name. Results update as you type.
-- **Type filter** — Show only specific link types: *All types*, *Upload*, *Share (file)*, or *Share (collection)*.
+- **Type filter** — Show only specific link types: *All types*, *Upload*, *Share*, or *Combined*.
 - **Status filter** — Show only links with a specific status: *All status*, *Active*, *Expired*, or *Disabled*.
 - **Refresh** — Manually reload the link list from the server.
 
@@ -939,7 +1036,7 @@ Summary badges show the count of **Total**, **Active**, **Expired**, and **Disab
 | Column | Description |
 |--------|-------------|
 | **Title** | Internal name of the link. Click the edit icon to rename it inline. Click the title to open Link Details. |
-| **Type** | Badge showing **Upload**, **Share (file)**, or **Share (collection)**. |
+| **Type** | Badge showing **Upload**, **Share**, or **Combined** (share + upload enabled). |
 | **Link** | The public URL. Click to open in browser, or use the **Copy** button. |
 | **Expires** | Time remaining (e.g., *23 Hours*, *6d 22h*, *Never*). Shown in red when less than 24 hours remain. Click **Edit** to change the expiration. |
 | **Status** | Current state: **ACTIVE** (green), **EXPIRED** (amber), or **DISABLED** (gray). |
@@ -974,12 +1071,13 @@ The details view displays:
 | **Primary Link** | The full URL with a **Copy** button. |
 | **Access** | Current access mode (Open / Password / Users only). |
 | **Review Copies** | Whether review copy generation is enabled or disabled. |
-| **Watermark** | Whether watermarking is enabled or disabled. |
-| **Type** | Share (download) or Upload. |
+| **Watermark** | Whether watermarking is enabled or disabled (shows "Video + Image" for Pro, "Video only" for Community). |
+| **Type** | Share, Upload, or Combined. |
 | **Status** | Active, Expired, or Disabled. |
 | **Created** | Creation date and time. |
 | **Expires** | Expiration date/time or "Never". |
 | **Title** | Internal name. |
+| **Project** | Associated project (if assigned). |
 | **Notes** | Optional internal notes. |
 
 ### Shared Files
@@ -1054,11 +1152,13 @@ From the Link Details view, click **"Edit"** to modify an existing link's config
 You can modify:
 
 - **Title** and **Notes** — Update the internal name and documentation.
+- **Project Assignment** — Assign or change the project this link belongs to.
+- **Link Type** — Toggle "Enable file sharing" and "Enable uploads" to change between Share, Upload, or Combined mode.
 - **Restrict Access to Users** — Toggle between open and restricted access.
-- **Allow Comments** — Enable or disable commenting on shared files.
+- **Allow Comments** — Enable or disable commenting on shared files (Pro feature).
 - **Password Required** — Enable or disable password protection, and set the password.
 - **Generate Review Copies** — Enable/disable review copy generation and select qualities (720p, 1080p, Original).
-- **Apply Watermark** — Enable/disable watermark overlay with full customization controls (position, scale, opacity, rotation, presets).
+- **Apply Watermark** — Enable/disable watermark overlay with full customization controls (position, scale, opacity, rotation, presets — Pro for full control).
 - **Files for This Link** — Add or remove files associated with the link using **"Manage Files"**.
 
 Click **"Save Changes"** to apply. All changes take effect **immediately**.
@@ -1142,7 +1242,7 @@ If comments are enabled on the link, a **Comments Panel** appears alongside the 
 
 ### Annotations & Drawing Tools
 
-45Flow Pro includes built-in annotation tools for drawing directly on video frames. Annotations are created alongside comments in the review player.
+**Pro Feature.** 45Flow includes built-in annotation tools for drawing directly on video frames. Annotations are created alongside comments in the review player.
 
 ![Annotation drawing tools](images/annotation-tools-v2.png)
 
@@ -1282,7 +1382,7 @@ Roles define what users can do when accessing restricted links. Access role mana
 
 ## 20. Multi-Server Management
 
-45Flow Pro supports connecting to and managing **multiple servers** simultaneously.
+45Flow supports connecting to and managing **multiple servers** simultaneously.
 
 ![Multi-server connection switcher](images/multi-server-switcher-v2.png)
 
@@ -1313,7 +1413,7 @@ This is useful for managing links across multiple servers from a single view.
 
 ## 21. Automatic Updates
 
-45Flow Pro includes built-in automatic update detection and installation. When a new version is available, a banner appears at the top of the application window.
+45Flow includes built-in automatic update detection and installation. When a new version is available, a banner appears at the top of the application window.
 
 ![Update banner showing available update](images/update-banner-v2.png)
 
@@ -1424,6 +1524,27 @@ When connected to multiple servers, a **server selector dropdown** appears in th
 
 ## 23. Frequently Asked Questions
 
+**Q: What's the difference between Community and Pro editions?**  
+A: There is only ONE 45Flow app. It works as Community Edition (free) by default, and automatically upgrades to Pro when connected to a licensed server. You don't download separate apps — Pro features simply unlock when the server has a valid license. Community includes all core file sharing and basic watermarking. Pro adds custom branding, advanced watermark customization, image watermarking, comments, annotations, and priority support.
+
+**Q: How do I upgrade from Community to Pro?**  
+A: Activate a license on your server. Go to **Settings → Go Pro**, enter your license key, and click **"Activate License"**. Once activated, all users connecting to that server immediately gain Pro features. You can also start a free 30-day trial from the same section.
+
+**Q: Do I need a separate license for each user?**  
+A: No. Licenses are tied to the server, not individual users. Once a server is licensed, all users connecting to it automatically get Pro features. You only need one license per server.
+
+**Q: What happens when my trial expires?**  
+A: When a trial license expires, the server reverts to Community mode. Pro features (custom branding, advanced watermarks, comments, annotations) are disabled. All existing links remain accessible, but you can't use Pro features until a full license is activated.
+
+**Q: What are Projects and do I need to use them?**  
+A: Projects are optional organizational containers that group links by client, campaign, or workflow. Each project has its own root directory and tracks link counts. Projects are helpful for managing many links, but you can still create links without assigning them to a project — they'll appear in the "All Links" view on the Dashboard.
+
+**Q: How do I create a link that supports both sharing and uploading?**  
+A: When creating a link, enable both **"Enable file sharing"** and **"Enable uploads"** toggles. This creates a Combined link where recipients can view/download your shared files AND upload their own files to the same location. Perfect for collaborative review workflows.
+
+**Q: Can I watermark images, or just videos?**  
+A: **Pro users** can watermark both videos and images. Community users can only watermark videos (with basic bottom-right positioning). Pro unlocks full watermark customization (position, scale, opacity, rotation) for both video and image files.
+
 **Q: My server doesn't appear in the auto-discovery dropdown. What do I do?**  
 A: The `houston-broadcaster` service must be running on the server. Try connecting manually using the server's IP address via the **"Connect manually via IP"** field.
 
@@ -1461,7 +1582,7 @@ A: **Client logs** are stored in your local application data directory (shown in
 A: Server logs require a system (PAM) account login. If you logged in using an environment token or open access, you won't have admin privileges. Log in with your server's system username and password to access server logs and health stats.
 
 **Q: How do I connect to multiple servers?**  
-A: 45Flow Pro supports multiple simultaneous server connections. After connecting to your first server, use the Connection Manager (from the server switcher dropdown in the header) to add additional servers. Each server maintains its own authentication and license state.
+A: 45Flow supports multiple simultaneous server connections. After connecting to your first server, use the Connection Manager (from the server switcher dropdown in the header) to add additional servers. Each server maintains its own authentication and license state.
 
 **Q: Can I view annotations created by other users?**  
 A: Yes. All annotations are visible to anyone with access to the link. They appear as overlays on the video frame at the timecoded position where they were created.

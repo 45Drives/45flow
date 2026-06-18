@@ -11,7 +11,7 @@ show_help() {
   cat <<'HELP'
 Usage: bash scripts/release/release.sh [OPTIONS]
 
-Studio Share release script for building and publishing releases.
+45Flow release script for building and publishing releases.
 
 OPTIONS:
   --bump <type>           Bump package.json version before build.
@@ -47,7 +47,7 @@ EXAMPLES:
 
 NOTES:
   - Version is always read from package.json
-  - Releases are published to 45Drives/studio-share
+  - Releases are published to 45Drives/45flow-premium-dev
 HELP
 }
 
@@ -212,7 +212,7 @@ main() {
   cd "$ROOT_DIR"
   
   echo "========================================="
-  echo "  Studio Share Release"
+  echo "  45Flow Release"
   echo "========================================="
   echo "Root dir: $ROOT_DIR"
   echo ""
@@ -241,7 +241,7 @@ main() {
   fi
   
   # Set GitHub repo
-  export GH_REPO="45Drives/studio-share"
+  export GH_REPO="45Drives/45flow-premium-dev"
   
   echo "Config: $CONFIG_FILE"
   echo "Target GitHub repo: $GH_REPO"

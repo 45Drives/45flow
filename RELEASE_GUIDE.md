@@ -2,27 +2,15 @@
 
 ## Overview
 
-This guide covers the unified release process for both **Studio Share (free)** and **45Flow Premium** versions.
+This guide covers the release process for **45Flow** in this repository.
 
 ### Repository Structure
-- **studio-share**: Open-source free version → releases to `45Drives/studio-share`
-- **45flow-premium-dev**: Closed-source premium version → releases to `45Drives/45Flow`
-- **45Flow**: Public repo for premium executables only (no source code)
+- **45flow-premium-dev**: Source + releases
+- **GitHub target**: `45Drives/45flow-premium-dev`
 
-### Upstream Sync Protection
+### Downstream Sync Status
 
-The **45flow-premium-dev** repo has a pre-push hook that prevents pushes if there are unmerged changes from studio-share upstream. This ensures the premium version stays in sync with bug fixes from the free version.
-
-```bash
-# Pre-push hook automatically checks for upstream changes
-# If behind, you'll see:
-Push blocked.
-This branch is behind studio-share/main by N commit(s).
-
-Sync first with one of these:
-  git merge upstream/main
-  git rebase upstream/main
-```
+The old downstream sync hook/workflow is kept in the repo for reference only and is disabled by default.
 
 ---
 
@@ -30,7 +18,7 @@ Sync first with one of these:
 
 ### Common Release Commands
 
-All commands work in both repos and automatically target the correct GitHub repository:
+All commands below target this repository.
 
 ```bash
 # Bump patch version (0.7.0 → 0.7.1) and build all platforms
@@ -106,19 +94,12 @@ bash scripts/release/release.sh --bump minor --dry-run
 
 ## Configuration Files
 
-Each repo has repo-specific configuration files:
-
-### studio-share
-- **Config**: `.env.orchestrator.free`
-- **GitHub Target**: `45Drives/studio-share`
-- **Title Format**: `Studio Share vX.Y.Z`
-
 ### 45flow-premium-dev
 - **Config**: `.env.orchestrator.premium`
-- **GitHub Target**: `45Drives/45Flow`
-- **Title Format**: `45Flow Premium vX.Y.Z`
+- **GitHub Target**: `45Drives/45flow-premium-dev`
+- **Title Format**: `45Flow vX.Y.Z`
 
-The `GH_REPO` is automatically set based on which repository you're in.
+`GH_REPO` defaults to `45Drives/45flow-premium-dev`.
 
 ---
 
@@ -233,23 +214,12 @@ GH_NOTES="Major bug fixes" bash scripts/release/release.sh --bump patch
 
 ## Troubleshooting
 
-### Pre-push Hook Blocks Push (Premium Repo Only)
+### Downstream Sync Hook
 
-**Problem**: Can't push because behind studio-share upstream
+The downstream sync hook is disabled by default. If you need it for reference testing only:
 
-**Solution**:
 ```bash
-# Fetch upstream changes
-git fetch upstream main
-
-# Option 1: Merge
-git merge upstream/main
-
-# Option 2: Rebase
-git rebase upstream/main
-
-# Resolve conflicts if any, then:
-git push
+bash scripts/install-git-hooks.sh --enable-downstream-sync
 ```
 
 ### Config File Not Found
@@ -311,41 +281,28 @@ yarn release:windows:stage
 
 ### Benefits of New System
 
-1. ✅ **Automatic repo detection** - no manual `GH_REPO` setting
-2. ✅ **Version management built-in** - bump with one flag
-3. ✅ **Cleaner syntax** - fewer environment variables
-4. ✅ **Safer** - pre-push hook prevents unsynced premium builds
-5. ✅ **Documented** - `--help` always available
+1. ✅ **Version management built-in** - bump with one flag
+2. ✅ **Cleaner syntax** - fewer environment variables
+3. ✅ **Standalone target** - single release repo and workflow
+4. ✅ **Documented** - `--help` always available
 
 ---
 
 ## Summary
 
-### Free Version (studio-share)
-```bash
-cd ~/studio-share
-yarn release:patch              # Bump + build all platforms
-# Releases to: 45Drives/studio-share
-```
-
-### Premium Version (45flow-premium-dev)
+### 45Flow Version (45flow-premium-dev)
 ```bash
 cd ~/45flow-premium-dev
 
-# Ensure synced with upstream first!
-git fetch upstream main
-git merge upstream/main         # If needed
-
 yarn release:patch              # Bump + build all platforms
-# Releases to: 45Drives/45Flow
+# Releases to: 45Drives/45flow-premium-dev
 ```
 
 ### Key Points
-- ✅ Pre-push hook prevents unsynced premium releases
-- ✅ GitHub repo is automatically determined
+- ✅ Downstream sync hook/workflow is disabled by default
+- ✅ GitHub release target is this repository
 - ✅ Version bumping is integrated
 - ✅ Config files are repo-specific
-- ✅ Same commands work in both repos
 
 ---
 

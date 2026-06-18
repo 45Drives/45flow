@@ -1,9 +1,7 @@
-name: Sync upstream bugfixes
+name: Sync upstream bugfixes (disabled)
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 8 * * 1'
 
 permissions:
   contents: write
@@ -11,6 +9,7 @@ permissions:
 
 jobs:
   sync:
+    if: false
     runs-on: ubuntu-latest
 
     steps:

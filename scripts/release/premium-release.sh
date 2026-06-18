@@ -4,16 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Determine which repo we're in
-REPO_TYPE=""
-if [[ "$ROOT_DIR" == *"studio-share"* ]]; then
-  REPO_TYPE="free"
-elif [[ "$ROOT_DIR" == *"45flow-premium-dev"* ]]; then
-  REPO_TYPE="premium"
-else
-  echo "Error: Could not determine repo type from path: $ROOT_DIR" >&2
-  exit 1
-fi
+# This script is retained for reference compatibility.
+# Release behavior is now standalone for 45Flow.
+REPO_TYPE="flow"
 
 BUMP_TYPE=""
 CONFIG_FILE=""
@@ -21,18 +14,16 @@ ORCHESTRATOR_ARGS=()
 
 show_help() {
   cat <<'HELP'
-Usage: bash scripts/release/release.sh [OPTIONS]
+Usage: bash scripts/release/premium-release.sh [OPTIONS]
 
-Unified release script for building and publishing free/premium versions.
+Release script for building and publishing 45Flow.
 
 OPTIONS:
   --bump <type>           Bump package.json version before build.
                           Values: patch | minor | major
                           
   --config <file>         Use specific config file instead of default.
-                          Defaults:
-                            free: .env.orchestrator.free
-                            premium: .env.orchestrator.premium
+                          Default: .env.orchestrator.premium
   
   --os <platform>         Build for specific OS (can specify multiple times).
                           Values: linux | windows | mac | all
@@ -61,10 +52,7 @@ EXAMPLES:
 
 NOTES:
   - Version is always read from package.json
-  - GitHub repo is automatically set based on current directory:
-      studio-share → 45Drives/studio-share
-      45flow-premium-dev → 45Drives/45Flow
-  - For premium builds, pre-push hook checks for upstream changes
+  - Releases are published to 45Drives/45flow-premium-dev
 HELP
 }
 
@@ -246,11 +234,7 @@ main() {
   
   # Determine config file
   if [[ -z "$CONFIG_FILE" ]]; then
-    if [[ "$REPO_TYPE" == "free" ]]; then
-      CONFIG_FILE="${SCRIPT_DIR}/.env.orchestrator.free"
-    else
-      CONFIG_FILE="${SCRIPT_DIR}/.env.orchestrator.premium"
-    fi
+    CONFIG_FILE="${SCRIPT_DIR}/.env.orchestrator.premium"
   fi
   
   # Check if config exists
@@ -260,12 +244,8 @@ main() {
     CONFIG_FILE="${SCRIPT_DIR}/.env.orchestrator"
   fi
   
-  # Set GitHub repo based on repo type
-  if [[ "$REPO_TYPE" == "free" ]]; then
-    export GH_REPO="45Drives/studio-share"
-  else
-    export GH_REPO="45Drives/45Flow"
-  fi
+  # Standalone target repo
+  export GH_REPO="45Drives/45flow-premium-dev"
   
   echo "Config: $CONFIG_FILE"
   echo "Target GitHub repo: $GH_REPO"

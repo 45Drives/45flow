@@ -1,16 +1,16 @@
 {
   "appId": "com.45studio.flow",
-  "productName": "45Flow-Pro-Edition",
+  "productName": "45Flow",
   "directories": { "output": "dist" },
   "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
-  "publish": { "provider": "github", "owner": "45Drives", "repo": "45Flow" },
+  "publish": { "provider": "github", "owner": "45Drives", "repo": "45flow-premium-dev" },
   "afterSign": "scripts/afterSign-verify.js",
   "afterPack": "scripts/afterPack-fix-native.js",
   "nsis": {
     "oneClick": false,
     "perMachine": false,
     "allowToChangeInstallationDirectory": false,
-    "shortcutName": "45Flow - Pro Edition"
+    "shortcutName": "45Flow"
   },
 
   "linux": {

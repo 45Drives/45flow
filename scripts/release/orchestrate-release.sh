@@ -449,8 +449,8 @@ run_windows_flow() {
 
     if [[ "$WIN_PHASE" != "finalize" ]]; then
       # Clean stale unsigned files before a new stage run (preserve Signed directory)
-      # Only delete files matching this build edition (Pro Edition)
-      find "$WIN_SAMBA_UNSIGNED_LOCAL" -maxdepth 1 -type f -name '45Flow-Pro-Edition-*.exe' -delete 2>/dev/null || true
+      # Only delete files matching this build name.
+      find "$WIN_SAMBA_UNSIGNED_LOCAL" -maxdepth 1 -type f -name '45Flow-*.exe' -delete 2>/dev/null || true
 
       # SSH: git pull
       ssh_run "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" "$WIN_BUILD_GIT_PULL_CMD"
@@ -857,7 +857,7 @@ generate_update_metadata
 
 if truthy "${GH_UPLOAD_RELEASE:-0}" || truthy "${GH_PUBLISH_RELEASE:-0}" || truthy "${GH_CREATE_DRAFT:-0}"; then
   require_cmd gh
-  GH_REPO="${GH_REPO:-45Drives/45Flow}"
+  GH_REPO="${GH_REPO:-45Drives/45flow-premium-dev}"
   GH_REPO="${GH_REPO//$'\r'/}"
   GH_TITLE_RAW="${GH_TITLE:-$RELEASE_TAG}"
   GH_TITLE="${GH_TITLE_RAW//__VERSION__/${VERSION}}"
