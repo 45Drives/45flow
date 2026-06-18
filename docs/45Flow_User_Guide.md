@@ -246,8 +246,13 @@ After connecting to your server, 45Flow automatically checks the server's licens
 #### Community vs Pro Mode
 
 - **Unlicensed server** — The app runs in Community mode. Pro features (custom branding, advanced watermarks, comments, annotations) are hidden or disabled.
+
+![Dashboard header in Community mode](images/dashboard-community-mode-header.png)
+
 - **Licensed server** — The app automatically upgrades to Pro mode. All Pro features become available.
 - **Trial license** — If your server has an active trial license, the app shows "Pro Trial — X days left" in the header. When the trial expires, the app reverts to Community mode.
+
+![Dashboard header showing Pro trial badge](images/dashboard-pro-trial-header.png)
 
 #### Activating a License
 
@@ -312,6 +317,8 @@ Click **"Log Out"** at the bottom of the Dashboard to disconnect from the server
 
 **Projects** let you organize your links into logical groups, making it easier to manage shares for different clients, departments, or workflows. Each project has its own root directory on your server and tracks all links associated with it.
 
+![Projects list view](images/projects-list.png)
+
 ### What Are Projects
 
 A project is a named container that:
@@ -332,6 +339,8 @@ To create a new project:
    - **Root Directory** — The absolute path on the server where this project's files live (e.g., `/tank/projects/acme`).
    - **Description** (optional) — Notes about the project's purpose.
 4. Click **"Create Project"**.
+
+![Create project modal](images/project-create-modal.png)
 
 The new project appears in the projects list and is immediately available when creating links.
 
@@ -438,7 +447,7 @@ A **Preview** section shows the currently active external and internal URLs so y
 
 The **Certificate** tab lets you upgrade from the default self-signed certificate to a trusted **Let's Encrypt** certificate for your custom domain. A trusted certificate eliminates browser security warnings when clients open share links.
 
-![Certificate management](images/settings-certificate-v2.png)
+![Certificate management](images/settings-v2.png)
 
 **Certificate Status:**
 
@@ -567,6 +576,8 @@ The Guides section provides:
 
 The **Go Pro** section appears in Settings when your server is unlicensed or running on a trial license. Use this section to activate a full license or start a free trial.
 
+![Go Pro settings when unlicensed](images/settings-go-pro-unlicensed.png)
+
 **License Activation:**
 
 1. Enter your **License Key** in the input field.
@@ -589,6 +600,8 @@ When running on a trial license, this section shows:
 - Trial expiration date
 - Days remaining
 - Option to upgrade to a full license before the trial expires
+
+![Go Pro settings showing active trial](images/settings-go-pro-trial.png)
 
 When a trial expires, the app reverts to Community mode and Pro features are disabled until a full license is activated.
 
@@ -771,6 +784,8 @@ After choosing a location, you'll see the link configuration screen.
 
 ![File selection and link configuration](images/share-select-files-v2.png)
 
+![Unified link creation interface](images/link-create-unified.png)
+
 ### Link Types — Share, Upload, Combined
 
 45Flow links support three modes:
@@ -841,6 +856,8 @@ When sharing video files, expand the **"Advanced video options"** section for ad
 - Toggle **"Apply watermark"** to enable watermarking.
 - Upload a watermark image or choose from built-in presets.
 
+![Watermark settings showing video and image support](images/watermark-image-support.png)
+
 **Community vs Pro Watermarking:**
 
 | Feature | Community | Pro |
@@ -851,6 +868,8 @@ When sharing video files, expand the **"Advanced video options"** section for ad
 | Scale, opacity, rotation | ❌ Fixed | ✅ Customizable |
 | Watermark presets | ❌ No | ✅ Yes |
 | Image watermarking | ❌ No | ✅ Yes |
+
+![Community mode watermark controls (basic)](images/watermark-community-basic.png)
 
 **Watermark Position & Style (Pro):**
 
@@ -867,6 +886,8 @@ When sharing video files, expand the **"Advanced video options"** section for ad
 - Select a preset to instantly apply a predefined watermark configuration.
 - Upload your own watermark image by clicking **"Upload custom watermark"**.
 - Presets can be saved and reused across multiple links.
+
+![Pro mode watermark controls (advanced)](images/watermark-pro-advanced.png)
 
 > **Note:** In Community mode, watermarks are applied to videos only, fixed at bottom-right position with default scale/opacity. Upgrade to Pro for full customization and image watermarking.
 
@@ -1038,6 +1059,8 @@ Summary badges show the count of **Total**, **Active**, **Expired**, and **Disab
 | **Title** | Internal name of the link. Click the edit icon to rename it inline. Click the title to open Link Details. |
 | **Type** | Badge showing **Upload**, **Share**, or **Combined** (share + upload enabled). |
 | **Link** | The public URL. Click to open in browser, or use the **Copy** button. |
+
+![Link type badges showing Share, Upload, and Combined](images/link-type-badges.png)
 | **Expires** | Time remaining (e.g., *23 Hours*, *6d 22h*, *Never*). Shown in red when less than 24 hours remain. Click **Edit** to change the expiration. |
 | **Status** | Current state: **ACTIVE** (green), **EXPIRED** (amber), or **DISABLED** (gray). |
 | **Access** | Access mode: **Open** (green), **Password** (amber), or **Users only** (rose). Hover for details. |
@@ -1119,6 +1142,8 @@ If file versioning/snapshots are available, this section shows:
 From the Link Details view, click the **"Comments"** button to review and manage all comments on a link.
 
 ![Comments panel in Link Details](images/comments-review-modal-v2.png)
+
+![Comments panel with Pro features](images/comments-panel-pro.png)
 
 **Reviewing Comments:**
 
