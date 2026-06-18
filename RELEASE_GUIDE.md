@@ -214,14 +214,6 @@ GH_NOTES="Major bug fixes" bash scripts/release/release.sh --bump patch
 
 ## Troubleshooting
 
-### Downstream Sync Hook
-
-The downstream sync hook is disabled by default. If you need it for reference testing only:
-
-```bash
-bash scripts/install-git-hooks.sh --enable-downstream-sync
-```
-
 ### Config File Not Found
 
 **Problem**: `Warning: Config file not found`

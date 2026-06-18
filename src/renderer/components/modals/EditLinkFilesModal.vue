@@ -6,7 +6,7 @@
             class="absolute inset-x-0 top-12 mx-auto w-11/12 max-w-5xl bg-well border border-default rounded-lg shadow-lg">
             <div class="flex items-center justify-between px-4 py-3 border-b border-default">
                 <h3 class="text-lg font-semibold">
-                    Edit files — {{ linkType.toUpperCase() }}
+                    Edit Shared Files
                 </h3>
 
                 <div class="flex items-center gap-2">
@@ -16,12 +16,7 @@
 
             <div class="px-4 pt-4 pb-4 space-y-4 max-h-[75vh] overflow-y-auto">
                 <div class="text-sm opacity-80">
-                    <template v-if="selected.length === 1">
-                        Selecting 1 file will make this a single-file link (DOWNLOAD).
-                    </template>
-                    <template v-else>
-                        Selecting 2+ files will make this a collection link (COLLECTION).
-                    </template>
+                    Click on files to select or deselect them. Shift-click to select a range. Click on folders to enter. Use folder checkboxes to select all contents.
                 </div>
 
                 <FileExplorer :apiFetch="apiFetch" :modelValue="selected" :base="base" :startDir="startDir"
@@ -73,7 +68,7 @@ import FileExplorer from '../FileExplorer.vue'
 const props = defineProps<{
     modelValue: boolean
     apiFetch: (url: string, opts?: any) => Promise<any>
-    linkType: 'download' | 'collection'
+    linkType?: string
     initialPaths: string[]
     base?: string
     startDir?: string

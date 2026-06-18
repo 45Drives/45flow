@@ -901,6 +901,8 @@ function applyLinkPatch(p: Partial<LinkItem> & { id: LinkItem['id'] }) {
 	// patch list row
 	const idx = rows.value.findIndex(r => r.id === p.id)
 	if (idx >= 0) Object.assign(rows.value[idx], p)
+	// Refresh full list to reflect capability/type changes from server
+	refresh()
 }
 
 /* ------------------- filters ------------------- */

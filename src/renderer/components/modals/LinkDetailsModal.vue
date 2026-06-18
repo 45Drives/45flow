@@ -68,9 +68,15 @@
                 </div>
               </div>
             </div>
-            <div v-if="linkServerPath" class="pt-2 border-t border-default/70 text-xs">
-              <span class="opacity-70">Server Path</span>
-              <div class="font-mono font-semibold truncate" :title="linkServerPath">{{ linkServerPath }}</div>
+            <div v-if="reviewFilesPath || uploadDirectoryPath" class="pt-2 border-t border-default/70 text-xs space-y-2">
+              <div v-if="reviewFilesPath">
+                <span class="opacity-70">Review Files Path</span>
+                <div class="font-mono font-semibold truncate" :title="reviewFilesPath">{{ reviewFilesPath }}</div>
+              </div>
+              <div v-if="uploadDirectoryPath">
+                <span class="opacity-70">Upload Directory Path</span>
+                <div class="font-mono font-semibold truncate" :title="uploadDirectoryPath">{{ uploadDirectoryPath }}</div>
+              </div>
             </div>
           </div>
 
@@ -87,7 +93,18 @@
             </div>
             <div class="flex items-center gap-2">
               <span class="text-default font-bold">Type:</span>
-              <span :class="badgeClass(link?.type!)">{{ link?.type?.toUpperCase() }}</span>
+              <div class="flex items-center gap-1">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold leading-tight"
+                  :class="hasShareCapability ? 'bg-emerald-500/20 text-emerald-400' : 'bg-well/50 text-muted/40'"
+                >Review</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold leading-tight"
+                  :class="hasUploadCapability ? 'bg-blue-500/20 text-blue-400' : 'bg-well/50 text-muted/40'"
+                >Upload</span>
+              </div>
+            </div>
+            <div v-if="link?.project_name" class="flex items-center gap-2">
+              <span class="text-default font-bold">Project:</span>
+              <span class="opacity-90">{{ link.project_name }}</span>
             </div>
             <div class="flex items-center gap-2">
               <span class="text-default font-bold">Status:</span>
@@ -145,6 +162,24 @@
               </div>
 
               <div class="space-y-3">
+                <!-- Link Capabilities -->
+                <div v-if="editMode" class="pb-3 border-b border-default/70">
+                  <div class="text-default font-semibold mb-2">Link Capabilities</div>
+                  <div class="flex flex-wrap items-center gap-3">
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" v-model="draftShareEnabled" class="w-4 h-4" />
+                      <span class="text-sm">Enable Review/Share</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" v-model="draftUploadEnabled" class="w-4 h-4" />
+                      <span class="text-sm">Enable Upload</span>
+                    </label>
+                  </div>
+                  <div v-if="!draftShareEnabled && !draftUploadEnabled" class="text-xs text-red-500 mt-1">
+                    At least one capability must be enabled.
+                  </div>
+                </div>
+
                 <div class="flex flex-wrap items-center gap-3 min-w-0">
                   <label class="font-semibold sm:whitespace-nowrap">Restrict Access to Users</label>
 
@@ -387,7 +422,7 @@
                 File: <code>{{ currentWatermarkFile }}</code>
               </div>
 
-              <div v-if="editMode && isDownloadish && (draftGenerateReviewProxy || draftWatermarkEnabled)" class="pt-2 border-t border-default">
+              <div v-if="editMode && draftShareEnabled && (draftGenerateReviewProxy || draftWatermarkEnabled)" class="pt-2 border-t border-default">
                 <div class="flex items-center gap-3">
                   <button
                     class="btn btn-primary"
@@ -403,7 +438,7 @@
                 </div>
               </div>
 
-              <div v-if="editMode && isDownloadish" class="pt-2 border-t border-default space-y-2">
+              <div v-if="editMode && draftShareEnabled" class="pt-2 border-t border-default space-y-2">
                 <div class="flex items-center justify-between">
                   <div class="text-default font-semibold">
                     Files for this link
@@ -425,10 +460,10 @@
                     <code>{{ p }}</code>
                   </div>
                 </div>
-                <div v-else class="text-sm opacity-70">No files selected.</div>
+                <div v-else class="text-sm text-amber-500">No files selected. Click "Manage files…" to select files.</div>
               </div>
 
-              <div v-if="editMode && link?.type === 'upload'" class="pt-2 border-t border-default space-y-2">
+              <div v-if="editMode && draftUploadEnabled" class="pt-2 border-t border-default space-y-2">
                 <div class="text-default font-semibold">Upload destination</div>
                 <div class="text-xs opacity-70">
                   Choose where uploaded files will be stored for this link.
@@ -737,7 +772,7 @@
 
       <!-- Files editor modal -->
       <EditLinkFilesModal v-model="filesEditorOpen" :apiFetch="apiFetch"
-        :linkType="(link?.type === 'download' ? 'download' : 'collection')" :initialPaths="draftFilePaths"
+        :initialPaths="draftFilePaths"
         :base="linkProjectBase" :startDir="linkStartDir" @apply="onApplyFilePaths" />
 
       <!-- Comments modal -->
@@ -1032,24 +1067,37 @@ const hasUnsavedChanges = computed(() => {
   if ((draftTitle.value || '') !== (props.link.title || '')) return true
   if ((draftNotes.value || '') !== (((props.link as any).notes) || '')) return true
   if (draftAccessMode.value !== (props.link.access_mode || 'open')) return true
+  if (!!draftUploadEnabled.value !== !!props.link.upload_enabled) return true
+  if (!!draftShareEnabled.value !== !!props.link.share_enabled) return true
   const linkAccessMode = props.link.access_mode || 'open'
   const seedComments = (props.link?.type !== 'upload' && linkAccessMode !== 'restricted')
     ? !!(props.link.allow_comments ?? true)
     : false
   if (!!draftAllowComments.value !== seedComments) return true
   if (mediaSettingsDirty.value) return true
-  if (isDownloadish.value && filesDirty.value) return true
-  if (props.link.type === 'upload' && uploadDirDirty.value) return true
+  if (draftShareEnabled.value && filesDirty.value) return true
+  if (draftUploadEnabled.value && uploadDirDirty.value) return true
   const hadPassword = (props.link.auth_mode || '') === 'password' || !!props.link.passwordRequired
   if (draftUsePassword.value !== hadPassword) return true
   if (draftUsePassword.value && draftPassword.value.trim().length > 0) return true
   return false
 })
 
+const capabilitiesSatisfied = computed(() => {
+  if (!editMode.value) return true
+  // At least one capability must be enabled
+  if (!draftUploadEnabled.value && !draftShareEnabled.value) return false
+  // If share is enabled, files must be selected
+  if (draftShareEnabled.value && draftFilePaths.value.length === 0) return false
+  // If upload is enabled, destination directory must be set
+  if (draftUploadEnabled.value && !draftUploadDir.value.trim()) return false
+  return true
+})
+
 const saveDisabled = computed(() =>
   saving.value ||
   hasActiveTranscodes.value ||
-  (editMode.value && (!accessSatisfied.value || !passwordSatisfied.value || !hasUnsavedChanges.value))
+  (editMode.value && (!accessSatisfied.value || !passwordSatisfied.value || !capabilitiesSatisfied.value || !hasUnsavedChanges.value))
 )
 
 const draftTitle = ref('')
@@ -1058,6 +1106,8 @@ const draftAccessMode = ref<'open' | 'restricted'>('open')
 const draftAllowComments = ref(true)
 const draftUsePassword = ref(false)
 const draftPassword = ref('')
+const draftUploadEnabled = ref(false)
+const draftShareEnabled = ref(true)
 const draftGenerateReviewProxy = ref(false)
 const draftProxyQualities = ref<string[]>([])
 const originalProxyQualities = ref<string[]>([])
@@ -1085,9 +1135,8 @@ const originalUploadDir = ref('')
 
 const isDownloadish = computed(() => props.link?.type === 'download' || props.link?.type === 'collection')
 
-const linkServerPath = computed(() => {
+const reviewFilesPath = computed(() => {
   const target = (props.link as any)?.target
-  if (target?.dirRel) return target.dirRel
   const files = target?.files || draftFilePaths.value
   if (Array.isArray(files) && files.length === 1) {
     const f = files[0]
@@ -1103,6 +1152,8 @@ const linkServerPath = computed(() => {
   }
   return ''
 })
+
+const uploadDirectoryPath = computed(() => currentUploadDir.value || '')
 const supportsComments = computed(() => props.link?.type !== 'upload')
 const supportsPassword = computed(() => effectiveAccessMode.value === 'open')
 const currentAccessMode = computed<'open' | 'restricted'>(() => props.link?.access_mode || 'open')
@@ -1240,7 +1291,7 @@ const linkHasVideoFiles = computed(() => displayFiles.value.some(isVideoishFile)
 
 const currentUploadDir = computed(() => {
   const it = props.link
-  if (!it || it.type !== 'upload') return ''
+  if (!it) return ''
   return (it.target?.dirRel || (it as any).dirRel || '') as string
 })
 
@@ -1578,6 +1629,74 @@ watch(() => draftWatermarkFile.value, (v) => {
   fetchWatermarkPreviewForEdit(v)
 })
 
+// Auto-open file selector when share capability is enabled on a link that didn't have it
+watch(() => draftShareEnabled.value, async (enabled, wasEnabled) => {
+  if (!editMode.value || !props.link) return
+  const wasShareEnabled = !!props.link.share_enabled
+  // Only trigger if we're enabling share and it was previously disabled
+  if (enabled && !wasShareEnabled && wasEnabled === false) {
+    // If no files selected, try to auto-populate with project files
+    if (draftFilePaths.value.length === 0) {
+      const projectRootDir = props.link.project_root_dir
+      if (projectRootDir?.trim()) {
+        // Fetch all files from the project directory
+        try {
+          const data = await props.apiFetch(`/api/files?dir=${encodeURIComponent(projectRootDir)}`, { method: 'GET' })
+          const entries = Array.isArray(data?.entries) ? data.entries : []
+          const filePaths = entries
+            .filter((e: any) => !e?.isDir && e?.path)
+            .map((e: any) => {
+              const p = String(e.path || '').trim()
+              return p.startsWith('/') ? p : '/' + p
+            })
+            .filter(Boolean)
+          
+          if (filePaths.length > 0) {
+            draftFilePaths.value = filePaths
+            originalFilePaths.value = [] // Keep original as empty since we're adding new files
+            return // Don't open modal if we auto-populated
+          }
+        } catch (e) {
+          console.warn('Failed to auto-populate project files:', e)
+        }
+      }
+      
+      // If no project or failed to load, open the files editor
+      setTimeout(() => {
+        filesEditorOpen.value = true
+      }, 100)
+    }
+  }
+})
+
+// Auto-focus upload directory when upload capability is enabled on a link that didn't have it
+watch(() => draftUploadEnabled.value, (enabled, wasEnabled) => {
+  if (!editMode.value || !props.link) return
+  const wasUploadEnabled = !!props.link.upload_enabled
+  // Only trigger if we're enabling upload and it was previously disabled
+  if (enabled && !wasUploadEnabled && wasEnabled === false) {
+    // If no upload directory set, set a sensible default
+    if (!draftUploadDir.value.trim()) {
+      // Try to use the project root directory first
+      const projectRootDir = props.link.project_root_dir
+      if (projectRootDir?.trim()) {
+        draftUploadDir.value = projectRootDir
+        return
+      }
+      
+      // Fall back to using the first share file's directory
+      if (draftFilePaths.value.length > 0) {
+        const firstPath = draftFilePaths.value[0]
+        const dirMatch = firstPath.match(/^(.+)\/[^/]+$/)
+        if (dirMatch) {
+          draftUploadDir.value = dirMatch[1]
+        }
+      }
+    }
+  }
+})
+
+
 async function loadExistingWatermarkFilesForEdit() {
   try {
     const dirRel = resolveWatermarkDirRelForEdit()
@@ -1751,11 +1870,9 @@ function inferBaseFromPaths(paths: string[]) {
 }
 
 const linkProjectBase = computed(() => {
-  // Use whatever you actually have on LinkItem, if present.
-  // Examples you might have: link.projectBase, link.target.projectBase, etc.
-  const it: any = props.link as any
-  const pb = (it?.projectBase || it?.target?.projectBase || '').trim()
-  if (pb) return pb
+  // Use project_root_dir from the link if available
+  const projectRoot = (props.link as any)?.project_root_dir
+  if (projectRoot?.trim()) return projectRoot.trim()
 
   // Fallback: infer from existing draft paths or detail files
   return inferBaseFromPaths(draftFilePaths.value.length ? draftFilePaths.value : originalFilePaths.value)
@@ -1770,6 +1887,9 @@ function close() {
 function openAccessModal() {
   accessModalOpen.value = true
 }
+
+const hasShareCapability = computed(() => !!props.link?.share_enabled)
+const hasUploadCapability = computed(() => !!props.link?.upload_enabled)
 
 function badgeClass(t?: LinkType) {
   if (!t) return ''
@@ -3196,11 +3316,13 @@ function beginEdit() {
     draftAccessMode.value === 'open' &&
     ((props.link.auth_mode || '') === 'password' || !!props.link.passwordRequired)
   draftPassword.value = ''
+  draftUploadEnabled.value = !!props.link.upload_enabled
+  draftShareEnabled.value = !!props.link.share_enabled
   if (draftAccessMode.value === 'restricted') draftAllowComments.value = false
   seedDraftMediaSettings()
 
-  // Seed upload destination
-  if (props.link.type === 'upload') {
+  // Seed upload destination based on upload capability, not link type
+  if (props.link.upload_enabled) {
     const cur = currentUploadDir.value || ''
     draftUploadDir.value = cur
     originalUploadDir.value = cur
@@ -3209,8 +3331,8 @@ function beginEdit() {
     originalUploadDir.value = ''
   }
 
-  // Seed file paths for download/collection
-  if (isDownloadish.value) {
+  // Seed file paths based on share capability, not link type
+  if (props.link.share_enabled) {
     const fromDetails = files.value
       .map(f => f?.relPath)
       .filter((p: any) => typeof p === 'string' && p.trim().length > 0) as string[]
@@ -3228,6 +3350,7 @@ function beginEdit() {
     originalFilePaths.value = []
   }
 
+
 }
 
 function cancelEdit() {
@@ -3243,6 +3366,8 @@ function cancelEdit() {
     draftAccessMode.value === 'open' &&
     ((props.link?.auth_mode || '') === 'password' || !!props.link?.passwordRequired)
   draftPassword.value = ''
+  draftUploadEnabled.value = !!props.link?.upload_enabled
+  draftShareEnabled.value = !!props.link?.share_enabled
   if (draftAccessMode.value === 'restricted') draftAllowComments.value = false
   seedDraftMediaSettings()
 
@@ -3252,7 +3377,8 @@ function cancelEdit() {
 
 function openFilesEditor() {
   if (!props.link) return
-  if (!(props.link.type === 'download' || props.link.type === 'collection')) return
+  // Allow opening files editor if share is enabled (or will be enabled in edit mode)
+  if (!props.link.share_enabled && !draftShareEnabled.value) return
   filesEditorOpen.value = true
 }
 
@@ -3378,6 +3504,49 @@ async function saveAll() {
     const titleChanged = (draftTitle.value || '') !== (props.link.title || '')
     const notesChanged = (draftNotes.value || '') !== (((props.link as any).notes) || '')
 
+    const uploadEnabledChanged = !!draftUploadEnabled.value !== !!props.link.upload_enabled
+    const shareEnabledChanged = !!draftShareEnabled.value !== !!props.link.share_enabled
+    const capabilitiesChanged = uploadEnabledChanged || shareEnabledChanged
+
+    // Validate that at least one capability is enabled
+    if (!draftUploadEnabled.value && !draftShareEnabled.value) {
+      pushNotification(
+        new Notification(
+          'Invalid Link Capabilities',
+          'At least one capability (Upload or Review/Share) must be enabled.',
+          'warning',
+          8000
+        )
+      )
+      return
+    }
+
+    // Validate share capability has files
+    if (draftShareEnabled.value && draftFilePaths.value.length === 0) {
+      pushNotification(
+        new Notification(
+          'Files Required',
+          'Select at least one file to share. Click "Manage files…" to select files.',
+          'warning',
+          8000
+        )
+      )
+      return
+    }
+
+    // Validate upload capability has destination directory
+    if (draftUploadEnabled.value && !draftUploadDir.value.trim()) {
+      pushNotification(
+        new Notification(
+          'Upload Destination Required',
+          'Specify an upload destination directory.',
+          'warning',
+          8000
+        )
+      )
+      return
+    }
+
     const currentAccessModeValue = props.link.access_mode || 'open'
     const nextAccessMode = draftAccessMode.value
     const accessModeChanged = nextAccessMode !== currentAccessModeValue
@@ -3403,8 +3572,8 @@ async function saveAll() {
     const passwordChanged = passwordWillSet || passwordWillClear
 
     const shouldUpdateDetailsCore =
-      titleChanged || notesChanged || accessModeChanged || allowCommentsChanged || authModeChanged || passwordChanged
-    const shouldUpdateFiles = isDownloadish.value && filesDirty.value
+      titleChanged || notesChanged || accessModeChanged || allowCommentsChanged || authModeChanged || passwordChanged || capabilitiesChanged
+    const shouldUpdateFiles = draftShareEnabled.value && filesDirty.value
     const shouldPatchMediaSettings = mediaSettingsDirty.value
     const watermarkChanged =
       (!!draftWatermarkEnabled.value !== currentWatermark.value) ||
@@ -3413,14 +3582,14 @@ async function saveAll() {
     const deferMediaPatchUntilAfterFiles = shouldUpdateFiles && shouldPatchMediaSettings
     const shouldUpdateDetails =
       shouldUpdateDetailsCore || (shouldPatchMediaSettings && !deferMediaPatchUntilAfterFiles)
-    const shouldUpdateUploadDest = props.link.type === 'upload' && uploadDirDirty.value
+    const shouldUpdateUploadDest = draftUploadEnabled.value && uploadDirDirty.value
 
     const addedPaths = computeAddedPaths(draftFilePaths.value, originalFilePaths.value)
     const wantsHls = addedPaths.length > 0
     const wantsProxy = wantsHls && draftGenerateReviewProxy.value
     const nextProxyQualities = normalizeQualities(draftProxyQualities.value)
 
-    if (draftWatermarkEnabled.value && draftWatermarkLocalFile.value) {
+    if (draftWatermarkEnabled.value && draftWatermarkLocalFile.value && watermarkChanged) {
       const up = await uploadDraftLocalWatermark()
       
       // Dismiss the watermark upload task from Transfer Dock since it's not a user-facing upload
@@ -3447,7 +3616,7 @@ async function saveAll() {
       draftWatermarkFile.value = up.relPath || draftWatermarkFile.value
     }
 
-    if (draftWatermarkEnabled.value && !draftGenerateReviewProxy.value && linkHasVideoFiles.value) {
+    if (draftWatermarkEnabled.value && !draftGenerateReviewProxy.value && linkHasVideoFiles.value && watermarkChanged) {
       pushNotification(
         new Notification(
           'Invalid Media Settings',
@@ -3469,7 +3638,7 @@ async function saveAll() {
       )
       return
     }
-    if (draftWatermarkEnabled.value && !draftWatermarkFile.value.trim()) {
+    if (draftWatermarkEnabled.value && watermarkChanged && !draftWatermarkFile.value.trim()) {
       pushNotification(
         new Notification(
           'Watermark File Required',
@@ -3489,6 +3658,11 @@ async function saveAll() {
         notes: draftNotes.value || null,
       }
 
+      if (capabilitiesChanged) {
+        body.uploadEnabled = !!draftUploadEnabled.value
+        body.shareEnabled = !!draftShareEnabled.value
+      }
+
       if (accessModeChanged || allowCommentsChanged || authModeChanged) {
         body.access_mode = nextAccessMode
         if (accessModeChanged || authModeChanged) body.auth_mode = nextAuthMode
@@ -3503,11 +3677,15 @@ async function saveAll() {
         body.generateReviewProxy = !!draftGenerateReviewProxy.value
         body.adaptiveHls = !!draftGenerateReviewProxy.value || !!draftWatermarkEnabled.value
         body.proxyQualities = draftGenerateReviewProxy.value ? nextProxyQualities : []
-        body.watermark = !!draftWatermarkEnabled.value
-        body.watermarkFile = draftWatermarkEnabled.value ? draftWatermarkFile.value.trim() : null
-        body.watermarkProxyQualities = draftWatermarkEnabled.value ? nextProxyQualities : []
-        body.watermarkSettings = draftWatermarkEnabled.value ? JSON.parse(JSON.stringify(draftWatermarkSettings.value)) : null
-        if (!watermarkChanged) body.saveSettingsOnly = true
+        // Only send watermark fields if watermark actually changed
+        if (watermarkChanged) {
+          body.watermark = !!draftWatermarkEnabled.value
+          body.watermarkFile = draftWatermarkEnabled.value ? draftWatermarkFile.value.trim() : null
+          body.watermarkProxyQualities = draftWatermarkEnabled.value ? nextProxyQualities : []
+          body.watermarkSettings = draftWatermarkEnabled.value ? JSON.parse(JSON.stringify(draftWatermarkSettings.value)) : null
+        } else {
+          body.saveSettingsOnly = true
+        }
       }
 
       try {
@@ -3534,6 +3712,7 @@ async function saveAll() {
       } catch (e: any) {
         if (e?.conflictCanceled) return
         const msg = apiErrMsg(e)
+        console.error('[link-details:save] PATCH failed:', e)
         pushNotification(
           new Notification(
             'Failed to Save Link Details',
@@ -3556,27 +3735,17 @@ async function saveAll() {
       }
 
       try {
-        // console.log('[link-details:save] PUT /api/links/:id/files request', {
-        //   id,
-        //   body,
-        //   addedPaths,
-        //   wantsHls,
-        //   wantsProxy,
-        // })
+        console.log('[link-details:save] PUT /api/links/:id/files request', { id, fileCount: draftFilePaths.value.length })
         filesResp = await apiFetchWithOutputConflictRetry(`/api/links/${id}/files`, {
           method: 'PUT',
           body: JSON.stringify(body),
         }, 'PUT /api/links/:id/files')
-        // console.log('[link-details:save] PUT /api/links/:id/files response', {
-        //   id,
-        //   hasTranscodes: Array.isArray(filesResp?.transcodes) || !!filesResp?.transcodes,
-        //   keys: Object.keys(filesResp || {}),
-        //   response: filesResp,
-        // })
+        console.log('[link-details:save] PUT /api/links/:id/files success')
         did.files = true
       } catch (e: any) {
         if (e?.conflictCanceled) return
         const msg = apiErrMsg(e)
+        console.error('[link-details:save] PUT files failed:', e)
         pushNotification(
           new Notification(
             'Failed to Update Link Files',
@@ -3641,13 +3810,16 @@ async function saveAll() {
     let uploadResp: any | null = null
     if (shouldUpdateUploadDest) {
       try {
+        console.log('[link-details:save] PUT /api/links/:id/upload-destination request', { id, path: draftUploadDir.value })
         uploadResp = await props.apiFetch(`/api/links/${id}/upload-destination`, {
           method: 'PUT',
           body: JSON.stringify({ path: draftUploadDir.value }),
         })
+        console.log('[link-details:save] PUT /api/links/:id/upload-destination success')
         did.uploadDest = true
       } catch (e: any) {
         const msg = apiErrMsg(e)
+        console.error('[link-details:save] PUT upload-destination failed:', e)
         pushNotification(
           new Notification(
             'Failed to Update Upload Destination',
@@ -3712,6 +3884,7 @@ async function saveAll() {
 
     // Optional success notification (only if something changed)
     if (did.details || did.files || did.uploadDest) {
+      console.log('[link-details:save] Save complete!', { did, capabilitiesChanged, uploadEnabledChanged, shareEnabledChanged })
       close();
       pushNotification(
         new Notification(
@@ -3721,6 +3894,8 @@ async function saveAll() {
           6000
         )
       )
+    } else {
+      console.warn('[link-details:save] No changes were saved', { did, shouldUpdateDetails, shouldUpdateFiles, shouldUpdateUploadDest })
     }
 
     editMode.value = false

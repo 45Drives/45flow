@@ -412,13 +412,65 @@
 
                         <!-- ═══ Go Pro / Upgrade ══════════════════════════════ -->
                         <template v-if="activeSection === 'upgrade'">
-                            <div v-if="isPremiumActive" class="rounded-lg border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 p-4 mb-4">
+                            <!-- Full license active (non-trial) -->
+                            <div v-if="isPremiumActive && !isTrial" class="rounded-lg border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 p-4 mb-4">
                                 <div class="text-sm font-semibold text-green-800 dark:text-green-400 mb-1">Pro Edition Active</div>
                                 <p class="text-sm text-green-700 dark:text-green-400 leading-relaxed">
                                     This server has an active Pro license. All premium features are enabled.
                                 </p>
                             </div>
 
+                            <!-- Trial active -->
+                            <div v-else-if="isPremiumActive && isTrial">
+                                <div class="rounded-lg border border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/20 p-4 mb-4">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <div class="text-sm font-semibold text-amber-800 dark:text-amber-400">Pro Trial Active</div>
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400">Trial</span>
+                                    </div>
+                                    <div class="text-sm text-amber-700 dark:text-amber-400 space-y-1">
+                                        <p v-if="licenseInfo?.expiresAt">
+                                            Trial expires: <span class="font-semibold">{{ new Date(licenseInfo.expiresAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) }}</span>
+                                        </p>
+                                        <p v-if="trialDaysRemaining != null">
+                                            <span class="font-semibold">{{ trialDaysRemaining }}</span> {{ trialDaysRemaining === 1 ? 'day' : 'days' }} remaining
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="rounded-lg border border-default bg-default/40 p-4 mb-4">
+                                    <div class="text-sm font-semibold text-default mb-1">Upgrade to Full License</div>
+                                    <p class="text-sm text-accent leading-relaxed mb-3">
+                                        Keep all Pro features after your trial ends.
+                                        <a href="https://45drivesstudio.com/contact" target="_blank" rel="noopener noreferrer" 
+                                           class="text-blue-500 hover:text-blue-600 underline">Contact 45Studio</a> to purchase a license.
+                                    </p>
+                                    <div class="py-3">
+                                        <label class="block text-sm font-medium text-default mb-1">License Key</label>
+                                        <div class="flex gap-2">
+                                            <input
+                                                v-model="upgradeKey"
+                                                type="text"
+                                                class="input-textlike border border-default px-3 py-2 rounded text-sm flex-1"
+                                                placeholder="STUDIO-XXXX-XXXX-XXXX-XXXX"
+                                                :disabled="upgradeBusy"
+                                                @keydown.enter.prevent="handleUpgradeActivate"
+                                            />
+                                            <button
+                                                class="btn btn-primary text-sm px-4"
+                                                type="button"
+                                                :disabled="upgradeBusy || !upgradeKey.trim()"
+                                                @click="handleUpgradeActivate"
+                                            >
+                                                {{ upgradeBusy ? 'Activating…' : 'Activate' }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div v-if="upgradeError" class="text-danger text-sm mt-3">{{ upgradeError }}</div>
+                            </div>
+
+                            <!-- Unlicensed -->
                             <div v-else>
                                 <div class="rounded-lg border border-default bg-default/40 p-4 mb-4">
                                     <div class="text-sm font-semibold text-default mb-1">45Flow Pro Edition</div>
@@ -1233,7 +1285,7 @@ const { requestTour } = useTourManager();
 const { setCustomThemeColors, setCustomThemeEnabled } = useThemeFromAlias();
 const { toursDisabled } = useTourPreferences();
 const { connections } = useConnections();
-const { isPremiumActive } = useLicenseStatus();
+const { isPremiumActive, isTrial, trialDaysRemaining, licenseInfo } = useLicenseStatus();
 
 const hardwareCapabilities = ref<any>(null);
 
@@ -1304,8 +1356,8 @@ const navGroups = computed(() => {
                 { key: 'maintenance' as Section, label: 'Maintenance' },
             ],
         },
-        // Only show Go Pro when unlicensed
-        ...(!isPremiumActive.value ? [{
+        // Show Go Pro when unlicensed or on trial
+        ...(!isPremiumActive.value || isTrial.value ? [{
             label: 'Upgrade',
             items: [
                 { key: 'upgrade' as Section, label: 'Go Pro' },
@@ -1359,7 +1411,7 @@ function isValidEmail(email: string): boolean {
     return emailRegex.test(email.trim())
 }
 
-const TRIAL_SERVER_URL = 'https://licensing.45drives.com'
+const TRIAL_SERVER_URL = 'https://studio-license.45d.io'
 
 async function handleTrialRequest() {
     const email = trialEmail.value.trim().toLowerCase()

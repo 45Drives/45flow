@@ -70,6 +70,11 @@ export type LinkItem = {
   target?: { dirRel?: string; allowUpload?: boolean; files?: Array<{ id?: string; name?: string; size?: number; mime?: string }> }
   shareMode?: string | null
   thumbnailUrl?: string | null
+  upload_enabled?: boolean
+  share_enabled?: boolean
+  project_id?: number | null
+  project_name?: string | null
+  project_root_dir?: string | null
 }
 export type Role = {
   id: number
