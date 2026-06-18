@@ -431,6 +431,35 @@
                                 </div>
 
                                 <div class="divide-y divide-default">
+                                    <!-- Trial Request Section -->
+                                    <div class="py-3">
+                                        <label class="block text-sm font-medium text-default mb-1">Start Free 30-Day Trial</label>
+                                        <p class="text-xs text-accent mb-2">
+                                            Try all Pro features free for 30 days. Limited to 1 activation per trial.
+                                        </p>
+                                        <div class="flex gap-2">
+                                            <input
+                                                v-model="trialEmail"
+                                                type="email"
+                                                class="input-textlike border border-default px-3 py-2 rounded text-sm flex-1"
+                                                placeholder="your@email.com"
+                                                :disabled="trialBusy"
+                                                @keydown.enter.prevent="handleTrialRequest"
+                                            />
+                                            <button
+                                                class="btn btn-primary text-sm px-4"
+                                                type="button"
+                                                :disabled="trialBusy || !trialEmail.trim() || !isValidEmail(trialEmail)"
+                                                @click="handleTrialRequest"
+                                            >
+                                                {{ trialBusy ? 'Requesting…' : 'Request Trial' }}
+                                            </button>
+                                        </div>
+                                        <div v-if="trialError" class="text-danger text-xs mt-2">{{ trialError }}</div>
+                                        <div v-if="trialSuccess" class="text-green-600 dark:text-green-400 text-xs mt-2">{{ trialSuccess }}</div>
+                                    </div>
+
+                                    <!-- License Key Activation Section -->
                                     <div class="py-3">
                                         <label class="block text-sm font-medium text-default mb-1">License Key</label>
                                         <div class="flex gap-2">
@@ -1320,6 +1349,67 @@ const upgradeKey = ref('')
 const upgradeBusy = ref(false)
 const upgradeError = ref('')
 
+const trialEmail = ref('')
+const trialBusy = ref(false)
+const trialError = ref('')
+const trialSuccess = ref('')
+
+function isValidEmail(email: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email.trim())
+}
+
+const TRIAL_SERVER_URL = 'https://licensing.45drives.com'
+
+async function handleTrialRequest() {
+    const email = trialEmail.value.trim().toLowerCase()
+    if (!email || !isValidEmail(email)) return
+
+    trialBusy.value = true
+    trialError.value = ''
+    trialSuccess.value = ''
+
+    try {
+        // Call the VPS license server trial endpoint
+        const response = await fetch(`${TRIAL_SERVER_URL}/api/licenses/trial`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email }),
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || !result?.ok) {
+            if (result?.error === 'trial_rate_limited') {
+                trialError.value = 'Only one trial per email per day. Please try again later.'
+            } else if (result?.error === 'trial_already_exists') {
+                trialError.value = 'A trial license already exists for this email. Check your email for the license key.'
+            } else if (result?.error === 'valid_email_required') {
+                trialError.value = 'Please enter a valid email address.'
+            } else {
+                trialError.value = result?.message || result?.error || 'Trial request failed.'
+            }
+            return
+        }
+
+        // Success - auto-populate the license key field
+        if (result?.license?.key) {
+            upgradeKey.value = result.license.key
+            trialSuccess.value = `Trial key generated! It has been filled in below. Click Activate to enable your 30-day trial.`
+            trialEmail.value = ''
+        } else {
+            trialSuccess.value = 'Trial key generated! Check your email for the license key.'
+            trialEmail.value = ''
+        }
+    } catch (err: any) {
+        trialError.value = err?.message || 'Network error. Please check your internet connection.'
+    } finally {
+        trialBusy.value = false
+    }
+}
+
 async function handleUpgradeActivate() {
     const key = upgradeKey.value.trim()
     if (!key) return
@@ -1615,6 +1705,11 @@ function formatBytes(bytes: number | undefined) {
 }
 
 watch(activeSection, (section) => {
+    // Clear trial messages when switching sections
+    trialError.value = ''
+    trialSuccess.value = ''
+    upgradeError.value = ''
+    
     if (section === 'health' && serverHealthData.value.length === 0 && !healthLoading.value) {
         fetchHealth();
     }
