@@ -28,10 +28,10 @@
 						<template v-else>
 
 						<!-- ══════ Section: Project & Capabilities ══════ -->
-						<section class="border-t border-default pt-3">
+						<section class="border-t border-default pt-3" data-tour="create-link-capabilities">
 							<div class="flex flex-wrap items-start gap-6">
 								<!-- Project selector -->
-								<div class="flex flex-col gap-2 min-w-[220px]">
+								<div v-if="projectModeEnabled" class="flex flex-col gap-2 min-w-[220px]" data-tour="create-link-project">
 									<h3 class="text-base font-semibold">Project</h3>
 									<div class="flex flex-wrap items-center gap-2">
 										<select
@@ -77,7 +77,7 @@
 						</section>
 
 						<!-- ══════ Section: Upload Destination ══════ -->
-						<section v-if="opts.uploadEnabled.value" class="border-t border-default pt-3">
+						<section v-if="opts.uploadEnabled.value" class="border-t border-default pt-3" data-tour="create-link-upload-dest">
 							<h3 class="text-base font-semibold mb-2">Upload Destination</h3>
 							<FolderPicker
 								:key="uploadPickerKey"
@@ -96,7 +96,7 @@
 						</section>
 
 						<!-- ══════ Section: Share Files ══════ -->
-						<section v-if="opts.shareEnabled.value" class="border-t border-default pt-3">
+						<section v-if="opts.shareEnabled.value" class="border-t border-default pt-3" data-tour="create-link-share-files">
 							<h3 class="text-base font-semibold mb-2">Files to Share</h3>
 
 							<!-- Browsing context info -->
@@ -141,7 +141,7 @@
 						</section>
 
 						<!-- ══════ Section: Link Options ══════ -->
-						<section class="border-t border-default pt-3">
+						<section class="border-t border-default pt-3" data-tour="create-link-options">
 							<h3 class="text-base font-semibold mb-2">Link Options</h3>
 							<CommonLinkControls>
 								<template #expiry>
@@ -230,7 +230,7 @@
 						</section>
 
 						<!-- ══════ Section: Media Options (video/image watermark, proxy) ══════ -->
-						<section v-if="opts.shareEnabled.value && hasMediaSelected" class="border-t border-default pt-3">
+						<section v-if="opts.shareEnabled.value && hasMediaSelected" class="border-t border-default pt-3" data-tour="create-link-media-options">
 							<h3 class="text-base font-semibold mb-2">{{ hasVideoSelected ? 'Video Options' : 'Image Options' }}</h3>
 							<VideoOptionsPanel
 								v-model:proxyQualities="proxyQualities"
@@ -260,12 +260,16 @@
 								<span v-if="watermarkUnchanged" class="text-muted">(no re-encode needed)</span>
 							</p>
 
-							<!-- Premium: Watermark Customizer -->
+							<!-- Watermark Customizer (premium) or basic preview (free) -->
 							<div v-if="watermarkEnabled && (watermarkFile || selectedExistingWatermark)" class="mt-3 border-t border-default pt-3">
-								<WatermarkCustomizer
+								<WatermarkCustomizer v-if="isPremiumActive"
 									v-model="watermarkSettings"
 									:watermarkPreviewUrl="effectiveWatermarkPreviewUrl"
 									:isPremium="isServerLicensed"
+								/>
+								<WatermarkPreview v-else
+									:previewUrl="effectiveWatermarkPreviewUrl"
+									label="Watermark (bottom-right)"
 								/>
 							</div>
 						</section>
@@ -383,6 +387,7 @@ import { pushNotification } from '../composables/useNotificationQueue'
 import { signalLinkCreated } from '../composables/useLinkRefresh'
 import { useConnections } from '../composables/useConnections'
 import { useActiveProject } from '../composables/useActiveProject'
+import { useProjectMode } from '../composables/useProjectMode'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import FolderPicker from '../components/FolderPicker.vue'
 import FileExplorer from '../components/FileExplorer.vue'
@@ -391,6 +396,10 @@ import LinkAccessMode from '../components/LinkAccessMode.vue'
 import CheckPortForwarding from '../components/CheckPortForwarding.vue'
 import VideoOptionsPanel from '../components/VideoOptionsPanel.vue'
 import WatermarkCustomizer from '../components/WatermarkCustomizer.vue'
+import WatermarkPreview from '../components/WatermarkPreview.vue'
+import { useLicenseStatus } from '../composables/useLicenseStatus'
+import { useTourManager, type TourStep } from '../composables/useTourManager'
+import { useOnboarding } from '../composables/useOnboarding'
 import ConfirmDeleteModal from '../components/modals/ConfirmDeleteModal.vue'
 import { DEFAULT_45FLOW_WATERMARKS, createDefaultWatermarkSettings, type WatermarkSettings } from '../types/watermark'
 
@@ -400,10 +409,12 @@ const { apiFetch, meta } = useApi()
 const { to } = useResilientNav()
 const { activeConnection } = useConnections()
 const { activeProject: globalActiveProject } = useActiveProject()
+const { projectModeEnabled } = useProjectMode()
 const transfer = useTransferProgress()
 const opts = useLinkOptions()
 
 const isServerLicensed = computed(() => activeConnection.value?.licensed !== false)
+const { isPremiumActive } = useLicenseStatus()
 
 const showAccessModal = ref(false)
 
@@ -932,7 +943,7 @@ async function generateLink() {
 		resultUrl.value = data.viewUrl || data.url || ''
 
 		// ── Start transcode tracking in TransferDock ──
-		if (hasVideoSelected.value) {
+		if (hasMediaSelected.value) {
 			const token = extractLinkToken(data)
 			const fileRecords: any[] = Array.isArray(data?.files) ? data.files : []
 			const transcodeRecords: any[] = Array.isArray(data?.transcodes) ? data.transcodes : []
@@ -1014,6 +1025,29 @@ async function generateLink() {
 						}
 					})
 				}
+
+				// Track watermark_image jobs for image files
+				const wmImgActive = info?.activeKinds?.includes('watermark_image') || info?.queuedKinds?.includes('watermark_image')
+				if (wmImgActive && canUsePlayback && !transfer.hasActiveTranscode({ assetVersionIds: [assetVersionId], file: filePath, jobKind: 'watermark_image' })) {
+					transfer.startPlaybackTranscodeTask({
+						title: `Watermarking: ${displayName}`,
+						detail: 'Image watermark',
+						intervalMs: 1500,
+						jobKind: 'watermark_image',
+						context,
+						assetVersionId,
+						fetchSnapshot: async () => {
+							const payload = await apiFetch(playbackPath, { suppressAuthRedirect: true })
+							const j = payload?.transcodes?.watermark_image || null
+							return {
+								status: j?.status ?? 'queued',
+								progress: j?.progress ?? 0,
+								etaSeconds: j?.eta_seconds ?? null,
+								speedX: null,
+							}
+						}
+					})
+				}
 			}
 		}
 
@@ -1064,6 +1098,47 @@ function goBack() {
 	to('dashboard')
 }
 
+// ── Guided Tour ──
+const { requestTour } = useTourManager()
+const { onboarding, markDone } = useOnboarding()
+
+const createLinkTourSteps = computed<TourStep[]>(() => [
+	{
+		target: '[data-tour="create-link-capabilities"]',
+		message: 'Welcome to Create Link!\n\nThis screen lets you create a combined link with Upload, Share/Review, or both capabilities in a single URL.\n\nUse the checkboxes to toggle Upload (clients send files) and Share/Review (clients view files). Enable both for a combined link.',
+	},
+	{
+		target: '[data-tour="create-link-project"]',
+		message: 'Select a project to scope the link.\n\nThis sets the root directory for browsing and uploading. Choose "No project" to use the server\'s default root instead.\n\nYou can also create a new project inline.',
+		beforeShow: () => { /* only shows if projectMode is enabled */ },
+	},
+	{
+		target: '[data-tour="create-link-upload-dest"]',
+		message: 'When Upload is enabled, pick the destination folder on the server.\n\nClients who access this link will upload files to this directory.',
+		beforeShow: () => { opts.uploadEnabled.value = true },
+	},
+	{
+		target: '[data-tour="create-link-share-files"]',
+		message: 'When Share/Review is enabled, browse and select files to include in the link.\n\nRecipients will be able to view, stream, and download these files.',
+		beforeShow: () => { opts.shareEnabled.value = true },
+	},
+	{
+		target: '[data-tour="create-link-options"]',
+		message: 'Configure link settings: expiry time, title, network access (Local or External), and access mode (open, password, or invited users/groups).\n\nThese apply to the entire link regardless of capabilities.',
+	},
+	{
+		target: '[data-tour="create-link-media-options"]',
+		message: isPremiumActive.value
+			? 'When sharing video or image files, media options appear here.\n\nFor video: choose review copy qualities (720p, 1080p, full-res) and toggle watermarks.\nFor images: toggle watermark overlays to protect your content.\n\nWatermarks support PNG, JPG, and SVG with full customization — position, size, opacity, and tiling (Pro).'
+			: 'When sharing video or image files, media options appear here.\n\nFor video: choose review copy qualities (720p, 1080p, full-res) and toggle watermarks.\nFor images: toggle watermark overlays to protect your content.\n\nA basic watermark is applied at bottom-right. Upgrade to Pro for full customization of position, size, and opacity.',
+		beforeShow: () => { opts.shareEnabled.value = true },
+	},
+	{
+		target: '[data-tour="create-link-generate-btn"]',
+		message: 'Click here to generate your Flow link.\n\nThe resulting URL handles both upload and review in one link — share it with your collaborators.',
+	},
+])
+
 onMounted(async () => {
 	try {
 		await Promise.all([
@@ -1086,6 +1161,13 @@ onMounted(async () => {
 		}
 	} finally {
 		initializing.value = false
+	}
+
+	// Guided tour
+	if (!onboarding.value.createLinkTourDone) {
+		setTimeout(() => {
+			requestTour('create-link', createLinkTourSteps.value, () => markDone('createLinkTourDone'))
+		}, 500)
 	}
 })
 </script>

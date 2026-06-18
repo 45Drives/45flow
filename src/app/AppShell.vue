@@ -27,12 +27,12 @@
       <!-- Right (menu) -->
       <div class="justify-self-end text-right flex items-center gap-2">
         <div data-tour="connection-switcher">
-          <ConnectionSwitcher v-if="route.name !== 'server-selection'" />
-          <!-- <div v-if="activeProject" class="text-xs font-normal text-muted truncate max-w-[16rem]"
-            :title="`Project: ${activeProject.name} (${activeProject.root_dir})`">
-            {{ activeProject.name }}
-          </div> -->
+          <ConnectionSwitcher v-if="route.name !== 'server-selection' && isPremiumActive" />
+          <BasicServerBadge v-else-if="route.name !== 'server-selection'" />
         </div>
+        <span v-if="isTrial && trialDaysRemaining !== null" class="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-300 font-medium whitespace-nowrap">
+          Pro Trial — {{ trialDaysRemaining }} {{ trialDaysRemaining === 1 ? 'day' : 'days' }} left
+        </span>
         <GlobalMenu />
         <button
           class="theme-icon-btn"
@@ -71,12 +71,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { useHeaderTitle } from '../renderer/composables/useHeaderTitle'
 import { registerIpcActionListener } from "../renderer/composables/registerIpcActionListener";
 import { useConnections } from '../renderer/composables/useConnections'
+import { useLicenseStatus } from '../renderer/composables/useLicenseStatus'
 import { useActiveProject } from '../renderer/composables/useActiveProject'
 import { useWebSocketManager } from '../renderer/composables/useWebSocketManager'
 import TransferProgressDock from '../renderer/components/TransferProgressDock.vue'
 import UpdateBanner from '../renderer/components/UpdateBanner.vue'
 import GlobalMenu from '../renderer/components/GlobalMenu.vue'
 import ConnectionSwitcher from '../renderer/components/ConnectionSwitcher.vue'
+import BasicServerBadge from '../renderer/components/BasicServerBadge.vue'
 import GuidedTour from '../renderer/components/GuidedTour.vue'
 import QuickShareOverlay from '../renderer/components/QuickShareOverlay.vue'
 import { useTourManager } from '../renderer/composables/useTourManager'
@@ -89,10 +91,19 @@ const { activeTour, finishTour, cancelTour } = useTourManager()
 
 // Initialize multi-server connection management
 const { activeConnection } = useConnections()
+const { isPremiumActive, isTrial, trialDaysRemaining } = useLicenseStatus()
 const { activeProject } = useActiveProject()
 
 // Initialize WebSocket manager (auto-connects to active connection)
 useWebSocketManager()
+
+// Reactive window title based on license status
+watch(isPremiumActive, (licensed) => {
+  const version = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : ''
+  document.title = licensed
+    ? `45Flow v${version}`
+    : `45Flow (Unlicensed) v${version}`
+}, { immediate: true })
 
 // Legacy provide for backwards compatibility during migration
 // Components will gradually migrate to useConnections() directly

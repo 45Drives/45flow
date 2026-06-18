@@ -27,7 +27,7 @@
                             >
                                 <input type="checkbox" v-model="rememberProjectAsDefault" />
                                 <span class="min-w-0">
-                                    Use selected project as default share root (change later in Settings -> Project Root (Share / Upload)).
+                                    Use selected project as default share root (change later in Settings -> Preferences -> Default share/upload root).
                                 </span>
                             </label>
 
@@ -274,11 +274,15 @@
                                                         @refreshWatermarks="loadExistingWatermarkFiles"
                                                     />
 
-                                                    <!-- Watermark Customizer (premium feature) -->
+                                                    <!-- Watermark Customizer (premium) or basic preview (free) -->
                                                     <div v-if="watermarkEnabled && (watermarkFile || selectedExistingWatermark)" class="mt-4 border-t border-default pt-4 min-w-0">
-                                                        <WatermarkCustomizer 
+                                                        <WatermarkCustomizer v-if="isPremiumActive"
                                                             v-model="watermarkSettings"
                                                             :watermarkPreviewUrl="effectiveWatermarkPreviewUrl"
+                                                        />
+                                                        <WatermarkPreview v-else
+                                                            :previewUrl="effectiveWatermarkPreviewUrl"
+                                                            label="Watermark (bottom-right)"
                                                         />
                                                     </div>
                                                 </DisclosurePanel>
@@ -370,6 +374,7 @@ import CheckPortForwarding from '../components/CheckPortForwarding.vue'
 import LinkAccessMode from '../components/LinkAccessMode.vue'
 import VideoOptionsPanel from '../components/VideoOptionsPanel.vue'
 import WatermarkCustomizer from '../components/WatermarkCustomizer.vue'
+import WatermarkPreview from '../components/WatermarkPreview.vue'
 import type { Commenter } from '../typings/electron'
 import type { WatermarkSettings } from '../types/watermark'
 import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../types/watermark'
@@ -379,6 +384,7 @@ import { ChevronDownIcon } from "@heroicons/vue/20/solid";
 import { useResilientNav } from '../composables/useResilientNav';
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { useConnections } from '../composables/useConnections'
+import { useLicenseStatus } from '../composables/useLicenseStatus'
 import { connectionMetaInjectionKey } from '../keys/injection-keys';
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
@@ -387,6 +393,7 @@ const { to } = useResilientNav()
 useHeader('Select Files to Share');
 const transfer = useTransferProgress()
 const { activeConnection } = useConnections()
+const { isPremiumActive } = useLicenseStatus()
 const connectionMeta = inject(connectionMetaInjectionKey)!
 const ssh = connectionMeta.value.ssh
 const { requestTour } = useTourManager()
@@ -395,7 +402,7 @@ const { onboarding, markDone } = useOnboarding()
 /** When true, conditionally-hidden tour targets (original quality, advanced video) are forced visible */
 const tourSpoofing = ref(false)
 
-const shareFilesTourSteps: TourStep[] = [
+const shareFilesTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="share-project-selection"]',
 		message: 'Welcome to File Sharing!\n\nFirst, select a project — this is a ZFS pool or a configured root directory on your server. It sets the base folder where you\'ll browse for files to share.',
@@ -422,11 +429,15 @@ const shareFilesTourSteps: TourStep[] = [
 	},
 	{
 		target: '[data-tour="share-access-mode"]',
-		message: 'Control who can access the link.\n\n• "Anyone with the link" — no sign-in needed.\n• "Anyone + password" — one shared password for all visitors.\n• "Only invited users and groups" — each user signs in with their own account. Groups let you manage access for multiple users at once. Roles control download and comment permissions.',
+		message: isPremiumActive.value
+			? 'Control who can access the link.\n\n• "Anyone with the link" — no sign-in needed.\n• "Anyone + password" — one shared password for all visitors.\n• "Only invited users and groups" — each user signs in with their own account. Groups let you manage access for multiple users at once. Roles control download and comment permissions.\n\nComments can be enabled on open and password-protected links (Pro feature).'
+			: 'Control who can access the link.\n\n• "Anyone with the link" — no sign-in needed.\n• "Anyone + password" — one shared password for all visitors.\n• "Only invited users and groups" — each user signs in with their own account. Groups let you manage access for multiple users at once. Roles control download permissions.',
 	},
 	{
 		target: '[data-tour="share-advanced-video"]',
-		message: 'When video files are selected, these advanced options appear.\n\n• Review Copies — generate 720p, 1080p, or full-res MP4s that recipients can download for offline review.\n• Watermark — overlay a logo or image on review copies to brand or protect your content.\n\nA browser-playable stream is always created automatically so recipients can watch immediately.',
+		message: isPremiumActive.value
+			? 'When video or image files are selected, media options appear here.\n\nFor video:\n• Review Copies — generate 720p, 1080p, or full-res MP4s that recipients can download for offline review.\n• A browser-playable stream is always created automatically so recipients can watch immediately.\n\nFor images and video:\n• Watermark — overlay a PNG, JPG, or SVG with full customization — position, size, opacity, and tiling (Pro).'
+			: 'When video or image files are selected, media options appear here.\n\nFor video:\n• Review Copies — generate 720p, 1080p, or full-res MP4s that recipients can download for offline review.\n• A browser-playable stream is always created automatically so recipients can watch immediately.\n\nFor images and video:\n• Watermark — a basic watermark is applied at bottom-right. Upgrade to Pro for full customization of position, size, and opacity.',
 		beforeShow: () => { tourSpoofing.value = true },
 		cleanup: () => { tourSpoofing.value = false },
 	},
@@ -434,7 +445,7 @@ const shareFilesTourSteps: TourStep[] = [
 		target: '[data-tour="share-generate-btn"]',
 		message: 'Once you\'ve selected files and configured options, click here to generate your secure Flow link.\n\nThe link will appear below — you can copy it to your clipboard or open it directly in your browser.',
 	},
-]
+])
 
 const { apiFetch } = useApi()
 const linkContext = { type: 'download' as const }
@@ -542,7 +553,7 @@ async function maybePersistDefaultProjectRoot(dirPath: string) {
         pushNotification(
             new Notification(
                 'Default Share Root Saved',
-                `Using ${normalized} as the default share root. Update this in Settings -> Project Root (Share / Upload).`,
+                `Using ${normalized} as the default share root. Update this in Settings -> Preferences -> Default share/upload root.`,
                 'success',
                 8000
             )
@@ -1829,7 +1840,8 @@ async function generateLink() {
         }
 
         const wantsHls = hasVideoSelected.value
-        if (transcodeProxy.value || wantsHls) {
+        const wantsImageWatermark = watermarkEnabled.value && hasImageSelected.value
+        if (transcodeProxy.value || wantsHls || wantsImageWatermark) {
             const versionIds = extractAssetVersionIdsFromMagicLinkResponse(data);
             const jobInfo = extractJobInfoByVersion(data)
             const unknownPolicy = body.keepExistingOutputs ? 'skipped' : 'queued'
@@ -1966,6 +1978,56 @@ async function generateLink() {
                     }
                 }
 
+                // Track watermark_image jobs for image files
+                if (wantsImageWatermark && fileRecords.length) {
+                    for (const rec of fileRecords) {
+                        const recPath = String(rec?.path || rec?.relPath || rec?.p || rec?.name || '')
+                        if (isVideoPath(recPath)) continue
+                        const ext = (recPath.split('.').pop() || '').toLowerCase()
+                        if (!['jpg','jpeg','png','gif','tiff','tif','bmp','webp','avif','heic','heif'].includes(ext)) continue
+                        const assetVersionId = Number(
+                            rec?.assetVersionId ?? rec?.asset_version_id ?? rec?.assetVersion?.id
+                        );
+                        if (!Number.isFinite(assetVersionId) || assetVersionId <= 0) continue;
+                        const vInfo = jobInfo[assetVersionId]
+                        const wmImgActive = vInfo?.queuedKinds?.includes('watermark_image') || vInfo?.activeKinds?.includes('watermark_image')
+                        if (!wmImgActive) continue
+                        const fileId = Number(rec?.id ?? rec?.fileId ?? rec?.file_id ?? rec?.file?.id)
+                        const canUsePlayback = !!token && Number.isFinite(fileId) && fileId > 0 && accessMode.value === 'open'
+                        const playbackPath = canUsePlayback
+                            ? `/api/token/${encodeURIComponent(token)}/files/${encodeURIComponent(String(fileId))}/playback/${encodeURIComponent(String(assetVersionId))}?prefer=auto&audit=0`
+                            : ''
+                        const context = {
+                            source: 'link' as const,
+                            groupId: `link:${data.viewUrl}`,
+                            linkUrl: data.viewUrl,
+                            linkTitle: linkTitle.value || undefined,
+                            file: recPath,
+                            connectionId: activeConnection.value?.connectionId,
+                        }
+                        if (canUsePlayback && !transfer.hasActiveTranscode({ assetVersionIds: [assetVersionId], file: recPath, jobKind: 'watermark_image' })) {
+                            transfer.startPlaybackTranscodeTask({
+                                title: `Watermarking: ${getFileLabel(rec)}`,
+                                detail: 'Image watermark',
+                                intervalMs: 1500,
+                                jobKind: 'watermark_image',
+                                context,
+                                assetVersionId,
+                                fetchSnapshot: async () => {
+                                    const payload = await apiFetch(playbackPath, { suppressAuthRedirect: true })
+                                    const j = payload?.transcodes?.watermark_image || null
+                                    return {
+                                        status: j?.status ?? 'queued',
+                                        progress: j?.progress ?? 0,
+                                        etaSeconds: j?.eta_seconds ?? null,
+                                        speedX: null,
+                                    }
+                                }
+                            })
+                        }
+                    }
+                }
+
                 // Fallback: if version IDs exist but no per-file task could be started,
                 // create an aggregate tracker so the Transfers panel still reflects server work.
                 if (!started.size && (hlsTrackSet.size || proxyTrackSet.size)) {
@@ -2083,7 +2145,7 @@ onMounted(async () => {
     // Start tour early — don't wait for network fetches
     if (!onboarding.value.shareFilesTourDone) {
         setTimeout(() => {
-            requestTour('share-files', shareFilesTourSteps, () => markDone('shareFilesTourDone'))
+            requestTour('share-files', shareFilesTourSteps.value, () => markDone('shareFilesTourDone'))
         }, 300)
     }
 

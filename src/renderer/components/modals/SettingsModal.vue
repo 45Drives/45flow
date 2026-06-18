@@ -213,11 +213,15 @@
                                             Select a watermark image to continue.
                                         </p>
                                         
-                                        <!-- Watermark Customizer (premium feature) -->
+                                        <!-- Watermark Customizer (premium) or basic preview (free) -->
                                         <div v-if="defaultWatermarkFile || selectedExistingWatermark" class="mt-4 border-t border-default pt-4 min-w-0">
-                                            <WatermarkCustomizer 
+                                            <WatermarkCustomizer v-if="isPremiumActive"
                                                 v-model="watermarkSettings"
                                                 :watermarkPreviewUrl="effectiveWatermarkPreviewUrl"
+                                            />
+                                            <WatermarkPreview v-else
+                                                :previewUrl="effectiveWatermarkPreviewUrl || ''"
+                                                label="Watermark (bottom-right)"
                                             />
                                         </div>
                                     </div>
@@ -227,36 +231,6 @@
                             <p class="text-xs text-accent mt-3">
                                 These defaults apply when creating new links and can be changed per link.
                             </p>
-                        </template>
-
-                        <!-- ═══ Project Root ══════════════════════════════════ -->
-                        <template v-if="activeSection === 'project'">
-                            <div class="divide-y divide-default">
-                                <SettingRow label="Force project root" description="Ignore ZFS pools and use project root by default.">
-                                    <Switch v-model="forceProjectRoot" :disabled="busy" :class="[
-                                        forceProjectRoot ? 'bg-primary' : 'bg-well',
-                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                    ]">
-                                        <span class="sr-only">Toggle force project root</span>
-                                        <span :class="[
-                                            forceProjectRoot ? 'translate-x-4' : 'translate-x-0',
-                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                        ]" />
-                                    </Switch>
-                                </SettingRow>
-                            </div>
-
-                            <div class="mt-4">
-                                <label class="block text-sm font-medium text-default mb-1">Project root path</label>
-                                <PathInput
-                                    v-model="projectRoot"
-                                    :apiFetch="apiFetch"
-                                    :dirsOnly="true"
-                                />
-                                <div class="text-xs text-accent mt-1">
-                                    Absolute path used as the default root when creating share/upload destinations.
-                                </div>
-                            </div>
                         </template>
 
                         <!-- ═══ Application / Preferences ═════════════════════ -->
@@ -279,6 +253,51 @@
                                         <span class="text-sm" :class="hour12 ? 'font-semibold' : 'opacity-60'">12-hour</span>
                                     </div>
                                 </SettingRow>
+                                <SettingRow label="Project mode" description="Organize links into projects. When disabled, the dashboard shows a flat list of all links without project grouping.">
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-sm" :class="projectModeEnabled ? 'font-semibold' : 'opacity-60'">
+                                            {{ projectModeEnabled ? 'Enabled' : 'Disabled' }}
+                                        </span>
+                                        <Switch v-model="projectModeEnabled" :class="[
+                                            projectModeEnabled ? 'bg-primary' : 'bg-well',
+                                            'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
+                                        ]">
+                                            <span class="sr-only">Toggle project mode</span>
+                                            <span :class="[
+                                                projectModeEnabled ? 'translate-x-4' : 'translate-x-0',
+                                                'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
+                                            ]" />
+                                        </Switch>
+                                    </div>
+                                </SettingRow>
+                            </div>
+
+                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Path Defaults</p>
+                            <div class="divide-y divide-default">
+                                <SettingRow label="Use default share/upload root" description="This path always stores hidden .45flow app data. When Project Mode is off, shares/uploads also default to this path.">
+                                    <Switch v-model="forceProjectRoot" :disabled="busy" :class="[
+                                        forceProjectRoot ? 'bg-primary' : 'bg-well',
+                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
+                                    ]">
+                                        <span class="sr-only">Toggle default share/upload root</span>
+                                        <span :class="[
+                                            forceProjectRoot ? 'translate-x-4' : 'translate-x-0',
+                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
+                                        ]" />
+                                    </Switch>
+                                </SettingRow>
+                            </div>
+
+                            <div class="mt-4">
+                                <label class="block text-sm font-medium text-default mb-1">Default share/upload root path</label>
+                                <PathInput
+                                    v-model="projectRoot"
+                                    :apiFetch="apiFetch"
+                                    :dirsOnly="true"
+                                />
+                                <div class="text-xs text-accent mt-1">
+                                    Always used for hidden .45flow app data; also used as share/upload default root when Project Mode is off.
+                                </div>
                             </div>
 
                             <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Performance</p>
@@ -388,6 +407,54 @@
                                         Reset Tours
                                     </button>
                                 </SettingRow>
+                            </div>
+                        </template>
+
+                        <!-- ═══ Go Pro / Upgrade ══════════════════════════════ -->
+                        <template v-if="activeSection === 'upgrade'">
+                            <div v-if="isPremiumActive" class="rounded-lg border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 p-4 mb-4">
+                                <div class="text-sm font-semibold text-green-800 dark:text-green-400 mb-1">Pro Edition Active</div>
+                                <p class="text-sm text-green-700 dark:text-green-400 leading-relaxed">
+                                    This server has an active Pro license. All premium features are enabled.
+                                </p>
+                            </div>
+
+                            <div v-else>
+                                <div class="rounded-lg border border-default bg-default/40 p-4 mb-4">
+                                    <div class="text-sm font-semibold text-default mb-1">45Flow Pro Edition</div>
+                                    <p class="text-sm text-accent leading-relaxed">
+                                        Upgrade to Pro for multi-server connections, custom watermarks, review comments, 
+                                        white-label branding, and more premium features as well as priority support.
+                                        <a href="https://45drivesstudio.com/contact" target="_blank" rel="noopener noreferrer" 
+                                           class="text-blue-500 hover:text-blue-600 underline">Contact 45Studio</a> to purchase a license.
+                                    </p>
+                                </div>
+
+                                <div class="divide-y divide-default">
+                                    <div class="py-3">
+                                        <label class="block text-sm font-medium text-default mb-1">License Key</label>
+                                        <div class="flex gap-2">
+                                            <input
+                                                v-model="upgradeKey"
+                                                type="text"
+                                                class="input-textlike border border-default px-3 py-2 rounded text-sm flex-1"
+                                                placeholder="STUDIO-XXXX-XXXX-XXXX-XXXX"
+                                                :disabled="upgradeBusy"
+                                                @keydown.enter.prevent="handleUpgradeActivate"
+                                            />
+                                            <button
+                                                class="btn btn-primary text-sm px-4"
+                                                type="button"
+                                                :disabled="upgradeBusy || !upgradeKey.trim()"
+                                                @click="handleUpgradeActivate"
+                                            >
+                                                {{ upgradeBusy ? 'Activating…' : 'Activate' }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div v-if="upgradeError" class="text-danger text-sm mt-3">{{ upgradeError }}</div>
                             </div>
                         </template>
 
@@ -1093,14 +1160,23 @@ import PathInput from "../PathInput.vue";
 import { useOnboarding } from "../../composables/useOnboarding";
 import { useTimeFormat } from "../../composables/useTimeFormat";
 import { useClientTranscode } from "../../composables/useClientTranscode";
+import { useProjectMode } from "../../composables/useProjectMode";
 import { useTourManager, type TourStep } from "../../composables/useTourManager";
 import { useTourPreferences } from "../../composables/useTourPreferences";
 import { appLog } from "../../composables/useLog";
 import { useThemeFromAlias } from "../../composables/useThemeFromAlias";
 import { useConnections } from "../../composables/useConnections";
+import { useLicenseStatus } from "../../composables/useLicenseStatus";
 import WatermarkCustomizer from "../WatermarkCustomizer.vue";
+import WatermarkPreview from "../WatermarkPreview.vue";
 import type { WatermarkSettings } from "../../types/watermark";
 import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from "../../types/watermark";
+
+const props = withDefaults(defineProps<{
+    initialSection?: string
+}>(), {
+    initialSection: undefined,
+});
 
 const emit = defineEmits<{
     (e: "close"): void;
@@ -1123,10 +1199,12 @@ const { apiFetch, baseUrl, meta } = useApi();
 const { onboarding, resetAll: resetOnboarding, markDone } = useOnboarding();
 const { hour12 } = useTimeFormat();
 const { enabled: clientTranscodeEnabled, preset: transcodePreset, hwAccel: hwAccelEnabled } = useClientTranscode();
+const { projectModeEnabled } = useProjectMode();
 const { requestTour } = useTourManager();
 const { setCustomThemeColors, setCustomThemeEnabled } = useThemeFromAlias();
 const { toursDisabled } = useTourPreferences();
 const { connections } = useConnections();
+const { isPremiumActive } = useLicenseStatus();
 
 const hardwareCapabilities = ref<any>(null);
 
@@ -1150,62 +1228,74 @@ onMounted(async () => {
 	}
 });
 
-const settingsTourSteps: TourStep[] = [
+const settingsTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="settings-modal-header"]',
 		message: 'Welcome to 45Flow Settings.\n\nThis is where you configure global options that affect all new links and server behavior.',
 	},
 	{
 		target: '[data-tour="settings-modal-nav"]',
-		message: 'Use the sidebar to navigate between sections.\n\n• URLs & Access — configure external/internal share URLs.\n• Project Root — set the default directory root.\n• Link Options — default access, comments, and review copy settings.\n• Preferences — time format settings.\n• Guides — user guide and guided tour settings.\n• Maintenance — clean up orphaned files and metadata.',
+        message: isPremiumActive.value
+            ? 'Use the sidebar to navigate between sections.\n\n• URLs & Access — configure external/internal share URLs.\n• Certificate — manage your SSL/TLS certificate.\n• Link Options — default access, comments, review copy, and watermark settings.\n• White Label — customize branding, colors, logos, and recipient theming (Pro).\n• Preferences — time format, project mode toggle, default share/upload root, transcoding, and hardware acceleration.\n• Server Health — monitor server status.\n• Maintenance — clean up orphaned files and metadata.\n• Guides — user guide and guided tour settings.'
+            : 'Use the sidebar to navigate between sections.\n\n• URLs & Access — configure external/internal share URLs.\n• Certificate — manage your SSL/TLS certificate.\n• Link Options — default access, comments, review copy, and watermark settings.\n• Preferences — time format, project mode toggle, default share/upload root, transcoding, and hardware acceleration.\n• Server Health — monitor server status.\n• Maintenance — clean up orphaned files and metadata.\n• Guides — user guide and guided tour settings.',
 	},
 	{
 		target: '[data-tour="settings-modal-urls"]',
 		message: 'Each section shows its settings here.\n\nRight now you\'re viewing URLs & Access — toggle between Internal and External link access, configure your public domain or auto-detect, and set the HTTPS port.\n\nClick "Save Settings" at the bottom when you\'re done.',
 		beforeShow: () => { activeSection.value = 'sharing' },
 	},
-]
+])
 
 // ── Section navigation ──────────────────────────────────────────────────
-type Section = 'sharing' | 'project' | 'app' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health';
-const activeSection = ref<Section>('sharing');
+type Section = 'sharing' | 'app' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade';
+const activeSection = ref<Section>((props.initialSection as Section) || 'sharing');
 
-const navGroups = [
-    {
-        label: 'Link Sharing',
-        items: [
-            { key: 'sharing' as Section, label: 'URLs & Access' },
-            { key: 'certificate' as Section, label: 'Certificate' },
-            { key: 'linkOptions' as Section, label: 'Link Options' },
-            { key: 'project' as Section, label: 'Project Root' },
-        ],
-    },
-    {
-        label: 'Branding',
-        items: [
-            { key: 'branding' as Section, label: 'White Label' },
-        ],
-    },
-    {
-        label: 'Application',
-        items: [
-            { key: 'app' as Section, label: 'Preferences' },
-            { key: 'health' as Section, label: 'Server Health' },
-            { key: 'maintenance' as Section, label: 'Maintenance' },
-        ],
-    },
-    {
-        label: 'Help',
-        items: [
-            { key: 'help' as Section, label: 'Guides' },
-        ],
-    },
-];
+const navGroups = computed(() => {
+    const groups = [
+        {
+            label: 'Link Sharing',
+            items: [
+                { key: 'sharing' as Section, label: 'URLs & Access' },
+                { key: 'certificate' as Section, label: 'Certificate' },
+                { key: 'linkOptions' as Section, label: 'Link Options' },
+            ],
+        },
+        // Only show Branding when licensed
+        ...(isPremiumActive.value ? [{
+            label: 'Branding',
+            items: [
+                { key: 'branding' as Section, label: 'White Label' },
+            ],
+        }] : []),
+        {
+            label: 'Application',
+            items: [
+                { key: 'app' as Section, label: 'Preferences' },
+                { key: 'health' as Section, label: 'Server Health' },
+                { key: 'maintenance' as Section, label: 'Maintenance' },
+            ],
+        },
+        // Only show Go Pro when unlicensed
+        ...(!isPremiumActive.value ? [{
+            label: 'Upgrade',
+            items: [
+                { key: 'upgrade' as Section, label: 'Go Pro' },
+            ],
+        }] : []),
+        {
+            label: 'Help',
+            items: [
+                { key: 'help' as Section, label: 'Guides' },
+            ],
+        },
+    ]
+    return groups
+});
 
 onMounted(() => {
 	if (!onboarding.value.settingsTourDone) {
 		setTimeout(() => {
-			requestTour('settings', settingsTourSteps, () => markDone('settingsTourDone'))
+			requestTour('settings', settingsTourSteps.value, () => markDone('settingsTourDone'))
 		}, 400)
 	}
 })
@@ -1223,6 +1313,62 @@ function handleResetOnboarding() {
 
 function openUserGuide() {
     window.open('https://github.com/45Drives/45flow-premium-dev/blob/main/docs/45Flow_User_Guide.md', '_blank', 'noopener,noreferrer');
+}
+
+// ── Go Pro / Upgrade ────────────────────────────────────────────────────
+const upgradeKey = ref('')
+const upgradeBusy = ref(false)
+const upgradeError = ref('')
+
+async function handleUpgradeActivate() {
+    const key = upgradeKey.value.trim()
+    if (!key) return
+
+    upgradeBusy.value = true
+    upgradeError.value = ''
+
+    try {
+        // Activate key on the connected broadcaster server
+        // Server validates with VPS internally, saves cert, returns result
+        const result = await apiFetch('/api/license/activate', {
+            method: 'POST',
+            body: JSON.stringify({ licenseKey: key }),
+        })
+
+        if (!result?.ok) {
+            upgradeError.value = result?.error || result?.message || 'Activation failed.'
+            return
+        }
+
+        // Refresh license status so the UI reacts
+        const status = await apiFetch('/api/license/status')
+        if (status?.ok && status.licensed) {
+            const { activeConnection, updateConnection } = useConnections()
+            if (activeConnection.value) {
+                updateConnection(activeConnection.value.connectionId, {
+                    licensed: true,
+                    licenseCheckedAt: Date.now(),
+                    licenseInfo: status.license ?? undefined,
+                })
+            }
+        }
+
+        const licenseInfo = result?.license
+        let licenseMsg = 'Pro Edition activated!'
+        if (licenseInfo?.perpetual) {
+            licenseMsg = 'Perpetual Pro license activated — never expires.'
+        } else if (licenseInfo?.expiresAt) {
+            const expiryDate = new Date(licenseInfo.expiresAt).toLocaleDateString()
+            licenseMsg = `Pro license activated — valid until ${expiryDate}.`
+        }
+
+        pushNotification(new Notification('Pro Edition', licenseMsg, 'success', 8000))
+        upgradeKey.value = ''
+    } catch (err: any) {
+        upgradeError.value = err?.message || 'Activation failed.'
+    } finally {
+        upgradeBusy.value = false
+    }
 }
 
 const busy = ref(false);
@@ -1476,7 +1622,7 @@ watch(activeSection, (section) => {
     // Load available watermarks when navigating to Link Options
     if (section === 'linkOptions' && existingWatermarkFiles.value.length === 0) {
         loadExistingWatermarkFiles();
-        loadDefaultWatermarkPresets();
+        if (isPremiumActive.value) loadDefaultWatermarkPresets();
     }
 });
 
@@ -2339,7 +2485,7 @@ const validationError = computed(() => {
     }
 
     if (forceProjectRoot.value && !projectRoot.value.trim()) {
-        return "Project root is required when forcing project root mode.";
+        return "Default share/upload root path is required when this option is enabled.";
     }
 
     return null;
@@ -2390,7 +2536,7 @@ async function reload() {
         
         // Load existing watermark files and sync the selection
         await loadExistingWatermarkFiles();
-        await loadDefaultWatermarkPresets();
+        if (isPremiumActive.value) await loadDefaultWatermarkPresets();
         if (defaultWatermarkId.value) {
             selectedExistingWatermark.value = defaultWatermarkId.value;
             // Ensure preview is loaded (watcher may have fired before baseUrl/token were ready)
@@ -2433,7 +2579,7 @@ async function reload() {
 
     // Load cert status in parallel (non-blocking)
     loadCertStatus();
-    loadBranding();
+    if (isPremiumActive.value) loadBranding();
 }
 
 async function save() {

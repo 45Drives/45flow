@@ -15,11 +15,12 @@
 				</div>
 			</div>
 
-			<div v-if="showUnlicensedBanner" class="dashboard-license-banner">
+			<div v-if="showUnlicensedBanner && !isPremiumActive" class="dashboard-license-banner">
 				<div class="dashboard-license-copy">
 					{{ unlicensedBannerMessage }}
 				</div>
-				<button type="button" class="btn btn-secondary h-fit" @click="goToSettings">Open Settings</button>
+				<button type="button" class="btn btn-primary h-fit" @click="goToUpgrade">Go Pro</button>
+				<button type="button" class="btn btn-secondary h-fit text-xs px-2 py-1" @click="dismissBanner">✕</button>
 			</div>
 
 			<div class="dashboard-actions" data-tour="action-cards">
@@ -34,8 +35,13 @@
 			</div>
 		</template>
 
+		<!-- ═══════════ Flat Links View (Project Mode OFF) ═══════════ -->
+		<div v-if="!projectModeEnabled" class="dashboard-content-wrap" data-tour="manage-links">
+			<ManageLinks :tourActive="tourShowDemoLinks"/>
+		</div>
+
 		<!-- ═══════════ Project List View ═══════════ -->
-		<div v-if="!activeProject" class="dashboard-content-wrap" data-tour="project-list">
+		<div v-else-if="!activeProject" class="dashboard-content-wrap" data-tour="project-list">
 			<div class="flex items-center justify-between gap-3 mb-3 px-1">
 				<h3 class="text-base font-semibold">Projects</h3>
 				<button class="btn btn-secondary text-xs px-3 py-1.5" @click="showCreateProjectModal = true">+ New Project</button>
@@ -94,7 +100,7 @@
 		</div>
 	</CardContainer>
 
-	<SettingsModal v-if="showSettings" @close="showSettings = false" />
+	<SettingsModal v-if="showSettings" :initialSection="settingsInitialSection" @close="showSettings = false" />
 	<LogViewModal v-if="showLogs" @close="showLogs = false" />
 	<AddUsersModal v-model="usersModalOpen" :apiFetch="apiFetch" />
 	<CreateProjectModal v-model="showCreateProjectModal" @created="onProjectCreated" />
@@ -162,7 +168,7 @@ import AddUsersModal from '../components/modals/AddUsersModal.vue'
 import LogViewModal from '../components/modals/LogViewModal.vue'
 import CreateProjectModal from '../components/modals/CreateProjectModal.vue'
 import FolderPicker from '../components/FolderPicker.vue'
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useApi } from '../composables/useApi'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { clearLastSession } from '../composables/useSessionPersistence'
@@ -170,6 +176,8 @@ import { useConnections } from '../composables/useConnections'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
 import { useActiveProject } from '../composables/useActiveProject'
+import { useProjectMode } from '../composables/useProjectMode'
+import { useLicenseStatus } from '../composables/useLicenseStatus'
 
 useHeader('Dashboard')
 const { to } = useResilientNav()
@@ -179,6 +187,8 @@ const { activeConnection, updateConnection } = useConnections()
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()
 const { activeProject: globalActiveProject, setActiveProject: setGlobalActiveProject } = useActiveProject()
+const { projectModeEnabled } = useProjectMode()
+const { isPremiumActive } = useLicenseStatus()
 
 // ── License Banner ──
 const showUnlicensedBanner = ref(false)
@@ -213,10 +223,11 @@ async function refreshActiveConnectionLicenseStatus() {
 			licenseCheckedAt: Date.now(),
 		})
 
-		if (body.enforcement && !body.licensed) {
+		// Only show banner if the server WAS previously licensed but is now unlicensed
+		if (!body.licensed && conn.licensed) {
 			showUnlicensedBanner.value = true
 			unlicensedBannerMessage.value =
-				`Connected to ${conn.name || conn.serverIp}, but the server license is not active. Premium features are disabled until re-activated.`
+				`Connected to ${conn.name || conn.serverIp}, but the server license has expired or been revoked. Premium features are disabled until re-activated.`
 		} else {
 			showUnlicensedBanner.value = false
 			unlicensedBannerMessage.value = ''
@@ -276,6 +287,14 @@ function backToProjects() {
 
 watch(activeProject, (p) => setGlobalActiveProject(p))
 
+// Clear active project when project mode is disabled
+watch(projectModeEnabled, (enabled) => {
+	if (!enabled) {
+		activeProject.value = null
+		setGlobalActiveProject(null)
+	}
+})
+
 // Close active project when switching servers (projects are server-specific)
 watch(activeConnection, (newConn, oldConn) => {
 	// Only close if actually switching between different servers
@@ -333,25 +352,28 @@ async function saveProject() {
 // ── Tour ──
 const tourShowDemoLinks = ref(false)
 
-const dashboardTourSteps: TourStep[] = [
+const dashboardTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="flow-logo"]',
 		message: 'Welcome to 45Flow!\n\nTip: You can drag and drop files anywhere onto the app to open Quick Share — the fastest way to upload and share files.\n\nLet\'s explore the dashboard.',
 		beforeShow: () => { transfer.setOpen(false) },
 	},
-	{
+	...(isPremiumActive.value ? [{
 		target: '[data-tour="connection-switcher"]',
-		message: 'This is your Active Server selector.\n\n45Flow can connect to multiple servers at once. The server shown here is where your actions will take effect.',
-	},
+		message: 'This is your Active Server selector.\n\n45Flow Pro can connect to multiple servers at once. The server shown here is where your actions will take effect. Use the dropdown to switch between connected servers.',
+	}] : [{
+		target: '[data-tour="connection-switcher"]',
+		message: 'This shows your connected server.\n\nThe server displayed here is where all your actions take effect.',
+	}]),
 	{
 		target: '[data-tour="action-cards"]',
 		message: 'These are your main actions: create a Link for sharing/uploading, or upload files directly from your workstation.',
 	},
 	{
 		target: '[data-tour="project-list"]',
-		message: 'Your projects appear here. Each project organizes links under a shared root directory. Click a project to see its links.',
+		message: 'Your projects appear here. Each project organizes links under a shared root directory. Click a project to see its links.\n\nTip: If you prefer a flat list without project grouping, you can disable Project Mode in Settings → Preferences.',
 	},
-]
+])
 
 // ── Lifecycle ──
 onMounted(async () => {
@@ -368,7 +390,7 @@ onMounted(async () => {
 
 	if (!onboarding.value.dashboardTourDone) {
 		setTimeout(() => {
-			requestTour('dashboard', dashboardTourSteps, () => markDone('dashboardTourDone'))
+			requestTour('dashboard', dashboardTourSteps.value, () => markDone('dashboardTourDone'))
 		}, 500)
 	}
 })
@@ -391,7 +413,10 @@ const leaveServer = () => {
 }
 
 const showSettings = ref(false)
-const goToSettings = () => { showSettings.value = true }
+const settingsInitialSection = ref<string | undefined>(undefined)
+const goToSettings = () => { settingsInitialSection.value = undefined; showSettings.value = true }
+const goToUpgrade = () => { settingsInitialSection.value = 'upgrade'; showSettings.value = true }
+const dismissBanner = () => { showUnlicensedBanner.value = false }
 
 const showLogs = ref(false)
 const goToLogs = () => { showLogs.value = true }

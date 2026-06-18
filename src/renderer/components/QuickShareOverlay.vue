@@ -203,10 +203,14 @@
 
             <!-- Premium Watermark Customization -->
             <div v-if="hasMedia && watermarkEnabled && (watermarkFile || selectedExistingWatermark)" class="mt-3 border-t border-default pt-3">
-              <WatermarkCustomizer 
+              <WatermarkCustomizer v-if="isPremiumActive"
                 v-model="watermarkSettings" 
                 :watermarkPreviewUrl="watermarkPreviewUrl"
                 :isPremium="isServerLicensed"
+              />
+              <WatermarkPreview v-else
+                :previewUrl="watermarkPreviewUrl"
+                label="Watermark (bottom-right)"
               />
             </div>
           </DisclosurePanel>
@@ -303,6 +307,7 @@ import { connectionMetaInjectionKey, currentServerInjectionKey } from '../keys/i
 import { useApi } from '../composables/useApi'
 import { useConnections } from '../composables/useConnections'
 import { useActiveProject } from '../composables/useActiveProject'
+import { useProjectMode } from '../composables/useProjectMode'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { useClientTranscode } from '../composables/useClientTranscode'
 import { useUploadTranscode } from '../composables/useUploadTranscode'
@@ -316,6 +321,8 @@ import PortForwardingModal from './modals/PortForwardingModal.vue'
 import LinkAccessMode from './LinkAccessMode.vue'
 import VideoOptionsPanel from './VideoOptionsPanel.vue'
 import WatermarkCustomizer from './WatermarkCustomizer.vue'
+import WatermarkPreview from './WatermarkPreview.vue'
+import { useLicenseStatus } from '../composables/useLicenseStatus'
 import type { WatermarkSettings } from '../types/watermark'
 import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../types/watermark'
 import type { Commenter, RsyncProgress } from '../typings/electron'
@@ -328,12 +335,15 @@ type DroppedFile = { path: string; name: string; size: number }
 const route = useRoute()
 const { apiFetch } = useApi()
 const { activeConnection } = useConnections()
-const { activeProject } = useActiveProject()
+const { activeProject: rawActiveProject } = useActiveProject()
+const { projectModeEnabled } = useProjectMode()
+const activeProject = computed(() => projectModeEnabled.value ? rawActiveProject.value : null)
 const transfer = useTransferProgress()
 const currentServer = inject(currentServerInjectionKey)!
 const connectionMeta = inject(connectionMetaInjectionKey)!
 const ssh = computed(() => connectionMeta.value.ssh)
 const isServerLicensed = computed(() => activeConnection.value?.licensed !== false)
+const { isPremiumActive } = useLicenseStatus()
 
 // ── Tour ──
 const { requestTour } = useTourManager()
@@ -346,7 +356,7 @@ function cleanupQuickShareTour() {
   tourQuickShareOpen.value = false
 }
 
-const quickShareTourSteps: TourStep[] = [
+const quickShareTourSteps = computed<TourStep[]>(() => [
   // ── Quick Share Step 1: Modal overview ──
   {
     target: '[data-tour="qs-modal"]',
@@ -431,7 +441,9 @@ const quickShareTourSteps: TourStep[] = [
   // ── Quick Share Step 2: Access Mode ──
   {
     target: '[data-tour="qs-access-mode"]',
-    message: 'Control who can access your shared files.\n\n• Anyone with the link — no sign-in needed.\n• Password protected — recipients enter a shared password.\n• Invited users and groups only — only specific user accounts and groups can access it.\n\nComments can be toggled for open and password-protected links.',
+    message: isPremiumActive.value
+      ? 'Control who can access your shared files.\n\n• Anyone with the link — no sign-in needed.\n• Password protected — recipients enter a shared password.\n• Invited users and groups only — only specific user accounts and groups can access it.\n\nComments can be toggled for open and password-protected links (Pro feature).'
+      : 'Control who can access your shared files.\n\n• Anyone with the link — no sign-in needed.\n• Password protected — recipients enter a shared password.\n• Invited users and groups only — only specific user accounts and groups can access it.',
     beforeShow: async () => {
       tourQuickShareOpen.value = true
       tourQuickShareStep.value = 2
@@ -444,7 +456,9 @@ const quickShareTourSteps: TourStep[] = [
   // ── Quick Share Step 2: Video Options ──
   {
     target: '[data-tour="qs-video-options"]',
-    message: 'When sharing video files, two things happen automatically:\n\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Review copies (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nWith client-side transcoding enabled (Settings → Performance), video processing happens on your machine before upload — using your local CPU or GPU. This is faster for most workstations and reduces server load. If disabled, the server processes videos after upload.\n\nYou can also overlay a watermark on review copies to protect your content.',
+    message: isPremiumActive.value
+      ? 'When sharing video or image files, media processing options appear here.\n\nFor video:\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Review copies (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nFor images and video:\n• Watermarks can be overlaid with full customization — position, size, opacity, and tiling (Pro).\n\nWith client-side transcoding enabled (Settings → Performance), video processing happens on your machine before upload — using your local CPU or GPU.'
+      : 'When sharing video or image files, media processing options appear here.\n\nFor video:\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Review copies (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nFor images and video:\n• A basic watermark can be applied (bottom-right). Upgrade to Pro for full customization of position, size, and opacity.\n\nWith client-side transcoding enabled (Settings → Performance), video processing happens on your machine before upload — using your local CPU or GPU.',
     beforeShow: async () => {
       tourQuickShareOpen.value = true
       tourQuickShareStep.value = 2
@@ -464,7 +478,7 @@ const quickShareTourSteps: TourStep[] = [
       tourQuickShareShowDone.value = true
     },
   },
-]
+])
 
 /** Pending real files to open after the tour finishes */
 let pendingDropFiles: DroppedFile[] = []
@@ -528,7 +542,7 @@ function onDocDrop(e: DragEvent) {
     // First drop — run the Quick Share tour first, then open the real modal
     // But only if tours are enabled; otherwise skip straight to modal
     pendingDropFiles = files
-    const tourShown = requestTour('quickShare', quickShareTourSteps, () => {
+    const tourShown = requestTour('quickShare', quickShareTourSteps.value, () => {
       markDone('quickShareTourDone')
       const realFiles = pendingDropFiles
       pendingDropFiles = []
@@ -1434,7 +1448,7 @@ async function startUploadAndShare() {
     // updates the TransferDock directly — polling tasks would fight it
     // and cause progress oscillation.  Only create polling tasks for
     // server-side transcoding.
-    if (hasVideo.value && !clientTranscodeEnabled.value) {
+    if ((hasVideo.value || (watermarkEnabled.value && hasImage.value)) && !clientTranscodeEnabled.value) {
       const token = extractLinkToken(data)
       const fileRecords: any[] = Array.isArray(data?.files) ? data.files : []
       const transcodeRecords: any[] = Array.isArray(data?.transcodes) ? data.transcodes : []
@@ -1523,6 +1537,29 @@ async function startUploadAndShare() {
                 qualityOrder: j?.quality_order ?? j?.qualityOrder,
                 activeQuality: j?.active_quality ?? j?.activeQuality,
                 perQualityProgress: j?.per_quality_progress ?? j?.perQualityProgress,
+              }
+            }
+          })
+        }
+
+        // Track watermark_image jobs for image files
+        const wmImgActive = info?.activeKinds?.includes('watermark_image') || info?.queuedKinds?.includes('watermark_image')
+        if (wmImgActive && canUsePlayback && !transfer.hasActiveTranscode({ assetVersionIds: [assetVersionId], file: filePath, jobKind: 'watermark_image' })) {
+          transfer.startPlaybackTranscodeTask({
+            title: `Watermarking: ${displayName}`,
+            detail: 'Image watermark',
+            intervalMs: 1500,
+            jobKind: 'watermark_image',
+            context,
+            assetVersionId,
+            fetchSnapshot: async () => {
+              const payload = await apiFetch(playbackPath, { suppressAuthRedirect: true })
+              const j = payload?.transcodes?.watermark_image || null
+              return {
+                status: j?.status ?? 'queued',
+                progress: j?.progress ?? 0,
+                etaSeconds: j?.eta_seconds ?? null,
+                speedX: null,
               }
             }
           })

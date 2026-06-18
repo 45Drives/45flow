@@ -5,6 +5,7 @@ export type OnboardingFlag =
   | 'dashboardTourDone'
   | 'quickShareTourDone'
   | 'shareFilesTourDone'
+  | 'createLinkTourDone'
   | 'localUploadTourDone'
   | 'uploadLinkTourDone'
   | 'transferDockTourDone'
@@ -20,6 +21,7 @@ const DEFAULTS: Record<OnboardingFlag, boolean> = {
   dashboardTourDone: false,
   quickShareTourDone: false,
   shareFilesTourDone: false,
+  createLinkTourDone: false,
   localUploadTourDone: false,
   uploadLinkTourDone: false,
   transferDockTourDone: false,

@@ -21,3 +21,4 @@ scripts/release/RELEASE_*
 IMPLEMENTATION_*.md
 *.dmg
 *.zip
+.github/prompts/plan*

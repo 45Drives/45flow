@@ -43,7 +43,7 @@
       >
         <input type="checkbox" v-model="rememberProjectAsDefault" :disabled="savingDefaultRoot" />
         <span>
-          Use selected project as default share root (change later in Settings -> Project Root (Share / Upload)).
+          Use selected project as default share root (change later in Settings -> Preferences -> Default share/upload root).
         </span>
       </label>
     </div>
@@ -627,7 +627,7 @@ async function maybePersistDefaultProjectRoot(absNoTrail: string) {
     pushNotification(
       new Notification(
         'Default Share Root Saved',
-        `Using ${absNoTrail} as the default share root. Update this in Settings -> Project Root (Share / Upload).`,
+        `Using ${absNoTrail} as the default share root. Update this in Settings -> Preferences -> Default share/upload root.`,
         'success',
         8000,
       ),

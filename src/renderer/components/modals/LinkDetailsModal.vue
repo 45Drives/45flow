@@ -11,7 +11,7 @@
         </h3>
 
         <div class="flex items-center gap-2">
-          <button v-if="!editMode"
+          <button v-if="!editMode && isPremiumActive"
             class="btn btn-secondary flex items-center gap-2" 
             @click="commentsModalOpen = true" 
             :disabled="!link"
@@ -804,13 +804,18 @@
             </div>
           </div>
 
-          <!-- Watermark Customizer -->
-          <WatermarkCustomizer 
-            v-if="draftWatermarkFile || draftWatermarkLocalFile"
-            v-model="draftWatermarkSettings"
-            :watermarkPreviewUrl="watermarkPreviewUrl || null"
-            :isPremium="isServerLicensed"
-          />
+          <!-- Watermark Customizer (premium) or basic preview (free) -->
+          <template v-if="draftWatermarkFile || draftWatermarkLocalFile">
+            <WatermarkCustomizer v-if="isPremiumActive"
+              v-model="draftWatermarkSettings"
+              :watermarkPreviewUrl="watermarkPreviewUrl || null"
+              :isPremium="isServerLicensed"
+            />
+            <WatermarkPreview v-else
+              :previewUrl="watermarkPreviewUrl || ''"
+              label="Watermark (bottom-right)"
+            />
+          </template>
           <div v-else class="p-4 text-center text-sm opacity-70">
             Select a watermark file to configure customization settings.
           </div>
@@ -839,6 +844,7 @@ import EditLinkFilesModal from './EditLinkFilesModal.vue'
 import CommentsReviewModal from './CommentsReviewModal.vue'
 import PathInput from '../PathInput.vue'
 import WatermarkCustomizer from '../WatermarkCustomizer.vue'
+import WatermarkPreview from '../WatermarkPreview.vue'
 import type { LinkItem, LinkType, AccessRow, Status, ExistingUser } from '../../typings/electron'
 import type { WatermarkSettings } from '../../types/watermark'
 import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../../types/watermark'
@@ -846,46 +852,56 @@ import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { Switch } from '@headlessui/vue'
 import { useTransferProgress } from '../../composables/useTransferProgress'
 import { useConnections } from '../../composables/useConnections'
+import { useLicenseStatus } from '../../composables/useLicenseStatus'
 import { connectionMetaInjectionKey } from '../../keys/injection-keys'
 import { useTourManager, type TourStep } from '../../composables/useTourManager'
 import { useOnboarding } from '../../composables/useOnboarding'
 
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()
+const { isPremiumActive } = useLicenseStatus()
 
-const linkDetailsTourSteps: TourStep[] = [
+const linkDetailsTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="link-details-header"]',
-		message: 'This is the Link Details modal.\n\nView everything about a link — configuration, files, and activity. Click "Edit" to modify settings, or "Close" when done.',
+		message: isPremiumActive.value
+			? 'This is the Link Details modal.\n\nView everything about a link — configuration, files, and activity. Click "Edit" to modify settings, "Comments" to view/manage comments (Pro), or "Close" when done.'
+			: 'This is the Link Details modal.\n\nView everything about a link — configuration, files, and activity. Click "Edit" to modify settings, or "Close" when done.',
 	},
 	{
 		target: '[data-tour="link-details-meta"]',
-		message: 'The top section shows the link\'s primary URL, access mode, sharing mode, watermark status, type, status, and creation/expiry dates.\n\nClick "Copy" to copy the URL to your clipboard.',
+		message: 'The top section shows the link\'s primary URL, access mode, sharing mode, watermark status, type (upload, share, or combined), status, and creation/expiry dates.\n\nClick "Copy" to copy the URL to your clipboard.',
 	},
 	{
 		target: '[data-tour="link-details-config"]',
-		message: 'Link Configuration shows editable settings.\n\nTitle, notes, access mode, password protection, comments, media processing (review copies, qualities, watermark), and for upload links — the destination directory.',
+		message: isPremiumActive.value
+			? 'Link Configuration shows editable settings.\n\nTitle, notes, access mode, password protection, comments, media processing (review copies, qualities, watermark with full customization), and for upload links — the destination directory.\n\nLinks can have both upload and share/review capabilities enabled simultaneously.'
+			: 'Link Configuration shows editable settings.\n\nTitle, notes, access mode, password protection, media processing (review copies, qualities, basic watermark), and for upload links — the destination directory.\n\nLinks can have both upload and share/review capabilities enabled simultaneously.',
 	},
 	{
 		target: '[data-tour="link-details-files"]',
-		message: 'The Files table lists every file attached to this link.\n\nFor share links, these are the files recipients can access. For upload links, these are files that have been uploaded through the link.',
+		message: 'The Files table lists every file attached to this link.\n\nFor share links, these are the files recipients can access. For upload links, these are files that have been uploaded through the link. Combined links show both.',
 	},
 	{
 		target: '[data-tour="link-details-activity"]',
-		message: 'The Activity section shows an audit log of all actions on this link — views, downloads, uploads, comments, and access changes.\n\nFilter by type and search by keyword to find specific events.',
+		message: isPremiumActive.value
+			? 'The Activity section shows an audit log of all actions on this link — views, downloads, uploads, comments, and access changes.\n\nFilter by type and search by keyword to find specific events.'
+			: 'The Activity section shows an audit log of all actions on this link — views, downloads, uploads, and access changes.\n\nFilter by type and search by keyword to find specific events.',
 	},
-]
+])
 
-const linkDetailsEditTourSteps: TourStep[] = [
+const linkDetailsEditTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="link-details-config"]',
-		message: 'You\'re now in Edit mode!\n\nAll fields in this section are editable. Change the title, notes, access mode, password, review copy settings, or watermark configuration.\n\nFor upload links, you can also change the destination directory.',
+		message: isPremiumActive.value
+			? 'You\'re now in Edit mode!\n\nAll fields in this section are editable. Change the title, notes, access mode, password, review copy settings, or watermark configuration with full position/size/opacity customization (Pro).\n\nFor upload links, you can also change the destination directory. For combined links, you can toggle upload and share capabilities independently.'
+			: 'You\'re now in Edit mode!\n\nAll fields in this section are editable. Change the title, notes, access mode, password, review copy settings, or basic watermark.\n\nFor upload links, you can also change the destination directory. For combined links, you can toggle upload and share capabilities independently.',
 	},
 	{
 		target: '[data-tour="link-details-header"]',
 		message: 'Click "Save Changes" when done, or "Cancel" to discard edits.\n\nChanges take effect immediately after saving — active links will reflect the new settings.',
 	},
-]
+])
 
 let _detailsTourTriggered = false
 let _editTourTriggered = false
@@ -906,7 +922,7 @@ watch(() => props.modelValue, (open) => {
 	if (open && !_detailsTourTriggered && !onboarding.value.linkDetailsTourDone) {
 		_detailsTourTriggered = true
 		setTimeout(() => {
-			requestTour('link-details', linkDetailsTourSteps, () => markDone('linkDetailsTourDone'))
+			requestTour('link-details', linkDetailsTourSteps.value, () => markDone('linkDetailsTourDone'))
 		}, 400)
 	}
 })
@@ -3166,7 +3182,7 @@ function beginEdit() {
   if (!_editTourTriggered && !onboarding.value.linkDetailsEditTourDone) {
     _editTourTriggered = true
     setTimeout(() => {
-      requestTour('link-details-edit', linkDetailsEditTourSteps, () => markDone('linkDetailsEditTourDone'))
+      requestTour('link-details-edit', linkDetailsEditTourSteps.value, () => markDone('linkDetailsEditTourDone'))
     }, 300)
   }
 

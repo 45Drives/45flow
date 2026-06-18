@@ -160,6 +160,29 @@ export function useApi(connectionId?: string) {
                     throw e
                 }
 
+                // Handle 403 premium_required — show friendly notification instead of raw error
+                if (res.status === 403) {
+                    const body = await res.text().catch(() => '')
+                    let parsed: any = null
+                    try { parsed = body ? JSON.parse(body) : null } catch { parsed = null }
+
+                    if (parsed?.error === 'premium_required') {
+                        clearTimeout(timer)
+                        pushNotification(new Notification(
+                            'Pro Feature',
+                            parsed.message || 'This feature requires a Pro license. Go to Settings → Go Pro to activate.',
+                            'warning',
+                            8000
+                        ))
+                        const e = Object.assign(new Error(parsed.message || 'Premium license required'), {
+                            status: 403,
+                            code: 'premium_required',
+                        })
+                        throw e
+                    }
+                    // Fall through to generic error handling for other 403s
+                }
+
                 if (!res.ok) {
                     const requestIdHeader = res.headers.get('x-request-id') || ''
                     const detail = await res.text().catch(() => res.statusText)

@@ -300,6 +300,7 @@ function taskRowLabel(t: any) {
             return baseLabel
         }
         if (jk === 'hls') return 'Stream'
+        if (jk === 'watermark_image') return 'Watermark'
         return 'Transcode'
     }
     return t?.title || 'Task'

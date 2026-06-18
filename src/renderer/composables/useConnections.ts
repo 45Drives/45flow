@@ -43,8 +43,14 @@ export interface Connection {
   setupComplete?: boolean
   
   // ── License Status (cached) ──
-  licensed?: boolean                // Last known license state
+  licensed: boolean                 // Last known license state (false = unlicensed/basic mode)
   licenseCheckedAt?: number         // Timestamp of last check
+  licenseInfo?: {                   // License details from server
+    licenseId?: string
+    perpetual?: boolean
+    expiresAt?: string | null
+    issuedAt?: string
+  }
   
   // ── Connection Health ──
   status: 'connected' | 'disconnected' | 'error' | 'checking'
@@ -100,7 +106,11 @@ function load() {
     if (!data || typeof data !== 'object') return
     
     if (Array.isArray(data.connections)) {
-      _state.connections = data.connections
+      // Ensure licensed field defaults to false for connections persisted before the field was required
+      _state.connections = data.connections.map((c: any) => ({
+        ...c,
+        licensed: typeof c.licensed === 'boolean' ? c.licensed : false,
+      }))
     }
     if (typeof data.activeConnectionId === 'string') {
       _state.activeConnectionId = data.activeConnectionId
@@ -163,6 +173,7 @@ function migrateExistingSession() {
         username: saved.username,
         port: saved.sshPort || 22
       },
+      licensed: false,
       status: 'connected',
       lastConnectedAt: saved.savedAt || Date.now(),
       isActive: true

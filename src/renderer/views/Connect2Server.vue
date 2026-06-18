@@ -146,20 +146,6 @@
         </div>
     </form>
     <PortForwardingModal v-if="showPortFwdModal" @close="togglePortFwdModal" />
-    <div v-if="showLicenseModal" class="fixed inset-0 z-[1100] bg-black/40 grid place-items-center p-4" @click.self="cancelLicenseEntry">
-        <div class="w-full max-w-[560px] rounded-xl border border-default bg-default text-default shadow-2xl p-4">
-            <h3 class="text-lg font-bold mb-1">License Required</h3>
-            <p class="text-sm opacity-80 mb-3">Enter your 45Flow license key to activate this server.</p>
-            <input v-model="licenseInput"
-                class="w-full rounded-lg border border-default bg-default text-default px-3 py-2 text-sm input-textlike"
-                type="text" placeholder="STUDIO-XXXX-XXXX-XXXX-XXXX"
-                @keydown.enter.prevent="submitLicenseEntry" />
-            <div class="mt-3 flex justify-end gap-2">
-                <button type="button" class="btn btn-secondary" @click="cancelLicenseEntry">Cancel</button>
-                <button type="button" class="btn btn-primary" @click="submitLicenseEntry">Activate</button>
-            </div>
-        </div>
-    </div>
 </template>
 
 <script setup lang="ts">
@@ -572,34 +558,6 @@ function togglePortFwdModal() {
     showPortFwdModal.value = !showPortFwdModal.value;
 }
 
-const showLicenseModal = ref(false)
-const licenseInput = ref('')
-let licensePromptResolver: ((value: string | null) => void) | null = null
-
-function requestLicenseKey(): Promise<string | null> {
-    licenseInput.value = ''
-    showLicenseModal.value = true
-    return new Promise((resolve) => {
-        licensePromptResolver = resolve
-    })
-}
-
-function submitLicenseEntry() {
-    const value = String(licenseInput.value || '').trim()
-    if (!value) return
-    showLicenseModal.value = false
-    const resolve = licensePromptResolver
-    licensePromptResolver = null
-    resolve?.(value)
-}
-
-function cancelLicenseEntry() {
-    showLicenseModal.value = false
-    const resolve = licensePromptResolver
-    licensePromptResolver = null
-    resolve?.(null)
-}
-
 
 function listenBootstrap(id: string) {
     const handler = (_: any, msg: any) => {
@@ -626,70 +584,32 @@ async function readHttpError(res: Response): Promise<string> {
     return rid && !String(base).includes(rid) ? `${base} (request ${rid})` : String(base);
 }
 
-async function ensureLicenseActivated(apiBase: string, token: string) {
+async function checkLicenseStatus(apiBase: string, token: string): Promise<{ licensed: boolean; licenseInfo?: any }> {
     let statusResp: Response
     try {
         statusResp = await fetch(`${apiBase}/api/license/status`)
     } catch {
-        // License endpoint unavailable (older broadcaster) -> continue.
-        return
+        // License endpoint unavailable (older broadcaster) -> assume unlicensed.
+        return { licensed: false }
     }
-    if (!statusResp.ok) return
+    if (!statusResp.ok) return { licensed: false }
 
     let statusBody: any = null
-    try { statusBody = await statusResp.json() } catch { return }
-    if (!statusBody?.enforcement || statusBody?.licensed) return
+    try { statusBody = await statusResp.json() } catch { return { licensed: false } }
 
-    const key = await requestLicenseKey()
-    if (!key || !key.trim()) throw new Error('License activation canceled.')
+    const licensed = !!statusBody?.licensed
+    const licenseInfo = statusBody?.license ?? undefined
 
-    const activateResp = await fetch(`${apiBase}/api/license/activate`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ licenseKey: key.trim() }),
-    })
-
-    const activateText = await activateResp.text()
-    let activateBody: any = null
-    try { activateBody = activateText ? JSON.parse(activateText) : null } catch { /* keep raw text fallback */ }
-
-    if (!activateResp.ok || !activateBody?.ok) {
-        const requestId = String(
-            activateResp.headers.get('x-request-id') ||
-            (typeof activateBody?.requestId === 'string' ? activateBody.requestId : '')
-        ).trim()
-        const base = activateBody?.error || activateBody?.detail?.error || activateText || `HTTP ${activateResp.status}`
-        const msg = requestId && !String(base).includes(requestId) ? `${base} (request ${requestId})` : String(base)
-        throw new Error(`License activation failed: ${msg}`)
+    if (!licensed) {
+        pushNotification(new Notification(
+            'Basic Mode',
+            'Connected to server (unlicensed). Premium features are disabled. Go to Settings → Go Pro to activate.',
+            'info',
+            8000
+        ))
     }
 
-    // Build license status message based on expiry
-    const licenseInfo = activateBody?.license
-    let licenseMsg = 'Server has been activated.'
-    if (licenseInfo?.perpetual) {
-        licenseMsg = 'Perpetual license — never expires. Server has been activated.'
-    } else if (licenseInfo?.expiresAt) {
-        const expiryDate = new Date(licenseInfo.expiresAt).toLocaleDateString()
-        licenseMsg = `License valid until ${expiryDate}. Server has been activated.`
-    }
-    
-    pushNotification(new Notification('License Activated', licenseMsg, 'success', 6000))
-}
-
-async function fetchLicenseStatusSafe(apiBase: string, token: string) {
-    try {
-        const res = await fetch(`${apiBase}/api/license/status`, {
-            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-        })
-        if (!res.ok) return null
-        const body = await res.json().catch(() => null)
-        return body?.ok ? body : null
-    } catch {
-        return null
-    }
+    return { licensed, licenseInfo }
 }
 
 function translateSshError(errorMsg: string): string {
@@ -952,8 +872,6 @@ async function connectToServer() {
         const loginData = await res.json();
         const token = loginData.token;
 
-        const loginLicenseStatus = await fetchLicenseStatusSafe(apiBase, token)
-
         connectionMeta.value = {
             ...connectionMeta.value,
             token,
@@ -969,8 +887,8 @@ async function connectToServer() {
         
         try { sessionStorage.setItem('hb_token', token); } catch { /* ignore */ }
 
-        // Activate license if required (must happen after login so we have a token)
-        await ensureLicenseActivated(apiBase, token)
+        // Check license status (non-blocking — sets licensed flag, doesn't prevent login)
+        const licenseResult = await checkLicenseStatus(apiBase, token)
 
         // Seed initial settings only if not already configured
         try {
@@ -1037,8 +955,9 @@ async function connectToServer() {
             },
             serverInfo: effectiveServer?.serverInfo,
             setupComplete: effectiveServer?.setupComplete,
-            licensed: typeof loginLicenseStatus?.licensed === 'boolean' ? !!loginLicenseStatus.licensed : undefined,
-            licenseCheckedAt: loginLicenseStatus ? Date.now() : undefined,
+            licensed: licenseResult.licensed,
+            licenseCheckedAt: Date.now(),
+            licenseInfo: licenseResult.licenseInfo,
             status: 'connected',
             lastConnectedAt: Date.now(),
             isActive: true
@@ -1181,7 +1100,7 @@ onMounted(async () => {
         }
 
         // Token is valid — restore the full session and navigate
-        const restoredLicenseStatus = await fetchLicenseStatusSafe(saved.apiBase, saved.token)
+        const restoredLicense = await checkLicenseStatus(saved.apiBase, saved.token)
 
         const serverObj: Server = existingServer ?? {
             ip: saved.serverIp,
@@ -1210,8 +1129,9 @@ onMounted(async () => {
                 username: saved.username.trim(),
                 port: saved.sshPort || 22
             },
-            licensed: typeof restoredLicenseStatus?.licensed === 'boolean' ? !!restoredLicenseStatus.licensed : undefined,
-            licenseCheckedAt: restoredLicenseStatus ? Date.now() : undefined,
+            licensed: restoredLicense.licensed,
+            licenseCheckedAt: Date.now(),
+            licenseInfo: restoredLicense.licenseInfo,
             status: 'connected',
             lastConnectedAt: Date.now(),
             isActive: true
@@ -1253,8 +1173,6 @@ onMounted(async () => {
 onUnmounted(() => {
     unlistenProgress?.()
     unlistenProgress = null
-    licensePromptResolver?.(null)
-    licensePromptResolver = null
 })
 
 /**

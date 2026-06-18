@@ -267,10 +267,14 @@
 
 								<!-- Premium Watermark Customization -->
 								<div v-if="watermarkAfterUpload && (watermarkFile || selectedExistingWatermark)" class="mt-4 border-t border-default pt-4">
-									<WatermarkCustomizer 
+									<WatermarkCustomizer v-if="isPremiumActive"
 										v-model="watermarkSettings"
 										:watermarkPreviewUrl="watermarkFile?.dataUrl || existingWatermarkPreviewUrl || null"
 										:isPremium="isServerLicensed"
+									/>
+									<WatermarkPreview v-else
+										:previewUrl="watermarkFile?.dataUrl || existingWatermarkPreviewUrl || ''"
+										label="Watermark (bottom-right)"
 									/>
 								</div>
 							</div>
@@ -309,9 +313,12 @@ import { ref, computed, inject, watch, onMounted, nextTick } from 'vue'
 import { useApi } from '../composables/useApi'
 import { useConnections } from '../composables/useConnections'
 import { useActiveProject } from '../composables/useActiveProject'
+import { useProjectMode } from '../composables/useProjectMode'
 import FolderPicker from '../components/FolderPicker.vue'
 import VideoOptionsPanel from '../components/VideoOptionsPanel.vue'
 import WatermarkCustomizer from '../components/WatermarkCustomizer.vue'
+import WatermarkPreview from '../components/WatermarkPreview.vue'
+import { useLicenseStatus } from '../composables/useLicenseStatus'
 import { connectionMetaInjectionKey } from '../keys/injection-keys';
 import type { WatermarkSettings } from '../types/watermark'
 import type { RsyncProgress, TranscodeProgress } from '../typings/electron'
@@ -328,11 +335,13 @@ import { useUploadTranscode } from '../composables/useUploadTranscode'
 const { to } = useResilientNav()
 useHeader('Upload Files')
 const transfer = useTransferProgress()
-const { activeProject } = useActiveProject()
+const { activeProject: rawActiveProject } = useActiveProject()
+const { projectModeEnabled } = useProjectMode()
+const activeProject = computed(() => projectModeEnabled.value ? rawActiveProject.value : null)
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()
 
-const localUploadTourSteps: TourStep[] = [
+const localUploadTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="upload-wizard-header"]',
 		message: 'Welcome to the Local Upload Wizard!\n\nThis 3-step process lets you transfer files from your computer to the server. The stepper at the top tracks your progress through each step.',
@@ -357,15 +366,17 @@ const localUploadTourSteps: TourStep[] = [
 	},
 	{
 		target: '[data-tour="upload-step-3"]',
-		message: 'Step 3: Review your files and start the upload.\n\nThe overall progress bar at the top tracks all files. When client-side transcoding is enabled, video files show a two-phase workflow: Transcode → Upload. Each file shows its own inline progress bar with speed and ETA.',
+		message: isPremiumActive.value
+			? 'Step 3: Review your files and start the upload.\n\nThe overall progress bar at the top tracks all files. When client-side transcoding is enabled, video files show a two-phase workflow: Transcode → Upload. Each file shows its own inline progress bar with speed and ETA.\n\nFor video files, you can configure review copy qualities and watermarks with full customization — position, size, opacity, and tiling (Pro). For image files, you can apply watermark overlays as well.'
+			: 'Step 3: Review your files and start the upload.\n\nThe overall progress bar at the top tracks all files. When client-side transcoding is enabled, video files show a two-phase workflow: Transcode → Upload. Each file shows its own inline progress bar with speed and ETA.\n\nFor video files, you can configure review copy qualities and a basic watermark (bottom-right). For image files, you can apply a basic watermark overlay. Upgrade to Pro for full watermark customization.',
 		placement: 'top',
 	},
 	{
 		target: '[data-tour="upload-next-btn"]',
-		message: 'When you\'re ready, click "Start Upload" to begin transferring files to the server.\n\nYou can cancel individual uploads while they\'re in progress. If you selected video files, configure review copy and watermark options above before starting.',
+		message: 'When you\'re ready, click "Start Upload" to begin transferring files to the server.\n\nYou can cancel individual uploads while they\'re in progress. If you selected video or image files, configure review copy and watermark options above before starting.',
 		placement: 'top',
 	},
-]
+])
 
 /** Request specific tour steps based on the current wizard step */
 function requestStepTour() {
@@ -373,7 +384,7 @@ function requestStepTour() {
 
 	if (step.value === 1 && !_tourStep1Shown) {
 		_tourStep1Shown = true
-		requestTour('local-upload', localUploadTourSteps.slice(0, 2), () => {})
+		requestTour('local-upload', localUploadTourSteps.value.slice(0, 2), () => {})
 	}
 }
 
@@ -382,7 +393,7 @@ function requestNextHintForStep1() {
 	if (onboarding.value.localUploadTourDone || !_tourStep1Shown) return
 	if (_tourNextHint1Shown) return
 	_tourNextHint1Shown = true
-	requestTour('local-upload-next1', [localUploadTourSteps[2]], () => {})
+	requestTour('local-upload-next1', [localUploadTourSteps.value[2]], () => {})
 }
 
 /** Show step 2 tour after navigating there */
@@ -390,7 +401,7 @@ function requestStep2Tour() {
 	if (onboarding.value.localUploadTourDone) return
 	if (_tourStep2Shown) return
 	_tourStep2Shown = true
-	requestTour('local-upload-step2', [localUploadTourSteps[3]], () => {})
+	requestTour('local-upload-step2', [localUploadTourSteps.value[3]], () => {})
 }
 
 /** Show "click Next" for step 2→3 after user picks a folder */
@@ -398,7 +409,7 @@ function requestNextHintForStep2() {
 	if (onboarding.value.localUploadTourDone || !_tourStep2Shown) return
 	if (_tourNextHint2Shown) return
 	_tourNextHint2Shown = true
-	requestTour('local-upload-next2', [localUploadTourSteps[4]], () => {})
+	requestTour('local-upload-next2', [localUploadTourSteps.value[4]], () => {})
 }
 
 /** Show step 3 tour after navigating there */
@@ -406,7 +417,7 @@ function requestStep3Tour() {
 	if (onboarding.value.localUploadTourDone) return
 	if (_tourStep3Shown) return
 	_tourStep3Shown = true
-	requestTour('local-upload-step3', localUploadTourSteps.slice(5, 7), () => markDone('localUploadTourDone'))
+	requestTour('local-upload-step3', localUploadTourSteps.value.slice(5, 7), () => markDone('localUploadTourDone'))
 }
 
 let _tourStep1Shown = false
@@ -433,6 +444,7 @@ const isUploading = ref(false)
 const { apiFetch } = useApi()
 const { activeConnection } = useConnections()
 const isServerLicensed = computed(() => activeConnection.value?.licensed !== false)
+const { isPremiumActive } = useLicenseStatus()
 
 /** ── Step control ───────────────────────────────────────── */
 const step = ref<1 | 2 | 3>(1)
@@ -1134,7 +1146,7 @@ function waitForIngestAndStartTranscode(opts: {
 		const handler = async (_e: any, payload: any) => {
 			try {
 				if (!payload?.ok) {
-					if (payload?.error === 'outputs_exist' || payload?.error === 'hls_exists') {
+					if (payload?.error === 'outputs_exist' || payload?.error === 'hls_exists' || payload?.error === 'watermark_exists') {
 						const msg = 'Transcode outputs already exist for this file. Overwrite them?';
 						const proceed = window.confirm(msg);
 						if (proceed) {
@@ -1147,12 +1159,12 @@ function waitForIngestAndStartTranscode(opts: {
 								if (proxyQualities.value.length) params.set('proxyQualities', proxyQualities.value.join(','));
 							}
 
-							if (opts.isVideo && watermarkAfterUpload.value) {
+							if (watermarkAfterUpload.value) {
 								const wmRel = String(opts.watermarkRelPath || resolveWatermarkRelPath() || watermarkFile.value?.name || '').trim()
 								if (wmRel) {
 									params.set('watermark', '1');
 									params.set('watermarkFile', wmRel);
-									if (proxyQualities.value.length) {
+									if (opts.isVideo && proxyQualities.value.length) {
 										params.set('watermarkProxyQualities', proxyQualities.value.join(','));
 									}
 								// Premium: Pass custom watermark settings to server
@@ -1162,6 +1174,7 @@ function waitForIngestAndStartTranscode(opts: {
 							}
 						}
 
+						params.set('overwrite', '1');
 						const data = await apiFetch(`/api/files/reingest?${params}`, { method: 'POST' });
 						startTranscodeFromPayload(data);
 					} else {
