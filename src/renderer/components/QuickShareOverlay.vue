@@ -633,6 +633,7 @@ watch(tourQuickShareShowDone, (done) => {
 // Step 1: Destination
 const destFolder = ref('')
 const projectBase = ref('')
+const configuredProjectRoot = ref('')
 const destPickerKey = ref(0)
 
 // Step 2: Link options
@@ -854,7 +855,8 @@ function rootOfServerPath(p: string) {
 }
 
 function resolveWatermarkStorageRoot() {
-  const base = String(projectBase.value || '').trim()
+  // Always use the central configured project root for watermarks, never individual project dirs
+  const base = String(configuredProjectRoot.value || '').trim()
   const root = base || rootOfServerPath(destFolder.value)
   let abs = String(root || '/').replace(/\\/g, '/').trim()
   if (!abs) abs = '/'
@@ -889,6 +891,9 @@ function resolveWatermarkPathForApi(idOrPath: string) {
 async function loadDefaultWatermarkSettings() {
   try {
     const settings = await apiFetch('/api/settings')
+    if (settings?.projectRoot) {
+      configuredProjectRoot.value = String(settings.projectRoot).trim()
+    }
     if (settings?.defaultWatermarkId) {
       // Apply watermark customization settings if available (premium feature)
       if (settings.defaultWatermarkSettings && typeof settings.defaultWatermarkSettings === 'object') {

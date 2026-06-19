@@ -1148,7 +1148,7 @@ onMounted(async () => {
 
         window.appLog?.info('auto-login.restored', { ip: saved.serverIp, connectionId: actualConnectionId })
 
-        if (restoredLicenseStatus?.enforcement && !restoredLicenseStatus?.licensed) {
+        if (restoredLicense?.enforcement && !restoredLicense?.licensed) {
             pushNotification(new Notification(
                 'Server Unlicensed',
                 'Connected successfully, but this server is not currently licensed. Premium features are disabled until re-activated.',

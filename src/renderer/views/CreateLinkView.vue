@@ -372,6 +372,24 @@
 		@cancel="resolveOutputsExist('keep')"
 		@close="resolveOutputsExist('cancel')"
 	/>
+
+	<!-- Add Users Modal -->
+	<AddUsersModal
+		v-model="showAccessModal"
+		:apiFetch="apiFetch"
+		roleHint="view"
+		:preselected="opts.accessUsers.value.map(c => ({
+			id: c.id,
+			username: c.username || '',
+			name: c.name,
+			user_email: c.user_email,
+			display_color: c.display_color,
+			role_id: c.role_id ?? undefined,
+			role_name: c.role_name ?? undefined,
+		}))"
+		:preselectedGroups="opts.accessGroups.value"
+		@apply="onApplyUsers"
+	/>
 </template>
 
 <script setup lang="ts">
@@ -401,6 +419,7 @@ import { useLicenseStatus } from '../composables/useLicenseStatus'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
 import ConfirmDeleteModal from '../components/modals/ConfirmDeleteModal.vue'
+import AddUsersModal from '../components/modals/AddUsersModal.vue'
 import { DEFAULT_45FLOW_WATERMARKS, createDefaultWatermarkSettings, type WatermarkSettings } from '../types/watermark'
 
 useHeader('Create Link')
@@ -417,6 +436,25 @@ const isServerLicensed = computed(() => activeConnection.value?.licensed !== fal
 const { isPremiumActive } = useLicenseStatus()
 
 const showAccessModal = ref(false)
+
+function onApplyUsers(users: any[], groups?: any[]) {
+	opts.accessUsers.value = users.map(u => {
+		const username = (u.username || '').trim()
+		const name = (u.name || username).trim()
+		const user_email = u.user_email?.trim() || undefined
+		return {
+			key: `${name}|${user_email || ''}|${username}`,
+			id: u.id,
+			username,
+			name,
+			user_email,
+			display_color: u.display_color,
+			role_id: u.role_id ?? null,
+			role_name: u.role_name ?? null,
+		}
+	})
+	opts.accessGroups.value = groups || []
+}
 
 // ── Projects ──
 interface Project { id: number; name: string; root_dir: string; description: string | null; link_count: number }
@@ -620,7 +658,8 @@ function clearWatermark() {
 
 // ── Watermark upload helpers ──
 function resolveWatermarkDirRel() {
-	const root = selectedProject.value?.root_dir || configuredRoot.value || ''
+	// Always use the central configured root for watermarks, never individual project dirs
+	const root = configuredRoot.value || ''
 	const rel = root ? root.replace(/^\/+/, '') : ''
 	return rel ? `${rel}/.45flow/watermarks` : '.45flow/watermarks'
 }

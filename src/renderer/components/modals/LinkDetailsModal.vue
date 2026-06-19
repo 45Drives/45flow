@@ -1129,7 +1129,7 @@ const watermarkPreviewUrl = computed(() =>
 const filesEditorOpen = ref(false)
 const draftFilePaths = ref<string[]>([])
 const originalFilePaths = ref<string[]>([])
-
+const configuredProjectRootForEdit = ref('')
 const draftUploadDir = ref('')
 const originalUploadDir = ref('')
 
@@ -1699,6 +1699,15 @@ watch(() => draftUploadEnabled.value, (enabled, wasEnabled) => {
 
 async function loadExistingWatermarkFilesForEdit() {
   try {
+    // Fetch configured project root for central watermark storage
+    if (!configuredProjectRootForEdit.value) {
+      try {
+        const settings = await props.apiFetch('/api/settings')
+        if (settings?.projectRoot) {
+          configuredProjectRootForEdit.value = String(settings.projectRoot).trim()
+        }
+      } catch {}
+    }
     const dirRel = resolveWatermarkDirRelForEdit()
     const data = await props.apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' })
     const entries = Array.isArray(data?.entries) ? data.entries : []
@@ -1757,6 +1766,12 @@ function rootOfServerPath(p: string) {
 }
 
 function resolveWatermarkStorageRootForEdit() {
+  // Use central configured project root if available
+  if (configuredProjectRootForEdit.value) {
+    const abs = configuredProjectRootForEdit.value
+    const rel = abs === '/' ? '' : abs.replace(/^\/+/, '')
+    return { abs, rel }
+  }
   const fromDraft = draftFilePaths.value[0] || ''
   const fromOriginal = originalFilePaths.value[0] || ''
   const fromFiles = String(files.value[0]?.relPath ?? files.value[0]?.path ?? files.value[0]?.p ?? '')

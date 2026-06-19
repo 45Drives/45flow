@@ -457,6 +457,7 @@ let tableDragCounter = 0
 // Step 2: destination
 const destFolderRel = ref<string>('')       // FolderPicker v-model
 const projectBase = ref<string>('')
+const configuredProjectRoot = ref<string>('')
 
 // Normalize the destination we actually use with rsync
 const normalizedDest = computed(() =>
@@ -755,6 +756,9 @@ async function fetchExistingWatermarkPreview(relPath: string) {
 async function loadDefaultWatermarkSettings() {
 	try {
 		const settings = await apiFetch('/api/settings')
+		if (settings?.projectRoot) {
+			configuredProjectRoot.value = String(settings.projectRoot).trim()
+		}
 		if (settings?.defaultWatermarkId) {
 			// Apply watermark customization settings if available (premium feature)
 			if (settings.defaultWatermarkSettings && typeof settings.defaultWatermarkSettings === 'object') {
@@ -830,7 +834,8 @@ function rootOfServerPath(p: string) {
 }
 
 function resolveWatermarkStorageRoot() {
-	const base = String(projectBase.value || '').trim()
+	// Always use the central configured project root for watermarks, never individual project dirs
+	const base = String(configuredProjectRoot.value || '').trim()
 	const root = base || rootOfServerPath(normalizedDest.value)
 	let abs = String(root || '/').replace(/\\/g, '/').trim()
 	if (!abs) abs = '/'

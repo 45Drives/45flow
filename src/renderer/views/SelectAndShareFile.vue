@@ -1239,7 +1239,8 @@ function rootOfServerPath(p: string) {
 }
 
 function resolveWatermarkStorageRoot() {
-    const base = String(projectBase.value || '').trim()
+    // Always use the central configured project root for watermarks, never individual project dirs
+    const base = String(configuredProjectRoot.value || '').trim()
     const root = base || rootOfServerPath(files.value[0] || '')
     let abs = String(root || '/').replace(/\\/g, '/').trim()
     if (!abs) abs = '/'
