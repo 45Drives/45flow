@@ -91,7 +91,7 @@ const { activeTour, finishTour, cancelTour } = useTourManager()
 
 // Initialize multi-server connection management
 const { activeConnection } = useConnections()
-const { isPremiumActive, isTrial, trialDaysRemaining } = useLicenseStatus()
+const { isPremiumActive, isUpdateEligible, isFallback, isTrial, trialDaysRemaining } = useLicenseStatus()
 const { activeProject } = useActiveProject()
 
 // Initialize WebSocket manager (auto-connects to active connection)
@@ -103,6 +103,11 @@ watch(isPremiumActive, (licensed) => {
   document.title = licensed
     ? `45Flow (Pro Edition) v${version}`
     : `45Flow (Community Edition) v${version}`
+}, { immediate: true })
+
+// Notify main process of update eligibility changes (only active license = eligible)
+watch(isUpdateEligible, (eligible) => {
+  window.electron?.ipcRenderer.send('license:update-eligible', eligible)
 }, { immediate: true })
 
 // Legacy provide for backwards compatibility during migration

@@ -476,6 +476,20 @@
                   Current: <code>{{ currentUploadDir || '—' }}</code>
                   <span v-if="uploadDirDirty" class="ml-2 text-amber-400">Pending changes</span>
                 </div>
+
+                <label class="flex items-start gap-3 select-none cursor-pointer mt-2 pt-2 border-t border-default">
+                  <input
+                    type="checkbox"
+                    v-model="draftAutoShareUploads"
+                    class="mt-0.5 h-4 w-4 rounded border-default accent-blue-600 cursor-pointer"
+                  />
+                  <div class="min-w-0">
+                    <div class="text-sm font-medium">Auto-share uploaded files</div>
+                    <div class="text-xs text-muted">
+                      Uploaded files will automatically appear in this link's shared files.
+                    </div>
+                  </div>
+                </label>
               </div>
             </div>
           </div>
@@ -1069,6 +1083,7 @@ const hasUnsavedChanges = computed(() => {
   if (draftAccessMode.value !== (props.link.access_mode || 'open')) return true
   if (!!draftUploadEnabled.value !== !!props.link.upload_enabled) return true
   if (!!draftShareEnabled.value !== !!props.link.share_enabled) return true
+  if (!!draftAutoShareUploads.value !== !!props.link.auto_share_uploads) return true
   const linkAccessMode = props.link.access_mode || 'open'
   const seedComments = (props.link?.type !== 'upload' && linkAccessMode !== 'restricted')
     ? !!(props.link.allow_comments ?? true)
@@ -1108,6 +1123,7 @@ const draftUsePassword = ref(false)
 const draftPassword = ref('')
 const draftUploadEnabled = ref(false)
 const draftShareEnabled = ref(true)
+const draftAutoShareUploads = ref(false)
 const draftGenerateReviewProxy = ref(false)
 const draftProxyQualities = ref<string[]>([])
 const originalProxyQualities = ref<string[]>([])
@@ -3333,6 +3349,7 @@ function beginEdit() {
   draftPassword.value = ''
   draftUploadEnabled.value = !!props.link.upload_enabled
   draftShareEnabled.value = !!props.link.share_enabled
+  draftAutoShareUploads.value = !!props.link.auto_share_uploads
   if (draftAccessMode.value === 'restricted') draftAllowComments.value = false
   seedDraftMediaSettings()
 
@@ -3383,6 +3400,7 @@ function cancelEdit() {
   draftPassword.value = ''
   draftUploadEnabled.value = !!props.link?.upload_enabled
   draftShareEnabled.value = !!props.link?.share_enabled
+  draftAutoShareUploads.value = !!props.link?.auto_share_uploads
   if (draftAccessMode.value === 'restricted') draftAllowComments.value = false
   seedDraftMediaSettings()
 
@@ -3586,8 +3604,9 @@ async function saveAll() {
     const passwordWillClear = nextAccessMode === 'open' && !wantsPassword && hadPassword
     const passwordChanged = passwordWillSet || passwordWillClear
 
+    const autoShareChanged = !!draftAutoShareUploads.value !== !!props.link.auto_share_uploads
     const shouldUpdateDetailsCore =
-      titleChanged || notesChanged || accessModeChanged || allowCommentsChanged || authModeChanged || passwordChanged || capabilitiesChanged
+      titleChanged || notesChanged || accessModeChanged || allowCommentsChanged || authModeChanged || passwordChanged || capabilitiesChanged || autoShareChanged
     const shouldUpdateFiles = draftShareEnabled.value && filesDirty.value
     const shouldPatchMediaSettings = mediaSettingsDirty.value
     const watermarkChanged =
@@ -3676,6 +3695,11 @@ async function saveAll() {
       if (capabilitiesChanged) {
         body.uploadEnabled = !!draftUploadEnabled.value
         body.shareEnabled = !!draftShareEnabled.value
+      }
+
+      // Include autoShareUploads if it changed
+      if (!!draftAutoShareUploads.value !== !!props.link.auto_share_uploads) {
+        body.autoShareUploads = !!draftAutoShareUploads.value
       }
 
       if (accessModeChanged || allowCommentsChanged || authModeChanged) {

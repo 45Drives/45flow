@@ -44,6 +44,7 @@ export interface Connection {
   
   // ── License Status (cached) ──
   licensed: boolean                 // Last known license state (false = unlicensed/basic mode)
+  licenseFallback: boolean          // Was-ever-licensed but now expired (keeps features, no updates)
   licenseCheckedAt?: number         // Timestamp of last check
   licenseInfo?: {                   // License details from server
     licenseId?: string
@@ -113,6 +114,7 @@ function load() {
       _state.connections = data.connections.map((c: any) => ({
         ...c,
         licensed: typeof c.licensed === 'boolean' ? c.licensed : false,
+        licenseFallback: typeof c.licenseFallback === 'boolean' ? c.licenseFallback : false,
       }))
     }
     if (typeof data.activeConnectionId === 'string') {
@@ -177,6 +179,7 @@ function migrateExistingSession() {
         port: saved.sshPort || 22
       },
       licensed: false,
+      licenseFallback: false,
       status: 'connected',
       lastConnectedAt: saved.savedAt || Date.now(),
       isActive: true

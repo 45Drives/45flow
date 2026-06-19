@@ -24,13 +24,36 @@ let _bgCheckRefCount = 0
 export function useLicenseStatus() {
   const { activeConnection, updateConnection } = useConnections()
 
+  /**
+   * Premium features are active when:
+   *  - Server is actively licensed, OR
+   *  - Server was previously licensed (fallback mode — keeps features, no updates)
+   */
   const isPremiumActive = computed<boolean>(() => {
+    const conn = activeConnection.value
+    return conn?.licensed === true || conn?.licenseFallback === true
+  })
+
+  /**
+   * Update eligibility requires an ACTIVE license (not fallback).
+   * Community (never licensed) and fallback (expired) users don't get updates.
+   */
+  const isUpdateEligible = computed<boolean>(() => {
     return activeConnection.value?.licensed === true
+  })
+
+  /**
+   * True when the server was previously licensed but the license has expired.
+   * Features still work but no new app updates.
+   */
+  const isFallback = computed<boolean>(() => {
+    const conn = activeConnection.value
+    return conn?.licenseFallback === true && conn?.licensed !== true
   })
 
   const licenseInfo = computed<LicenseInfo | null>(() => {
     const conn = activeConnection.value
-    if (!conn?.licensed) return null
+    if (!conn?.licensed && !conn?.licenseFallback) return null
     return (conn as any).licenseInfo ?? null
   })
 
@@ -65,6 +88,7 @@ export function useLicenseStatus() {
 
       const updates: Record<string, any> = {
         licensed: !!body.licensed,
+        licenseFallback: !!body.fallback,
         licenseCheckedAt: Date.now(),
       }
 
@@ -105,6 +129,8 @@ export function useLicenseStatus() {
 
   return {
     isPremiumActive,
+    isUpdateEligible,
+    isFallback,
     isTrial,
     trialDaysRemaining,
     licenseInfo,

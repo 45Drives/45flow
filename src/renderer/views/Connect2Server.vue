@@ -584,35 +584,43 @@ async function readHttpError(res: Response): Promise<string> {
     return rid && !String(base).includes(rid) ? `${base} (request ${rid})` : String(base);
 }
 
-async function checkLicenseStatus(apiBase: string, token: string): Promise<{ licensed: boolean; licenseInfo?: any }> {
+async function checkLicenseStatus(apiBase: string, token: string): Promise<{ licensed: boolean; licenseFallback: boolean; licenseInfo?: any }> {
     let statusResp: Response
     try {
         statusResp = await fetch(`${apiBase}/api/license/status`)
     } catch {
         // License endpoint unavailable (older broadcaster) -> assume unlicensed.
-        return { licensed: false }
+        return { licensed: false, licenseFallback: false }
     }
-    if (!statusResp.ok) return { licensed: false }
+    if (!statusResp.ok) return { licensed: false, licenseFallback: false }
 
     let statusBody: any = null
-    try { statusBody = await statusResp.json() } catch { return { licensed: false } }
+    try { statusBody = await statusResp.json() } catch { return { licensed: false, licenseFallback: false } }
 
     const licensed = !!statusBody?.licensed
+    const licenseFallback = !!statusBody?.fallback
     // Merge license core fields with metadata (customerEmail, activatedAt, notes)
     const licenseInfo = statusBody?.license || statusBody?.metadata
         ? { ...(statusBody.license || {}), ...(statusBody.metadata || {}) }
         : undefined
 
-    if (!licensed) {
+    if (!licensed && !licenseFallback) {
         pushNotification(new Notification(
             'Basic Mode',
             'Connected to server (unlicensed). Premium features are disabled. Go to Settings → Go Pro to activate.',
             'info',
             8000
         ))
+    } else if (!licensed && licenseFallback) {
+        pushNotification(new Notification(
+            'License Expired',
+            'Your license has expired. Premium features remain available at your current version, but app updates are paused until you renew.',
+            'warning',
+            9000
+        ))
     }
 
-    return { licensed, licenseInfo }
+    return { licensed, licenseFallback, licenseInfo }
 }
 
 function translateSshError(errorMsg: string): string {
@@ -959,6 +967,7 @@ async function connectToServer() {
             serverInfo: effectiveServer?.serverInfo,
             setupComplete: effectiveServer?.setupComplete,
             licensed: licenseResult.licensed,
+            licenseFallback: licenseResult.licenseFallback,
             licenseCheckedAt: Date.now(),
             licenseInfo: licenseResult.licenseInfo,
             status: 'connected',
@@ -1133,6 +1142,7 @@ onMounted(async () => {
                 port: saved.sshPort || 22
             },
             licensed: restoredLicense.licensed,
+            licenseFallback: restoredLicense.licenseFallback,
             licenseCheckedAt: Date.now(),
             licenseInfo: restoredLicense.licenseInfo,
             status: 'connected',
@@ -1148,10 +1158,10 @@ onMounted(async () => {
 
         window.appLog?.info('auto-login.restored', { ip: saved.serverIp, connectionId: actualConnectionId })
 
-        if (restoredLicense?.enforcement && !restoredLicense?.licensed) {
+        if (restoredLicense?.licenseFallback) {
             pushNotification(new Notification(
-                'Server Unlicensed',
-                'Connected successfully, but this server is not currently licensed. Premium features are disabled until re-activated.',
+                'License Expired',
+                'Your license has expired. Premium features remain available, but app updates are paused until you renew.',
                 'warning',
                 9000,
             ))

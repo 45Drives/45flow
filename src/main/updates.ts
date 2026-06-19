@@ -18,6 +18,24 @@ export function initAutoUpdates(getMainWindow: () => BrowserWindow | null) {
     autoUpdater.fullChangelog = false
     autoUpdater.allowPrerelease = false
 
+    // ── License-gated update eligibility ──
+    // Only actively licensed servers get updates.
+    // Community (never licensed) and fallback (expired) do NOT.
+    let _updateEligible = false
+
+    ipcMain.on('license:update-eligible', (_event, eligible: boolean) => {
+        const prev = _updateEligible
+        _updateEligible = !!eligible
+        console.log(`[updates] update-eligible changed: ${prev} → ${_updateEligible}`)
+
+        // If we just became eligible, do an initial check
+        if (!prev && _updateEligible) {
+            autoUpdater.checkForUpdates().catch((err: any) => {
+                console.warn('[updates] Auto-check after license activation failed:', err?.message || err)
+            })
+        }
+    })
+
     function normalizeUpdaterError(err: any): string {
         const raw = String(err?.message || err || 'Unknown updater error')
         const compact = raw.replace(/\s+/g, ' ').trim()
@@ -102,6 +120,9 @@ export function initAutoUpdates(getMainWindow: () => BrowserWindow | null) {
     })
 
     ipcMain.handle('update:check', async () => {
+        if (!_updateEligible) {
+            throw new Error('App updates require an active 45Flow license. Activate or renew your license to receive updates.')
+        }
         try {
             return await autoUpdater.checkForUpdates()
         } catch (err) {
@@ -110,6 +131,9 @@ export function initAutoUpdates(getMainWindow: () => BrowserWindow | null) {
     })
 
     ipcMain.handle('update:download', async () => {
+        if (!_updateEligible) {
+            throw new Error('App updates require an active 45Flow license. Activate or renew your license to receive updates.')
+        }
         try {
             return await autoUpdater.downloadUpdate()
         } catch (err) {
@@ -162,10 +186,6 @@ export function initAutoUpdates(getMainWindow: () => BrowserWindow | null) {
         return { ok: true }
     })
 
-    // Do an initial check (not download) shortly after app is ready
-    setTimeout(() => {
-        autoUpdater.checkForUpdates().catch((err: any) => {
-            console.warn('[updates] Initial update check failed:', err?.message || err)
-        })
-    }, 5_000)
+    // No automatic check on startup — update checks are triggered by the renderer
+    // when it confirms the server has an active license (not community, not fallback).
 }

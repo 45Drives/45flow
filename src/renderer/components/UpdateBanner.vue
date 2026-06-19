@@ -60,9 +60,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useLicenseStatus } from '../composables/useLicenseStatus'
 
 type UpdateBannerState = 'idle' | 'checking' | 'available' | 'none' | 'downloading' | 'downloaded' | 'installing' | 'manual' | 'error'
+
+const { isUpdateEligible } = useLicenseStatus()
 
 const enabled = ref(false)
 const busy = ref(false)
@@ -73,7 +76,7 @@ const errorMessage = ref('')
 let hideTimer: ReturnType<typeof setTimeout> | null = null
 
 const isVisible = computed(() => enabled.value && state.value !== 'idle')
-const canCheckNow = computed(() => ['none', 'error'].includes(state.value))
+const canCheckNow = computed(() => isUpdateEligible.value && ['none', 'error'].includes(state.value))
 
 const title = computed(() => {
   if (state.value === 'checking') return 'Checking for updates...'
@@ -125,6 +128,11 @@ function setState(next: UpdateBannerState) {
 }
 
 async function checkNow() {
+  if (!isUpdateEligible.value) {
+    errorMessage.value = 'App updates require an active 45Flow license. Activate or renew in Settings → Go Pro.'
+    setState('error')
+    return
+  }
   busy.value = true
   try {
     setState('checking')
@@ -138,6 +146,11 @@ async function checkNow() {
 }
 
 async function downloadNow() {
+  if (!isUpdateEligible.value) {
+    errorMessage.value = 'App updates require an active 45Flow license. Activate or renew in Settings → Go Pro.'
+    setState('error')
+    return
+  }
   busy.value = true
   try {
     setState('downloading')

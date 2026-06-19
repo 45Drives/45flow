@@ -135,6 +135,23 @@
 										@openUserModal="openUserModal()"
 									/>
 								</div>
+
+								<!-- Auto-share uploads toggle -->
+								<div class="border-t border-default mt-2 pt-3 min-w-0">
+									<label class="flex items-start gap-3 select-none cursor-pointer">
+										<input
+											type="checkbox"
+											v-model="autoShareUploads"
+											class="mt-1 h-5 w-5 rounded border-default accent-blue-600 cursor-pointer"
+										/>
+										<div class="min-w-0">
+											<div class="text-base font-medium">Auto-share uploaded files</div>
+											<div class="text-sm text-muted">
+												When enabled, files uploaded through this link will automatically appear in the link's shared files — visible to anyone viewing the link.
+											</div>
+										</div>
+									</label>
+								</div>
 							</template>
 							</CommonLinkControls>
 						</div>
@@ -266,6 +283,7 @@ const expiresUnit = ref<'hours' | 'days' | 'weeks'>('days')
 const password = ref('')
 const showPassword = ref(false)
 const linkTitle = ref('')
+const autoShareUploads = ref(false)
 const accessUsers = ref<Commenter[]>([])
 const accessGroups = ref<{ id: number; name: string; member_count?: number; display_color?: string | null; role_id: number | null; role_name: string | null }[]>([])
 const usePublicBase = ref(false)
@@ -396,6 +414,7 @@ async function generateLink() {
 			baseMode: usePublicBase.value ? 'externalPreferred' : 'local',
 			access_mode: accessMode.value === 'restricted' ? 'restricted' : 'open',
 			auth_mode: accessMode.value === 'open_password' ? 'password' : 'none',
+			autoShareUploads: autoShareUploads.value,
 		}
 
 		if (accessMode.value === 'open_password') {
@@ -468,6 +487,7 @@ function resetAll() {
 	password.value = ''
 	showPassword.value = false
 	linkTitle.value = ''
+	autoShareUploads.value = false
 	accessUsers.value = []
 	accessGroups.value = []
 	accessMode.value = defaultAccessMode.value
