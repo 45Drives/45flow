@@ -23,7 +23,7 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
 | Combined links (share + upload) | ✅ | ✅ |
 | Link expiration, password protection, user restrictions | ✅ | ✅ |
 | Project-based link organization | ✅ | ✅ |
-| Multi-server management | ✅ | ✅ |
+| Multi-server management | ❌ | ✅ |
 | **Uploads & Transfers** | | |
 | Local file upload to server | ✅ | ✅ |
 | Remote upload links | ✅ | ✅ |
