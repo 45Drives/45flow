@@ -431,8 +431,8 @@ Toggle between **Internal** and **External** as the default network access mode 
 > **Note:** Using a custom domain requires a valid SSL certificate for that domain. See [SSL Certificate Management](#ssl-certificate-management) below.
 
 **Example:**  
-Without a domain: `https://142.177.145.42/s/<token>`  
-With a domain: `https://studio.yourcompany.com/s/<token>`
+Without a domain: `https://203.0.113.10/s/<token>`  
+With a domain: `https://yourcompany.com/s/<token>`
 
 **Internal Share URL (LAN / VPN):**
 
