@@ -159,11 +159,46 @@
 							<label class="block text-sm font-medium mb-1">Description</label>
 							<textarea v-model="editForm.description" class="input-textlike w-full px-3 py-2 rounded-lg border border-default resize-none" rows="2" />
 						</div>
-						<div class="flex items-center justify-end gap-2 mt-2">
-							<button type="button" class="btn btn-secondary px-4 py-2" @click="showEditModal = false">Cancel</button>
-							<button type="submit" class="btn btn-primary px-4 py-2" :disabled="saving">{{ saving ? 'Saving…' : 'Save' }}</button>
+						<div class="flex items-center justify-between mt-2">
+							<div class="flex items-center gap-2">
+								<button
+									v-if="!project?.archived"
+									type="button"
+									class="btn btn-secondary px-3 py-2 text-sm"
+									@click="archiveProject"
+								>Archive</button>
+								<button
+									v-else
+									type="button"
+									class="btn btn-secondary px-3 py-2 text-sm"
+									@click="unarchiveProject"
+								>Unarchive</button>
+								<button
+									type="button"
+									class="btn btn-secondary px-3 py-2 text-sm text-red-400 hover:text-red-300"
+									@click="showDeleteConfirm = true"
+								>Delete</button>
+							</div>
+							<div class="flex items-center gap-2">
+								<button type="button" class="btn btn-secondary px-4 py-2" @click="showEditModal = false">Cancel</button>
+								<button type="submit" class="btn btn-primary px-4 py-2" :disabled="saving">{{ saving ? 'Saving…' : 'Save' }}</button>
+							</div>
 						</div>
 					</form>
+				</div>
+			</div>
+		</Teleport>
+
+		<!-- Delete Confirmation Modal -->
+		<Teleport to="body">
+			<div v-if="showDeleteConfirm" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" @click.self="showDeleteConfirm = false">
+				<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
+					<h3 class="text-lg font-semibold mb-2">Delete Project</h3>
+					<p class="text-sm text-default mb-4">Permanently delete <strong>{{ project?.name }}</strong>? This cannot be undone.</p>
+					<div class="flex items-center justify-end gap-2">
+						<button class="btn btn-secondary px-4 py-2" @click="showDeleteConfirm = false">Cancel</button>
+						<button class="btn btn-primary px-4 py-2 !bg-red-600 hover:!bg-red-500" @click="deleteProject">Delete</button>
+					</div>
 				</div>
 			</div>
 		</Teleport>
@@ -203,6 +238,7 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const showCreateLinkModal = ref(false)
 const showEditModal = ref(false)
+const showDeleteConfirm = ref(false)
 const creatingLink = ref(false)
 const saving = ref(false)
 
@@ -336,6 +372,37 @@ function copyLinkUrl(link: ProjectLink) {
 
 function goBack() {
 	to('projects')
+}
+
+async function archiveProject() {
+	try {
+		await apiFetch(`/api/projects/${getProjectId()}`, { method: 'DELETE' })
+		showEditModal.value = false
+		await fetchProject()
+	} catch (e: any) {
+		error.value = e?.message || 'Failed to archive project'
+	}
+}
+
+async function unarchiveProject() {
+	try {
+		await apiFetch(`/api/projects/${getProjectId()}/unarchive`, { method: 'POST' })
+		showEditModal.value = false
+		await fetchProject()
+	} catch (e: any) {
+		error.value = e?.message || 'Failed to unarchive project'
+	}
+}
+
+async function deleteProject() {
+	try {
+		await apiFetch(`/api/projects/${getProjectId()}?hard=1`, { method: 'DELETE' })
+		showDeleteConfirm.value = false
+		showEditModal.value = false
+		to('projects')
+	} catch (e: any) {
+		error.value = e?.message || 'Failed to delete project'
+	}
 }
 
 onMounted(fetchProject)
