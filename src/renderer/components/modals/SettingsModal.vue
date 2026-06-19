@@ -120,6 +120,149 @@
                             </div>
                         </template>
 
+                        <!-- ═══ Public Sharing ════════════════════════════════ -->
+                        <template v-if="activeSection === 'publicSharing'">
+                            <!-- Status Summary Card -->
+                            <div class="rounded-lg border p-4 mb-4" :class="{
+                                'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20': publicSharingStatus?.friendlyStatus === 'ready',
+                                'border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20': publicSharingStatus?.friendlyStatus === 'needs_trusted_cert' || publicSharingStatus?.friendlyStatus === 'firewall_warning',
+                                'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20': publicSharingStatus?.friendlyStatus === 'nginx_warning',
+                                'border-default bg-default/40': !publicSharingStatus || publicSharingStatus?.friendlyStatus === 'unknown',
+                            }">
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center gap-2">
+                                        <div class="text-sm font-semibold" :class="{
+                                            'text-green-800 dark:text-green-400': publicSharingStatus?.friendlyStatus === 'ready',
+                                            'text-yellow-800 dark:text-yellow-400': publicSharingStatus?.friendlyStatus === 'needs_trusted_cert' || publicSharingStatus?.friendlyStatus === 'firewall_warning',
+                                            'text-red-800 dark:text-red-400': publicSharingStatus?.friendlyStatus === 'nginx_warning',
+                                            'text-default': !publicSharingStatus || publicSharingStatus?.friendlyStatus === 'unknown',
+                                        }">
+                                            {{ publicSharingFriendlyLabel }}
+                                        </div>
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium" :class="{
+                                            'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-400': publicSharingStatus?.friendlyStatus === 'ready',
+                                            'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-400': publicSharingStatus?.friendlyStatus === 'needs_trusted_cert' || publicSharingStatus?.friendlyStatus === 'firewall_warning',
+                                            'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400': publicSharingStatus?.friendlyStatus === 'nginx_warning',
+                                            'bg-default text-accent': !publicSharingStatus || publicSharingStatus?.friendlyStatus === 'unknown',
+                                        }">
+                                            {{ publicSharingStatusBadge }}
+                                        </span>
+                                    </div>
+                                    <button class="btn btn-secondary text-xs px-2 py-1" :disabled="publicSharingBusy" @click="checkPublicSharing">
+                                        {{ publicSharingBusy ? 'Checking…' : 'Check Now' }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Status Rows -->
+                            <div class="divide-y divide-default">
+                                <SettingRow label="Share URL" description="The public URL recipients use to view your shared content.">
+                                    <span class="font-mono text-xs">{{ publicSharingStatus?.settings?.externalBaseEffective || '(not configured)' }}</span>
+                                </SettingRow>
+                                <SettingRow label="HTTPS" :description="publicSharingCertDescription">
+                                    <span class="text-sm" :class="{
+                                        'text-green-700 dark:text-green-400': publicSharingStatus?.certificate?.mode === 'letsencrypt' && publicSharingStatus?.certificate?.valid,
+                                        'text-yellow-700 dark:text-yellow-400': publicSharingStatus?.certificate?.mode === 'self-signed',
+                                        'text-red-700 dark:text-red-400': publicSharingStatus?.certificate?.mode === 'letsencrypt' && !publicSharingStatus?.certificate?.valid,
+                                    }">{{ publicSharingCertLabel }}</span>
+                                </SettingRow>
+                                <SettingRow label="Web routing" description="Houston automatically configures web traffic routing.">
+                                    <span class="text-sm" :class="{
+                                        'text-green-700 dark:text-green-400': publicSharingStatus?.nginx?.running && publicSharingStatus?.nginx?.configValid,
+                                        'text-red-700 dark:text-red-400': publicSharingStatus?.nginx && (!publicSharingStatus?.nginx?.running || !publicSharingStatus?.nginx?.configValid),
+                                    }">{{ publicSharingNginxLabel }}</span>
+                                </SettingRow>
+                                <SettingRow label="Firewall" description="HTTP and HTTPS ports must be open for external access.">
+                                    <span class="text-sm" :class="{
+                                        'text-green-700 dark:text-green-400': publicSharingStatus?.firewall?.httpOpen && publicSharingStatus?.firewall?.httpsOpen,
+                                        'text-yellow-700 dark:text-yellow-400': publicSharingStatus?.firewall && (!publicSharingStatus?.firewall?.httpOpen || !publicSharingStatus?.firewall?.httpsOpen),
+                                    }">{{ publicSharingFirewallLabel }}</span>
+                                </SettingRow>
+                                <SettingRow v-if="publicSharingStatus?.bootstrap?.timestamp" label="Last setup" description="When Houston last configured public sharing.">
+                                    <span class="text-xs text-accent">{{ formatBootstrapTime(publicSharingStatus.bootstrap.timestamp) }}</span>
+                                </SettingRow>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="flex flex-wrap items-center gap-2 mt-4">
+                                <button class="btn btn-secondary text-sm" type="button"
+                                    :disabled="publicSharingBusy" @click="checkPublicSharing">
+                                    {{ publicSharingBusy ? 'Checking…' : 'Check Public Sharing' }}
+                                </button>
+                                <button class="btn btn-secondary text-sm" type="button"
+                                    :disabled="publicSharingBusy" @click="repairPublicSharing">
+                                    {{ publicSharingRepairBusy ? 'Repairing…' : 'Repair Public Sharing' }}
+                                </button>
+                                <button class="btn btn-secondary text-sm" type="button"
+                                    @click="activeSection = 'certificate'">
+                                    Install Trusted Certificate
+                                </button>
+                                <button class="btn btn-secondary text-sm" type="button"
+                                    :disabled="publicSharingBusy" @click="regenerateLocalCert">
+                                    {{ publicSharingRegenBusy ? 'Regenerating…' : 'Regenerate Local Certificate' }}
+                                </button>
+                            </div>
+
+                            <!-- Check Results -->
+                            <div v-if="publicSharingCheckResult" class="mt-4 rounded-lg border border-default bg-default/40 p-3">
+                                <div class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Check Results</div>
+                                <div v-if="publicSharingCheckResult.issues?.length === 0" class="text-sm text-green-700 dark:text-green-400">
+                                    All checks passed. Public sharing is working correctly.
+                                </div>
+                                <div v-else class="space-y-2">
+                                    <div v-for="(issue, idx) in publicSharingCheckResult.issues" :key="idx"
+                                        class="flex items-start gap-2 text-sm">
+                                        <span class="shrink-0 mt-0.5" :class="{
+                                            'text-red-600 dark:text-red-400': issue.severity === 'error',
+                                            'text-yellow-600 dark:text-yellow-400': issue.severity === 'warning',
+                                        }">{{ issue.severity === 'error' ? '✕' : '⚠' }}</span>
+                                        <span>{{ issue.message }}</span>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-accent mt-2">Checked: {{ publicSharingCheckResult.checkedAt ? new Date(publicSharingCheckResult.checkedAt).toLocaleString() : '' }}</div>
+                            </div>
+
+                            <!-- Repair Results -->
+                            <div v-if="publicSharingRepairResult" class="mt-3 rounded-lg border border-default bg-default/40 p-3">
+                                <div class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Repair Results</div>
+                                <div class="space-y-1">
+                                    <div v-for="(action, idx) in publicSharingRepairResult.actions" :key="idx"
+                                        class="flex items-center gap-2 text-sm">
+                                        <span :class="{
+                                            'text-green-600 dark:text-green-400': action.status === 'ok',
+                                            'text-red-600 dark:text-red-400': action.status === 'error',
+                                            'text-yellow-600 dark:text-yellow-400': action.status === 'warning',
+                                        }">{{ action.status === 'ok' ? '✓' : action.status === 'error' ? '✕' : '⚠' }}</span>
+                                        <span>{{ action.message }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Advanced Details (collapsed) -->
+                            <details class="mt-5 border-t border-default pt-4">
+                                <summary class="text-xs font-semibold text-accent uppercase tracking-wide cursor-pointer select-none hover:text-default transition-colors">
+                                    Advanced Details
+                                </summary>
+                                <div class="mt-3 text-xs space-y-2 font-mono bg-well rounded p-3">
+                                    <div><span class="text-accent">Proxy:</span> nginx</div>
+                                    <div><span class="text-accent">Config path:</span> {{ publicSharingStatus?.nginx?.configPath || '/etc/nginx/conf.d/houston-broadcaster.conf' }}</div>
+                                    <div><span class="text-accent">Certificate path:</span> {{ publicSharingStatus?.certificate?.mode === 'letsencrypt' && publicSharingStatus?.certificate?.domain ? `/etc/letsencrypt/live/${publicSharingStatus.certificate.domain}/fullchain.pem` : '/etc/ssl/selfsigned/houston.crt' }}</div>
+                                    <div><span class="text-accent">App target:</span> {{ publicSharingStatus?.bootstrap?.app?.target || '127.0.0.1:9095' }}</div>
+                                    <div><span class="text-accent">Service:</span> {{ publicSharingStatus?.bootstrap?.app?.service || 'houston-broadcaster.service' }}</div>
+                                    <div><span class="text-accent">Firewall tool:</span> {{ publicSharingStatus?.firewall?.tool || 'unknown' }}</div>
+                                    <div><span class="text-accent">Firewall ports:</span> {{ publicSharingStatus?.bootstrap?.firewall?.ports || '80/tcp, 443/tcp' }}</div>
+                                    <div v-if="publicSharingStatus?.bootstrap?.timestamp"><span class="text-accent">Last bootstrap:</span> {{ publicSharingStatus.bootstrap.timestamp }}</div>
+                                    <div v-if="publicSharingStatus?.bootstrap?.status"><span class="text-accent">Bootstrap status:</span> {{ publicSharingStatus.bootstrap.status }}</div>
+                                    <div v-if="publicSharingStatus?.bootstrap?.nginx?.warnings?.length">
+                                        <span class="text-accent">Warnings:</span>
+                                        <ul class="list-disc list-inside ml-2 mt-1">
+                                            <li v-for="(w, i) in publicSharingStatus.bootstrap.nginx.warnings" :key="i">{{ w }}</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </details>
+                        </template>
+
                         <!-- ═══ Default Link Options ══════════════════════════ -->
                         <template v-if="activeSection === 'linkOptions'">
                             <div class="divide-y divide-default">
@@ -1369,7 +1512,7 @@ const settingsTourSteps = computed<TourStep[]>(() => [
 ])
 
 // ── Section navigation ──────────────────────────────────────────────────
-type Section = 'sharing' | 'app' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade';
+type Section = 'sharing' | 'publicSharing' | 'app' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade';
 const activeSection = ref<Section>((props.initialSection as Section) || 'sharing');
 
 const navGroups = computed(() => {
@@ -1378,6 +1521,7 @@ const navGroups = computed(() => {
             label: 'Link Sharing',
             items: [
                 { key: 'sharing' as Section, label: 'URLs & Access' },
+                { key: 'publicSharing' as Section, label: 'Public Sharing' },
                 { key: 'certificate' as Section, label: 'Certificate' },
                 { key: 'linkOptions' as Section, label: 'Link Options' },
             ],
@@ -1814,6 +1958,11 @@ watch(activeSection, (section) => {
     if (section === 'linkOptions' && existingWatermarkFiles.value.length === 0) {
         loadExistingWatermarkFiles();
         loadDefaultWatermarkPresets();
+    }
+
+    // Refresh public sharing status when navigating to that section
+    if (section === 'publicSharing') {
+        loadPublicSharingStatus();
     }
 });
 
@@ -2372,6 +2521,118 @@ async function clearBranding() {
         brandingBusy.value = false;
     }
 }
+// ── Public Sharing ────────────────────────────────────────────────────────────────────
+const publicSharingStatus = ref<any>(null);
+const publicSharingBusy = ref(false);
+const publicSharingRepairBusy = ref(false);
+const publicSharingRegenBusy = ref(false);
+const publicSharingCheckResult = ref<any>(null);
+const publicSharingRepairResult = ref<any>(null);
+
+const publicSharingFriendlyLabel = computed(() => {
+    const s = publicSharingStatus.value?.friendlyStatus;
+    if (s === 'ready') return 'Public Sharing Ready';
+    if (s === 'needs_trusted_cert') return 'Needs Trusted Certificate';
+    if (s === 'nginx_warning') return 'Web Routing Needs Attention';
+    if (s === 'firewall_warning') return 'Firewall Needs Attention';
+    if (s === 'dns_not_verified') return 'DNS Not Verified';
+    return 'Status Unknown';
+});
+
+const publicSharingStatusBadge = computed(() => {
+    const s = publicSharingStatus.value?.friendlyStatus;
+    if (s === 'ready') return 'Ready';
+    if (s === 'needs_trusted_cert' || s === 'firewall_warning' || s === 'dns_not_verified') return 'Needs Attention';
+    if (s === 'nginx_warning') return 'Error';
+    return 'Not Checked';
+});
+
+const publicSharingCertLabel = computed(() => {
+    const cert = publicSharingStatus.value?.certificate;
+    if (cert.mode === 'letsencrypt' && cert.valid) return 'Trusted certificate active';
+    return 'Local certificate (self-signed)';
+});
+
+const publicSharingCertDescription = computed(() => {
+    const cert = publicSharingStatus.value?.certificate;
+    if (cert.mode === 'letsencrypt' && cert.valid && cert.domain) return `Trusted certificate for ${cert.domain}. Recipients will not see browser warnings.`;
+    if (cert.mode === 'self-signed') return 'Recipients will see a browser security warning when opening share links.';
+    return 'Certificate status unclear.';
+});
+
+const publicSharingNginxLabel = computed(() => {
+    const nginx = publicSharingStatus.value?.nginx;
+    if (nginx.running && nginx.configValid) return 'Configured by Houston';
+    return 'Needs repair';
+});
+
+const publicSharingFirewallLabel = computed(() => {
+    const fw = publicSharingStatus.value?.firewall;
+    if (fw.httpOpen && fw.httpsOpen) return 'Web sharing allowed';
+    return 'Needs attention';
+});
+
+function formatBootstrapTime(iso: string) {
+    try { return new Date(iso).toLocaleString(); }
+    catch { return iso; }
+}
+
+async function loadPublicSharingStatus() {
+    try {
+        const data = await apiFetch('/api/settings/public-sharing/status', { timeoutMs: 15000 });
+        publicSharingStatus.value = data;
+    } catch (e: any) {
+        appLog('Failed to load public sharing status', e);
+    }
+}
+
+async function checkPublicSharing() {
+    publicSharingBusy.value = true;
+    publicSharingCheckResult.value = null;
+    try {
+        const data = await apiFetch('/api/settings/public-sharing/check', { method: 'POST', timeoutMs: 30000 });
+        publicSharingCheckResult.value = data;
+        await loadPublicSharingStatus();
+    } catch (e: any) {
+        pushNotification(new Notification({ title: 'Check failed', body: e?.message || 'Could not check public sharing.', level: 'error' }));
+    } finally {
+        publicSharingBusy.value = false;
+    }
+}
+
+async function repairPublicSharing() {
+    publicSharingRepairBusy.value = true;
+    publicSharingBusy.value = true;
+    publicSharingRepairResult.value = null;
+    try {
+        const data = await apiFetch('/api/settings/public-sharing/repair', { method: 'POST', timeoutMs: 60000 });
+        publicSharingRepairResult.value = data;
+        pushNotification(new Notification({ title: 'Repair complete', body: data.ok ? 'Public sharing has been repaired.' : 'Repair completed with issues.', level: data.ok ? 'info' : 'warning' }));
+        await loadPublicSharingStatus();
+    } catch (e: any) {
+        pushNotification(new Notification({ title: 'Repair failed', body: e?.message || 'Could not repair public sharing.', level: 'error' }));
+    } finally {
+        publicSharingRepairBusy.value = false;
+        publicSharingBusy.value = false;
+    }
+}
+
+async function regenerateLocalCert() {
+    publicSharingRegenBusy.value = true;
+    publicSharingBusy.value = true;
+    try {
+        const data = await apiFetch('/api/settings/public-sharing/regenerate-self-signed', { method: 'POST', timeoutMs: 30000 });
+        pushNotification(new Notification({ title: 'Certificate regenerated', body: data.message || 'Local certificate has been regenerated.', level: 'info' }));
+        await loadPublicSharingStatus();
+        await loadCertStatus();
+    } catch (e: any) {
+        pushNotification(new Notification({ title: 'Regeneration failed', body: e?.message || 'Could not regenerate certificate.', level: 'error' }));
+    } finally {
+        publicSharingRegenBusy.value = false;
+        publicSharingBusy.value = false;
+    }
+}
+
 // ── Certificate / Let’s Encrypt ───────────────────────────────────────────────────────
 const certBusy = ref(false);
 const certStep = ref<'verify' | 'setup' | 'revert' | null>(null);
@@ -2770,6 +3031,7 @@ async function reload() {
 
     // Load cert status in parallel (non-blocking)
     loadCertStatus();
+    loadPublicSharingStatus();
     if (isPremiumActive.value) loadBranding();
 }
 
