@@ -6,12 +6,54 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
 
 45Flow is available in two modes:
 
-- **Community Edition** — Free unlicensed version. Includes all core file sharing, review, and upload features with basic watermarking.
-- **Pro Edition** — Unlocked when your server is licensed. Adds custom branding (white label), advanced watermark customization, timecoded comments, annotations, and priority support.
+- **Community Edition** — Free unlicensed version. Includes all core file sharing, review, upload, and watermarking features (video and image).
+- **Pro Edition** — Unlocked when your server is licensed. Adds custom branding (white label), advanced watermark customization (position, scale, opacity, rotation, presets), timecoded comments, annotations, and priority support.
 
 **The app works the same way for everyone** — it starts in Community mode by default, and automatically upgrades to Pro when connected to a licensed server. No separate downloads or builds. When unlicensed, Pro features are simply hidden or disabled in the UI.
 
 **Licensing is server-side** — your 45Flow license is tied to your houston-broadcaster server, not to individual user accounts. Once a server is licensed, all users connecting to it gain access to Pro features automatically.
+
+### Feature Comparison
+
+| Feature | Community | Pro |
+|---------|:---------:|:---:|
+| **File Sharing & Links** | | |
+| Create share links (single file or collection) | ✅ | ✅ |
+| Create upload links | ✅ | ✅ |
+| Combined links (share + upload) | ✅ | ✅ |
+| Link expiration, password protection, user restrictions | ✅ | ✅ |
+| Project-based link organization | ✅ | ✅ |
+| Multi-server management | ✅ | ✅ |
+| **Uploads & Transfers** | | |
+| Local file upload to server | ✅ | ✅ |
+| Remote upload links | ✅ | ✅ |
+| Client-side transcoding (GPU/CPU) | ✅ | ✅ |
+| Transfer Dock with progress tracking | ✅ | ✅ |
+| **Review & Playback** | | |
+| Video player with HLS streaming | ✅ | ✅ |
+| Review copies (720p, 1080p) | ✅ | ✅ |
+| Multi-file share navigation | ✅ | ✅ |
+| **Watermarking** | | |
+| Video watermarking (enable/disable, select image) | ✅ | ✅ |
+| Image watermarking (enable/disable, select image) | ✅ | ✅ |
+| Advanced watermark customization (position, scale, opacity, rotation) | ❌ | ✅ |
+| Watermark presets (save & reuse configurations) | ❌ | ✅ |
+| **Collaboration** | | |
+| Timecoded comments on videos | ❌ | ✅ |
+| Annotations & drawing tools | ❌ | ✅ |
+| Comment export (JSON, CSV, Markdown, WebVTT) | ❌ | ✅ |
+| **Branding & Customization** | | |
+| Custom branding / white label | ❌ | ✅ |
+| Custom themes & colors | ❌ | ✅ |
+| Custom logos (light/dark) | ❌ | ✅ |
+| Custom link preview metadata (Open Graph) | ❌ | ✅ |
+| **Administration** | | |
+| User & role management | ✅ | ✅ |
+| Server health monitoring | ✅ | ✅ |
+| Audit logs (client & server) | ✅ | ✅ |
+| Maintenance & cleanup tools | ✅ | ✅ |
+| Automatic app updates | ✅ | ✅ |
+| SSL certificate management (Let's Encrypt) | ✅ | ✅ |
 
 ---
 
@@ -28,12 +70,13 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
    - [Custom Port Configuration](#custom-port-configuration)
    - [Logging In](#logging-in)
    - [License Status & Activation](#license-status--activation)
-4. [Dashboard Overview](#4-dashboard-overview)
-5. [Projects — Organizing Your Links](#5-projects--organizing-your-links)
+4. [Port Forwarding for External Sharing](#4-port-forwarding-for-external-sharing)
+5. [Projects — Selecting Your Workspace](#5-projects--selecting-your-workspace)
    - [What Are Projects](#what-are-projects)
    - [Creating a Project](#creating-a-project)
    - [Managing Projects](#managing-projects)
-6. [Port Forwarding for External Sharing](#6-port-forwarding-for-external-sharing)
+   - [Disabling Project Mode](#disabling-project-mode)
+6. [Dashboard Overview](#6-dashboard-overview)
 7. [Settings](#7-settings)
    - [URLs & Access](#urls--access)
    - [SSL Certificate Management](#ssl-certificate-management)
@@ -119,12 +162,49 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
 
 ## 1. System Requirements
 
-| Platform | Requirement |
-|----------|-------------|
-| **macOS** | macOS 10.15 (Catalina) or later, Intel or Apple Silicon |
-| **Windows** | Windows 10 or later (64-bit) |
-| **Linux** | Ubuntu 20.04+ (DEB), Rocky/RHEL 8+ (RPM), or any x86_64 Linux (AppImage) |
-| **Network** | LAN access to your 45Drives server. For external sharing, HTTPS port 443 must be forwarded from your router. |
+### Client App — 45Flow Community / Pro
+
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| **OS** | Linux Ubuntu 20.04+, Windows 10 64-bit, macOS 11+ (Intel or Apple Silicon) | Latest LTS / latest supported release for each OS |
+| **CPU** | Dual-core x86_64 or Apple Silicon | 4+ cores |
+| **RAM** | 4 GB | 8 GB; 16 GB if doing client-side transcoding of large files |
+| **Disk** | 500 MB for app install | 500 MB for app install, plus 1.5× source video size as temporary space during client-side transcodes |
+| **GPU** | Not required; CPU transcoding works | NVIDIA GTX 1060+ with NVENC, Intel 6th-gen+ with QSV, or Apple Silicon with VideoToolbox for hardware-accelerated client-side transcoding |
+| **Network** | LAN access to server | Gigabit LAN for large file uploads |
+
+> **Note:** The client app is built with Electron and is Chromium-based, so any machine that can run a modern browser should be able to run the app. Client-side transcoding is optional — if disabled, the server handles transcoding instead.
+
+### Server — houston-broadcaster
+
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| **OS** | Ubuntu 20.04+ (Focal/Jammy) or Rocky Linux 8/9 (RHEL-compatible) | Ubuntu 22.04 LTS or Rocky Linux 9 |
+| **CPU** | 2 cores x86_64 | 4–8+ cores; transcoding is CPU-intensive, more cores allow more concurrent transcode jobs |
+| **RAM** | 2 GB | 8–16 GB; FFmpeg transcoding uses approximately 1–2 GB per concurrent 1080p job |
+| **Disk** | Enough storage for source media plus transcoded review copies; approximately 2–3× source size per link when review copies are generated | Fast SSD/NVMe for the database and transcode scratch space; bulk media storage on ZFS/spinning disk is fine |
+| **GPU** | Not required | Intel QSV (6th-gen+ iGPU), NVIDIA with driver, or VAAPI for significantly faster server-side transcodes |
+| **Network** | 1 Gbps LAN | 10 Gbps if serving many concurrent viewers/uploads |
+| **Node.js** | 20+ | 20 LTS |
+
+### Required Server System Packages
+
+These packages are automatically installed by the houston-broadcaster software:
+
+| Package | Purpose |
+|---------|---------|
+| **ffmpeg** | Video/audio transcoding and media processing |
+| **nginx** | Web server / reverse proxy |
+| **sqlite3** | Local database support |
+| **openssl** | TLS, certificates, and crypto utilities |
+| **avahi-daemon** | Local network discovery / mDNS |
+| **pamtester** | PAM authentication testing |
+| **python3** | Supporting scripts and tooling |
+| **dbus** | System service communication |
+| **iproute2** | Network interface and routing utilities |
+| **clamav** | Antivirus / malware scanning support |
+| **ca-certificates** | Trusted certificate bundle |
+| **curl** | HTTP requests and install/runtime utilities |
 
 ---
 
@@ -271,84 +351,86 @@ Once activated, the app immediately upgrades to Pro mode and all Pro features un
 
 If you don't have a license key yet, you can start a **30-day free trial** directly from the Go Pro settings section. Trials give you full access to all Pro features for evaluation.
 
-After successful login, you'll be directed to the **Dashboard** to begin using 45Flow.
+After successful login, you'll be directed to the **Projects** screen (or directly to the Dashboard if Project Mode is disabled).
 
 ---
 
-## 4. Dashboard Overview
+## 4. Port Forwarding for External Sharing
 
-The **Dashboard** (also called the **Control Center**) is your central hub for managing all file sharing operations.
+**If you plan to share links over the internet (externally), complete this step before creating any external links.** Port forwarding is not required for sharing within your local network (LAN/VPN), but it is essential for allowing anyone outside your network to access share links, upload links, or review pages.
 
-![Dashboard overview](images/dashboard-overview-v2.png)
+To share files externally (over the internet), HTTPS port **443** (or your custom HTTPS port) must be forwarded from your router to your server.
 
-### Top Navigation
+**What is port forwarding?**  
+Port forwarding tells your router to direct incoming traffic on a specific port to your server's local IP address, allowing people outside your network to access your share links.
 
-At the top of the Dashboard, you'll find quick-access buttons:
+**General Steps:**
 
-| Button | Description |
-|--------|-------------|
-| **Manage Users** | Open user management to create accounts, assign roles, and manage access |
-| **View Logs** | Open the log viewer to inspect application activity and diagnose issues |
-| **Settings** | Configure application-wide defaults for links, URLs, and server behavior |
+1. Log into your router's admin panel (usually at `192.168.1.1` or `192.168.0.1`).
+2. Find the **Port Forwarding** or **NAT** settings section.
+3. Create a new rule:
+   - **External port:** 443 (or your custom HTTPS port)
+   - **Internal IP:** Your server's local IP address
+   - **Internal port:** 443 (or your custom HTTPS port)
+   - **Protocol:** TCP
+4. Save the rule and test using the **"Check Port"** button in the 45Flow link creation screen.
 
-### Main Action Buttons
+> **Note:** Port forwarding configuration varies by router manufacturer and model. Some ISPs or shared building networks may restrict port forwarding. If you're unsure whether your network supports it, contact your ISP or network administrator.
 
-Three large action buttons let you perform the core tasks:
+![Port forwarding help modal](images/port-forwarding-help-v2.png)
 
-| Button | Description |
-|--------|-------------|
-| **New Link** | Create a link for sharing files, uploading files, or both (combined mode). Configure all link settings in one unified interface. |
-| **Upload Files Locally** | Transfer files from your workstation directly to the server |
-| **Manage Projects** | Organize your links into projects for better organization |
+> **Tip:** After setting up port forwarding, configure your external URL in [Settings](#7-settings) → URLs & Access to ensure links are generated correctly.
 
-![Dashboard action buttons](images/dashboard-action-buttons-v2.png)
-
-### Active Links Table
-
-Below the action buttons, the Dashboard displays a table of **all links** you've created, with search/filter tools and at-a-glance status information. See [Managing Links](#13-managing-links) for full details.
-
-### Logging Out
-
-Click **"Log Out"** at the bottom of the Dashboard to disconnect from the server and return to the Login Screen.
+> **Important:** If you only plan to share files within your LAN or VPN, you can skip this step entirely. Links shared locally do not require port forwarding.
 
 ---
 
-## 5. Projects — Organizing Your Links
+## 5. Projects — Selecting Your Workspace
 
-**Projects** let you organize your links into logical groups, making it easier to manage shares for different clients, departments, or workflows. Each project has its own root directory on your server and tracks all links associated with it.
+After logging in, 45Flow presents the **Projects** screen. This is your first decision point — choose an existing project or create a new one, and you'll be taken to the Dashboard showing only that project's links.
 
 ![Projects list view](images/projects-list.png)
 
 ### What Are Projects
 
-A project is a named container that:
+A project is a named workspace that:
 
 - **Groups related links** — Keep all links for a client, campaign, or workflow together in one place.
-- **Has a root directory** — Each project points to a specific folder on your server. When creating links within a project, you start browsing from that root.
+- **Has a root directory** — Each project points to a specific folder on your server. When creating links within a project, the file browser starts from that root.
 - **Tracks link counts** — See at a glance how many active, expired, or disabled links each project has.
+- **Scopes your Dashboard** — When you select a project, the Dashboard only shows links belonging to that project.
 - **Can be archived** — Archive completed projects to hide them from the active list without deleting the links.
+
+### The Project Workflow
+
+The typical flow is:
+
+1. **Log in** to 45Flow.
+2. **Select a project** (or create a new one) from the Projects screen.
+3. **The Dashboard loads** showing only that project's links.
+4. **Create, manage, and share links** — all within the context of the selected project.
+
+To switch to a different project, return to the Projects screen from the Dashboard.
 
 ### Creating a Project
 
-To create a new project:
+From the Projects screen, click **"New Project"** to create a new project:
 
-1. From the Dashboard, click **"Manage Projects"** (or navigate to **Settings → Projects**).
-2. Click **"New Project"**.
-3. Enter:
+1. Enter:
    - **Project Name** — A descriptive name (e.g., "Acme Corp Review", "Q1 Marketing Assets").
    - **Root Directory** — The absolute path on the server where this project's files live (e.g., `/tank/projects/acme`).
    - **Description** (optional) — Notes about the project's purpose.
-4. Click **"Create Project"**.
+2. Click **"Create Project"**.
 
 ![Create project modal](images/project-create-modal.png)
 
-The new project appears in the projects list and is immediately available when creating links.
+The new project appears in the projects list and is immediately available to select.
 
 ### Managing Projects
 
 **Viewing Projects:**
 
-The Projects panel shows all active projects with:
+The Projects screen shows all active projects with:
 - Project name
 - Root directory path
 - Link counts (total, active, expired, disabled)
@@ -370,33 +452,57 @@ Toggle **"Show archived"** to view archived projects, then click **"Restore"** t
 
 To permanently delete a project and all its links, select the project and choose **"Delete Permanently"**. This action cannot be undone.
 
-> **Tip:** Projects are optional. You can still create links without associating them to a project — they'll appear in the "All Links" view on the Dashboard.
+### Disabling Project Mode
+
+If you prefer a flat list of all links without project grouping, you can disable Project Mode:
+
+1. Go to **Settings → Project Root**.
+2. Toggle **"Enable Project Mode"** off.
+
+When Project Mode is disabled:
+- The Projects screen is skipped entirely after login.
+- You go directly to the Dashboard, which shows **all links** regardless of project.
+- Links can still be created and managed normally, just without project grouping.
+- You can re-enable Project Mode at any time — existing links retain any project associations.
+
+> **Tip:** Project Mode is ideal for teams managing multiple clients or campaigns. If you only have one use case or a small number of links, disabling it keeps the workflow simpler.
 
 ---
 
-## 6. Port Forwarding for External Sharing
+## 6. Dashboard Overview
 
-To share files externally (over the internet), HTTPS port **443** (or your custom HTTPS port) must be forwarded from your router to your server. **This is a critical setup step for external sharing** — complete it before creating external links.
+The **Dashboard** (also called the **Control Center**) is your central hub for managing all file sharing operations. When Project Mode is enabled, the Dashboard shows links for the currently selected project. When Project Mode is disabled, it shows all links.
 
-**What is port forwarding?**  
-Port forwarding tells your router to direct incoming traffic on a specific port to your server's local IP address, allowing people outside your network to access your share links.
+![Dashboard overview](images/dashboard-overview-v2.png)
 
-**General Steps:**
+### Top Navigation
 
-1. Log into your router's admin panel (usually at `192.168.1.1` or `192.168.0.1`).
-2. Find the **Port Forwarding** or **NAT** settings section.
-3. Create a new rule:
-   - **External port:** 443 (or your custom HTTPS port)
-   - **Internal IP:** Your server's local IP address
-   - **Internal port:** 443 (or your custom HTTPS port)
-   - **Protocol:** TCP
-4. Save the rule and test using the **"Check Port"** button in the 45Flow link creation screen.
+At the top of the Dashboard, you'll find quick-access buttons:
 
-> **Note:** Port forwarding configuration varies by router manufacturer and model. Some ISPs or shared building networks may restrict port forwarding. If you're unsure whether your network supports it, contact your ISP or network administrator.
+| Button | Description |
+|--------|-------------|
+| **Manage Access** | Open user management to create accounts, assign roles, and manage access |
+| **View Logs** | Open the log viewer to inspect application activity and diagnose issues |
+| **Settings** | Configure application-wide defaults for links, URLs, and server behavior |
 
-![Port forwarding help modal](images/port-forwarding-help-v2.png)
+### Main Action Buttons
 
-> **Tip:** After setting up port forwarding, configure your external URL in [Settings](#6-settings) → URLs & Access to ensure links are generated correctly.
+Two large action buttons let you perform the core tasks:
+
+| Button | Description |
+|--------|-------------|
+| **Create Link** | Create a link for sharing files, uploading files, or both (combined mode). Configure all link settings in one unified interface. |
+| **Upload Files** | Transfer files from your workstation directly to the server |
+
+![Dashboard action buttons](images/dashboard-action-buttons-v2.png)
+
+### Active Links Table
+
+Below the action buttons, the Dashboard displays a table of links for the current project (or all links if Project Mode is disabled), with search/filter tools and at-a-glance status information. See [Managing Links](#13-managing-links) for full details.
+
+### Logging Out
+
+Click **"Log Out"** at the bottom of the Dashboard to disconnect from the server and return to the Login Screen.
 
 ---
 
@@ -462,7 +568,7 @@ The top section shows your current certificate state:
 
 **Setting Up a Trusted Certificate:**
 
-1. **Configure your domain** — Enter your custom domain name (e.g., `studio.yourcompany.com`). This auto-syncs from the External Base if already set.
+1. **Configure your domain** — Enter your custom domain name (e.g., `yourcompany.com`). This auto-syncs from the External Base if already set.
 2. **Add a contact email** — Let's Encrypt sends renewal notices to this address.
 3. **Create a DNS A record** — At your domain registrar (GoDaddy, Namecheap, Cloudflare, etc.), create an **A record** pointing your domain to your server's public IP address.
 4. **Verify DNS** — Click **"Verify DNS"** to confirm the record is active.
@@ -862,12 +968,11 @@ When sharing video files, expand the **"Advanced video options"** section for ad
 
 | Feature | Community | Pro |
 |---------|-----------|-----|
-| Enable/disable watermark | ✅ Yes | ✅ Yes |
-| Select watermark image | ✅ Yes | ✅ Yes |
+| Video watermarking (enable/disable, select image) | ✅ Yes | ✅ Yes |
+| Image watermarking (enable/disable, select image) | ✅ Yes | ✅ Yes |
 | Position control (9 anchor points) | ❌ Bottom-right only | ✅ Full control |
-| Scale, opacity, rotation | ❌ Fixed | ✅ Customizable |
-| Watermark presets | ❌ No | ✅ Yes |
-| Image watermarking | ✅ Yes | ✅ Yes |
+| Scale, opacity, rotation | ❌ Fixed defaults | ✅ Customizable |
+| Watermark presets (save & reuse) | ❌ No | ✅ Yes |
 
 ![Community mode watermark controls (basic)](images/watermark-community-basic.png)
 
@@ -889,7 +994,7 @@ When sharing video files, expand the **"Advanced video options"** section for ad
 
 ![Pro mode watermark controls (advanced)](images/watermark-pro-advanced.png)
 
-> **Note:** In Community mode, watermarks are applied to videos only, fixed at bottom-right position with default scale/opacity. Upgrade to Pro for full customization.
+> **Note:** In Community mode, watermarks (video and image) are applied at a fixed bottom-right position with default scale/opacity. Upgrade to Pro for full customization (position, scale, opacity, rotation) and reusable presets.
 
 ### Generating the Link
 
@@ -902,7 +1007,7 @@ When sharing video files, expand the **"Advanced video options"** section for ad
 
 ---
 
-## 10. Upload Files Locally
+## 11. Upload Files Locally
 
 Use this feature to transfer files from your workstation directly to the server. This is ideal for getting new media onto the server for sharing later.
 
@@ -1298,7 +1403,7 @@ For collection links (multiple files), a sidebar file browser appears on the lef
 
 ## 18. User Management
 
-Users are required for the **"Only invited users"** access mode and allow role-based permissions on restricted links. Access user management from the Dashboard by clicking **"Manage Users"**.
+Users are required for the **"Only invited users"** access mode and allow role-based permissions on restricted links. Access user management from the Dashboard by clicking **"Manage Access"**.
 
 ![Manage Users modal](images/manage-users-v2.png)
 
@@ -1550,7 +1655,7 @@ When connected to multiple servers, a **server selector dropdown** appears in th
 ## 23. Frequently Asked Questions
 
 **Q: What's the difference between Community and Pro editions?**  
-A: There is only ONE 45Flow app. It works as Community Edition (free) by default, and automatically upgrades to Pro when connected to a licensed server. You don't download separate apps — Pro features simply unlock when the server has a valid license. Community includes all core file sharing and basic watermarking. Pro adds custom branding, advanced watermark customization, image watermarking, comments, annotations, and priority support.
+A: There is only ONE 45Flow app. It works as Community Edition (free) by default, and automatically upgrades to Pro when connected to a licensed server. You don't download separate apps — Pro features simply unlock when the server has a valid license. Community includes all core file sharing, watermarking (video and image), uploads, and review features. Pro adds custom branding, advanced watermark customization (position, scale, opacity, rotation, presets), timecoded comments, annotations, and priority support.
 
 **Q: How do I upgrade from Community to Pro?**  
 A: Activate a license on your server. Go to **Settings → Go Pro**, enter your license key, and click **"Activate License"**. Once activated, all users connecting to that server immediately gain Pro features. You can also start a free 30-day trial from the same section.
@@ -1562,13 +1667,13 @@ A: No. Licenses are tied to the server, not individual users. Once a server is l
 A: When a trial license expires, the server reverts to Community mode. Pro features (custom branding, advanced watermarks, comments, annotations) are disabled. All existing links remain accessible, but you can't use Pro features until a full license is activated.
 
 **Q: What are Projects and do I need to use them?**  
-A: Projects are optional organizational containers that group links by client, campaign, or workflow. Each project has its own root directory and tracks link counts. Projects are helpful for managing many links, but you can still create links without assigning them to a project — they'll appear in the "All Links" view on the Dashboard.
+A: Projects are the primary workspace organizer in 45Flow. After login, you select or create a project, and the Dashboard shows only that project's links. Each project has its own root directory and tracks link counts. If you prefer a flat list of all links without grouping, you can disable Project Mode in **Settings → Project Root** — you'll skip the Projects screen and go directly to the Dashboard with all links visible.
 
 **Q: How do I create a link that supports both sharing and uploading?**  
 A: When creating a link, enable both **"Enable file sharing"** and **"Enable uploads"** toggles. This creates a Combined link where recipients can view/download your shared files AND upload their own files to the same location. Perfect for collaborative review workflows.
 
 **Q: Can I watermark images, or just videos?**  
-A: **Pro users** can watermark both videos and images. Community users can only watermark videos (with basic bottom-right positioning). Pro unlocks full watermark customization (position, scale, opacity, rotation) for both video and image files.
+A: Both! Watermarking for video and image files is available in both Community and Pro editions. In Community mode, watermarks are applied at a fixed bottom-right position with default settings. Pro unlocks full customization — position (9 anchor points), scale, opacity, rotation, and the ability to save/reuse watermark presets.
 
 **Q: My server doesn't appear in the auto-discovery dropdown. What do I do?**  
 A: The `houston-broadcaster` service must be running on the server. Try connecting manually using the server's IP address via the **"Connect manually via IP"** field.
