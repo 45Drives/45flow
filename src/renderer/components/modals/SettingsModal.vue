@@ -413,16 +413,54 @@
                         <!-- ═══ Go Pro / Upgrade ══════════════════════════════ -->
                         <template v-if="activeSection === 'upgrade'">
                             <!-- Full license active (non-trial) -->
-                            <div v-if="isPremiumActive && !isTrial" class="rounded-lg border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 p-4 mb-4">
-                                <div class="text-sm font-semibold text-green-800 dark:text-green-400 mb-1">Pro Edition Active</div>
-                                <p class="text-sm text-green-700 dark:text-green-400 leading-relaxed">
-                                    This server has an active Pro license. All premium features are enabled.
-                                </p>
+                            <div v-if="isPremiumActive && !isTrial" class="space-y-3">
+                                <div class="rounded-lg border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 p-4">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <div class="text-sm font-semibold text-green-800 dark:text-green-400">Pro Edition Active</div>
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-400">
+                                            {{ licenseInfo?.perpetual ? 'Perpetual' : 'Licensed' }}
+                                        </span>
+                                    </div>
+                                    <div class="text-sm text-green-700 dark:text-green-400 space-y-1">
+                                        <p>All premium features are enabled on this server.</p>
+                                    </div>
+                                </div>
+
+                                <!-- License Details Card -->
+                                <div class="rounded-lg border border-default bg-default/40 p-4">
+                                    <div class="text-xs font-semibold text-accent uppercase tracking-wide mb-3">License Details</div>
+                                    <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                        <div v-if="licenseInfo?.customerEmail" class="col-span-2">
+                                            <span class="text-accent">Licensed to:</span>
+                                            <span class="font-medium ml-1">{{ licenseInfo.customerEmail }}</span>
+                                        </div>
+                                        <div v-if="licenseInfo?.licenseId">
+                                            <span class="text-accent">License ID:</span>
+                                            <span class="font-mono text-xs ml-1">{{ licenseInfo.licenseId.slice(0, 8) }}…</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-accent">Type:</span>
+                                            <span class="ml-1">{{ licenseInfo?.perpetual ? 'Perpetual' : 'Subscription' }}</span>
+                                        </div>
+                                        <div v-if="licenseInfo?.activatedAt">
+                                            <span class="text-accent">Activated:</span>
+                                            <span class="ml-1">{{ new Date(licenseInfo.activatedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) }}</span>
+                                        </div>
+                                        <div v-if="licenseInfo?.expiresAt && !licenseInfo?.perpetual">
+                                            <span class="text-accent">Expires:</span>
+                                            <span class="ml-1">{{ new Date(licenseInfo.expiresAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) }}</span>
+                                        </div>
+                                        <div v-else-if="licenseInfo?.perpetual">
+                                            <span class="text-accent">Expires:</span>
+                                            <span class="ml-1 text-green-600 dark:text-green-400">Never</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Trial active -->
-                            <div v-else-if="isPremiumActive && isTrial">
-                                <div class="rounded-lg border border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/20 p-4 mb-4">
+                            <div v-else-if="isPremiumActive && isTrial" class="space-y-3">
+                                <div class="rounded-lg border border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/20 p-4">
                                     <div class="flex items-center gap-2 mb-1">
                                         <div class="text-sm font-semibold text-amber-800 dark:text-amber-400">Pro Trial Active</div>
                                         <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400">Trial</span>
@@ -433,6 +471,9 @@
                                         </p>
                                         <p v-if="trialDaysRemaining != null">
                                             <span class="font-semibold">{{ trialDaysRemaining }}</span> {{ trialDaysRemaining === 1 ? 'day' : 'days' }} remaining
+                                        </p>
+                                        <p v-if="licenseInfo?.customerEmail" class="text-xs opacity-80">
+                                            Trial registered to: {{ licenseInfo.customerEmail }}
                                         </p>
                                     </div>
                                 </div>
@@ -1490,7 +1531,10 @@ async function handleUpgradeActivate() {
                 updateConnection(activeConnection.value.connectionId, {
                     licensed: true,
                     licenseCheckedAt: Date.now(),
-                    licenseInfo: status.license ?? undefined,
+                    licenseInfo: {
+                        ...(status.license || {}),
+                        ...(status.metadata || {}),
+                    },
                 })
             }
         }

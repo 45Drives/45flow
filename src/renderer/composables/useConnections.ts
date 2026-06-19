@@ -50,6 +50,9 @@ export interface Connection {
     perpetual?: boolean
     expiresAt?: string | null
     issuedAt?: string
+    customerEmail?: string | null
+    activatedAt?: string | null
+    notes?: string | null
   }
   
   // ── Connection Health ──

@@ -598,7 +598,10 @@ async function checkLicenseStatus(apiBase: string, token: string): Promise<{ lic
     try { statusBody = await statusResp.json() } catch { return { licensed: false } }
 
     const licensed = !!statusBody?.licensed
-    const licenseInfo = statusBody?.license ?? undefined
+    // Merge license core fields with metadata (customerEmail, activatedAt, notes)
+    const licenseInfo = statusBody?.license || statusBody?.metadata
+        ? { ...(statusBody.license || {}), ...(statusBody.metadata || {}) }
+        : undefined
 
     if (!licensed) {
         pushNotification(new Notification(

@@ -168,7 +168,7 @@ import AddUsersModal from '../components/modals/AddUsersModal.vue'
 import LogViewModal from '../components/modals/LogViewModal.vue'
 import CreateProjectModal from '../components/modals/CreateProjectModal.vue'
 import FolderPicker from '../components/FolderPicker.vue'
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useApi } from '../composables/useApi'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { clearLastSession } from '../composables/useSessionPersistence'
@@ -188,55 +188,30 @@ const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()
 const { activeProject: globalActiveProject, setActiveProject: setGlobalActiveProject } = useActiveProject()
 const { projectModeEnabled } = useProjectMode()
-const { isPremiumActive } = useLicenseStatus()
+const { isPremiumActive, startBackgroundCheck, stopBackgroundCheck, checkLicenseInBackground } = useLicenseStatus()
+
+// Start background license polling while dashboard is mounted
+startBackgroundCheck()
+onUnmounted(() => stopBackgroundCheck())
 
 // ── License Banner ──
+// Show banner only when server WAS licensed but background check detects it's now unlicensed
 const showUnlicensedBanner = ref(false)
 const unlicensedBannerMessage = ref('')
+const wasPreviouslyLicensed = ref(activeConnection.value?.licensed ?? false)
 
-async function refreshActiveConnectionLicenseStatus() {
-	const conn = activeConnection.value
-	if (!conn?.baseUrl || !conn?.token) {
-		showUnlicensedBanner.value = false
-		unlicensedBannerMessage.value = ''
-		return
-	}
-
-	try {
-		const res = await fetch(`${conn.baseUrl}/api/license/status`, {
-			headers: { 'Authorization': `Bearer ${conn.token}` },
-		})
-		if (!res.ok) {
-			showUnlicensedBanner.value = false
-			unlicensedBannerMessage.value = ''
-			return
-		}
-		const body = await res.json().catch(() => null)
-		if (!body?.ok) {
-			showUnlicensedBanner.value = false
-			unlicensedBannerMessage.value = ''
-			return
-		}
-
-		updateConnection(conn.connectionId, {
-			licensed: !!body.licensed,
-			licenseCheckedAt: Date.now(),
-		})
-
-		// Only show banner if the server WAS previously licensed but is now unlicensed
-		if (!body.licensed && conn.licensed) {
-			showUnlicensedBanner.value = true
-			unlicensedBannerMessage.value =
-				`Connected to ${conn.name || conn.serverIp}, but the server license has expired or been revoked. Premium features are disabled until re-activated.`
-		} else {
-			showUnlicensedBanner.value = false
-			unlicensedBannerMessage.value = ''
-		}
-	} catch {
+watch(isPremiumActive, (nowLicensed, wasLicensed) => {
+	if (!nowLicensed && wasPreviouslyLicensed.value) {
+		const conn = activeConnection.value
+		showUnlicensedBanner.value = true
+		unlicensedBannerMessage.value =
+			`Connected to ${conn?.name || conn?.serverIp || 'server'}, but the server license has expired or been revoked. Premium features are disabled until re-activated.`
+	} else if (nowLicensed) {
 		showUnlicensedBanner.value = false
 		unlicensedBannerMessage.value = ''
 	}
-}
+	if (nowLicensed) wasPreviouslyLicensed.value = true
+})
 
 // ── Projects ──
 interface Project {
@@ -379,7 +354,7 @@ const dashboardTourSteps = computed<TourStep[]>(() => [
 onMounted(async () => {
 	transfer.restoreActiveTranscodes(apiFetch)
 	transfer.restorePersistedUploads()
-	void refreshActiveConnectionLicenseStatus()
+	void checkLicenseInBackground()
 	await fetchProjects()
 
 	// Restore active project from global state after projects list is available
@@ -396,7 +371,7 @@ onMounted(async () => {
 })
 
 watch(() => activeConnection.value?.connectionId, () => {
-	void refreshActiveConnectionLicenseStatus()
+	void checkLicenseInBackground()
 	fetchProjects() // Reload projects when switching servers
 })
 

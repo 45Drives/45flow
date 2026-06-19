@@ -711,7 +711,7 @@ When running on a trial license, this section shows:
 
 When a trial expires, the app reverts to Community mode and Pro features are disabled until a full license is activated.
 
-> **Note:** The Go Pro section is hidden once your server is fully licensed. To check license status or manage your license, contact 45Drives support.
+> **Note:** The Go Pro section is hidden once your server has a full Pro license (not trial). To view license details, go to Settings → Application → Server Health.
 
 ---
 
