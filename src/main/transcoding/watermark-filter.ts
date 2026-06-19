@@ -114,6 +114,32 @@ export function buildWatermarkFilter(
     }
   }
 
+  // Rotation correction: ffmpeg's rotate filter expands the canvas to the rotated
+  // bounding box, but CSS rotates around center (position unchanged). Adjust
+  // overlay position to keep the watermark center in the same place.
+  // Note: wmSize here is the width (scale=wmSize:-1), height is unknown without aspect ratio.
+  // Approximate using wmSize for both dims when aspect unknown (conservative).
+  if (rotation > 0 && rotation !== 360 && wmSize > 0) {
+    const angleRad = (rotation * Math.PI) / 180
+    const cosA = Math.abs(Math.cos(angleRad))
+    const sinA = Math.abs(Math.sin(angleRad))
+    // Without knowing exact height, use wmSize as approximation for offset calc
+    const rotW = Math.ceil(wmSize * cosA + wmSize * sinA)
+    const offsetX = Math.round((rotW - wmSize) / 2)
+    const offsetY = offsetX // symmetric approximation
+
+    if (offsetX !== 0 || offsetY !== 0) {
+      const anchor = pos.anchor || 'bottom-right'
+      if (anchor === 'top-left' || anchor === 'bottom-left') {
+        overlayX = `(${overlayX})-${offsetX}`
+        overlayY = anchor === 'top-left' ? `(${overlayY})-${offsetY}` : `(${overlayY})+${offsetY}`
+      } else if (anchor === 'top-right' || anchor === 'bottom-right') {
+        overlayX = `(${overlayX})+${offsetX}`
+        overlayY = anchor === 'top-right' ? `(${overlayY})-${offsetY}` : `(${overlayY})+${offsetY}`
+      }
+    }
+  }
+
   // Build filter chain
   const scaleExpr = videoHeight ? `scale=-2:${videoHeight}:flags=lanczos,` : ''
   const base = videoHeight ? `[0:v]${scaleExpr}format=yuv420p[base];` : '[0:v]format=yuv420p[base];'
@@ -127,10 +153,10 @@ export function buildWatermarkFilter(
     watermarkChain += `[scaled]format=yuva420p,colorchannelmixer=aa=1[transparent];`
   }
 
-  // Apply rotation if needed
+  // Apply rotation if needed (negate for clockwise to match CSS transform)
   if (rotation > 0 && rotation !== 360) {
-    const rotRad = (rotation * Math.PI) / 180
-    watermarkChain += `[transparent]rotate=${rotRad}:ow='hypot(iw,ih)':oh=ow:c=none[rotated];`
+    const rotRad = -(rotation * Math.PI) / 180
+    watermarkChain += `[transparent]rotate=${rotRad}:c=none[rotated];`
   } else {
     watermarkChain += `[transparent]null[rotated];`
   }
