@@ -39,14 +39,14 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
 | Advanced watermark customization (position, scale, opacity, rotation) | ❌ | ✅ |
 | Watermark presets (save & reuse configurations) | ❌ | ✅ |
 | **Collaboration** | | |
-| Timecoded comments on videos | ❌ | ✅ |
+| Timecoded comments on videos | ✅  | ✅ |
 | Annotations & drawing tools | ❌ | ✅ |
 | Comment export (JSON, CSV, Markdown, WebVTT) | ❌ | ✅ |
 | **Branding & Customization** | | |
 | Custom branding / white label | ❌ | ✅ |
 | Custom themes & colors | ❌ | ✅ |
-| Custom logos (light/dark) | ❌ | ✅ |
-| Custom link preview metadata (Open Graph) | ❌ | ✅ |
+| Custom logos | ❌ | ✅ |
+| Custom link preview metadata | ❌ | ✅ |
 | **Administration** | | |
 | User & role management | ✅ | ✅ |
 | Server health monitoring | ✅ | ✅ |
