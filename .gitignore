@@ -22,5 +22,11 @@ IMPLEMENTATION_*.md
 *.dmg
 *.zip
 .github/prompts/plan*
-
 .github/agents/*
+.github/skills/*
+.github/workflows/*
+
+RELEASE_GUIDE.md
+RELEASE_WORKFLOW.md
+docs/*Test-Plan*
+docs/*Test_Plan*

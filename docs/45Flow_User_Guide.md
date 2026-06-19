@@ -4,10 +4,10 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
 
 ## About 45Flow Editions
 
-45Flow is available in two editions:
+45Flow is available in two modes:
 
-- **Community Edition** — Free and open source. Includes all core file sharing, review, and upload features with basic watermarking.
-- **Pro Edition** — Unlocked when your server is licensed. Adds custom branding (white label), advanced watermark customization, image watermarking, timecoded comments, annotations, and priority support.
+- **Community Edition** — Free unlicensed version. Includes all core file sharing, review, and upload features with basic watermarking.
+- **Pro Edition** — Unlocked when your server is licensed. Adds custom branding (white label), advanced watermark customization, timecoded comments, annotations, and priority support.
 
 **The app works the same way for everyone** — it starts in Community mode by default, and automatically upgrades to Pro when connected to a licensed server. No separate downloads or builds. When unlicensed, Pro features are simply hidden or disabled in the UI.
 
@@ -136,8 +136,8 @@ Download the latest version of 45Flow from the **[Releases page](https://github.
 
 | Chip | File to Download |
 |------|-----------------|
-| Apple Silicon (M1, M2, M3, M4…) | `45Flow-Pro-Edition-*-mac-arm64.dmg` |
-| Intel | `45Flow-Pro-Edition-*-mac-x64.dmg` |
+| Apple Silicon (M1, M2, M3, M4…) | `45Flow-*-mac-arm64.dmg` |
+| Intel | `45Flow-*-mac-x64.dmg` |
 
 1. Double-click the downloaded `.dmg` file.
 2. In the window that appears, drag the **45Flow** icon into the **Applications** folder.
@@ -151,7 +151,7 @@ Download the latest version of 45Flow from the **[Releases page](https://github.
 
 | File to Download |
 |-----------------|
-| `45Flow-Pro-Edition-*-win-x64.exe` |
+| `45Flow-*-win-x64.exe` |
 
 1. Double-click the downloaded `.exe` installer.
 2. Follow the on-screen installation wizard steps.
@@ -165,9 +165,9 @@ Three package formats are available:
 
 | Distribution | File | Install Command |
 |-------------|------|-----------------|
-| Ubuntu / Debian | `45Flow-Pro-Edition-*-linux-amd64.deb` | `sudo apt install ./45Flow-Pro-Edition-*-linux-amd64.deb` |
-| Rocky / RHEL / Fedora | `45Flow-Pro-Edition-*-linux-x86_64.rpm` | `sudo dnf install ./45Flow-Pro-Edition-*-linux-x86_64.rpm` |
-| Any Linux (portable) | `45Flow-Pro-Edition-*-linux-x86_64.AppImage` | No installation required |
+| Ubuntu / Debian | `45Flow-*-linux-amd64.deb` | `sudo apt install ./45Flow-*-linux-amd64.deb` |
+| Rocky / RHEL / Fedora | `45Flow-*-linux-x86_64.rpm` | `sudo dnf install ./45Flow-*-linux-x86_64.rpm` |
+| Any Linux (portable) | `45Flow-*-linux-x86_64.AppImage` | No installation required |
 
 **DEB / RPM Installation:**
 
@@ -180,8 +180,8 @@ Three package formats are available:
 The AppImage is a self-contained portable executable that runs on any modern x86_64 Linux distribution without installation.
 
 1. Download the `.AppImage` file.
-2. Make it executable: `chmod +x 45Flow-Pro-Edition-*-linux-x86_64.AppImage`
-3. Double-click the file or run it from the terminal: `./45Flow-Pro-Edition-*-linux-x86_64.AppImage`
+2. Make it executable: `chmod +x 45Flow-*-linux-x86_64.AppImage`
+3. Double-click the file or run it from the terminal: `./45Flow-*-linux-x86_64.AppImage`
 
 The AppImage requires no root privileges and does not modify your system. It supports automatic updates — when a new version is available, the app will download and replace itself in place.
 
@@ -867,7 +867,7 @@ When sharing video files, expand the **"Advanced video options"** section for ad
 | Position control (9 anchor points) | ❌ Bottom-right only | ✅ Full control |
 | Scale, opacity, rotation | ❌ Fixed | ✅ Customizable |
 | Watermark presets | ❌ No | ✅ Yes |
-| Image watermarking | ❌ No | ✅ Yes |
+| Image watermarking | ✅ Yes | ✅ Yes |
 
 ![Community mode watermark controls (basic)](images/watermark-community-basic.png)
 
@@ -889,7 +889,7 @@ When sharing video files, expand the **"Advanced video options"** section for ad
 
 ![Pro mode watermark controls (advanced)](images/watermark-pro-advanced.png)
 
-> **Note:** In Community mode, watermarks are applied to videos only, fixed at bottom-right position with default scale/opacity. Upgrade to Pro for full customization and image watermarking.
+> **Note:** In Community mode, watermarks are applied to videos only, fixed at bottom-right position with default scale/opacity. Upgrade to Pro for full customization.
 
 ### Generating the Link
 
@@ -1467,8 +1467,8 @@ On Linux systems using `.deb` or `.rpm` packages, automatic installation require
 
 1. The update is downloaded to your Downloads folder.
 2. A yellow instruction box shows the exact command to run:
-   - **Debian/Ubuntu:** `sudo apt install /path/to/45Flow-Pro-Edition-x.x.x-linux-amd64.deb`
-   - **RHEL/Rocky/Fedora:** `sudo dnf install /path/to/45Flow-Pro-Edition-x.x.x-linux-x86_64.rpm`
+   - **Debian/Ubuntu:** `sudo apt install /path/to/45Flow-x.x.x-linux-amd64.deb`
+   - **RHEL/Rocky/Fedora:** `sudo dnf install /path/to/45Flow-x.x.x-linux-x86_64.rpm`
 3. Open a terminal, paste the command, and enter your password.
 4. Relaunch 45Flow after the package is installed.
 
