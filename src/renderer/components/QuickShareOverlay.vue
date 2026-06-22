@@ -206,7 +206,6 @@
               <WatermarkCustomizer v-if="isPremiumActive"
                 v-model="watermarkSettings" 
                 :watermarkPreviewUrl="watermarkPreviewUrl"
-                :isPremium="isServerLicensed"
               />
               <WatermarkPreview v-else
                 :previewUrl="watermarkPreviewUrl"
@@ -342,7 +341,6 @@ const transfer = useTransferProgress()
 const currentServer = inject(currentServerInjectionKey)!
 const connectionMeta = inject(connectionMetaInjectionKey)!
 const ssh = computed(() => connectionMeta.value.ssh)
-const isServerLicensed = computed(() => activeConnection.value?.licensed !== false)
 const { isPremiumActive } = useLicenseStatus()
 
 // ── Tour ──

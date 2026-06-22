@@ -297,7 +297,6 @@
 								<WatermarkCustomizer v-if="isPremiumActive"
 									v-model="watermarkSettings"
 									:watermarkPreviewUrl="effectiveWatermarkPreviewUrl"
-									:isPremium="isServerLicensed"
 								/>
 								<WatermarkPreview v-else
 									:previewUrl="effectiveWatermarkPreviewUrl"
@@ -464,7 +463,6 @@ const { projectModeEnabled } = useProjectMode()
 const transfer = useTransferProgress()
 const opts = useLinkOptions()
 
-const isServerLicensed = computed(() => activeConnection.value?.licensed !== false)
 const { isPremiumActive } = useLicenseStatus()
 
 const showAccessModal = ref(false)

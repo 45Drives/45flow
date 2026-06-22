@@ -875,7 +875,6 @@
             <WatermarkCustomizer v-if="isPremiumActive"
               v-model="draftWatermarkSettings"
               :watermarkPreviewUrl="watermarkPreviewUrl || null"
-              :isPremium="isServerLicensed"
             />
             <WatermarkPreview v-else
               :previewUrl="watermarkPreviewUrl || ''"
@@ -996,7 +995,7 @@ watch(() => props.modelValue, (open) => {
 const transfer = useTransferProgress()
 const { activeConnection, connections } = useConnections()
 const connectionMeta = inject(connectionMetaInjectionKey, null)
-const isServerLicensed = computed(() => activeConnection.value?.licensed !== false)
+
 
 const thumbnailSrc = ref('')
 const thumbnailLoading = ref(false)

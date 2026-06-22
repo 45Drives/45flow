@@ -270,7 +270,6 @@
 									<WatermarkCustomizer v-if="isPremiumActive"
 										v-model="watermarkSettings"
 										:watermarkPreviewUrl="watermarkFile?.dataUrl || existingWatermarkPreviewUrl || null"
-										:isPremium="isServerLicensed"
 									/>
 									<WatermarkPreview v-else
 										:previewUrl="watermarkFile?.dataUrl || existingWatermarkPreviewUrl || ''"
@@ -443,7 +442,6 @@ const isUploading = ref(false)
 
 const { apiFetch } = useApi()
 const { activeConnection } = useConnections()
-const isServerLicensed = computed(() => activeConnection.value?.licensed !== false)
 const { isPremiumActive } = useLicenseStatus()
 
 /** ── Step control ───────────────────────────────────────── */

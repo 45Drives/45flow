@@ -1,18 +1,5 @@
 <template>
   <div class="watermark-customizer p-4 border border-default rounded-lg bg-default/20">
-    <!-- Unlicensed: show basic watermark info -->
-    <div v-if="!isPremium" class="text-center py-4">
-      <p class="text-sm font-semibold mb-2">Basic Watermark</p>
-      <p class="text-xs text-muted">
-        Watermark will be applied at the bottom-right corner with default sizing.
-      </p>
-      <p class="text-xs text-muted mt-1">
-        Upgrade to a licensed server for custom position, scale, opacity, and rotation controls.
-      </p>
-    </div>
-
-    <!-- Licensed: full customization UI -->
-    <template v-else>
     <div class="flex items-center justify-between mb-4">
       <h3 class="text-sm font-bold">Watermark Customization</h3>
     </div>
@@ -414,7 +401,6 @@
         </div>
       </div>
     </div>
-    </template>
   </div>
 </template>
 
@@ -429,12 +415,9 @@ const props = withDefaults(defineProps<{
   modelValue?: WatermarkSettings | null
   /** URL for watermark image preview */
   watermarkPreviewUrl?: string | null
-  /** Whether the server is licensed for premium watermark features */
-  isPremium?: boolean
 }>(), {
   modelValue: null,
   watermarkPreviewUrl: null,
-  isPremium: true,
 })
 
 const emit = defineEmits<{
