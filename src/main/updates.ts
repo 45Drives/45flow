@@ -36,28 +36,28 @@ export function initAutoUpdates(getMainWindow: () => BrowserWindow | null) {
         }
     })
 
+    /**
+     * Returns true when the updater error really just means
+     * "there is no applicable stable release" — not a real failure.
+     */
+    function isNoReleaseError(err: any): boolean {
+        const raw = String(err?.message || err || '')
+        const compact = raw.replace(/\s+/g, ' ').trim()
+        // XML/Atom feed → GitHub has no /releases/latest (only prereleases/drafts)
+        if (/<(feed|entry|content|title|updated|link)\b/i.test(compact) || /&lt;[a-z!/]/i.test(compact)) return true
+        if (/prerelease|pre-release/i.test(compact)) return true
+        if (/No published versions on GitHub/i.test(compact)) return true
+        if (/Cannot find .*latest\.yml/i.test(compact)) return true
+        // 404 from /releases/latest when only prereleases exist
+        if (/404/i.test(compact) && !/rate limit|API rate/i.test(compact)) return true
+        return false
+    }
+
     function normalizeUpdaterError(err: any): string {
         const raw = String(err?.message || err || 'Unknown updater error')
         const compact = raw.replace(/\s+/g, ' ').trim()
 
         console.error('[updates] Raw updater error:', raw)
-
-        // GitHub XML/Atom feed returned instead of JSON — typically a CDN/proxy issue
-        if (/<(feed|entry|content|title|updated|link)\b/i.test(compact) || /&lt;[a-z!/]/i.test(compact)) {
-            return 'GitHub returned an unexpected response instead of update info. This is usually caused by a network proxy or firewall intercepting the request. If this keeps happening, check your network settings or try again from a different network.'
-        }
-        if (/prerelease|pre-release/i.test(compact)) {
-            return 'No stable update is available yet. Only pre-release versions were found, which are excluded from automatic updates.'
-        }
-        if (/No published versions on GitHub/i.test(compact)) {
-            return 'No published releases were found on GitHub. The repository may not have any releases yet.'
-        }
-        if (/Cannot find .*latest\.yml/i.test(compact)) {
-            return 'The update manifest file (latest.yml) was not found in the latest GitHub release. The release may still be uploading, or the build artifacts are missing.'
-        }
-        if (/404/i.test(compact)) {
-            return 'Update files returned a 404 (not found). The release may have been removed, or the download URL has changed.'
-        }
         // GitHub API rate limit (60 req/hr unauthenticated)
         if (/rate limit|API rate|403/i.test(compact)) {
             return 'GitHub API rate limit exceeded. Too many update checks were made from your network. Please wait an hour and try again, or check your network if you are behind a shared IP/VPN.'
@@ -114,9 +114,14 @@ export function initAutoUpdates(getMainWindow: () => BrowserWindow | null) {
     })
 
     autoUpdater.on('error', (err) => {
-        getMainWindow()?.webContents.send('update:error', {
-            message: normalizeUpdaterError(err),
-        })
+        if (isNoReleaseError(err)) {
+            console.log('[updates] No stable release found — treating as up-to-date')
+            getMainWindow()?.webContents.send('update:none', {})
+        } else {
+            getMainWindow()?.webContents.send('update:error', {
+                message: normalizeUpdaterError(err),
+            })
+        }
     })
 
     ipcMain.handle('update:check', async () => {
@@ -126,6 +131,10 @@ export function initAutoUpdates(getMainWindow: () => BrowserWindow | null) {
         try {
             return await autoUpdater.checkForUpdates()
         } catch (err) {
+            if (isNoReleaseError(err)) {
+                console.log('[updates] No stable release found — treating as up-to-date')
+                return null
+            }
             throw new Error(normalizeUpdaterError(err))
         }
     })
