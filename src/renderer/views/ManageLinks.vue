@@ -417,7 +417,7 @@ import { useTimeFormat } from '../composables/useTimeFormat'
 type SortKey = 'title' | 'type' | 'url' | 'expires' | 'status' | 'access' | 'created'
 type SortDir = 'asc' | 'desc'
 
-const props = withDefaults(defineProps<{ tourActive?: boolean; projectId?: number | null }>(), { tourActive: false, projectId: null })
+const props = withDefaults(defineProps<{ tourActive?: boolean; projectId?: number | string | null }>(), { tourActive: false, projectId: null })
 
 /** Demo rows shown during the guided tour when no real links exist */
 const DEMO_LINKS: LinkItem[] = [

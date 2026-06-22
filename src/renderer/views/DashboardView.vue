@@ -41,7 +41,7 @@
 		</div>
 
 		<!-- ═══════════ Project List View ═══════════ -->
-		<div v-else-if="!activeProject" class="dashboard-content-wrap" data-tour="project-list">
+		<div v-else-if="!activeProject && !showingUnassigned" class="dashboard-content-wrap" data-tour="project-list">
 			<div class="flex items-center justify-between gap-3 mb-3 px-1">
 				<h3 class="text-base font-semibold">Projects</h3>
 				<button class="btn btn-secondary text-xs px-3 py-1.5" @click="showCreateProjectModal = true">+ New Project</button>
@@ -75,7 +75,31 @@
 					<div class="text-xs truncate" :title="project.root_dir">Directory: {{ project.root_dir }}</div>
 					<p v-if="project.description" class="text-xs line-clamp-2 mb-2">Description: {{ project.description }}</p>
 				</div>
+
+				<!-- Unassigned Links card -->
+				<div
+					class="project-card panel rounded-xl p-4 cursor-pointer border border-dashed border-muted bg-default opacity-80 hover:opacity-100"
+					@click="openUnassignedLinks"
+				>
+					<div class="flex items-start justify-between gap-2 mb-2">
+						<h4 class="font-semibold text-sm truncate text-muted">Unassigned Links</h4>
+					</div>
+					<p class="text-xs text-muted">Links not associated with any project.</p>
+				</div>
 			</div>
+		</div>
+
+		<!-- ═══════════ Unassigned Links View ═══════════ -->
+		<div v-else-if="showingUnassigned" class="dashboard-content-wrap" data-tour="manage-links">
+			<div class="flex items-center gap-2 mb-3 px-1">
+				<button class="text-sm text-primary hover:underline cursor-pointer" @click="backToProjects">Projects</button>
+				<span class="text-muted text-sm">›</span>
+				<span class="text-sm font-semibold truncate">Unassigned Links</span>
+				<div class="button-group-row ml-auto text-xs">
+					<button class="btn btn-danger" @click="backToProjects">Close</button>
+				</div>
+			</div>
+			<ManageLinks projectId="none" key="unassigned" :tourActive="tourShowDemoLinks"/>
 		</div>
 
 		<!-- ═══════════ Project Detail View (Links) ═══════════ -->
@@ -228,6 +252,7 @@ interface Project {
 const projects = ref<Project[]>([])
 const projectsLoading = ref(true)
 const activeProject = ref<Project | null>(null)
+const showingUnassigned = ref(false)
 
 const showCreateProjectModal = ref(false)
 
@@ -253,10 +278,17 @@ async function fetchProjects() {
 
 function openProject(project: Project) {
 	activeProject.value = project
+	showingUnassigned.value = false
+}
+
+function openUnassignedLinks() {
+	activeProject.value = null
+	showingUnassigned.value = true
 }
 
 function backToProjects() {
 	activeProject.value = null
+	showingUnassigned.value = false
 	fetchProjects()
 }
 

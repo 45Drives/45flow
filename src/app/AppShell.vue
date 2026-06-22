@@ -98,11 +98,15 @@ const { activeProject } = useActiveProject()
 useWebSocketManager()
 
 // Reactive window title based on license status
-watch(isPremiumActive, (licensed) => {
+watch([isPremiumActive, isFallback], ([licensed, fallback]) => {
   const version = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : ''
-  document.title = licensed
-    ? `45Flow (Pro Edition) v${version}`
-    : `45Flow (Community Edition) v${version}`
+  if (licensed && fallback) {
+    document.title = `45Flow (Pro — Legacy) v${version}`
+  } else if (licensed) {
+    document.title = `45Flow (Pro Edition) v${version}`
+  } else {
+    document.title = `45Flow (Community Edition) v${version}`
+  }
 }, { immediate: true })
 
 // Notify main process of update eligibility changes (only active license = eligible)

@@ -102,9 +102,17 @@
                 >Upload</span>
               </div>
             </div>
-            <div v-if="link?.project_name" class="flex items-center gap-2">
+            <div class="flex items-center gap-2">
               <span class="text-default font-bold">Project:</span>
-              <span class="opacity-90">{{ link.project_name }}</span>
+              <template v-if="editMode">
+                <select v-model="draftProjectId" class="input-textlike bg-default px-2 py-1 rounded text-sm">
+                  <option :value="null">— None —</option>
+                  <option v-for="proj in availableProjects" :key="proj.id" :value="proj.id">{{ proj.name }}</option>
+                </select>
+              </template>
+              <template v-else>
+                <span class="opacity-90">{{ link?.project_name || 'Unassigned' }}</span>
+              </template>
             </div>
             <div class="flex items-center gap-2">
               <span class="text-default font-bold">Status:</span>
@@ -1101,6 +1109,7 @@ const hasUnsavedChanges = computed(() => {
   if (!!draftShareEnabled.value !== !!props.link.share_enabled) return true
   if (!!draftAutoShareUploads.value !== !!props.link.auto_share_uploads) return true
   if (!!draftAutoWatermarkUploads.value !== !!props.link.auto_watermark_uploads) return true
+  if ((draftProjectId.value ?? null) !== ((props.link as any).project_id ?? null)) return true
   const linkAccessMode = props.link.access_mode || 'open'
   const seedComments = (props.link?.type !== 'upload' && linkAccessMode !== 'restricted')
     ? !!(props.link.allow_comments ?? true)
@@ -1142,6 +1151,8 @@ const draftUploadEnabled = ref(false)
 const draftShareEnabled = ref(true)
 const draftAutoShareUploads = ref(false)
 const draftAutoWatermarkUploads = ref(false)
+const draftProjectId = ref<number | null>(null)
+const availableProjects = ref<{ id: number; name: string }[]>([])
 const draftGenerateReviewProxy = ref(false)
 const draftProxyQualities = ref<string[]>([])
 const originalProxyQualities = ref<string[]>([])
@@ -1554,6 +1565,15 @@ async function hydrateMediaSettingsFromArtifacts() {
   if (foundProxy) target.generateReviewProxy = true
   if (mergedQualities.size) target.proxyQualities = Array.from(mergedQualities)
   if (foundWatermark) target.watermark = true
+}
+
+async function fetchAvailableProjects() {
+  try {
+    const data = await props.apiFetch('/api/projects')
+    availableProjects.value = (data?.projects || []).map((p: any) => ({ id: p.id, name: p.name }))
+  } catch {
+    availableProjects.value = []
+  }
 }
 
 function seedDraftMediaSettings() {
@@ -3369,8 +3389,12 @@ function beginEdit() {
   draftShareEnabled.value = !!props.link.share_enabled
   draftAutoShareUploads.value = !!props.link.auto_share_uploads
   draftAutoWatermarkUploads.value = !!props.link.auto_watermark_uploads
+  draftProjectId.value = (props.link as any).project_id ?? null
   if (draftAccessMode.value === 'restricted') draftAllowComments.value = false
   seedDraftMediaSettings()
+
+  // Fetch available projects for project selector
+  fetchAvailableProjects()
 
   // Seed upload destination based on upload capability, not link type
   if (props.link.upload_enabled) {
@@ -3626,8 +3650,9 @@ async function saveAll() {
 
     const autoShareChanged = !!draftAutoShareUploads.value !== !!props.link.auto_share_uploads
     const autoWatermarkChanged = !!draftAutoWatermarkUploads.value !== !!props.link.auto_watermark_uploads
+    const projectChanged = (draftProjectId.value ?? null) !== ((props.link as any).project_id ?? null)
     const shouldUpdateDetailsCore =
-      titleChanged || notesChanged || accessModeChanged || allowCommentsChanged || authModeChanged || passwordChanged || capabilitiesChanged || autoShareChanged || autoWatermarkChanged
+      titleChanged || notesChanged || accessModeChanged || allowCommentsChanged || authModeChanged || passwordChanged || capabilitiesChanged || autoShareChanged || autoWatermarkChanged || projectChanged
     const shouldUpdateFiles = draftShareEnabled.value && filesDirty.value
     const shouldPatchMediaSettings = mediaSettingsDirty.value
     const watermarkChanged =
@@ -3711,6 +3736,10 @@ async function saveAll() {
       const body: any = {
         title: draftTitle.value || null,
         notes: draftNotes.value || null,
+      }
+
+      if (projectChanged) {
+        body.projectId = draftProjectId.value ?? null
       }
 
       if (capabilitiesChanged) {

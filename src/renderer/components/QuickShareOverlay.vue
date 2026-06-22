@@ -1359,6 +1359,7 @@ async function startUploadAndShare() {
       generateReviewProxy: hasVideo.value, // Server generates proxy variants even when client transcoded
       hls: hasVideo.value,
       clientTranscoded: anyClientTranscoded || undefined,
+      projectId: activeProject.value?.id || undefined,
     }
 
     if (serverPaths.length === 1) body.filePath = serverPaths[0]
@@ -1406,9 +1407,9 @@ async function startUploadAndShare() {
       if (hasVideo.value) {
         body.watermarkProxyQualities = proxyQualities.value.slice()
       }
-      // Premium: Pass custom watermark settings to server
+      // Premium: Pass custom watermark settings to server (deep copy to prevent mutation)
       if (watermarkSettings.value) {
-        body.watermarkSettings = watermarkSettings.value
+        body.watermarkSettings = JSON.parse(JSON.stringify(watermarkSettings.value))
       }
     }
 
