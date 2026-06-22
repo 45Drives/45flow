@@ -73,6 +73,7 @@ export type LinkItem = {
   upload_enabled?: boolean
   share_enabled?: boolean
   auto_share_uploads?: boolean
+  auto_watermark_uploads?: boolean
   project_id?: number | null
   project_name?: string | null
   project_root_dir?: string | null

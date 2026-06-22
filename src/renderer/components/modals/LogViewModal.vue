@@ -43,18 +43,21 @@
               >
                 Server Logs
               </button>
-              <!-- Server selector (when multiple servers connected) -->
-              <div v-if="source === 'server' && connectedServers.length > 1" class="ml-auto flex items-center gap-2">
+              <!-- Server selector (when multiple servers exist) -->
+              <div v-if="source === 'server' && allServers.length > 1" class="ml-auto flex items-center gap-2">
                 <label class="text-xs text-muted">Server:</label>
                 <select
                   v-model="selectedServerConnectionId"
                   class="px-2 py-1 text-sm border border-default rounded bg-default"
-                  @change="refresh()"
+                  @change="onServerSelect()"
                 >
-                  <option v-for="conn in connectedServers" :key="conn.connectionId" :value="conn.connectionId">
-                    {{ conn.name || conn.serverIp }}
+                  <option v-for="conn in allServers" :key="conn.connectionId" :value="conn.connectionId">
+                    {{ conn.name || conn.serverIp }}{{ conn.status !== 'connected' ? ' (disconnected)' : '' }}
                   </option>
                 </select>
+                <span v-if="selectedServerDisconnected" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-400">
+                  Not connected
+                </span>
               </div>
             </div>
 
@@ -208,6 +211,11 @@
                   <tr v-if="loading">
                     <td colspan="6" class="p-4 text-center">Loading logs…</td>
                   </tr>
+                  <tr v-else-if="selectedServerDisconnected">
+                    <td colspan="6" class="p-4 text-center text-amber-400">
+                      This server is not connected. Log in to this server to view its logs.
+                    </td>
+                  </tr>
                   <tr v-else-if="serverAccessDenied">
                     <td colspan="6" class="p-4 text-center text-amber-400">
                       Admin access required to view server logs. Log in with a system (PAM) account.
@@ -286,9 +294,15 @@ const { onboarding, markDone } = useOnboarding();
 const { connections, activeConnection } = useConnections();
 
 const connectedServers = computed(() => connections.filter(c => c.status === 'connected'));
+const allServers = computed(() => connections.filter(c => c.connectionId));
 
 // Track which server to pull logs from (defaults to active connection)
 const selectedServerConnectionId = ref<string>(activeConnection.value?.connectionId ?? '');
+
+const selectedServerDisconnected = computed(() => {
+  const conn = connections.find(c => c.connectionId === selectedServerConnectionId.value);
+  return conn ? conn.status !== 'connected' : false;
+});
 
 // Initialize default if not set
 watch(connectedServers, (servers) => {
@@ -296,6 +310,17 @@ watch(connectedServers, (servers) => {
     selectedServerConnectionId.value = servers[0].connectionId;
   }
 }, { immediate: true });
+
+function onServerSelect() {
+  if (selectedServerDisconnected.value) {
+    // Don't try to fetch logs from a disconnected server
+    serverEntries.value = [];
+    serverAccessDenied.value = false;
+    error.value = null;
+    return;
+  }
+  refresh();
+}
 
 // Create a reactive apiFetch bound to the selected server
 function getServerApiFetch() {
@@ -529,8 +554,12 @@ async function loadServerPage(page: number) {
     });
     if (levelFilter.value) params.set('level', levelFilter.value);
 
+    if (selectedServerDisconnected.value) {
+      serverEntries.value = [];
+      return;
+    }
     const apiFetch = getServerApiFetch();
-    const res = await apiFetch(`/api/admin/audit-log?${params.toString()}`);
+    const res = await apiFetch(`/api/admin/audit-log?${params.toString()}`, { suppressAuthRedirect: true });
     if (!res?.ok) throw new Error(res?.error || 'Failed to fetch server logs');
 
     serverEntries.value = Array.isArray(res.entries) ? res.entries : [];

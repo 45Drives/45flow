@@ -93,6 +93,38 @@
 								v-model:dest="uploadDest"
 								:uploadLink="true"
 							/>
+
+							<!-- Upload automation toggles (only when both upload + share enabled) -->
+							<div v-if="opts.shareEnabled.value" class="mt-3 pt-3 border-t border-default space-y-3">
+								<label class="flex items-start gap-3 select-none cursor-pointer">
+									<input
+										type="checkbox"
+										v-model="autoShareUploads"
+										class="mt-0.5 h-4 w-4 rounded border-default accent-blue-600 cursor-pointer"
+									/>
+									<div class="min-w-0">
+										<div class="text-sm font-medium">Auto-share uploaded files</div>
+										<div class="text-xs text-muted">
+											Files uploaded through this link will automatically appear in the link's shared files.
+										</div>
+									</div>
+								</label>
+								<label class="flex items-start gap-3 select-none cursor-pointer">
+									<input
+										type="checkbox"
+										v-model="autoWatermarkUploads"
+										:disabled="!watermarkEnabled"
+										class="mt-0.5 h-4 w-4 rounded border-default accent-blue-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+									/>
+									<div class="min-w-0">
+										<div class="text-sm font-medium" :class="{ 'opacity-50': !watermarkEnabled }">Auto-watermark uploaded files</div>
+										<div class="text-xs text-muted" :class="{ 'opacity-50': !watermarkEnabled }">
+											Apply the link's watermark settings to files uploaded through this link.
+											<span v-if="!watermarkEnabled" class="text-amber-500"> (Enable watermark in media options first)</span>
+										</div>
+									</div>
+								</label>
+							</div>
 						</section>
 
 						<!-- ══════ Section: Share Files ══════ -->
@@ -471,6 +503,8 @@ const creatingProject = ref(false)
 const uploadDest = ref('')
 const uploadProjectBase = ref('')
 const uploadPickerKey = ref(0)
+const autoShareUploads = ref(false)
+const autoWatermarkUploads = ref(false)
 
 // ── Share ──
 const shareFiles = ref<string[]>([])
@@ -900,6 +934,8 @@ async function generateLink() {
 
 		if (opts.uploadEnabled.value && uploadDest.value.trim()) {
 			body.uploadDir = '/' + uploadDest.value.replace(/^\/+/, '')
+			body.autoShareUploads = autoShareUploads.value
+			body.autoWatermarkUploads = autoWatermarkUploads.value
 		}
 
 		if (opts.shareEnabled.value) {
@@ -1124,6 +1160,8 @@ function resetAll() {
 	opts.resetOptions()
 	uploadDest.value = ''
 	uploadProjectBase.value = ''
+	autoShareUploads.value = false
+	autoWatermarkUploads.value = false
 	shareFiles.value = []
 	proxyQualities.value = ['original']
 	watermarkEnabled.value = false

@@ -477,6 +477,7 @@
                   <span v-if="uploadDirDirty" class="ml-2 text-amber-400">Pending changes</span>
                 </div>
 
+                <template v-if="draftShareEnabled">
                 <label class="flex items-start gap-3 select-none cursor-pointer mt-2 pt-2 border-t border-default">
                   <input
                     type="checkbox"
@@ -490,6 +491,22 @@
                     </div>
                   </div>
                 </label>
+                <label class="flex items-start gap-3 select-none cursor-pointer mt-2">
+                  <input
+                    type="checkbox"
+                    v-model="draftAutoWatermarkUploads"
+                    :disabled="!link?.watermark"
+                    class="mt-0.5 h-4 w-4 rounded border-default accent-blue-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  <div class="min-w-0">
+                    <div class="text-sm font-medium" :class="{ 'opacity-50': !link?.watermark }">Auto-watermark uploaded files</div>
+                    <div class="text-xs text-muted" :class="{ 'opacity-50': !link?.watermark }">
+                      Apply this link's watermark settings to files uploaded through this link.
+                      <span v-if="!link?.watermark" class="text-amber-500"> (Link has no watermark configured)</span>
+                    </div>
+                  </div>
+                </label>
+                </template>
               </div>
             </div>
           </div>
@@ -1084,6 +1101,7 @@ const hasUnsavedChanges = computed(() => {
   if (!!draftUploadEnabled.value !== !!props.link.upload_enabled) return true
   if (!!draftShareEnabled.value !== !!props.link.share_enabled) return true
   if (!!draftAutoShareUploads.value !== !!props.link.auto_share_uploads) return true
+  if (!!draftAutoWatermarkUploads.value !== !!props.link.auto_watermark_uploads) return true
   const linkAccessMode = props.link.access_mode || 'open'
   const seedComments = (props.link?.type !== 'upload' && linkAccessMode !== 'restricted')
     ? !!(props.link.allow_comments ?? true)
@@ -1124,6 +1142,7 @@ const draftPassword = ref('')
 const draftUploadEnabled = ref(false)
 const draftShareEnabled = ref(true)
 const draftAutoShareUploads = ref(false)
+const draftAutoWatermarkUploads = ref(false)
 const draftGenerateReviewProxy = ref(false)
 const draftProxyQualities = ref<string[]>([])
 const originalProxyQualities = ref<string[]>([])
@@ -3350,6 +3369,7 @@ function beginEdit() {
   draftUploadEnabled.value = !!props.link.upload_enabled
   draftShareEnabled.value = !!props.link.share_enabled
   draftAutoShareUploads.value = !!props.link.auto_share_uploads
+  draftAutoWatermarkUploads.value = !!props.link.auto_watermark_uploads
   if (draftAccessMode.value === 'restricted') draftAllowComments.value = false
   seedDraftMediaSettings()
 
@@ -3401,6 +3421,7 @@ function cancelEdit() {
   draftUploadEnabled.value = !!props.link?.upload_enabled
   draftShareEnabled.value = !!props.link?.share_enabled
   draftAutoShareUploads.value = !!props.link?.auto_share_uploads
+  draftAutoWatermarkUploads.value = !!props.link?.auto_watermark_uploads
   if (draftAccessMode.value === 'restricted') draftAllowComments.value = false
   seedDraftMediaSettings()
 
@@ -3605,8 +3626,9 @@ async function saveAll() {
     const passwordChanged = passwordWillSet || passwordWillClear
 
     const autoShareChanged = !!draftAutoShareUploads.value !== !!props.link.auto_share_uploads
+    const autoWatermarkChanged = !!draftAutoWatermarkUploads.value !== !!props.link.auto_watermark_uploads
     const shouldUpdateDetailsCore =
-      titleChanged || notesChanged || accessModeChanged || allowCommentsChanged || authModeChanged || passwordChanged || capabilitiesChanged || autoShareChanged
+      titleChanged || notesChanged || accessModeChanged || allowCommentsChanged || authModeChanged || passwordChanged || capabilitiesChanged || autoShareChanged || autoWatermarkChanged
     const shouldUpdateFiles = draftShareEnabled.value && filesDirty.value
     const shouldPatchMediaSettings = mediaSettingsDirty.value
     const watermarkChanged =
@@ -3700,6 +3722,11 @@ async function saveAll() {
       // Include autoShareUploads if it changed
       if (!!draftAutoShareUploads.value !== !!props.link.auto_share_uploads) {
         body.autoShareUploads = !!draftAutoShareUploads.value
+      }
+
+      // Include autoWatermarkUploads if it changed
+      if (!!draftAutoWatermarkUploads.value !== !!props.link.auto_watermark_uploads) {
+        body.autoWatermarkUploads = !!draftAutoWatermarkUploads.value
       }
 
       if (accessModeChanged || allowCommentsChanged || authModeChanged) {

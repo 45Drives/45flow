@@ -2549,12 +2549,15 @@ const publicSharingStatusBadge = computed(() => {
 
 const publicSharingCertLabel = computed(() => {
     const cert = publicSharingStatus.value?.certificate;
+    if (!cert) return 'Unknown';
     if (cert.mode === 'letsencrypt' && cert.valid) return 'Trusted certificate active';
+    if (cert.mode === 'letsencrypt' && !cert.valid) return 'Trusted certificate invalid';
     return 'Local certificate (self-signed)';
 });
 
 const publicSharingCertDescription = computed(() => {
     const cert = publicSharingStatus.value?.certificate;
+    if (!cert) return 'Certificate status could not be determined.';
     if (cert.mode === 'letsencrypt' && cert.valid && cert.domain) return `Trusted certificate for ${cert.domain}. Recipients will not see browser warnings.`;
     if (cert.mode === 'self-signed') return 'Recipients will see a browser security warning when opening share links.';
     return 'Certificate status unclear.';
@@ -2562,13 +2565,19 @@ const publicSharingCertDescription = computed(() => {
 
 const publicSharingNginxLabel = computed(() => {
     const nginx = publicSharingStatus.value?.nginx;
+    if (!nginx) return 'Unknown';
     if (nginx.running && nginx.configValid) return 'Configured by Houston';
+    if (!nginx.installed) return 'Not installed';
+    if (!nginx.running) return 'Not running';
     return 'Needs repair';
 });
 
 const publicSharingFirewallLabel = computed(() => {
     const fw = publicSharingStatus.value?.firewall;
+    if (!fw) return 'Unknown';
+    if (!fw.managed) return 'No firewall detected';
     if (fw.httpOpen && fw.httpsOpen) return 'Web sharing allowed';
+    if (!fw.httpsOpen) return 'HTTPS port blocked';
     return 'Needs attention';
 });
 
