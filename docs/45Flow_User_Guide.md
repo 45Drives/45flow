@@ -337,14 +337,15 @@ After connecting to your server, 45Flow automatically checks the server's licens
 ![Dashboard header showing Pro trial badge](images/dashboard-pro-trial-header-v3.png)
 
 - **Pro — Legacy (expired license)** — If your server was previously licensed but the license has since expired, the app enters a "Pro — Legacy" state. In this mode:
-  - All Pro features **remain accessible** (branding, watermarks, comments, annotations)
+  - All Pro features **you had at the time of expiry remain accessible** (branding, watermarks, comments, annotations — whatever was available in the version you last updated to)
   - The window title shows "45Flow (Pro — Legacy)"
-  - **Automatic updates are disabled** — only actively licensed servers receive app updates
-  - You can re-activate a license at any time in Settings → Go Pro to restore full Pro status and update eligibility
+  - **Automatic updates are disabled** — you will not receive new app versions, bug fixes, or future Pro features until the license is renewed
+  - Any **new Pro features released after your license expired will not be available** until you re-activate
+  - You can re-activate a license at any time in Settings → Go Pro to restore full Pro status, unlock any new features, and resume receiving updates
 
 ![Dashboard header showing Pro Legacy badge](images/dashboard-pro-legacy-header-v3.png)
 
-> **Note:** The Legacy state ensures that teams who previously paid for a license are not abruptly locked out of features they depend on. It provides a grace period to renew while retaining full functionality.
+> **Note:** Legacy mode ensures you are never abruptly locked out of features you already paid for. Think of it as: you keep everything your license covered, but the clock stops — no new features or updates until you renew. An active license means continuous access to every new feature and improvement as it's released.
 
 #### Activating a License
 
@@ -1668,7 +1669,7 @@ This is useful for managing links across multiple servers from a single view.
 
 **Update eligibility** is tied to your license status:
 - **Active Pro license** — Automatic updates are enabled. You receive new versions as they're released.
-- **Pro — Legacy (expired license)** — Updates are disabled. The app continues to work with all Pro features, but won't receive new versions until the license is renewed.
+- **Pro — Legacy (expired license)** — Updates are disabled. The Pro features you had at the time of expiry continue to work, but you won't receive new app versions or any Pro features released after expiration until the license is renewed.
 - **Community (unlicensed)** — Updates are disabled.
 
 ![Update banner showing available update](images/update-banner-v3.png)
@@ -1795,7 +1796,7 @@ A: No. Licenses are tied to the server, not individual users. Once a server is l
 A: When a trial license expires, the server reverts to Community mode. Pro features (custom branding, advanced watermarks, comments, annotations) are disabled. All existing links remain accessible, but you can't use Pro features until a full license is activated.
 
 **Q: What happens when my full Pro license expires?**  
-A: If your server was previously licensed with a full (non-trial) license that has since expired, the app enters **Pro — Legacy** mode. All Pro features remain accessible, but automatic app updates are disabled. You can renew your license at any time in Settings → Go Pro to restore full Pro status and update eligibility.
+A: The app enters **Pro — Legacy** mode. All the Pro features you had at the time of expiry remain fully functional — you keep what you paid for. However, automatic app updates stop, and any new Pro features or improvements released after your license expired will not be available to you. Renew your license at any time in Settings → Go Pro to unlock everything new and resume receiving updates.
 
 **Q: What are Projects and do I need to use them?**  
 A: Projects are the primary workspace organizer in 45Flow. After login, you select or create a project, and the Dashboard shows only that project's links. Each project has its own root directory and tracks link counts. If you prefer a flat list of all links without grouping, you can disable Project Mode in **Settings → Project Root** — you'll skip the Projects screen and go directly to the Dashboard with all links visible.
