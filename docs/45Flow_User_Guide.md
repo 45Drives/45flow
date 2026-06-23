@@ -71,15 +71,17 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
    - [Logging In](#logging-in)
    - [License Status & Activation](#license-status--activation)
 4. [Port Forwarding for External Sharing](#4-port-forwarding-for-external-sharing)
-5. [Projects — Selecting Your Workspace](#5-projects--selecting-your-workspace)
+5. [Projects — Organizing Your Workspace](#5-projects--organizing-your-workspace)
    - [What Are Projects](#what-are-projects)
    - [Creating a Project](#creating-a-project)
    - [Managing Projects](#managing-projects)
+   - [Unassigned Links](#unassigned-links)
    - [Disabling Project Mode](#disabling-project-mode)
 6. [Dashboard Overview](#6-dashboard-overview)
 7. [Settings](#7-settings)
    - [URLs & Access](#urls--access)
    - [SSL Certificate Management](#ssl-certificate-management)
+   - [Public Sharing](#public-sharing)
    - [Link Options](#link-options)
    - [Project Root](#project-root)
    - [Preferences & Performance](#preferences--performance)
@@ -225,7 +227,7 @@ Download the latest version of 45Flow from the **[Releases page](https://github.
 
 > **Tip:** If macOS warns the app is from an unidentified developer, go to **System Preferences → Security & Privacy** and click **Open Anyway**.
 
-![macOS DMG install — drag 45Flow into Applications](images/install-macos-dmg-v2.png)
+![macOS DMG install — drag 45Flow into Applications](images/install-macos-dmg-v3.png)
 
 ### Windows
 
@@ -237,7 +239,7 @@ Download the latest version of 45Flow from the **[Releases page](https://github.
 2. Follow the on-screen installation wizard steps.
 3. Once complete, launch **45Flow** from the Start Menu or Desktop shortcut.
 
-![Windows installer wizard](images/install-windows-v2.png)
+![Windows installer wizard](images/install-windows-v3.png)
 
 ### Linux
 
@@ -273,7 +275,7 @@ The AppImage requires no root privileges and does not modify your system. It sup
 
 When you first open 45Flow, you'll see the **Login Screen**. This is where you connect the desktop client to your 45Drives server.
 
-![Login Screen](images/login-screen-v2.png)
+![Login Screen](images/login-screen-v3.png)
 
 ### Automatic Server Discovery
 
@@ -281,7 +283,7 @@ If your server is running the **houston-broadcaster** service on the same networ
 
 Simply select your server from the dropdown to populate the connection.
 
-![Server auto-discovery dropdown](images/login-server-discovery-v2.png)
+![Server auto-discovery dropdown](images/login-server-discovery-v3.png)
 
 > **Note:** If no servers appear, the houston-broadcaster service may not be running, or you may be on a different subnet. Use the manual connection method below.
 
@@ -317,7 +319,7 @@ The app will display status messages as it connects:
 
 On success, you'll be taken to the **Dashboard**.
 
-![Connecting to server with status messages](images/login-connecting-v2.png)
+![Connecting to server with status messages](images/login-connecting-v3.png)
 
 ### License Status & Activation
 
@@ -325,14 +327,24 @@ After connecting to your server, 45Flow automatically checks the server's licens
 
 #### Community vs Pro Mode
 
-- **Unlicensed server** — The app runs in Community mode. Pro features (custom branding, advanced watermarks, comments, annotations) are hidden or disabled.
+- **Unlicensed server** — The app runs in Community mode. Pro features (custom branding, advanced watermarks, comments, annotations) are hidden or disabled. The window title shows "45Flow (Community Edition)".
 
-![Dashboard header in Community mode](images/dashboard-community-mode-header.png)
+![Dashboard header in Community mode](images/dashboard-community-mode-header-v3.png)
 
-- **Licensed server** — The app automatically upgrades to Pro mode. All Pro features become available.
+- **Licensed server** — The app automatically upgrades to Pro mode. All Pro features become available. The window title shows "45Flow (Pro Edition)".
 - **Trial license** — If your server has an active trial license, the app shows "Pro Trial — X days left" in the header. When the trial expires, the app reverts to Community mode.
 
-![Dashboard header showing Pro trial badge](images/dashboard-pro-trial-header.png)
+![Dashboard header showing Pro trial badge](images/dashboard-pro-trial-header-v3.png)
+
+- **Pro — Legacy (expired license)** — If your server was previously licensed but the license has since expired, the app enters a "Pro — Legacy" state. In this mode:
+  - All Pro features **remain accessible** (branding, watermarks, comments, annotations)
+  - The window title shows "45Flow (Pro — Legacy)"
+  - **Automatic updates are disabled** — only actively licensed servers receive app updates
+  - You can re-activate a license at any time in Settings → Go Pro to restore full Pro status and update eligibility
+
+![Dashboard header showing Pro Legacy badge](images/dashboard-pro-legacy-header-v3.png)
+
+> **Note:** The Legacy state ensures that teams who previously paid for a license are not abruptly locked out of features they depend on. It provides a grace period to renew while retaining full functionality.
 
 #### Activating a License
 
@@ -377,7 +389,7 @@ Port forwarding tells your router to direct incoming traffic on a specific port 
 
 > **Note:** Port forwarding configuration varies by router manufacturer and model. Some ISPs or shared building networks may restrict port forwarding. If you're unsure whether your network supports it, contact your ISP or network administrator.
 
-![Port forwarding help modal](images/port-forwarding-help-v2.png)
+![Port forwarding help modal](images/port-forwarding-help-v3.png)
 
 > **Tip:** After setting up port forwarding, configure your external URL in [Settings](#7-settings) → URLs & Access to ensure links are generated correctly.
 
@@ -385,11 +397,11 @@ Port forwarding tells your router to direct incoming traffic on a specific port 
 
 ---
 
-## 5. Projects — Selecting Your Workspace
+## 5. Projects — Organizing Your Workspace
 
-After logging in, 45Flow presents the **Projects** screen. This is your first decision point — choose an existing project or create a new one, and you'll be taken to the Dashboard showing only that project's links.
+After logging in, the Dashboard presents the **Projects** list. This is your primary workspace organizer — click a project to view its links, or create a new one to start organizing.
 
-![Projects list view](images/projects-list.png)
+![Projects list view](images/projects-list-v3.png)
 
 ### What Are Projects
 
@@ -398,19 +410,32 @@ A project is a named workspace that:
 - **Groups related links** — Keep all links for a client, campaign, or workflow together in one place.
 - **Has a root directory** — Each project points to a specific folder on your server. When creating links within a project, the file browser starts from that root.
 - **Tracks link counts** — See at a glance how many active, expired, or disabled links each project has.
-- **Scopes your Dashboard** — When you select a project, the Dashboard only shows links belonging to that project.
-- **Can be archived** — Archive completed projects to hide them from the active list without deleting the links.
+- **Scopes your view** — When you select a project, only that project's links are displayed.
+- **Can be archived or deleted** — Archive completed projects to hide them without deletion, or permanently delete projects you no longer need.
+
+### Unassigned Links
+
+Below the project list on the Dashboard, a collapsible **"Unassigned Links"** section shows all links that are not assigned to any project. This includes:
+
+- Links created via QuickShare (which don't require a project)
+- Links whose project was deleted
+- Links explicitly created without a project assignment
+
+Click the disclosure arrow to expand or collapse this section. Unassigned links are managed the same way as project links — you can view details, edit, disable, or delete them.
+
+![Unassigned links section below projects](images/dashboard-unassigned-links-v3.png)
 
 ### The Project Workflow
 
 The typical flow is:
 
 1. **Log in** to 45Flow.
-2. **Select a project** (or create a new one) from the Projects screen.
-3. **The Dashboard loads** showing only that project's links.
+2. **Select a project** (or create a new one) from the Dashboard project list.
+3. **The project detail view loads** showing only that project's links.
 4. **Create, manage, and share links** — all within the context of the selected project.
+5. Click **"Projects"** in the breadcrumb to return to the project list.
 
-To switch to a different project, return to the Projects screen from the Dashboard.
+To switch to a different project, click the breadcrumb or close the current project.
 
 ### Creating a Project
 
@@ -422,7 +447,7 @@ From the Projects screen, click **"New Project"** to create a new project:
    - **Description** (optional) — Notes about the project's purpose.
 2. Click **"Create Project"**.
 
-![Create project modal](images/project-create-modal.png)
+![Create project modal](images/project-create-modal-v3.png)
 
 The new project appears in the projects list and is immediately available to select.
 
@@ -430,27 +455,57 @@ The new project appears in the projects list and is immediately available to sel
 
 **Viewing Projects:**
 
-The Projects screen shows all active projects with:
+The Projects screen shows all active projects as cards in a responsive grid layout with:
 - Project name
 - Root directory path
-- Link counts (total, active, expired, disabled)
-- Created date
+- Link count badges: **Total**, **Active** (green), **Expired** (amber), **Disabled** (red)
+- Server name (when connected to multiple servers)
+- Description (if provided)
+
+Projects are paginated when you have many — use the Previous/Next controls at the bottom to navigate pages.
+
+![Project cards with link counts and action buttons](images/project-cards-with-controls-v3.png)
+
+**Project Card Actions:**
+
+Each project card has action buttons in the top-right corner (click without opening the project):
+
+| Button | Description |
+|--------|-------------|
+| **Archive** | Deactivates all links and hides the project from the default view. Available on active projects. |
+| **Unarchive** | Restores an archived project and re-enables its links. Available on archived projects. |
+| **Delete** | Permanently removes the project (see below). |
 
 **Editing a Project:**
 
-Click the **edit icon** next to a project to update its name, root directory, or description.
+Click on a project card to open it, then click **"Edit Project"** in the breadcrumb bar. The edit modal lets you update the project name, root directory, and description. It also provides Archive/Unarchive and Delete buttons.
 
 **Archiving a Project:**
 
-Click the **archive icon** to soft-delete a project. Archived projects are hidden from the active list but can be restored later. All links in an archived project remain accessible — archiving does not delete links.
+Click **"Archive"** on a project card, or open the project and use the Edit modal's Archive button. A confirmation dialog explains what archiving does:
+
+- All active links in the project are **disabled** (become inaccessible)
+- The project is hidden from the default project list
+- **No files or links are deleted**
+- You can unarchive at any time to restore everything
+
+![Archive project confirmation dialog](images/project-archive-confirm-v3.png)
 
 **Restoring an Archived Project:**
 
-Toggle **"Show archived"** to view archived projects, then click **"Restore"** to unarchive.
+Archived projects appear dimmed (reduced opacity) with an "Archived" badge. Click **"Unarchive"** on the card or in the Edit modal to restore the project and re-enable its links.
 
 **Deleting a Project (Hard Delete):**
 
-To permanently delete a project and all its links, select the project and choose **"Delete Permanently"**. This action cannot be undone.
+Click **"Delete"** on a project card or in the Edit modal. A confirmation dialog warns:
+
+- The project record is permanently removed
+- Links associated with the project become **unassigned** (they are not deleted)
+- This action **cannot be undone**
+
+You must type the project name to confirm deletion.
+
+![Delete project confirmation dialog](images/project-delete-confirm-v3.png)
 
 ### Disabling Project Mode
 
@@ -471,9 +526,9 @@ When Project Mode is disabled:
 
 ## 6. Dashboard Overview
 
-The **Dashboard** (also called the **Control Center**) is your central hub for managing all file sharing operations. When Project Mode is enabled, the Dashboard shows links for the currently selected project. When Project Mode is disabled, it shows all links.
+The **Dashboard** (also called the **Control Center**) is your central hub for managing all file sharing operations. When Project Mode is enabled, the Dashboard shows the project list, and clicking a project opens its links in a detail view with breadcrumb navigation. Below the projects, the **Unassigned Links** section shows links not belonging to any project. When Project Mode is disabled, the Dashboard shows all links in a flat list.
 
-![Dashboard overview](images/dashboard-overview-v2.png)
+![Dashboard overview](images/dashboard-overview-v3.png)
 
 ### Top Navigation
 
@@ -484,6 +539,26 @@ At the top of the Dashboard, you'll find quick-access buttons:
 | **Manage Access** | Open user management to create accounts, assign roles, and manage access |
 | **View Logs** | Open the log viewer to inspect application activity and diagnose issues |
 | **Settings** | Configure application-wide defaults for links, URLs, and server behavior |
+| **Notifications** (bell icon) | View notification history (see below) |
+
+### Notifications
+
+The **notification bell** in the top navigation provides a central history of all application notifications. A red badge shows the count of unread notifications (displays "9+" when more than 9).
+
+![Notification bell with unread badge](images/notification-bell-v3.png)
+
+Click the bell to open the notification panel. Each notification shows:
+
+- **Color-coded severity dot** — Red (error), amber (warning), blue (info), green (success)
+- **Title** — Brief description of what happened
+- **Body** — Detailed message (click any notification to expand its full text)
+- **Timestamp** — Relative time (e.g., "2m ago", "1h ago")
+
+Notifications are displayed in reverse chronological order (newest first). The panel stores up to 50 notifications. Click **"Clear all"** to dismiss the entire history.
+
+![Notification panel expanded with clickable items](images/notification-panel-expanded-v3.png)
+
+> **Tip:** Click on any notification in the list to expand or collapse its full message text. This is useful for longer messages that are truncated by default.
 
 ### Main Action Buttons
 
@@ -494,7 +569,7 @@ Two large action buttons let you perform the core tasks:
 | **Create Link** | Create a link for sharing files, uploading files, or both (combined mode). Configure all link settings in one unified interface. |
 | **Upload Files** | Transfer files from your workstation directly to the server |
 
-![Dashboard action buttons](images/dashboard-action-buttons-v2.png)
+![Dashboard action buttons](images/dashboard-action-buttons-v3.png)
 
 ### Active Links Table
 
@@ -512,12 +587,12 @@ Configure application-wide defaults and server settings. Access Settings from th
 
 The Settings panel is organized into sections via the left-hand navigation sidebar:
 
-- **Link Sharing** — URLs & Access, Certificate, Link Options, Project Root
+- **Link Sharing** — URLs & Access, Certificate, Public Sharing, Link Options, Project Root
 - **Branding** — White Label (see [Custom Branding](#7-custom-branding-white-label))
 - **Application** — Preferences, Server Health, Maintenance
 - **Help** — Guides
 
-![Settings modal](images/settings-v2.png)
+![Settings modal](images/settings-v3.png)
 
 ### URLs & Access
 
@@ -553,7 +628,7 @@ A **Preview** section shows the currently active external and internal URLs so y
 
 The **Certificate** tab lets you upgrade from the default self-signed certificate to a trusted **Let's Encrypt** certificate for your custom domain. A trusted certificate eliminates browser security warnings when clients open share links.
 
-![Certificate management](images/settings-v2.png)
+![Certificate management](images/settings-v3.png)
 
 **Certificate Status:**
 
@@ -579,6 +654,35 @@ The top section shows your current certificate state:
 If you need to remove the trusted certificate (e.g., domain change), click **"Revert to Self-Signed"**. This instantly switches back to the self-signed certificate.
 
 > **Important:** Port 80 and 443 must both be accessible from the internet for Let's Encrypt validation to succeed. Ensure your firewall and port forwarding rules allow both ports.
+
+### Public Sharing
+
+The **Public Sharing** section provides a consolidated status overview of your server's readiness for external (internet) sharing. It shows at a glance whether all the components needed for public link access are correctly configured.
+
+![Public Sharing status panel](images/settings-public-sharing-v3.png)
+
+**Status Summary:**
+
+A color-coded status card shows the overall state:
+- **Green (Ready)** — All components are properly configured for public sharing.
+- **Yellow (Warning)** — Some components need attention (e.g., missing trusted certificate, firewall ports closed).
+- **Red (Error)** — Critical issue (e.g., web routing not working).
+
+**Status Rows:**
+
+| Row | Description |
+|-----|-------------|
+| **Share URL** | The public URL recipients use to access your shared content. |
+| **HTTPS** | Certificate type (Trusted/Self-Signed) and validity status. |
+| **Web routing** | Whether nginx is running and properly configured. |
+| **Firewall** | Whether HTTP (80) and HTTPS (443) ports are open for external access. |
+| **Last setup** | When Houston last configured public sharing (timestamp). |
+
+**Actions:**
+
+- **Check Public Sharing** — Re-checks all status components.
+- **Repair Public Sharing** — Attempts to automatically fix common issues (restarts nginx, regenerates configs).
+- **Install Trusted Certificate** — Navigates to the Certificate section for Let's Encrypt setup.
 
 ### Link Options
 
@@ -628,7 +732,7 @@ These defaults are applied automatically when creating new links, but can be cha
 
 The **Server Health** section provides real-time resource statistics from your connected server.
 
-![Server Health panel](images/settings-server-health-v2.png)
+![Server Health panel](images/settings-server-health-v3.png)
 
 Server Health auto-loads when you navigate to the section and shows the following:
 
@@ -661,7 +765,7 @@ For administrators to manage server health:
 - Click **"Run Scan"** to preview what would be cleaned, then **"Apply Cleanup"** to execute.
 - Use **"Export JSON"** to save scan results.
 
-![Maintenance and cleanup scan results](images/settings-maintenance-v2.png)
+![Maintenance and cleanup scan results](images/settings-maintenance-v3.png)
 
 ### Guides
 
@@ -682,7 +786,7 @@ The Guides section provides:
 
 The **Go Pro** section appears in Settings when your server is unlicensed or running on a trial license. Use this section to activate a full license or start a free trial.
 
-![Go Pro settings when unlicensed](images/settings-go-pro-unlicensed.png)
+![Go Pro settings when unlicensed](images/settings-go-pro-unlicensed-v3.png)
 
 **License Activation:**
 
@@ -707,7 +811,7 @@ When running on a trial license, this section shows:
 - Days remaining
 - Option to upgrade to a full license before the trial expires
 
-![Go Pro settings showing active trial](images/settings-go-pro-trial.png)
+![Go Pro settings showing active trial](images/settings-go-pro-trial-v3.png)
 
 When a trial expires, the app reverts to Community mode and Pro features are disabled until a full license is activated.
 
@@ -721,7 +825,7 @@ When a trial expires, the app reverts to Community mode and Pro features are dis
 
 Access branding configuration from **Settings → White Label**.
 
-![Custom Branding configuration panel](images/settings-branding-v2.png)
+![Custom Branding configuration panel](images/settings-branding-v3.png)
 
 ### Enabling Branding
 
@@ -823,7 +927,7 @@ When branding is enabled, recipients viewing your share links will see:
 
 The **QuickShare** feature provides the fastest way to create a share link. Simply drag files from your desktop or file manager directly into 45Flow to instantly generate a shareable link with one click.
 
-![QuickShare drag and drop interface](images/quickshare-dragdrop-v2.png)
+![QuickShare drag and drop interface](images/quickshare-dragdrop-v3.png)
 
 ### How to Use QuickShare
 
@@ -876,7 +980,7 @@ First, choose where the link will operate:
 **For upload-only links:**
 - Choose the destination folder where uploaded files will be saved.
 
-![Project selection with ZFS pools](images/share-select-project-v2.png)
+![Project selection with ZFS pools](images/share-select-project-v3.png)
 
 The screen displays your available **ZFS pools** (storage locations) such as `/media`, `/projects`, etc. Click **"Select"** next to the pool you want to use. Alternatively, check **"Show entire directory tree from root"** to browse the full filesystem.
 
@@ -888,9 +992,9 @@ Click **"Return to Dashboard"** at any time to cancel.
 
 After choosing a location, you'll see the link configuration screen.
 
-![File selection and link configuration](images/share-select-files-v2.png)
+![File selection and link configuration](images/share-select-files-v3.png)
 
-![Unified link creation interface](images/link-create-unified.png)
+![Unified link creation interface](images/link-create-unified-v3.png)
 
 ### Link Types — Share, Upload, Combined
 
@@ -941,13 +1045,13 @@ Choose who can access the link:
 | **Anyone with the link + password** | Requires a shared password. Enter a password in the field that appears. The same password is used by all recipients. |
 | **Only invited users** | Requires each user to log in with their own credentials. Click **"Invite users…"** to select which users can access. Permissions are controlled by their assigned roles. |
 
-![Link access mode options](images/share-access-modes-v2.png)
+![Link access mode options](images/share-access-modes-v3.png)
 
 ### Advanced Video Options
 
 When sharing video files, expand the **"Advanced video options"** section for additional controls:
 
-![Advanced video options — review copy and watermark](images/share-video-options-v2.png)
+![Advanced video options — review copy and watermark](images/share-video-options-v3.png)
 
 **Use Review Copies:**
 - When enabled, the system generates lower-resolution review copy versions of your videos (720p, 1080p).
@@ -962,7 +1066,7 @@ When sharing video files, expand the **"Advanced video options"** section for ad
 - Toggle **"Apply watermark"** to enable watermarking.
 - Upload a watermark image or choose from built-in presets.
 
-![Watermark settings showing video and image support](images/watermark-image-support.png)
+![Watermark settings showing video and image support](images/watermark-image-support-v3.png)
 
 **Community vs Pro Watermarking:**
 
@@ -974,7 +1078,7 @@ When sharing video files, expand the **"Advanced video options"** section for ad
 | Scale, opacity, rotation | ❌ Fixed defaults | ✅ Customizable |
 | Watermark presets (save & reuse) | ❌ No | ✅ Yes |
 
-![Community mode watermark controls (basic)](images/watermark-community-basic.png)
+![Community mode watermark controls (basic)](images/watermark-community-basic-v3.png)
 
 **Watermark Position & Style (Pro):**
 
@@ -992,7 +1096,7 @@ When sharing video files, expand the **"Advanced video options"** section for ad
 - Upload your own watermark image by clicking **"Upload custom watermark"**.
 - Presets can be saved and reused across multiple links.
 
-![Pro mode watermark controls (advanced)](images/watermark-pro-advanced.png)
+![Pro mode watermark controls (advanced)](images/watermark-pro-advanced-v3.png)
 
 > **Note:** In Community mode, watermarks (video and image) are applied at a fixed bottom-right position with default scale/opacity. Upgrade to Pro for full customization (position, scale, opacity, rotation) and reusable presets.
 
@@ -1003,7 +1107,7 @@ When sharing video files, expand the **"Advanced video options"** section for ad
 3. The generated URL will appear — use the **"Copy"** button to copy it to your clipboard, or **"Open"** to view it in your browser.
 4. The link is now visible on your Dashboard for ongoing management.
 
-![Generated share link with Copy and Open buttons](images/share-link-generated-v2.png)
+![Generated share link with Copy and Open buttons](images/share-link-generated-v3.png)
 
 ---
 
@@ -1015,7 +1119,7 @@ Click **"Upload Files Locally"** from the Dashboard to begin. A three-step wizar
 
 ### Step 1: Select Local Files
 
-![Local upload — Step 1: Select files](images/upload-local-step1-v2.png)
+![Local upload — Step 1: Select files](images/upload-local-step1-v3.png)
 
 1. Click **"Choose Files"** to select individual files, or **"Choose Folder"** to add an entire folder's contents.
 2. Selected files appear in a table showing **Name**, **Size**, and a **Remove** button.
@@ -1027,7 +1131,7 @@ Click **"Upload Files Locally"** from the Dashboard to begin. A three-step wizar
 
 ### Step 2: Choose Destination
 
-![Local upload — Step 2: Choose destination](images/upload-local-step2-v2.png)
+![Local upload — Step 2: Choose destination](images/upload-local-step2-v3.png)
 
 1. Select a **ZFS pool** (storage location) or check **"Show entire directory tree from root"** for full filesystem access.
 2. Navigate the folder browser:
@@ -1040,7 +1144,7 @@ Click **"Upload Files Locally"** from the Dashboard to begin. A three-step wizar
 
 ### Step 3: Upload & Monitor Progress
 
-![Local upload — Step 3: Upload progress](images/upload-local-step3-v2.png)
+![Local upload — Step 3: Upload progress](images/upload-local-step3-v3.png)
 
 **Before Uploading:**
 
@@ -1071,7 +1175,7 @@ When **client-side transcoding** is enabled (Settings → Performance), video fi
 
 This offloads video processing from the server to your workstation. If you don't have client-side transcoding enabled, the server handles video processing after upload.
 
-![Upload table with file statuses](images/upload-local-table-v2.png)
+![Upload table with file statuses](images/upload-local-table-v3.png)
 
 **After Upload:**
 
@@ -1085,7 +1189,7 @@ When all files are complete, click **"Finish"** to return to the Dashboard.
 
 The **Transfer Dock** is a persistent overlay that tracks all active and recently completed transfers — uploads, transcodes, and review copy generation. It remains visible across all screens so you can continue working while monitoring progress.
 
-![Transfer Dock open](images/transfer-dock-open-v2.png)
+![Transfer Dock open](images/transfer-dock-open-v3.png)
 
 ### Transfer Dock Overview
 
@@ -1098,7 +1202,7 @@ The Transfer Dock appears at the bottom of the screen whenever a transfer is in 
 
 When collapsed, a minimal indicator remains visible showing active transfer count. Click it to expand the dock again.
 
-![Transfer Dock collapsed](images/transfer-dock-hidden-v2.png)
+![Transfer Dock collapsed](images/transfer-dock-hidden-v3.png)
 
 ### Transfer Entry Details
 
@@ -1144,7 +1248,7 @@ Upload                     95.23 MB/s            ETA 0:14            100%
 
 All links you create — whether Share, Upload, or Combined — appear on the Dashboard in the **links table**. This is your central view for monitoring and managing all active, expired, and disabled links.
 
-![Links table on the Dashboard](images/manage-links-table-v2.png)
+![Links table on the Dashboard](images/manage-links-table-v3.png)
 
 ### Searching & Filtering Links
 
@@ -1165,7 +1269,7 @@ Summary badges show the count of **Total**, **Active**, **Expired**, and **Disab
 | **Type** | Badge showing **Upload**, **Share**, or **Combined** (share + upload enabled). |
 | **Link** | The public URL. Click to open in browser, or use the **Copy** button. |
 
-![Link type badges showing Share, Upload, and Combined](images/link-type-badges.png)
+![Link type badges showing Share, Upload, and Combined](images/link-type-badges-v3.png)
 | **Expires** | Time remaining (e.g., *23 Hours*, *6d 22h*, *Never*). Shown in red when less than 24 hours remain. Click **Edit** to change the expiration. |
 | **Status** | Current state: **ACTIVE** (green), **EXPIRED** (amber), or **DISABLED** (gray). |
 | **Access** | Access mode: **Open** (green), **Password** (amber), or **Users only** (rose). Hover for details. |
@@ -1181,6 +1285,22 @@ Each link row provides these actions:
 | **Details** | Opens the full Link Details view with configuration, activity log, and file list. |
 | **Open** | Opens the link in your browser to preview what recipients will see. |
 | **Disable / Enable** | Immediately deactivates or reactivates the link. Disabling blocks access without deleting the link. |
+| **Archive / Unarchive** | Soft-hides the link without deleting. Archived links can be restored. |
+| **Delete** | Permanently deletes the link (see below). |
+
+#### Deleting a Link
+
+Clicking **"Delete"** opens a confirmation modal with a detailed preview of what will be removed:
+
+![Link delete confirmation with file preview](images/link-delete-confirm-v3.png)
+
+The delete preview shows:
+- **Total files** associated with the link
+- **Shared files** — files also used by other links (these are kept)
+- **Option: Delete generated files** — Remove review copies, transcodes, and streaming proxies. Shows how much disk space will be freed.
+- **Option: Delete original source files** — Remove the original uploaded files. **This is destructive** — only enable if you're sure the originals are no longer needed.
+
+You must type "DELETE" to confirm permanent deletion. This action cannot be undone.
 
 ---
 
@@ -1188,7 +1308,7 @@ Each link row provides these actions:
 
 Click **"Details"** on any link (or click its title) to view comprehensive information.
 
-![Link Details modal](images/link-details-v2.png)
+![Link Details modal](images/link-details-v3.png)
 
 ### Link Configuration Summary
 
@@ -1227,7 +1347,7 @@ View a log of all actions taken on this link:
 | **Source** | IP address and browser information. |
 | **Summary** | Details of the action performed. |
 
-![Access activity log](images/link-details-activity-v2.png)
+![Access activity log](images/link-details-activity-v3.png)
 
 ### File Versions
 
@@ -1246,9 +1366,9 @@ If file versioning/snapshots are available, this section shows:
 
 From the Link Details view, click the **"Comments"** button to review and manage all comments on a link.
 
-![Comments panel in Link Details](images/comments-review-modal-v2.png)
+![Comments panel in Link Details](images/comments-review-modal-v3.png)
 
-![Comments panel with Pro features](images/comments-panel-pro.png)
+![Comments panel with Pro features](images/comments-panel-pro-v3.png)
 
 **Reviewing Comments:**
 
@@ -1277,7 +1397,7 @@ Click **"Edit"** at the top of the Link Details view to modify the link's settin
 
 From the Link Details view, click **"Edit"** to modify an existing link's configuration.
 
-![Link edit modal](images/link-edit-v2.png)
+![Link edit modal](images/link-edit-v3.png)
 
 You can modify:
 
@@ -1289,6 +1409,7 @@ You can modify:
 - **Password Required** — Enable or disable password protection, and set the password.
 - **Generate Review Copies** — Enable/disable review copy generation and select qualities (720p, 1080p, Original).
 - **Apply Watermark** — Enable/disable watermark overlay with full customization controls (position, scale, opacity, rotation, presets — Pro for full control).
+- **Auto-watermark uploaded files** — When enabled on upload or combined links, files uploaded through this link automatically have the link's watermark settings applied.
 - **Files for This Link** — Add or remove files associated with the link using **"Manage Files"**.
 
 Click **"Save Changes"** to apply. All changes take effect **immediately**.
@@ -1307,13 +1428,13 @@ When someone opens a share link you've created, their experience depends on the 
 
 For **open access** (Anyone with the link) share links, recipients can immediately browse files, play videos, or download content without any login or password.
 
-![Open access share link](images/video-player-v2.png)
+![Open access share link](images/video-player-v3.png)
 
 ### Password-Protected Links
 
 When you protect a link with a password (**Anyone with the link + password**), recipients must enter the correct password before accessing the content.
 
-![Password-protected link entry screen](images/link-password-protected-v2.png)
+![Password-protected link entry screen](images/link-password-protected-v3.png)
 
 After entering the correct password, they'll have full access to the shared files according to the permissions you set (view, download, comment, etc.).
 
@@ -1325,7 +1446,7 @@ For links restricted to **specific users** or **invited users only**, recipients
 2. Enter their username and password.
 3. If authenticated and authorized, they'll be granted access to the content.
 
-![User-restricted link login screen](images/link-user-restricted-v2.png)
+![User-restricted link login screen](images/link-user-restricted-v3.png)
 
 > **Note:** Users must have been invited to the link (or have appropriate role permissions) to access user-restricted content. See [User Management](#18-user-management) for details on creating and managing user accounts.
 
@@ -1335,7 +1456,7 @@ For links restricted to **specific users** or **invited users only**, recipients
 
 When someone opens a share link containing video files, they see the **45Flow Video Player** — a browser-based player with collaboration features.
 
-![Video player with sidebar and comments](images/video-player-v2.png)
+![Video player with sidebar and comments](images/video-player-v3.png)
 
 ### Playback Controls
 
@@ -1360,7 +1481,7 @@ The player uses **HLS (HTTP Live Streaming)** for adaptive bitrate delivery.
 
 If comments are enabled on the link, a **Comments Panel** appears alongside the player:
 
-![Comments panel with timecoded threads](images/video-player-comments-v2.png)
+![Comments panel with timecoded threads](images/video-player-comments-v3.png)
 
 - **Viewing comments:** Comments are displayed with the author's name, timecode, and color-coded indicator. Click a timecode to jump to that point in the video.
 - **Adding comments:** Click the comment input area, type your message, and submit. The comment is automatically tagged to the current playback position.
@@ -1374,7 +1495,7 @@ If comments are enabled on the link, a **Comments Panel** appears alongside the 
 
 **Pro Feature.** 45Flow includes built-in annotation tools for drawing directly on video frames. Annotations are created alongside comments in the review player.
 
-![Annotation drawing tools](images/annotation-tools-v2.png)
+![Annotation drawing tools](images/annotation-tools-v3.png)
 
 **Creating Annotations:**
 
@@ -1393,7 +1514,7 @@ If comments are enabled on the link, a **Comments Panel** appears alongside the 
 - **In the review player** — Navigate to a comment with an annotation and the drawing renders on top of the video at the correct timecode.
 - **In Link Details → Comments** — Click **"View Annotation"** on any comment that has one. The **Annotation Viewer** modal shows a full-size view of the annotated frame with all drawing data rendered.
 
-![Annotation viewer modal](images/annotation-viewer-v2.png)
+![Annotation viewer modal](images/annotation-viewer-v3.png)
 
 ### Multi-File Shares
 
@@ -1405,7 +1526,7 @@ For collection links (multiple files), a sidebar file browser appears on the lef
 
 Users are required for the **"Only invited users"** access mode and allow role-based permissions on restricted links. Access user management from the Dashboard by clicking **"Manage Access"**.
 
-![Manage Users modal](images/manage-users-v2.png)
+![Manage Users modal](images/manage-users-v3.png)
 
 ### Viewing Existing Users
 
@@ -1422,7 +1543,7 @@ Use the **search bar** to filter users by name, username, email, company, or tag
 
 Click **"Create new user"** to expand the creation form.
 
-![Create new user form](images/manage-users-create-v2.png)
+![Create new user form](images/manage-users-create-v3.png)
 
 | Field | Required | Description |
 |-------|----------|-------------|
@@ -1458,7 +1579,7 @@ Groups allow you to organize users into logical collections (e.g., **Editors**, 
 
 When creating a user-restricted link, you can invite an entire group instead of adding users individually. All group members will automatically have access to the link.
 
-![User groups management](images/manage-groups-v2.png)
+![User groups management](images/manage-groups-v3.png)
 
 > **Tip:** Use groups to streamline link permissions when sharing with the same team repeatedly. Add new members to the group once, and they'll inherit access to all links shared with that group.
 
@@ -1473,7 +1594,7 @@ When creating a user-restricted link, you can invite an entire group instead of 
 
 Roles define what users can do when accessing restricted links. Access role management from **Manage Users → Manage Roles**.
 
-![Manage Roles screen](images/manage-roles-v2.png)
+![Manage Roles screen](images/manage-roles-v3.png)
 
 ### System Roles
 
@@ -1514,7 +1635,7 @@ Roles define what users can do when accessing restricted links. Access role mana
 
 45Flow supports connecting to and managing **multiple servers** simultaneously.
 
-![Multi-server connection switcher](images/multi-server-switcher-v2.png)
+![Multi-server connection switcher](images/multi-server-switcher-v3.png)
 
 ### Adding Servers
 
@@ -1526,7 +1647,7 @@ Roles define what users can do when accessing restricted links. Access role mana
 
 The **active server** is displayed in the header bar. Click the dropdown to switch between connected servers. The active server is where all your actions take effect — creating links, uploading files, managing users, etc.
 
-![Connection Manager modal](images/connection-manager-modal-v2.png)
+![Connection Manager modal](images/connection-manager-modal-v3.png)
 
 ### Server Filter (All Servers View)
 
@@ -1537,7 +1658,7 @@ When multiple servers are connected, the **"Show links from"** filter appears on
 
 This is useful for managing links across multiple servers from a single view.
 
-![Server filter dropdown](images/server-filter-dropdown-v2.png)
+![Server filter dropdown](images/server-filter-dropdown-v3.png)
 
 ---
 
@@ -1545,7 +1666,12 @@ This is useful for managing links across multiple servers from a single view.
 
 45Flow includes built-in automatic update detection and installation. When a new version is available, a banner appears at the top of the application window.
 
-![Update banner showing available update](images/update-banner-v2.png)
+**Update eligibility** is tied to your license status:
+- **Active Pro license** — Automatic updates are enabled. You receive new versions as they're released.
+- **Pro — Legacy (expired license)** — Updates are disabled. The app continues to work with all Pro features, but won't receive new versions until the license is renewed.
+- **Community (unlicensed)** — Updates are disabled.
+
+![Update banner showing available update](images/update-banner-v3.png)
 
 ### Update Notifications
 
@@ -1554,6 +1680,8 @@ When a new version is detected:
 1. An **update banner** appears showing the new version number.
 2. Click **"Download"** to begin downloading the update in the background.
 3. A progress indicator shows the download status.
+
+If you're already on the latest version, you'll see a **"You're up to date"** message when the app checks for updates.
 
 > **Note:** Updates are checked automatically on launch and periodically while the app is running. No manual check is needed.
 
@@ -1587,7 +1715,7 @@ The Log Viewer lets you inspect application activity, identify errors, and troub
 
 The Log Viewer has two tabs: **Client Logs** and **Server Logs**.
 
-![Log Viewer with tabs](images/log-viewer-tabs-v2.png)
+![Log Viewer with tabs](images/log-viewer-tabs-v3.png)
 
 ### Client Logs
 
@@ -1609,7 +1737,7 @@ At the top, you'll see:
 
 The Server Logs tab retrieves structured audit log entries from the connected server. These entries record every significant action taken on the server — link creation, file changes, transcode operations, user actions, branding updates, license activations, and more.
 
-![Server Logs tab](images/log-viewer-server-v2.png)
+![Server Logs tab](images/log-viewer-server-v3.png)
 
 At the top, you'll see:
 
@@ -1635,7 +1763,7 @@ Server logs support **pagination** — use the Previous/Next buttons at the bott
 
 When connected to multiple servers, a **server selector dropdown** appears in the Server Logs tab. This lets you choose which server's audit log to view without disconnecting or switching your active server.
 
-![Server selector in log viewer](images/log-viewer-server-selector-v2.png)
+![Server selector in log viewer](images/log-viewer-server-selector-v3.png)
 
 ### Searching & Filtering Logs
 
@@ -1665,6 +1793,9 @@ A: No. Licenses are tied to the server, not individual users. Once a server is l
 
 **Q: What happens when my trial expires?**  
 A: When a trial license expires, the server reverts to Community mode. Pro features (custom branding, advanced watermarks, comments, annotations) are disabled. All existing links remain accessible, but you can't use Pro features until a full license is activated.
+
+**Q: What happens when my full Pro license expires?**  
+A: If your server was previously licensed with a full (non-trial) license that has since expired, the app enters **Pro — Legacy** mode. All Pro features remain accessible, but automatic app updates are disabled. You can renew your license at any time in Settings → Go Pro to restore full Pro status and update eligibility.
 
 **Q: What are Projects and do I need to use them?**  
 A: Projects are the primary workspace organizer in 45Flow. After login, you select or create a project, and the Dashboard shows only that project's links. Each project has its own root directory and tracks link counts. If you prefer a flat list of all links without grouping, you can disable Project Mode in **Settings → Project Root** — you'll skip the Projects screen and go directly to the Dashboard with all links visible.
@@ -1701,6 +1832,12 @@ A: Expired links become inaccessible to anyone who tries to open them. The link 
 
 **Q: Can I disable a link without deleting it?**  
 A: Yes. Click **"Disable"** in the link's action column on the Dashboard. This immediately blocks access. You can re-enable it later with the **"Enable"** button.
+
+**Q: How do I permanently delete a link?**  
+A: Click **"Delete"** in the link's action column. A confirmation modal shows a preview of associated files and lets you choose whether to also delete generated files (review copies, transcodes) and/or original source files. Type "DELETE" to confirm. This action cannot be undone.
+
+**Q: What happens to links when I delete a project?**  
+A: When you delete a project, its links are **not deleted** — they become "unassigned" and appear in the Unassigned Links section below the project list on the Dashboard. You can reassign them to another project later via the link edit screen.
 
 **Q: How are uploaded files scanned for security?**  
 A: All uploaded files go through a quarantine process with malware scanning before being moved to the destination folder. Files that fail the scan are rejected.
