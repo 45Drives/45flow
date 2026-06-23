@@ -33,6 +33,7 @@
         <span v-if="isTrial && trialDaysRemaining !== null" class="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-300 font-medium whitespace-nowrap">
           Pro Trial — {{ trialDaysRemaining }} {{ trialDaysRemaining === 1 ? 'day' : 'days' }} left
         </span>
+        <NotificationBell />
         <GlobalMenu />
         <button
           class="theme-icon-btn"
@@ -81,6 +82,8 @@ import ConnectionSwitcher from '../renderer/components/ConnectionSwitcher.vue'
 import BasicServerBadge from '../renderer/components/BasicServerBadge.vue'
 import GuidedTour from '../renderer/components/GuidedTour.vue'
 import QuickShareOverlay from '../renderer/components/QuickShareOverlay.vue'
+import NotificationBell from '../renderer/components/NotificationBell.vue'
+import { initNotificationCenter } from '../renderer/composables/useNotificationCenter'
 import { useTourManager } from '../renderer/composables/useTourManager'
 import flowLogo from '../../assets/logos/45Flow-w.png'
 
@@ -96,6 +99,9 @@ const { activeProject } = useActiveProject()
 
 // Initialize WebSocket manager (auto-connects to active connection)
 useWebSocketManager()
+
+// Initialize notification center (tracks history + enforces visible limit)
+initNotificationCenter()
 
 // Reactive window title based on license status
 watch([isPremiumActive, isFallback], ([licensed, fallback]) => {

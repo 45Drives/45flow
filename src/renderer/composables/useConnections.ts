@@ -255,6 +255,7 @@ export function useConnections() {
         ...conn,
         connectionId: existingByServer.connectionId, // Keep original ID
         isFavorite: existingByServer.isFavorite, // Preserve favorite status
+        lastError: undefined, // Clear any previous error on reconnect
       })
       _state.activeConnectionId = existingByServer.connectionId
       persist()

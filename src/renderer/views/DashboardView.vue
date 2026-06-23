@@ -41,7 +41,7 @@
 		</div>
 
 		<!-- ═══════════ Project List View ═══════════ -->
-		<div v-else-if="!activeProject && !showingUnassigned" class="dashboard-content-wrap" data-tour="project-list">
+		<div v-else-if="!activeProject" class="dashboard-content-wrap" data-tour="project-list">
 			<div class="flex items-center justify-between gap-3 mb-3 px-1">
 				<h3 class="text-base font-semibold">Projects</h3>
 				<button class="btn btn-secondary text-xs px-3 py-1.5" @click="showCreateProjectModal = true">+ New Project</button>
@@ -56,50 +56,81 @@
 				<button class="btn btn-primary px-4 py-2 text-sm" @click="showCreateProjectModal = true">Create Project</button>
 			</div>
 
-			<div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-				<div
-					v-for="project in projects"
-					:key="project.id"
-					class="project-card panel rounded-xl p-4 cursor-pointer border border-default bg-default"
-					@click="openProject(project)"
-				>
-					<div class="flex items-start justify-between gap-2 mb-2">
-						<h4 class="font-semibold text-sm truncate">{{ project.name }}</h4>
+			<div v-else>
+				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+					<div
+						v-for="project in pagedProjects"
+						:key="`${project._connectionId || 'local'}-${project.id}`"
+						class="project-card panel rounded-xl p-4 cursor-pointer border border-default bg-default"
+						:class="{ 'opacity-60': project.archived }"
+						@click="openProject(project)"
+					>
+						<div class="flex items-start justify-between gap-2 mb-2">
+							<div class="flex items-center gap-2 min-w-0">
+								<h4 class="font-semibold text-sm truncate">{{ project.name }}</h4>
+								<span v-if="project.archived" class="ss-chip ss-chip--muted text-xs shrink-0">Archived</span>
+							</div>
+							<div class="flex items-center gap-1 shrink-0" @click.stop>
+								<button
+									v-if="!project.archived"
+									class="btn btn-warning px-2 py-1 text-xs"
+									title="Deactivate all links and hide this project"
+									@click="confirmCardArchive(project)"
+								>Archive</button>
+								<button
+									v-if="project.archived"
+									class="btn btn-success px-2 py-1 text-xs"
+									title="Restore project and re-enable links"
+									@click="confirmCardUnarchive(project)"
+								>Unarchive</button>
+								<button
+									class="btn btn-danger px-2 py-1 text-xs"
+									title="Permanently delete this project"
+									@click="confirmCardDelete(project)"
+								>Delete</button>
+							</div>
+						</div>
 						<div class="flex flex-row items-end gap-1.5 mb-2">
 							<span class="ss-chip ss-chip--neutral text-xs">Total Links: {{ project.link_count ?? 0 }}</span>
 							<span class="ss-chip ss-chip--success text-xs">Active {{ project.active_count ?? 0 }}</span>
 							<span class="ss-chip ss-chip--warning text-xs">Expired {{ project.expired_count ?? 0 }}</span>
 							<span class="ss-chip ss-chip--danger text-xs">Disabled {{ project.disabled_count ?? 0 }}</span>
 						</div>
+						<div v-if="project._serverName" class="text-xs text-muted mb-1">Server: {{ project._serverName }}</div>
+						<div class="text-xs truncate" :title="project.root_dir">Directory: {{ project.root_dir }}</div>
+						<p v-if="project.description" class="text-xs line-clamp-2 mb-2">Description: {{ project.description }}</p>
 					</div>
-					<div class="text-xs truncate" :title="project.root_dir">Directory: {{ project.root_dir }}</div>
-					<p v-if="project.description" class="text-xs line-clamp-2 mb-2">Description: {{ project.description }}</p>
 				</div>
 
-				<!-- Unassigned Links card -->
-				<div
-					class="project-card panel rounded-xl p-4 cursor-pointer border border-dashed border-muted bg-default opacity-80 hover:opacity-100"
-					@click="openUnassignedLinks"
+				<!-- Project Pagination -->
+				<div v-if="projectTotalPages > 1" class="mt-3 flex items-center justify-between gap-2 text-sm px-1">
+					<div class="text-muted">
+						Showing {{ projectPageStart }}-{{ projectPageEnd }} of {{ projects.length }} projects
+					</div>
+					<div class="flex items-center gap-2">
+						<button class="btn btn-secondary px-3 py-1" :disabled="projectPage <= 1" @click="projectPage--">Previous</button>
+						<span>Page {{ projectPage }} / {{ projectTotalPages }}</span>
+						<button class="btn btn-secondary px-3 py-1" :disabled="projectPage >= projectTotalPages" @click="projectPage++">Next</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- ═══════════ Unassigned Links (collapsible) ═══════════ -->
+			<div class="mt-6">
+				<button
+					class="flex items-center gap-2 w-full text-left px-1 py-2 rounded-md hover:bg-white/5 transition-colors"
+					@click="unassignedOpen = !unassignedOpen"
 				>
-					<div class="flex items-start justify-between gap-2 mb-2">
-						<h4 class="font-semibold text-sm truncate text-muted">Unassigned Links</h4>
-					</div>
-					<p class="text-xs text-muted">Links not associated with any project.</p>
+					<svg class="w-4 h-4 text-muted transition-transform" :class="{ 'rotate-90': unassignedOpen }" viewBox="0 0 20 20" fill="currentColor">
+						<path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+					</svg>
+					<h3 class="text-base font-semibold">Unassigned Links</h3>
+					<span class="text-xs text-muted">(links not assigned to any project)</span>
+				</button>
+				<div v-show="unassignedOpen" class="mt-2">
+					<ManageLinks projectId="none" key="unassigned" :tourActive="tourShowDemoLinks"/>
 				</div>
 			</div>
-		</div>
-
-		<!-- ═══════════ Unassigned Links View ═══════════ -->
-		<div v-else-if="showingUnassigned" class="dashboard-content-wrap" data-tour="manage-links">
-			<div class="flex items-center gap-2 mb-3 px-1">
-				<button class="text-sm text-primary hover:underline cursor-pointer" @click="backToProjects">Projects</button>
-				<span class="text-muted text-sm">›</span>
-				<span class="text-sm font-semibold truncate">Unassigned Links</span>
-				<div class="button-group-row ml-auto text-xs">
-					<button class="btn btn-danger" @click="backToProjects">Close</button>
-				</div>
-			</div>
-			<ManageLinks projectId="none" key="unassigned" :tourActive="tourShowDemoLinks"/>
 		</div>
 
 		<!-- ═══════════ Project Detail View (Links) ═══════════ -->
@@ -109,9 +140,10 @@
 				<button class="text-sm text-primary hover:underline cursor-pointer" @click="backToProjects">Projects</button>
 				<span class="text-muted text-sm">›</span>
 				<span class="text-sm font-semibold truncate">{{ activeProject.name }}</span>
+				<span v-if="activeProject.archived" class="ss-chip ss-chip--muted text-xs">Archived</span>
 				<div class="button-group-row ml-auto text-xs">
 					<button class="btn btn-secondary" @click="startEditProject">Edit Project</button>
-					<button class="btn btn-danger" @click="backToProjects">Close Project</button>
+					<button class="btn btn-danger" @click="backToProjects">Close</button>
 				</div>
 			</div>
 			<div class="flex flex-row justify-start text-default border-b border-default">
@@ -131,50 +163,196 @@
 
 	<!-- Edit Project Modal -->
 	<Teleport to="body">
-		<div v-if="showEditProjectModal && activeProject" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 text-default" @click.self="showEditProjectModal = false">
+		<div v-if="showEditProjectModal && activeProject" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 text-default" @click.self="closeEditModal">
 			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-4xl mx-4 bg-accent">
-				<h3 class="text-lg font-semibold mb-4">Edit Project</h3>
-				<form @submit.prevent="saveProject" class="flex flex-col gap-4">
-					<div>
-						<label class="block text-sm font-medium mb-1">Project Name</label>
-						<input
-							v-model="editProjectName"
-							type="text"
-							class="input-textlike w-full px-3 py-2 rounded-lg border border-default"
-							required
-						/>
-					</div>
-					<div>
-						<label class="block text-sm font-medium mb-1">Project Root Directory</label>
-						<FolderPicker
-							:key="editKey"
-							v-model="editProjectRoot"
-							:apiFetch="apiFetch"
-							useCase="upload"
-							subtitle="Change the root directory for this project."
-							:auto-detect-roots="true"
-							:allow-entire-tree="true"
-							:startDir="editProjectRoot"
-							v-model:project="editProjectPickerBase"
-							v-model:dest="editProjectRoot"
-						/>
-					</div>
-					<div>
-						<label class="block text-sm font-medium mb-1">Description (optional)</label>
-						<textarea
-							v-model="editProjectDescription"
-							class="input-textlike w-full px-3 py-2 rounded-lg border border-default resize-none"
-							rows="2"
-							placeholder="Brief description…"
-						/>
-					</div>
+
+				<!-- Default: Edit Form -->
+				<template v-if="!editModalConfirm">
+					<h3 class="text-lg font-semibold mb-4">Edit Project</h3>
+					<form @submit.prevent="saveProject" class="flex flex-col gap-4">
+						<div>
+							<label class="block text-sm font-medium mb-1">Project Name</label>
+							<input
+								v-model="editProjectName"
+								type="text"
+								class="input-textlike w-full px-3 py-2 rounded-lg border border-default"
+								required
+							/>
+						</div>
+						<div>
+							<label class="block text-sm font-medium mb-1">Project Root Directory</label>
+							<FolderPicker
+								:key="editKey"
+								v-model="editProjectRoot"
+								:apiFetch="apiFetch"
+								useCase="upload"
+								subtitle="Change the root directory for this project."
+								:auto-detect-roots="true"
+								:allow-entire-tree="true"
+								:startDir="editProjectRoot"
+								v-model:project="editProjectPickerBase"
+								v-model:dest="editProjectRoot"
+							/>
+						</div>
+						<div>
+							<label class="block text-sm font-medium mb-1">Description (optional)</label>
+							<textarea
+								v-model="editProjectDescription"
+								class="input-textlike w-full px-3 py-2 rounded-lg border border-default resize-none"
+								rows="2"
+								placeholder="Brief description…"
+							/>
+						</div>
+						
+						<div class="flex items-center justify-between">
+							<div class="flex items-center gap-2">
+								<button v-if="!activeProject?.archived" type="button"
+									class="btn btn-warning px-3 py-2 text-sm"
+									title="Deactivate all links and hide the project from the default view. You can unarchive it later."
+									@click="editModalConfirm = 'archive'">Archive</button>
+								<button v-if="activeProject?.archived" type="button"
+									class="btn btn-success px-3 py-2 text-sm"
+									title="Restore the project and re-enable all previously disabled links."
+									@click="editModalConfirm = 'unarchive'">Unarchive</button>
+							</div>
+							<button type="button" class="btn btn-danger px-3 py-2 text-sm"
+								title="Permanently remove the project. Links will be unlinked but not deleted."
+								@click="editModalConfirm = 'delete'">Delete Project</button>
+						</div>
+					</form>
+					<hr class="border-default my-3" />
 					<div class="flex items-center justify-end gap-2 mt-2">
-						<button type="button" class="btn btn-secondary px-4 py-2" @click="showEditProjectModal = false">Cancel</button>
-						<button type="submit" class="btn btn-primary px-4 py-2" :disabled="!editProjectName.trim() || !editProjectRoot.trim() || savingProject">
+						<button type="button" class="btn btn-secondary px-4 py-2"
+							@click="closeEditModal">Cancel</button>
+						<button type="submit" class="btn btn-primary px-4 py-2"
+							:disabled="!editProjectName.trim() || !editProjectRoot.trim() || savingProject">
 							{{ savingProject ? 'Saving…' : 'Save' }}
 						</button>
 					</div>
-				</form>
+				</template>
+
+				<!-- Confirm: Archive -->
+				<template v-else-if="editModalConfirm === 'archive'">
+					<h3 class="text-lg font-semibold mb-2 text-orange-600 dark:text-orange-400">Archive Project</h3>
+					<div class="p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-800 mb-4">
+						<p class="text-sm text-orange-700 dark:text-orange-300 font-medium mb-2">This will deactivate and hide the project:</p>
+						<ul class="text-sm text-orange-600 dark:text-orange-300/80 list-disc list-inside space-y-1">
+							<li>All active links will be disabled immediately</li>
+							<li>The project will be hidden from the default view</li>
+							<li>No files or links are deleted</li>
+							<li>You can unarchive the project at any time to restore it</li>
+						</ul>
+					</div>
+					<p class="text-sm text-default mb-4">Archive <strong>{{ activeProject.name }}</strong>?</p>
+					<div class="flex items-center justify-end gap-2">
+						<button class="btn btn-secondary px-4 py-2" @click="editModalConfirm = null">Back</button>
+						<button class="btn btn-warning px-4 py-2" @click="archiveProject">Archive</button>
+					</div>
+				</template>
+
+				<!-- Confirm: Unarchive -->
+				<template v-else-if="editModalConfirm === 'unarchive'">
+					<h3 class="text-lg font-semibold mb-2 text-green-600 dark:text-green-400">Unarchive Project</h3>
+					<div class="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-800 mb-4">
+						<p class="text-sm text-green-700 dark:text-green-300 font-medium mb-2">This will restore the project:</p>
+						<ul class="text-sm text-green-600 dark:text-green-300/80 list-disc list-inside space-y-1">
+							<li>The project will reappear in the default view</li>
+							<li>All previously disabled links will be re-enabled</li>
+							<li>Expired links will remain expired</li>
+						</ul>
+					</div>
+					<p class="text-sm text-default mb-4">Unarchive <strong>{{ activeProject.name }}</strong>?</p>
+					<div class="flex items-center justify-end gap-2">
+						<button class="btn btn-secondary px-4 py-2" @click="editModalConfirm = null">Back</button>
+						<button class="btn btn-success px-4 py-2" @click="unarchiveProject">Unarchive</button>
+					</div>
+				</template>
+
+				<!-- Confirm: Delete -->
+				<template v-else-if="editModalConfirm === 'delete'">
+					<h3 class="text-lg font-semibold mb-2 text-red-600 dark:text-red-400">Delete Project</h3>
+					<div class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 mb-4">
+						<p class="text-sm text-red-700 dark:text-red-300 font-medium mb-2">This action is irreversible and will permanently destroy:</p>
+						<ul class="text-sm text-red-600 dark:text-red-300/80 list-disc list-inside space-y-1">
+							<li>The project and all its metadata</li>
+							<li>All links will be unlinked from this project</li>
+							<li>Links themselves will NOT be deleted</li>
+						</ul>
+					</div>
+					<p class="text-sm text-default mb-4">Permanently delete <strong>{{ activeProject.name }}</strong>?</p>
+					<div class="flex items-center justify-end gap-2">
+						<button class="btn btn-secondary px-4 py-2" @click="editModalConfirm = null">Back</button>
+						<button class="btn btn-danger px-4 py-2" @click="deleteProject">Delete</button>
+					</div>
+				</template>
+
+			</div>
+		</div>
+	</Teleport>
+
+	<!-- Card-level Archive Confirmation Modal (project list view) -->
+	<Teleport to="body">
+		<div v-if="cardActionProject && cardAction === 'archive'" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50" @click.self="clearCardAction()">
+			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 text-default bg-accent">
+				<h3 class="text-lg font-semibold mb-2 text-orange-600 dark:text-orange-400">Archive Project</h3>
+				<div class="p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-800 mb-4">
+					<p class="text-sm text-orange-700 dark:text-orange-300 font-medium mb-2">This will deactivate and hide the project:</p>
+					<ul class="text-sm text-orange-600 dark:text-orange-300/80 list-disc list-inside space-y-1">
+						<li>All active links will be disabled immediately</li>
+						<li>The project will be hidden from the default view</li>
+						<li>No files or links are deleted</li>
+						<li>You can unarchive the project at any time to restore it</li>
+					</ul>
+				</div>
+				<p class="text-sm text-default mb-4">Archive <strong>{{ cardActionProject.name }}</strong>?</p>
+				<div class="flex items-center justify-end gap-2">
+					<button class="btn btn-secondary px-4 py-2" @click="clearCardAction()">Cancel</button>
+					<button class="btn btn-warning px-4 py-2" @click="archiveProject">Archive</button>
+				</div>
+			</div>
+		</div>
+	</Teleport>
+
+	<!-- Card-level Unarchive Confirmation Modal -->
+	<Teleport to="body">
+		<div v-if="cardActionProject && cardAction === 'unarchive'" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50" @click.self="clearCardAction()">
+			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 text-default bg-accent">
+				<h3 class="text-lg font-semibold mb-2 text-green-600 dark:text-green-400">Unarchive Project</h3>
+				<div class="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-800 mb-4">
+					<p class="text-sm text-green-700 dark:text-green-300 font-medium mb-2">This will restore the project:</p>
+					<ul class="text-sm text-green-600 dark:text-green-300/80 list-disc list-inside space-y-1">
+						<li>The project will reappear in the default view</li>
+						<li>All previously disabled links will be re-enabled</li>
+						<li>Expired links will remain expired</li>
+					</ul>
+				</div>
+				<p class="text-sm text-default mb-4">Unarchive <strong>{{ cardActionProject.name }}</strong>?</p>
+				<div class="flex items-center justify-end gap-2">
+					<button class="btn btn-secondary px-4 py-2" @click="clearCardAction()">Cancel</button>
+					<button class="btn btn-success px-4 py-2" @click="unarchiveProject">Unarchive</button>
+				</div>
+			</div>
+		</div>
+	</Teleport>
+
+	<!-- Card-level Delete Confirmation Modal -->
+	<Teleport to="body">
+		<div v-if="cardActionProject && cardAction === 'delete'" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50" @click.self="clearCardAction()">
+			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 text-default bg-accent">
+				<h3 class="text-lg font-semibold mb-2 text-red-600 dark:text-red-400">Delete Project</h3>
+				<div class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 mb-4">
+					<p class="text-sm text-red-700 dark:text-red-300 font-medium mb-2">This action is irreversible and will permanently destroy:</p>
+					<ul class="text-sm text-red-600 dark:text-red-300/80 list-disc list-inside space-y-1">
+						<li>The project and all its metadata</li>
+						<li>All links will be unlinked from this project</li>
+						<li>Links themselves will NOT be deleted</li>
+					</ul>
+				</div>
+				<p class="text-sm text-default mb-4">Permanently delete <strong>{{ cardActionProject.name }}</strong>?</p>
+				<div class="flex items-center justify-end gap-2">
+					<button class="btn btn-secondary px-4 py-2" @click="clearCardAction()">Cancel</button>
+					<button class="btn btn-danger px-4 py-2" @click="deleteProject">Delete</button>
+				</div>
 			</div>
 		</div>
 	</Teleport>
@@ -193,26 +371,30 @@ import LogViewModal from '../components/modals/LogViewModal.vue'
 import CreateProjectModal from '../components/modals/CreateProjectModal.vue'
 import FolderPicker from '../components/FolderPicker.vue'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useApi } from '../composables/useApi'
+import { useApi, apiFetchAll } from '../composables/useApi'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { clearLastSession } from '../composables/useSessionPersistence'
 import { useConnections } from '../composables/useConnections'
+import { useServerFilter } from '../composables/useServerFilter'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
 import { useActiveProject } from '../composables/useActiveProject'
 import { useProjectMode } from '../composables/useProjectMode'
 import { useLicenseStatus } from '../composables/useLicenseStatus'
+import { useThemeFromAlias } from '../composables/useThemeFromAlias'
 
 useHeader('Dashboard')
 const { to } = useResilientNav()
 const { apiFetch } = useApi()
 const transfer = useTransferProgress()
-const { activeConnection, updateConnection } = useConnections()
+const { activeConnection, updateConnection, setActive } = useConnections()
+const { selectedFilter, filteredConnections, setFilter } = useServerFilter()
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()
 const { activeProject: globalActiveProject, setActiveProject: setGlobalActiveProject } = useActiveProject()
 const { projectModeEnabled } = useProjectMode()
 const { isPremiumActive, startBackgroundCheck, stopBackgroundCheck, checkLicenseInBackground } = useLicenseStatus()
+const { setCustomThemeEnabled, setCustomThemeColors } = useThemeFromAlias()
 
 // Start background license polling while dashboard is mounted
 startBackgroundCheck()
@@ -243,18 +425,35 @@ interface Project {
 	name: string
 	root_dir: string
 	description: string | null
+	archived: number
 	link_count: number
 	active_count: number
 	expired_count: number
 	disabled_count: number
+	_serverName?: string
+	_serverIp?: string
+	_connectionId?: string
 }
 
 const projects = ref<Project[]>([])
 const projectsLoading = ref(true)
 const activeProject = ref<Project | null>(null)
-const showingUnassigned = ref(false)
 
 const showCreateProjectModal = ref(false)
+
+// Unassigned links disclosure
+const unassignedOpen = ref(false)
+
+// Project pagination
+const projectPageSize = 9
+const projectPage = ref(1)
+const projectTotalPages = computed(() => Math.max(1, Math.ceil(projects.value.length / projectPageSize)))
+const pagedProjects = computed(() => {
+	const start = (projectPage.value - 1) * projectPageSize
+	return projects.value.slice(start, start + projectPageSize)
+})
+const projectPageStart = computed(() => projects.value.length ? (projectPage.value - 1) * projectPageSize + 1 : 0)
+const projectPageEnd = computed(() => Math.min(projectPage.value * projectPageSize, projects.value.length))
 
 const showEditProjectModal = ref(false)
 const editProjectName = ref('')
@@ -267,8 +466,31 @@ const editKey = ref(0)
 async function fetchProjects() {
 	projectsLoading.value = true
 	try {
-		const data = await apiFetch('/api/projects')
-		projects.value = data.projects || []
+		if (selectedFilter.value === 'all' && filteredConnections.value.length > 1) {
+			const results = await apiFetchAll<{ projects: Project[] }>(filteredConnections.value, '/api/projects')
+			const allProjects: Project[] = []
+			for (const r of results) {
+				if (r.success && r.data?.projects) {
+					for (const p of r.data.projects) {
+						allProjects.push({
+							...p,
+							_serverName: r.serverName,
+							_serverIp: r.serverIp,
+							_connectionId: r.connectionId,
+						})
+					}
+				}
+			}
+			projects.value = allProjects
+		} else {
+			const data = await apiFetch('/api/projects')
+			projects.value = (data.projects || []).map((p: Project) => ({
+				...p,
+				_serverName: activeConnection.value?.name,
+				_serverIp: activeConnection.value?.serverIp,
+				_connectionId: activeConnection.value?.connectionId,
+			}))
+		}
 	} catch {
 		projects.value = []
 	} finally {
@@ -276,23 +498,48 @@ async function fetchProjects() {
 	}
 }
 
-function openProject(project: Project) {
-	activeProject.value = project
-	showingUnassigned.value = false
+/** Sync the theme picker's custom branding button with the server's branding state */
+async function syncBrandingTheme() {
+	if (!isPremiumActive.value) {
+		setCustomThemeEnabled(false)
+		return
+	}
+	try {
+		const data = await apiFetch('/api/branding')
+		setCustomThemeEnabled(!!data.enabled)
+		if (data.customPrimary || data.customSecondary) {
+			setCustomThemeColors({
+				primary: data.customPrimary || '#6366f1',
+				secondary: data.customSecondary || '#8b5cf6',
+			})
+		}
+	} catch {
+		// Non-critical — leave current state
+	}
 }
 
-function openUnassignedLinks() {
-	activeProject.value = null
-	showingUnassigned.value = true
+function openProject(project: Project) {
+	// If opening a project from a different server (All Servers mode), switch to that server first
+	if (project._connectionId && project._connectionId !== activeConnection.value?.connectionId) {
+		setFilter(project._connectionId)
+		setActive(project._connectionId)
+	}
+	activeProject.value = project
 }
 
 function backToProjects() {
 	activeProject.value = null
-	showingUnassigned.value = false
 	fetchProjects()
 }
 
-watch(activeProject, (p) => setGlobalActiveProject(p))
+watch(activeProject, (p) => {
+	setGlobalActiveProject(p)
+	if (p) refreshProjectLinkStatus()
+	else {
+		projectHasActiveLinks.value = false
+		projectHasDisabledLinks.value = false
+	}
+})
 
 // Clear active project when project mode is disabled
 watch(projectModeEnabled, (enabled) => {
@@ -326,6 +573,7 @@ function startEditProject() {
 	editProjectPickerBase.value = activeProject.value.root_dir
 	editProjectDescription.value = activeProject.value.description || ''
 	editKey.value++
+	editModalConfirm.value = null
 	showEditProjectModal.value = true
 }
 
@@ -353,6 +601,110 @@ async function saveProject() {
 		pushNotification(new Notification('Failed to update project', e?.message || '', 'error', 8000))
 	} finally {
 		savingProject.value = false
+	}
+}
+
+// ── Project Lifecycle ──
+const editModalConfirm = ref<'archive' | 'unarchive' | 'delete' | null>(null)
+
+// For card-level actions (project list view)
+const cardActionProject = ref<Project | null>(null)
+const cardAction = ref<'archive' | 'unarchive' | 'delete' | null>(null)
+
+const projectHasActiveLinks = ref(false)
+const projectHasDisabledLinks = ref(false)
+
+async function refreshProjectLinkStatus() {
+	if (!activeProject.value) return
+	try {
+		const data = await apiFetch(`/api/projects/${activeProject.value.id}/links`)
+		const links: any[] = data.links || []
+		projectHasActiveLinks.value = links.some((l: any) => !l.is_disabled)
+		projectHasDisabledLinks.value = links.some((l: any) => !!l.is_disabled)
+	} catch {
+		projectHasActiveLinks.value = false
+		projectHasDisabledLinks.value = false
+	}
+}
+
+// The "actionTarget" is whichever project the action acts on
+const actionTarget = computed(() => activeProject.value || cardActionProject.value)
+
+function confirmCardArchive(project: Project) {
+	cardActionProject.value = project
+	cardAction.value = 'archive'
+}
+function confirmCardUnarchive(project: Project) {
+	cardActionProject.value = project
+	cardAction.value = 'unarchive'
+}
+function confirmCardDelete(project: Project) {
+	cardActionProject.value = project
+	cardAction.value = 'delete'
+}
+
+function clearCardAction() {
+	cardActionProject.value = null
+	cardAction.value = null
+}
+
+function closeEditModal() {
+	showEditProjectModal.value = false
+	editModalConfirm.value = null
+}
+
+async function archiveProject() {
+	const target = actionTarget.value
+	if (!target) return
+	try {
+		// Disable all active links first, then archive
+		await apiFetch(`/api/projects/${target.id}/close`, { method: 'POST' })
+		await apiFetch(`/api/projects/${target.id}`, { method: 'DELETE' })
+		editModalConfirm.value = null
+		showEditProjectModal.value = false
+		clearCardAction()
+		pushNotification(new Notification('Project Archived', `${target.name} has been archived. All links disabled.`, 'success', 4000))
+		if (activeProject.value) backToProjects()
+		else await fetchProjects()
+	} catch (e: any) {
+		pushNotification(new Notification('Failed to archive project', e?.message || '', 'error', 8000))
+	}
+}
+
+async function unarchiveProject() {
+	const target = actionTarget.value
+	if (!target) return
+	try {
+		// Unarchive then re-enable links
+		await apiFetch(`/api/projects/${target.id}/unarchive`, { method: 'POST' })
+		await apiFetch(`/api/projects/${target.id}/reopen`, { method: 'POST' })
+		editModalConfirm.value = null
+		showEditProjectModal.value = false
+		clearCardAction()
+		if (activeProject.value) {
+			activeProject.value = { ...activeProject.value, archived: 0 }
+			await refreshProjectLinkStatus()
+		}
+		pushNotification(new Notification('Project Unarchived', `${target.name} is active again. Links re-enabled.`, 'success', 4000))
+		if (!activeProject.value) await fetchProjects()
+	} catch (e: any) {
+		pushNotification(new Notification('Failed to unarchive project', e?.message || '', 'error', 8000))
+	}
+}
+
+async function deleteProject() {
+	const target = actionTarget.value
+	if (!target) return
+	try {
+		await apiFetch(`/api/projects/${target.id}?hard=1`, { method: 'DELETE' })
+		editModalConfirm.value = null
+		showEditProjectModal.value = false
+		clearCardAction()
+		pushNotification(new Notification('Project Deleted', 'The project has been permanently deleted.', 'success', 4000))
+		if (activeProject.value) backToProjects()
+		else await fetchProjects()
+	} catch (e: any) {
+		pushNotification(new Notification('Failed to delete project', e?.message || '', 'error', 8000))
 	}
 }
 
@@ -388,6 +740,7 @@ onMounted(async () => {
 	transfer.restorePersistedUploads()
 	void checkLicenseInBackground()
 	await fetchProjects()
+	syncBrandingTheme()
 
 	// Restore active project from global state after projects list is available
 	if (!activeProject.value && globalActiveProject.value) {
@@ -405,6 +758,11 @@ onMounted(async () => {
 watch(() => activeConnection.value?.connectionId, () => {
 	void checkLicenseInBackground()
 	fetchProjects() // Reload projects when switching servers
+})
+
+// Reload projects when server filter changes (e.g. "All Servers")
+watch(selectedFilter, () => {
+	fetchProjects()
 })
 
 // ── Navigation ──

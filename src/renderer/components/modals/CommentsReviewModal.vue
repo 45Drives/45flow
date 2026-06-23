@@ -402,6 +402,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useApi } from '../../composables/useApi'
+import { useTimeFormat } from '../../composables/useTimeFormat'
 import type { LinkItem } from '../../typings/electron'
 import type { CommentExport, CommentStats } from '../../types/comments'
 import type { Comment } from '../../composables/useComments'
@@ -583,6 +584,8 @@ function formatTimecodeRange(start: number | null | undefined, end: number | nul
   return `${startStr} - ${endStr}`
 }
 
+const { hour12 } = useTimeFormat()
+
 function formatDate(dateStr: string): string {
   if (!dateStr) return ''
   try {
@@ -594,7 +597,8 @@ function formatDate(dateStr: string): string {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: hour12.value
     })
   } catch {
     return dateStr

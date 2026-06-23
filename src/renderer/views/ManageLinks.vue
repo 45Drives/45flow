@@ -5,57 +5,109 @@
 				<h3>{{ headingTitle }}</h3>
 				<p class="ss-subtle">Search links, adjust settings, and track status in real time.</p>
 			</div>
+
 			<div class="manage-metrics">
 				<span class="ss-chip ss-chip--neutral">Total {{ linkSummary.total }}</span>
 				<span class="ss-chip ss-chip--success">Active {{ linkSummary.active }}</span>
 				<span class="ss-chip ss-chip--warning">Expired {{ linkSummary.expired }}</span>
-				<span class="ss-chip ss-chip--muted">Disabled {{ linkSummary.disabled }}</span>
+				<span class="ss-chip ss-chip--danger">Disabled {{ linkSummary.disabled }}</span>
+				<span v-if="linkSummary.archived" class="ss-chip ss-chip--muted">
+					Archived {{ linkSummary.archived }}
+				</span>
 			</div>
 		</div>
 
 		<div class="manage-surface p-2 bg-well rounded-md min-w-0 flex flex-col">
 			<div data-tour="manage-links-toolbar" class="manage-toolbar">
 				<input v-model="q" type="search" placeholder="Search title, directory, file..."
-					class="input-textlike px-3 py-2 border border-default rounded-lg bg-default text-default w-72" />
-				<select v-model="typeFilter" class="px-3 py-2 border border-default rounded-lg bg-default">
+					class="input-textlike px-3 py-2 border border-default rounded-lg bg-default text-default manage-search-input" />
+
+				<select v-model="typeFilter"
+					class="px-3 py-2 border border-default rounded-lg bg-default manage-filter-select">
 					<option value="">All types</option>
 					<option value="upload">Upload</option>
-					<option value="download">Review (file)</option>
-					<option value="collection">Review (collection)</option>
+					<option value="review">Review</option>
 					<option value="combined">Review + Upload</option>
 				</select>
-				<select v-model="statusFilter" class="px-3 w-36 py-2 border border-default rounded-lg bg-default">
+
+				<select v-model="statusFilter"
+					class="px-3 py-2 border border-default rounded-lg bg-default manage-filter-select">
 					<option value="">All status</option>
 					<option value="active">Active</option>
 					<option value="expired">Expired</option>
 					<option value="disabled">Disabled</option>
+					<option value="archived">Archived</option>
 				</select>
-				<button class="btn btn-secondary px-4 py-2 ml-auto" @click="refresh" :disabled="loading">
-					{{ loading ? 'Refreshing…' : 'Refresh' }}
+
+				<button class="btn btn-secondary px-4 py-2 manage-refresh-btn" @click="refresh" :disabled="loading">
+					{{ loading ? 'Refreshing...' : 'Refresh' }}
 				</button>
 			</div>
 
-			<div v-if="error" class="p-3 rounded bg-red-900/30 text-default border border-red-800 mb-3 text-center items-center justify-self-center">
+			<div v-if="error"
+				class="p-3 rounded bg-red-900/30 text-default border border-red-800 mb-3 text-center items-center justify-self-center">
 				{{ error }}
 			</div>
 
-			<div data-tour="manage-links-table" class="manage-table-wrap overflow-x-auto min-w-0 overscroll-x-contain touch-pan-x">
-				<table class="manage-table min-w-[1320px] text-sm border-collapse">
+			<div data-tour="manage-links-table"
+				class="manage-table-wrap overflow-x-auto min-w-0 overscroll-x-contain touch-pan-x">
+				<Transition enter-active-class="transition-all duration-200 ease-out"
+					enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0"
+					leave-active-class="transition-all duration-150 ease-in"
+					leave-from-class="opacity-100 translate-y-0" leave-to-class="opacity-0 -translate-y-2">
+					<div v-if="selectedIds.size > 0" class="bulk-actions-bar">
+						<div class="bulk-actions-count">
+							<span>{{ selectedIds.size }} selected</span>
+						</div>
+
+						<div class="bulk-actions-buttons">
+							<button class="btn btn-success bulk-action-btn" @click="bulkEnable">
+								Enable
+							</button>
+
+							<button class="btn btn-danger bulk-action-btn" @click="bulkDisable">
+								Disable
+							</button>
+
+							<button class="btn btn-primary bulk-action-btn" @click="bulkEditExpiry">
+								Edit Expiry
+							</button>
+
+							<button class="btn btn-warning bulk-action-btn" @click="bulkArchive">
+								Archive
+							</button>
+
+							<button class="btn btn-secondary bulk-action-btn bulk-action-clear" @click="clearSelection">
+								Clear
+							</button>
+						</div>
+					</div>
+				</Transition>
+
+				<table class="manage-table text-sm border-collapse">
 					<colgroup>
-						<col class="thumb-col" /> <!-- Thumbnail -->
-						<col class="w-[18%]" /> <!-- Title -->
-						<col class="w-[6%]" /> <!-- Type -->
-						<col class="w-[16%]" /> <!-- Link -->
-						<col class="w-[18%]" /> <!-- Expires -->
-						<col class="w-[5%]" /> <!-- Status -->
-						<col class="w-[5%]" /> <!-- Access -->
-						<col class="w-[8%]" /> <!-- Created -->
-						<col class="w-[8%]" /> <!-- Server -->
-						<col class="w-[14%]" /> <!-- Actions -->
+						<col class="select-col" />
+						<col class="thumb-col" />
+						<col class="title-col" />
+						<col class="type-col" />
+						<col class="link-col" />
+						<col class="expires-col" />
+						<col class="status-col" />
+						<col class="access-col" />
+						<col class="created-col" />
+						<col class="server-col" />
+						<col class="actions-col" />
 					</colgroup>
+
 					<thead>
 						<tr class="manage-table-head-row border-b border-default">
+							<th class="p-1 border border-default select-cell">
+								<input type="checkbox" class="input-checkbox" :checked="allPageSelected"
+									:indeterminate="somePageSelected && !allPageSelected" @change="toggleSelectAll" />
+							</th>
+
 							<th class="p-1 border border-default thumb-td"></th>
+
 							<th class="text-left p-2 font-semibold border border-default cursor-pointer select-none"
 								@click="setSort('title')">
 								<span class="flex items-center justify-between gap-2 w-full">
@@ -63,6 +115,7 @@
 									<span>{{ sortIndicator('title') }}</span>
 								</span>
 							</th>
+
 							<th class="text-left p-2 font-semibold border border-default cursor-pointer select-none"
 								@click="setSort('type')">
 								<span class="flex items-center justify-between gap-2 w-full">
@@ -70,6 +123,7 @@
 									<span>{{ sortIndicator('type') }}</span>
 								</span>
 							</th>
+
 							<th class="text-left p-2 font-semibold border border-default cursor-pointer select-none"
 								@click="setSort('url')">
 								<span class="flex items-center justify-between gap-2 w-full">
@@ -77,6 +131,7 @@
 									<span>{{ sortIndicator('url') }}</span>
 								</span>
 							</th>
+
 							<th class="text-left p-2 font-semibold border border-default cursor-pointer select-none"
 								@click="setSort('expires')">
 								<span class="flex items-center justify-between gap-2 w-full">
@@ -84,6 +139,7 @@
 									<span>{{ sortIndicator('expires') }}</span>
 								</span>
 							</th>
+
 							<th class="text-left p-2 font-semibold border border-default cursor-pointer select-none"
 								@click="setSort('status')">
 								<span class="flex items-center justify-between gap-2 w-full">
@@ -91,6 +147,7 @@
 									<span>{{ sortIndicator('status') }}</span>
 								</span>
 							</th>
+
 							<th class="text-left p-2 font-semibold border border-default cursor-pointer select-none"
 								@click="setSort('access')">
 								<span class="flex items-center justify-between gap-2 w-full">
@@ -98,6 +155,7 @@
 									<span>{{ sortIndicator('access') }}</span>
 								</span>
 							</th>
+
 							<th class="text-left p-2 font-semibold border border-default cursor-pointer select-none"
 								@click="setSort('created')">
 								<span class="flex items-center justify-between gap-2 w-full">
@@ -105,6 +163,7 @@
 									<span>{{ sortIndicator('created') }}</span>
 								</span>
 							</th>
+
 							<th class="text-left p-2 font-semibold border border-default">Server</th>
 							<th class="text-left p-2 font-semibold border border-default">Actions</th>
 						</tr>
@@ -112,7 +171,7 @@
 
 					<tbody class="bg-accent">
 						<tr v-if="loading">
-							<td colspan="10" class="p-0 border border-default">
+							<td colspan="11" class="p-0 border border-default">
 								<div class="w-full min-h-[140px] flex items-center justify-center">
 									<div
 										class="flex items-center gap-3 px-4 py-3 rounded-lg bg-default/60 border border-default shadow-sm">
@@ -120,7 +179,7 @@
 											class="inline-block w-4 h-4 border-2 border-default border-t-transparent rounded-full animate-spin"></span>
 										<div class="flex flex-col leading-tight">
 											<div class="text-sm font-semibold text-default">Loading links</div>
-											<div class="text-xs text-muted">Fetching latest data…</div>
+											<div class="text-xs text-muted">Fetching latest data...</div>
 										</div>
 									</div>
 								</div>
@@ -128,17 +187,18 @@
 						</tr>
 
 						<tr v-else-if="filteredRows.length === 0 && !showingDemoData">
-							<td colspan="10"
+							<td colspan="11"
 								class="px-2 py-4 text-center text-default font-bold border border-default align-middle whitespace-nowrap">
 								No links found.
 							</td>
 						</tr>
 
-						<!-- Demo rows for guided tour -->
-						<tr v-else-if="showingDemoData" v-for="it in DEMO_LINKS" :key="'demo-' + it.id"
-							data-tour-demo
+						<tr v-else-if="showingDemoData" v-for="it in DEMO_LINKS" :key="'demo-' + it.id" data-tour-demo
 							class="hover:bg-black/10 dark:hover:bg-white/10 transition border border-default h-12 opacity-80">
-							<!-- Thumbnail -->
+							<td class="p-1 border border-default align-middle text-center select-cell">
+								<input type="checkbox" class="input-checkbox" disabled />
+							</td>
+
 							<td class="p-1 border border-default align-middle thumb-td">
 								<div class="thumb-cell">
 									<div class="thumb-placeholder" :class="thumbIconClass(it)">
@@ -146,10 +206,10 @@
 									</div>
 								</div>
 							</td>
-							<!-- Title -->
+
 							<td class="p-2 border border-default align-middle overflow-hidden min-w-0">
 								<div class="min-w-0 flex items-center justify-between gap-2">
-									<span class="font-medium block truncate max-w-[28ch] md:max-w-[40ch]">
+									<span class="font-medium block truncate title-text">
 										{{ it.title || fallbackTitle(it) }}
 									</span>
 									<span data-tour="manage-links-edit-title" class="text-xs text-blue-500 shrink-0">
@@ -157,182 +217,49 @@
 									</span>
 								</div>
 							</td>
-							<!-- Type -->
-							<td class="p-2 border border-default align-middle whitespace-nowrap">
-								<div class="flex flex-col gap-0.5">
-									<span class="px-2 py-0.5 rounded-full text-[10px] font-bold leading-tight text-center"
-										:class="hasShareCap(it) ? 'bg-emerald-500/20 text-emerald-400' : 'bg-well/50 text-muted/40'"
-									>Review</span>
-									<span class="px-2 py-0.5 rounded-full text-[10px] font-bold leading-tight text-center"
-										:class="hasUploadCap(it) ? 'bg-blue-500/20 text-blue-400' : 'bg-well/50 text-muted/40'"
-									>Upload</span>
+
+							<td class="p-1.5 border border-default align-middle whitespace-nowrap">
+								<div class="capability-stack">
+									<span class="capability-pill"
+										:class="hasShareCap(it) ? 'bg-emerald-500/20 text-emerald-400' : 'bg-well/50 text-muted/40'">
+										Review
+									</span>
+									<span class="capability-pill"
+										:class="hasUploadCap(it) ? 'bg-blue-500/20 text-blue-400' : 'bg-well/50 text-muted/40'">
+										Upload
+									</span>
 								</div>
 							</td>
-							<!-- Link -->
+
 							<td class="p-2 border border-default align-middle overflow-hidden min-w-0">
 								<div class="min-w-0 flex items-center gap-2 justify-between">
-									<span class="block truncate max-w-[28ch] md:max-w-[34ch]">{{ it.url }}</span>
-									<span data-tour="manage-links-copy" class="text-blue-500 text-xs shrink-0">Copy</span>
+									<span class="block truncate link-text">{{ it.url }}</span>
+									<span data-tour="manage-links-copy"
+										class="text-blue-500 text-xs shrink-0">Copy</span>
 								</div>
 							</td>
-							<!-- Expires -->
+
 							<td class="p-2 border border-default align-middle overflow-hidden min-w-0">
 								<div class="min-w-0 flex items-center gap-2">
 									<div class="truncate" :class="expiresClass(it)">{{ expiresLabel(it) }}</div>
-									<span data-tour="manage-links-edit-expiry" class="btn btn-primary text-xs h-fit ml-auto">Edit</span>
+									<span data-tour="manage-links-edit-expiry"
+										class="btn btn-primary table-mini-btn ml-auto">Edit</span>
 								</div>
 							</td>
-							<!-- Status -->
+
 							<td class="p-2 border border-default align-middle whitespace-nowrap">
-								<span class="bg-default dark:bg-well/75 px-2 py-0.5 rounded-full text-xs font-semibold"
-									:class="statusChipClass(statusOf(it))">{{ statusOf(it).toUpperCase() }}</span>
+								<span class="status-chip bg-default dark:bg-well/75"
+									:class="statusChipClass(statusOf(it))">
+									{{ statusOf(it).toUpperCase() }}
+								</span>
 							</td>
-							<!-- Access -->
+
 							<td class="p-2 border border-default align-middle whitespace-nowrap">
-								<span class="bg-default dark:bg-well/75 px-2 py-0.5 rounded-full text-xs font-semibold"
-									:class="accessChipClass(it)">{{ accessLabel(it) }}</span>
-							</td>
-							<!-- Created -->
-							<td class="p-2 border border-default align-middle whitespace-nowrap">
-								<div class="flex flex-col leading-tight">
-									<div>{{ formatLocal(it.createdAt, { dateStyle: 'medium' }) }}</div>
-									<div class="text-xs text-muted">{{ formatLocal(it.createdAt, { timeStyle: 'short' }) }}</div>
-								</div>
-							</td>
-							<!-- Server -->
-							<td class="p-2 border border-default align-middle whitespace-nowrap">
-								<span class="text-xs text-muted">Demo Server</span>
-							</td>
-							<!-- Actions -->
-							<td data-tour="manage-links-actions" class="p-2 border border-default align-middle whitespace-nowrap">
-								<div class="flex flex-nowrap items-center justify-around gap-1">
-									<span class="btn btn-secondary h-fit px-2 rounded-md">Details</span>
-									<span class="btn btn-primary h-fit px-2 rounded-md">Open</span>
-									<span class="btn btn-danger h-fit px-2 rounded-md">Disable</span>
-								</div>
-							</td>
-						</tr>
-
-						<tr v-for="it in pagedRows" :key="'link-' + it.id" v-else
-							class="hover:bg-black/10 dark:hover:bg-white/10 transition border border-default h-12">
-							<!-- Thumbnail -->
-							<td class="p-1 border border-default align-middle w-[50px]">
-								<div class="thumb-cell">
-									<img v-if="hasThumbnail(it)" :src="thumbSrc(it)" class="thumb-img" />
-									<div v-else class="thumb-placeholder" :class="thumbIconClass(it)">
-										{{ thumbIconLabel(it) }}
-									</div>
-								</div>
-							</td>
-							<!-- Title -->
-							<td class="p-2 border border-default align-middle overflow-hidden min-w-0">
-								<div v-if="editingId !== it.id" class="min-w-0 flex items-center justify-between gap-2">
-									<span :title="it.title || fallbackTitle(it)"
-										class="font-medium cursor-pointer hover:underline block truncate max-w-[28ch] md:max-w-[40ch]"
-										@click="openDetails(it)">
-										{{ it.title || fallbackTitle(it) }}
-									</span>
-									<button class="text-xs text-blue-500 hover:underline shrink-0"
-										@click="startEdit(it)">
-										Edit Title
-									</button>
-								</div>
-
-								<div v-else class="flex items-center gap-2">
-									<input v-model="editTitle"
-										class="px-2 py-1 rounded bg-default border border-default w-56 h-8" />
-									<button class="btn btn-secondary text-xs h-8 px-2"
-										@click="saveTitle(it)">Save</button>
-									<button class="btn btn-danger text-xs h-8 px-2" @click="cancelEdit">Cancel</button>
-								</div>
-							</td>
-
-
-							<!-- Type -->
-							<td class="p-2 border border-default align-middle whitespace-nowrap">
-								<div class="flex flex-col gap-0.5">
-									<span class="px-2 py-0.5 rounded-full text-[10px] font-bold leading-tight text-center"
-										:class="hasShareCap(it) ? 'bg-emerald-500/20 text-emerald-400' : 'bg-well/50 text-muted/40'"
-									>Review</span>
-									<span class="px-2 py-0.5 rounded-full text-[10px] font-bold leading-tight text-center"
-										:class="hasUploadCap(it) ? 'bg-blue-500/20 text-blue-400' : 'bg-well/50 text-muted/40'"
-									>Upload</span>
-								</div>
-							</td>
-
-
-							<!-- Link -->
-							<td class="p-2 border border-default align-middle overflow-hidden min-w-0">
-								<div class="min-w-0 flex items-center gap-2 justify-between">
-									<a :href="it.url" target="_blank" rel="noopener" :title="it.url"
-										class="hover:underline block truncate max-w-[28ch] md:max-w-[34ch]">
-										{{ it.url }}
-									</a>
-									<button class="text-blue-500 hover:underline text-xs shrink-0"
-										@click="copy(it.url)">Copy</button>
-								</div>
-							</td>
-
-
-							<!-- Expires -->
-							<td class="p-2 border border-default align-middle overflow-hidden min-w-0">
-								<div v-if="!expEditor[it.id]?.open" class="min-w-0 flex items-center gap-2">
-									<div class="truncate" :class="expiresClass(it)">
-										{{ expiresLabel(it) }}
-									</div>
-									<div class="ml-auto flex items-center gap-1 flex-nowrap">
-										<button class="btn btn-primary text-xs h-fit"
-											@click="openCustom(it)">Edit</button>
-									</div>
-								</div>
-
-								<!-- custom editor -->
-								<div v-else class="flex flex-col items-center gap-1 text-xs">
-									<div class="flex flex-row justify-between w-full">
-										<label class="flex items-center gap-1">
-											<span class="opacity-70">Days</span>
-											<input type="number" min="0" class="input-textlike h-7 w-16 text-left"
-												v-model.number="expEditor[it.id].days" />
-										</label>
-										<label class="flex items-center gap-1">
-											<span class="opacity-70">Hours</span>
-											<input type="number" min="0" class="input-textlike h-7 w-16 text-left"
-												v-model.number="expEditor[it.id].hours" />
-										</label>
-									</div>
-									<div class="flex flex-row justify-around w-full gap-0.5">
-										<button class="btn btn-secondary text-xs" @click="applyCustom(it)">
-											Apply
-										</button>
-										<button class="btn btn-primary text-xs"
-											@click="makeNever(it)">Never</button>
-										<button class="btn btn-danger text-xs" @click="closeCustom(it)">
-											Cancel
-										</button>
-									</div>
-
-								</div>
-							</td>
-
-
-							<!-- Status -->
-							<td class="p-2 border border-default align-middle whitespace-nowrap">
-								<span class="bg-default dark:bg-well/75 px-2 py-0.5 rounded-full text-xs font-semibold"
-									:class="statusChipClass(statusOf(it))">{{ statusOf(it).toUpperCase() }}</span>
-							</td>
-
-							<!-- Access -->
-							<td class="p-2 border border-default align-middle whitespace-nowrap">
-								<span
-									class="bg-default dark:bg-well/75 px-2 py-0.5 rounded-full text-xs font-semibold"
-									:class="accessChipClass(it)"
-									:title="accessDetail(it)"
-								>
+								<span class="status-chip bg-default dark:bg-well/75" :class="accessChipClass(it)">
 									{{ accessLabel(it) }}
 								</span>
 							</td>
 
-							<!-- Created -->
 							<td class="p-2 border border-default align-middle whitespace-nowrap">
 								<div class="flex flex-col leading-tight">
 									<div>{{ formatLocal(it.createdAt, { dateStyle: 'medium' }) }}</div>
@@ -341,50 +268,204 @@
 								</div>
 							</td>
 
-							<!-- Server -->
 							<td class="p-2 border border-default align-middle whitespace-nowrap">
-								<div class="flex flex-col leading-tight">
-									<div class="text-xs font-medium" :title="(it as any)._serverName || 'Unknown'">{{ (it as any)._serverName || 'Unknown' }}</div>
-									<div class="text-xs text-muted" :title="(it as any)._serverIp || ''">{{ (it as any)._serverIp || '' }}</div>
+								<span class="text-xs text-muted">Demo Server</span>
+							</td>
+
+							<td data-tour="manage-links-actions"
+								class="p-1.5 border border-default align-middle actions-cell">
+								<div class="actions-grid">
+									<span class="btn btn-secondary table-action-btn">Details</span>
+									<span class="btn btn-primary table-action-btn">Open</span>
+									<span class="btn btn-danger table-action-btn">Disable</span>
+								</div>
+							</td>
+						</tr>
+
+						<tr v-for="it in pagedRows" :key="'link-' + it.id" v-else
+							class="hover:bg-black/10 dark:hover:bg-white/10 transition border border-default h-12"
+							:class="{ 'bg-blue-500/10': selectedIds.has(it.id) }">
+							<td class="p-1 border border-default align-middle text-center select-cell">
+								<input type="checkbox" class="input-checkbox" :checked="selectedIds.has(it.id)"
+									@change="toggleSelect(it)" />
+							</td>
+
+							<td class="p-1 border border-default align-middle thumb-td">
+								<div class="thumb-cell">
+									<img v-if="hasThumbnail(it)" :src="thumbSrc(it)" class="thumb-img" />
+									<div v-else class="thumb-placeholder" :class="thumbIconClass(it)">
+										{{ thumbIconLabel(it) }}
+									</div>
 								</div>
 							</td>
 
+							<td class="p-2 border border-default align-middle overflow-hidden min-w-0">
+								<div v-if="editingId !== it.id" class="min-w-0 flex items-center justify-between gap-2">
+									<span :title="it.title || fallbackTitle(it)"
+										class="font-medium cursor-pointer hover:underline block truncate title-text"
+										@click="openDetails(it)">
+										{{ it.title || fallbackTitle(it) }}
+									</span>
 
-							<!-- Actions -->
+									<button class="text-xs text-blue-500 hover:underline shrink-0"
+										@click="startEdit(it)">
+										Edit Title
+									</button>
+								</div>
+
+								<div v-else class="title-edit-row">
+									<input v-model="editTitle" class="input-textlike title-edit-input" />
+									<button class="btn btn-secondary table-mini-btn"
+										@click="saveTitle(it)">Save</button>
+									<button class="btn btn-danger table-mini-btn" @click="cancelEdit">Cancel</button>
+								</div>
+							</td>
+
+							<td class="p-1.5 border border-default align-middle whitespace-nowrap">
+								<div class="capability-stack">
+									<span class="capability-pill"
+										:class="hasShareCap(it) ? 'bg-emerald-500/20 text-emerald-400' : 'bg-well/50 text-muted/40'">
+										Review
+									</span>
+									<span class="capability-pill"
+										:class="hasUploadCap(it) ? 'bg-blue-500/20 text-blue-400' : 'bg-well/50 text-muted/40'">
+										Upload
+									</span>
+								</div>
+							</td>
+
+							<td class="p-2 border border-default align-middle overflow-hidden min-w-0">
+								<div class="min-w-0 flex items-center gap-2 justify-between">
+									<a :href="it.url" target="_blank" rel="noopener" :title="it.url"
+										class="hover:underline block truncate link-text">
+										{{ it.url }}
+									</a>
+
+									<button class="text-blue-500 hover:underline text-xs shrink-0"
+										@click="copy(it.url)">
+										Copy
+									</button>
+								</div>
+							</td>
+
+							<!-- Expires -->
+							<td class="p-2 border border-default align-middle overflow-hidden min-w-0 expires-cell">
+								<div v-if="!expEditor[it.id]?.open" class="min-w-0 flex items-center gap-2">
+									<div class="truncate" :class="expiresClass(it)">
+										{{ expiresLabel(it) }}
+									</div>
+
+									<button class="btn btn-primary table-mini-btn ml-auto" @click="openCustom(it)">
+										Edit
+									</button>
+								</div>
+
+								<div v-else class="expiry-editor">
+									<div class="expiry-fields-stack">
+										<label class="expiry-field-row">
+											<span>Days</span>
+											<input type="number" min="0" class="input-textlike expiry-input"
+												v-model.number="expEditor[it.id].days" />
+										</label>
+
+										<label class="expiry-field-row">
+											<span>Hours</span>
+											<input type="number" min="0" class="input-textlike expiry-input"
+												v-model.number="expEditor[it.id].hours" />
+										</label>
+									</div>
+
+									<button class="btn btn-primary expiry-wide-btn" @click="makeNever(it)">
+										Never
+									</button>
+
+									<div class="expiry-action-row">
+										<button class="btn btn-success expiry-action-btn" @click="applyCustom(it)">
+											Apply
+										</button>
+
+										<button class="btn btn-danger expiry-action-btn" @click="closeCustom(it)">
+											Cancel
+										</button>
+									</div>
+								</div>
+							</td>
+
 							<td class="p-2 border border-default align-middle whitespace-nowrap">
-								<div class="flex flex-nowrap items-center justify-around gap-1">
-									<button class="btn btn-secondary h-fit px-2 rounded-md" @click="openDetails(it)">
-										Details</button>
-									<!-- <button
-										v-if="it.type !== 'upload' && it.allow_comments"
-										class="btn btn-secondary h-fit px-2 rounded-md"
-										@click="openComments(it)"
-										:title="'View & manage comments'"
-									>
-										💬
-									</button> -->
-									<button :disabled="isDisabled(it)" class="btn btn-primary h-fit px-2 rounded-md"
+								<span class="status-chip bg-default dark:bg-well/75"
+									:class="statusChipClass(statusOf(it))">
+									{{ statusOf(it).toUpperCase() }}
+								</span>
+							</td>
+
+							<td class="p-2 border border-default align-middle whitespace-nowrap">
+								<span class="status-chip bg-default dark:bg-well/75" :class="accessChipClass(it)"
+									:title="accessDetail(it)">
+									{{ accessLabel(it) }}
+								</span>
+							</td>
+
+							<td class="p-2 border border-default align-middle whitespace-nowrap">
+								<div class="flex flex-col leading-tight">
+									<div>{{ formatLocal(it.createdAt, { dateStyle: 'medium' }) }}</div>
+									<div class="text-xs text-muted">{{ formatLocal(it.createdAt, { timeStyle: 'short' })
+										}}</div>
+								</div>
+							</td>
+
+							<td class="p-2 border border-default align-middle whitespace-nowrap">
+								<div class="flex flex-col leading-tight min-w-0">
+									<div class="text-xs font-medium truncate"
+										:title="(it as any)._serverName || 'Unknown'">
+										{{ (it as any)._serverName || 'Unknown' }}
+									</div>
+									<div class="text-xs text-muted truncate" :title="(it as any)._serverIp || ''">
+										{{ (it as any)._serverIp || '' }}
+									</div>
+								</div>
+							</td>
+
+							<td class="p-1.5 border border-default align-middle actions-cell">
+								<div class="actions-grid">
+									<button class="btn btn-secondary table-action-btn" @click="openDetails(it)">
+										Details
+									</button>
+
+									<button :disabled="isDisabled(it)" class="btn btn-primary table-action-btn"
 										@click="viewLink(it)">
 										Open
 									</button>
-									<button class="btn h-fit px-2 rounded-md"
+
+									<button class="btn table-action-btn"
 										:class="statusOf(it) === 'disabled' ? 'btn-success' : 'btn-danger'"
 										@click="toggleDisable(it)">
 										{{ statusOf(it) === 'disabled' ? 'Enable' : 'Disable' }}
 									</button>
+
+									<button class="btn btn-warning table-action-btn" @click="toggleArchive(it)">
+										{{ it.archived ? 'Unarchive' : 'Archive' }}
+									</button>
+
+									<button class="btn btn-danger table-action-btn actions-delete-btn"
+										@click="confirmDelete(it)">
+										Delete
+									</button>
 								</div>
 							</td>
 						</tr>
+
 						<tr v-for="n in emptyRowCount" :key="`empty-${n}`" class="h-12">
-							<td colspan="10" class="p-0 bg-well">&nbsp;</td>
+							<td colspan="11" class="p-0 bg-well">&nbsp;</td>
 						</tr>
 					</tbody>
 				</table>
 			</div>
+
 			<div class="mt-3 flex items-center justify-between gap-2 text-sm">
 				<div class="text-muted">
 					Showing {{ pageStart }}-{{ pageEnd }} of {{ filteredRows.length }}
 				</div>
+
 				<div class="flex items-center gap-2">
 					<button class="btn btn-secondary px-3 py-1" :disabled="currentPage <= 1" @click="prevPage">
 						Previous
@@ -398,17 +479,159 @@
 		</div>
 	</div>
 
-	<!--  /////////////////////////////////////////////////////////////////////////////////////////////////////////////// -->
 	<LinkDetailsModal v-model="showModal" :link="current" :apiFetch="apiFetch" @updated="applyLinkPatch" />
-	<!-- <CommentsReviewModal v-model="showCommentsModal" :link="commentsLink" /> -->
+
+	<Teleport to="body">
+		<div v-if="linkToDelete" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50"
+			@click.self="cancelDelete">
+			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto text-default bg-accent">
+				<div class="flex items-center gap-2 mb-3">
+					<span class="text-red-500 dark:text-red-400 text-xl">!</span>
+					<h3 class="text-lg font-semibold text-red-600 dark:text-red-400">Permanently Delete Link</h3>
+				</div>
+
+				<div class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 mb-4">
+					<p class="text-sm text-red-700 dark:text-red-300 font-medium mb-2">
+						This action is irreversible and will permanently destroy:
+					</p>
+					<ul class="text-sm text-red-600 dark:text-red-300/80 list-disc list-inside space-y-1">
+						<li>The share/upload link, which will no longer be accessible to anyone</li>
+						<li>All activity history and access logs</li>
+						<li>All user access permissions</li>
+					</ul>
+				</div>
+
+				<p class="text-sm text-default mb-3">
+					Deleting <strong>{{ linkToDelete?.title || 'Untitled' }}</strong>
+				</p>
+
+				<div class="border border-default rounded-lg p-3 mb-4 space-y-3">
+					<p class="text-sm font-medium">Optional: Clean up associated files</p>
+
+					<div v-if="deletePreviewLoading" class="text-xs text-default flex items-center gap-2">
+						<span
+							class="inline-block w-3 h-3 border-2 border-default border-t-transparent rounded-full animate-spin"></span>
+						Loading file info...
+					</div>
+
+					<template v-if="deletePreview && !deletePreviewLoading">
+						<div class="text-xs text-default space-y-1">
+							<p>{{ deletePreview.summary.totalFiles }} file(s) associated with this link</p>
+							<p v-if="deletePreview.summary.sharedFiles > 0" class="text-amber-600 dark:text-amber-400">
+								{{ deletePreview.summary.sharedFiles }} file(s) shared with other links and will be kept
+							</p>
+						</div>
+
+						<label class="flex items-start gap-2 cursor-pointer select-none">
+							<input type="checkbox" v-model="deleteGeneratedFiles" class="styled-checkbox mt-0.5" />
+							<div>
+								<span class="text-sm">Delete generated files</span>
+								<p class="text-xs text-default">
+									Transcodes, proxy videos, HLS streams, watermarked images
+									({{ formatBytes(deletePreview.summary.totalGeneratedBytes) }})
+								</p>
+								<p v-if="deletePreview.summary.totalGeneratedBytes > 0" class="text-xs text-green-600 dark:text-green-400">
+									Frees up {{ formatBytes(deletePreview.summary.totalGeneratedBytes) }} of disk space
+								</p>
+							</div>
+						</label>
+
+						<label class="flex items-start gap-2 cursor-pointer select-none">
+							<input type="checkbox" v-model="deleteOriginalFiles" class="styled-checkbox mt-0.5" />
+							<div>
+								<span class="text-sm text-red-600 dark:text-red-400 font-medium">Delete original source files</span>
+								<p class="text-xs text-red-500 dark:text-red-300/80">
+									The actual media files on disk. Cannot be recovered.
+									({{ formatBytes(deletePreview.summary.totalOriginalBytes) }})
+								</p>
+							</div>
+						</label>
+
+						<div v-if="deleteOriginalFiles" class="p-2 rounded bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700">
+							<p class="text-xs text-red-700 dark:text-red-300 font-medium">
+								Danger: this will permanently delete the original files from disk.
+							</p>
+							<p class="text-xs text-red-600 dark:text-red-200/70 mt-1">
+								These are your source media files. Once deleted, they cannot be recovered unless you
+								have a separate backup.
+							</p>
+
+							<div v-if="deletePreview.files.filter((f: any) => !f.sharedWithOtherLinks).length > 0"
+								class="mt-2 max-h-24 overflow-y-auto">
+								<p class="text-xs text-default mb-1">Files that will be deleted:</p>
+								<ul class="text-xs text-red-600 dark:text-red-200/70 list-disc list-inside">
+									<li v-for="f in deletePreview.files.filter((f: any) => !f.sharedWithOtherLinks)"
+										:key="f.id" class="truncate">
+										{{ f.relPath }} ({{ formatBytes(f.originalBytes) }})
+									</li>
+								</ul>
+							</div>
+						</div>
+					</template>
+				</div>
+
+				<label class="block text-sm text-default mb-1">
+					Type <strong class="text-red-600 dark:text-red-400">DELETE</strong> to confirm:
+				</label>
+
+				<input v-model="deleteLinkConfirmText" type="text"
+					class="input-textlike w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-800 bg-default mb-4"
+					placeholder="DELETE" autocomplete="off" />
+
+				<div class="flex items-center justify-end gap-2">
+					<button class="btn btn-secondary px-4 py-2" @click="cancelDelete">
+						Cancel
+					</button>
+					<button
+						class="btn btn-primary px-4 py-2 bg-red-600! hover:bg-red-500!"
+						:disabled="deleteLinkConfirmText !== 'DELETE'" @click="deleteLink">
+						Delete Permanently
+					</button>
+				</div>
+			</div>
+		</div>
+	</Teleport>
+
+	<Teleport to="body">
+		<div v-if="bulkExpiryOpen" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50"
+			@click.self="cancelBulkExpiry">
+			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 bg-accent text-default">
+				<h3 class="text-lg font-semibold mb-4 text-default">Set Expiry for {{ selectedIds.size }} Links</h3>
+
+				<div class="flex flex-col gap-3 mb-4">
+					<label class="flex items-center gap-2 text-default">
+						<span class="text-sm w-12">Days</span>
+						<input type="number" min="0" v-model.number="bulkExpiryDays"
+							class="input-textlike px-3 py-2 w-24" />
+					</label>
+
+					<label class="flex items-center gap-2 text-default">
+						<span class="text-sm w-12">Hours</span>
+						<input type="number" min="0" max="23" v-model.number="bulkExpiryHours"
+							class="input-textlike px-3 py-2 w-24" />
+					</label>
+
+					<p class="text-xs text-muted">Sets expiry to the specified duration from now.</p>
+				</div>
+
+				<div class="flex items-center justify-end gap-2">
+					<button class="btn btn-secondary px-4 py-2" @click="cancelBulkExpiry">Cancel</button>
+					<button class="btn btn-primary px-4 py-2" @click="applyBulkExpiry({ never: true })">Never</button>
+					<button class="btn btn-primary px-4 py-2" @click="applyBulkExpiry()">Apply</button>
+				</div>
+			</div>
+		</div>
+	</Teleport>
 </template>
 	
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useApi } from '../composables/useApi'
+import { useApi, apiFetchAll } from '../composables/useApi'
 import { useConnections } from '../composables/useConnections'
+import { useServerFilter } from '../composables/useServerFilter'
 import { useLinkRefreshSignal } from '../composables/useLinkRefresh'
-import { pushNotification, Notification } from '@45drives/houston-common-ui'
+import { Notification } from '@45drives/houston-common-ui'
+import { pushNotification } from '../composables/useNotificationQueue'
 import { appLog } from '../composables/useLog'
 import LinkDetailsModal from "../components/modals/LinkDetailsModal.vue"
 import type { LinkItem, LinkType, Status } from '../typings/electron'
@@ -470,41 +693,53 @@ const showingDemoData = computed(() => props.tourActive && rows.value.length ===
 
 const { apiFetch, baseUrl, meta } = useApi()
 const { activeConnection, connections } = useConnections()
+const { selectedFilter, filteredConnections } = useServerFilter()
 
 async function refresh() {
 	loading.value = true
 	error.value = null
 	
 	try {
-		if (!activeConnection.value) {
-			throw new Error('No active server connection')
-		}
-		
-		const params = {
-			q: q.value.trim() || undefined,
-			type: typeFilter.value || undefined,
-			status: statusFilter.value || undefined,
-			limit: fetchLimit.value,
-		}
-		
 		const qs = new URLSearchParams()
-		if (params.q) qs.set('q', params.q)
-		if (params.type) qs.set('type', params.type)
-		if (params.status) qs.set('status', params.status)
-		if (params.limit) qs.set('limit', String(params.limit))
+		const trimQ = q.value.trim()
+		if (trimQ) qs.set('q', trimQ)
+		if (typeFilter.value && typeFilter.value !== 'review') qs.set('type', typeFilter.value)
+		if (statusFilter.value) qs.set('status', statusFilter.value)
+		if (fetchLimit.value) qs.set('limit', String(fetchLimit.value))
 		if (props.projectId) qs.set('project_id', String(props.projectId))
-		
-		const data = await apiFetch(`/api/links?${qs.toString()}`) as { items: LinkItem[] }
-		
-		// Add server metadata to each link
-		const linksWithServer = (data?.items || []).map((link: LinkItem) => ({
-			...link,
-			_serverName: activeConnection.value!.name,
-			_serverIp: activeConnection.value!.serverIp,
-			_connectionId: activeConnection.value!.connectionId
-		}))
-		
-		rows.value = linksWithServer
+
+		const path = `/api/links?${qs.toString()}`
+
+		// Multi-server fetch when filter is 'all', multiple servers connected, and not in a specific project
+		if (selectedFilter.value === 'all' && filteredConnections.value.length > 1 && !props.projectId) {
+			const results = await apiFetchAll<{ items: LinkItem[] }>(filteredConnections.value, path)
+			const allLinks: LinkItem[] = []
+			for (const r of results) {
+				if (r.success && r.data?.items) {
+					for (const link of r.data.items) {
+						allLinks.push({
+							...link,
+							_serverName: r.serverName,
+							_serverIp: r.serverIp,
+							_connectionId: r.connectionId,
+						} as any)
+					}
+				}
+			}
+			rows.value = allLinks
+		} else {
+			// Single-server fetch (active connection)
+			if (!activeConnection.value) {
+				throw new Error('No active server connection')
+			}
+			const data = await apiFetch(path) as { items: LinkItem[] }
+			rows.value = (data?.items || []).map((link: LinkItem) => ({
+				...link,
+				_serverName: activeConnection.value!.name,
+				_serverIp: activeConnection.value!.serverIp,
+				_connectionId: activeConnection.value!.connectionId
+			}))
+		}
 	} catch (e: any) {
 		error.value = e?.message || String(e)
 	} finally {
@@ -541,11 +776,13 @@ const linkSummary = computed(() => {
 	let active = 0
 	let expired = 0
 	let disabled = 0
+	let archived = 0
 
 	for (const it of rows.value) {
 		const status = statusOf(it)
 		if (status === 'active') active += 1
 		else if (status === 'expired') expired += 1
+		else if (status === 'archived') archived += 1
 		else disabled += 1
 	}
 
@@ -554,6 +791,7 @@ const linkSummary = computed(() => {
 		active,
 		expired,
 		disabled,
+		archived,
 	}
 })
 
@@ -562,8 +800,154 @@ onMounted(refresh);
 const { linkVersion } = useLinkRefreshSignal()
 watch(linkVersion, () => refresh())
 
-// Refresh when active connection changes
+// Refresh when active connection or server filter changes
 watch(activeConnection, () => refresh())
+watch(selectedFilter, () => refresh())
+
+/* ------------------- multi-select ------------------- */
+const selectedIds = ref<Set<string | number>>(new Set())
+
+const allPageSelected = computed(() => {
+	if (pagedRows.value.length === 0) return false
+	return pagedRows.value.every(r => selectedIds.value.has(r.id))
+})
+
+const somePageSelected = computed(() => {
+	return pagedRows.value.some(r => selectedIds.value.has(r.id))
+})
+
+function toggleSelect(it: LinkItem) {
+	const s = new Set(selectedIds.value)
+	if (s.has(it.id)) s.delete(it.id)
+	else s.add(it.id)
+	selectedIds.value = s
+}
+
+function toggleSelectAll() {
+	if (allPageSelected.value) {
+		// Deselect all on current page
+		const s = new Set(selectedIds.value)
+		for (const r of pagedRows.value) s.delete(r.id)
+		selectedIds.value = s
+	} else {
+		// Select all on current page
+		const s = new Set(selectedIds.value)
+		for (const r of pagedRows.value) s.add(r.id)
+		selectedIds.value = s
+	}
+}
+
+function clearSelection() {
+	selectedIds.value = new Set()
+}
+
+function getSelectedLinks(): LinkItem[] {
+	return rows.value.filter(r => selectedIds.value.has(r.id))
+}
+
+async function bulkEnable() {
+	const links = getSelectedLinks()
+	let success = 0
+	let failed = 0
+	for (const link of links) {
+		try {
+			await patchLink(link, { isDisabled: false })
+			link.isDisabled = false
+			success++
+		} catch { failed++ }
+	}
+	clearSelection()
+	pushNotification(new Notification(
+		'Bulk Enable',
+		`${success} link${success !== 1 ? 's' : ''} enabled${failed ? `, ${failed} failed` : ''}.`,
+		failed ? 'warning' : 'success',
+		8000,
+	))
+}
+
+async function bulkDisable() {
+	const links = getSelectedLinks()
+	let success = 0
+	let failed = 0
+	for (const link of links) {
+		try {
+			await patchLink(link, { isDisabled: true })
+			link.isDisabled = true
+			success++
+		} catch { failed++ }
+	}
+	clearSelection()
+	pushNotification(new Notification(
+		'Bulk Disable',
+		`${success} link${success !== 1 ? 's' : ''} disabled${failed ? `, ${failed} failed` : ''}.`,
+		failed ? 'warning' : 'success',
+		8000,
+	))
+}
+
+async function bulkArchive() {
+	const links = getSelectedLinks()
+	let success = 0
+	let failed = 0
+	for (const link of links) {
+		try {
+			await apiFetch(`/api/links/${link.id}/archive`, { method: 'POST' })
+			link.archived = true
+			link.isDisabled = true
+			success++
+		} catch { failed++ }
+	}
+	clearSelection()
+	pushNotification(new Notification(
+		'Bulk Archive',
+		`${success} link${success !== 1 ? 's' : ''} archived${failed ? `, ${failed} failed` : ''}.`,
+		failed ? 'warning' : 'success',
+		8000,
+	))
+}
+
+// Bulk expiry editor
+const bulkExpiryOpen = ref(false)
+const bulkExpiryDays = ref(7)
+const bulkExpiryHours = ref(0)
+
+function bulkEditExpiry() {
+	bulkExpiryOpen.value = true
+	bulkExpiryDays.value = 7
+	bulkExpiryHours.value = 0
+}
+
+async function applyBulkExpiry(opts?: { never?: boolean }) {
+	const links = getSelectedLinks()
+	const totalHours = bulkExpiryDays.value * 24 + bulkExpiryHours.value
+	const isNever = opts?.never || totalHours <= 0
+	const newExp = isNever ? null : Date.now() + totalHours * 3600e3
+
+	let success = 0
+	let failed = 0
+	for (const link of links) {
+		try {
+			await patchLink(link, { expiresAtMs: newExp })
+			link.expiresAt = newExp
+			success++
+		} catch { failed++ }
+	}
+
+	bulkExpiryOpen.value = false
+	clearSelection()
+	pushNotification(new Notification(
+		'Bulk Expiry Update',
+		isNever
+			? `${success} link${success !== 1 ? 's' : ''} set to never expire${failed ? `, ${failed} failed` : ''}.`
+			: `${success} link${success !== 1 ? 's' : ''} updated${failed ? `, ${failed} failed` : ''}.`,
+		failed ? 'warning' : 'success',
+		8000,
+	))
+}
+
+function cancelBulkExpiry() {
+	bulkExpiryOpen.value = false
+}
 
 /* ----------- fetch/list endpoints ----------- */
 async function listLinks(params: { q?: string; type?: '' | LinkType; status?: '' | Status; limit?: number; offset?: number }) {
@@ -588,7 +972,7 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const rows = ref<LinkItem[]>([])
 const q = ref('')
-const typeFilter = ref<'' | LinkType>('')
+const typeFilter = ref<'' | LinkType | 'review'>('')
 const statusFilter = ref<'' | Status>('active') // match “Currently Active Links” by default
 const fetchLimit = ref(200)
 const pageSize = ref(10)
@@ -602,6 +986,11 @@ watch([q, typeFilter, statusFilter], () => {
 })
 watch([sortKey, sortDir], () => {
 	currentPage.value = 1
+})
+
+// Clear multi-select when filters change
+watch([q, typeFilter, statusFilter], () => {
+	selectedIds.value = new Set()
 })
 
 /* ------------------- mappers/helpers ------------------- */
@@ -702,6 +1091,7 @@ function isDisabled(it: LinkItem) {
 }
 
 function statusOf(it: LinkItem): Status {
+	if (it.archived) return 'archived'
 	if (it.isDisabled) return 'disabled'
 	if (it.expiresAt && it.expiresAt <= Date.now()) return 'expired'
 	return 'active'
@@ -712,7 +1102,9 @@ function statusChipClass(s: Status) {
 		? 'text-green-500'
 		: s === 'expired'
 			? 'text-amber-500'
-			: 'text-gray-500'
+			: s === 'archived'
+				? 'text-purple-400'
+				: 'text-gray-500'
 }
 
 function isRestricted(it: LinkItem) {
@@ -817,11 +1209,105 @@ async function toggleDisable(it: LinkItem) {
 	}
 }
 
+async function toggleArchive(it: LinkItem) {
+	const archive = !it.archived
+	try {
+		await apiFetch(`/api/links/${it.id}/${archive ? 'archive' : 'unarchive'}`, { method: 'POST' })
+		it.archived = archive
+		if (archive) it.isDisabled = true
+		pushNotification(
+			new Notification(
+				archive ? 'Link Archived' : 'Link Unarchived',
+				archive
+					? 'The link has been archived and hidden from normal views.'
+					: 'The link has been restored. It is still disabled — enable it to make it accessible again.',
+				'success',
+				8000,
+			)
+		)
+	} catch (e: any) {
+		const msg = e?.message || e?.error || String(e)
+		pushNotification(
+			new Notification('Failed to Update Link', msg, 'error', 8000)
+		)
+	}
+}
 
 function viewLink(it: LinkItem) {
 	const anyIt: any = it as any
 	const u = anyIt.url
 	if (u) window.open(u, '_blank', 'noopener,noreferrer')
+}
+
+/* ------------------- delete link ------------------- */
+const linkToDelete = ref<LinkItem | null>(null)
+const deleteLinkConfirmText = ref('')
+const deleteGeneratedFiles = ref(false)
+const deleteOriginalFiles = ref(false)
+const deletePreview = ref<any>(null)
+const deletePreviewLoading = ref(false)
+
+function confirmDelete(it: LinkItem) {
+	linkToDelete.value = it
+	deleteGeneratedFiles.value = false
+	deleteOriginalFiles.value = false
+	deleteLinkConfirmText.value = ''
+	deletePreview.value = null
+	loadDeletePreview(it)
+}
+
+function cancelDelete() {
+	linkToDelete.value = null
+	deleteLinkConfirmText.value = ''
+	deleteGeneratedFiles.value = false
+	deleteOriginalFiles.value = false
+	deletePreview.value = null
+}
+
+async function loadDeletePreview(it: LinkItem) {
+	deletePreviewLoading.value = true
+	try {
+		const data = await apiFetch(`/api/links/${it.id}/delete-preview`)
+		deletePreview.value = data
+	} catch {
+		deletePreview.value = null
+	} finally {
+		deletePreviewLoading.value = false
+	}
+}
+
+function formatBytes(bytes: number): string {
+	if (bytes === 0) return '0 B'
+	const units = ['B', 'KB', 'MB', 'GB', 'TB']
+	const i = Math.floor(Math.log(bytes) / Math.log(1024))
+	return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`
+}
+
+async function deleteLink() {
+	if (!linkToDelete.value) return
+	try {
+		const qs = new URLSearchParams()
+		if (deleteGeneratedFiles.value) qs.set('deleteGenerated', '1')
+		if (deleteOriginalFiles.value) qs.set('deleteOriginals', '1')
+		const qsStr = qs.toString() ? `?${qs.toString()}` : ''
+		await apiFetch(`/api/links/${linkToDelete.value.id}${qsStr}`, { method: 'DELETE' })
+		rows.value = rows.value.filter(r => r.id !== linkToDelete.value!.id)
+		linkToDelete.value = null
+		deleteLinkConfirmText.value = ''
+		deleteGeneratedFiles.value = false
+		deleteOriginalFiles.value = false
+		deletePreview.value = null
+		pushNotification(
+			new Notification('Link Deleted', 'The link has been permanently deleted.', 'success', 8000)
+		)
+	} catch (e: any) {
+		const msg = e?.message || e?.error || String(e)
+		pushNotification(
+			new Notification('Failed to Delete Link', msg, 'error', 8000)
+		)
+		linkToDelete.value = null
+		deleteLinkConfirmText.value = ''
+	}
 }
 /* ------------------- inline title edit ------------------- */
 const editingId = ref<number | string | null>(null)
@@ -908,7 +1394,11 @@ function applyLinkPatch(p: Partial<LinkItem> & { id: LinkItem['id'] }) {
 /* ------------------- filters ------------------- */
 const filteredRows = computed(() => {
 	return rows.value
-		.filter(r => (typeFilter.value ? r.type === typeFilter.value : true))
+		.filter(r => {
+			if (!typeFilter.value) return true
+			if (typeFilter.value === 'review') return r.type === 'download' || r.type === 'collection'
+			return r.type === typeFilter.value
+		})
 		.filter(r => {
 			const s = statusOf(r)
 			return statusFilter.value ? s === statusFilter.value : true
@@ -1174,6 +1664,75 @@ function formatLocal(ts: unknown, opts: Intl.DateTimeFormatOptions) {
 </script>
 
 <style scoped>
+@media (max-width: 900px) {
+	.bulk-actions-bar {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.bulk-actions-buttons {
+		justify-content: flex-start;
+		width: 100%;
+	}
+
+	.bulk-action-btn {
+		flex: 1 1 auto;
+		min-width: 6.5rem;
+	}
+}
+
+.bulk-actions-bar {
+	position: sticky;
+	left: 0;
+	z-index: 4;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	min-height: 3.25rem;
+	padding: 0.5rem 0.65rem;
+	border-radius: 0.65rem 0.65rem 0 0;
+	background: var(--btn-primary-fill);
+	box-shadow:
+		inset 0 -1px 0 color-mix(in srgb, white 18%, transparent),
+		0 2px 8px rgb(0 0 0 / 18%);
+}
+
+.bulk-actions-count {
+	display: inline-flex;
+	align-items: center;
+	min-width: max-content;
+	color: #ffffff;
+	font-size: 0.82rem;
+	font-weight: 700;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.bulk-actions-buttons {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+	min-width: 0;
+}
+
+.bulk-action-btn {
+	height: 2rem;
+	min-height: 2rem;
+	padding: 0 0.75rem;
+	border-radius: 0.45rem;
+	font-size: 0.76rem;
+	font-weight: 700;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.bulk-action-clear {
+	color: #fecaca;
+}
+
 .manage-header {
 	display: flex;
 	flex-wrap: wrap;
@@ -1208,25 +1767,49 @@ function formatLocal(ts: unknown, opts: Intl.DateTimeFormatOptions) {
 .manage-toolbar {
 	display: flex;
 	flex-wrap: wrap;
+	align-items: center;
 	gap: 0.45rem;
 	margin-bottom: 0.75rem;
+}
+
+.manage-search-input {
+	width: 18rem;
+	min-width: 14rem;
+	flex: 1 1 18rem;
+}
+
+.manage-filter-select {
+	min-width: 9rem;
+	flex: 0 0 auto;
+}
+
+.manage-refresh-btn {
+	margin-left: auto;
+	flex: 0 0 auto;
 }
 
 .manage-table-wrap {
 	border-radius: 0.72rem;
 	border: 1px solid color-mix(in srgb, var(--btn-primary-bg) 22%, #4a4b57);
-	background:
-		var(--btn-primary-fill) top / 100% 2.6rem no-repeat,
-		color-mix(in srgb, black 24%, transparent);
+	background: color-mix(in srgb, black 24%, transparent);
 	position: relative;
 }
 
 .manage-table {
 	width: 100%;
-	min-width: 1180px;
+	min-width: 1260px;
 	table-layout: fixed;
 	border-spacing: 0;
 	margin: 0;
+}
+
+.manage-table th,
+.manage-table td {
+	min-width: 0;
+}
+
+.manage-table td {
+	vertical-align: middle;
 }
 
 .manage-table-wrap thead tr {
@@ -1245,28 +1828,74 @@ function formatLocal(ts: unknown, opts: Intl.DateTimeFormatOptions) {
 	color: inherit;
 }
 
-.manage-table-head-row > th {
+.manage-table-head-row>th {
 	border-top: 0;
 }
 
-.manage-table-head-row > th:first-child {
+.manage-table-head-row>th:first-child {
 	border-left: 0;
 }
 
-.manage-table-head-row > th:last-child {
+.manage-table-head-row>th:last-child {
 	border-right: 0;
 }
 
-@media (max-width: 980px) {
-	.manage-header {
-		padding-top: 0.25rem;
-	}
+.select-col {
+	width: 36px;
 }
 
-/* ── Thumbnail cells ──────────────────────────────── */
+.thumb-col {
+	width: 72px;
+}
+
+.title-col {
+	width: auto;
+}
+
+.type-col {
+	width: 86px;
+}
+
+.link-col {
+	width: 250px;
+}
+
+.expires-col {
+	width: 150px;
+}
+
+.status-col {
+	width: 82px;
+}
+
+.access-col {
+	width: 88px;
+}
+
+.created-col {
+	width: 118px;
+}
+
+.server-col {
+	width: 120px;
+}
+
+.actions-col {
+	width: 230px;
+}
+
+.select-cell {
+	width: 36px;
+	min-width: 36px;
+	max-width: 36px;
+	text-align: center;
+	padding-left: 0.25rem;
+	padding-right: 0.25rem;
+}
+
 .thumb-cell {
-	width: 64px;
-	height: 40px;
+	width: 56px;
+	height: 36px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -1293,6 +1922,12 @@ function formatLocal(ts: unknown, opts: Intl.DateTimeFormatOptions) {
 	border-radius: 4px;
 }
 
+.thumb-td {
+	width: 72px;
+	min-width: 72px;
+	max-width: 72px;
+}
+
 .thumb-icon--video {
 	background: color-mix(in srgb, #10b981 18%, transparent);
 }
@@ -1313,13 +1948,190 @@ function formatLocal(ts: unknown, opts: Intl.DateTimeFormatOptions) {
 	background: color-mix(in srgb, #6b7280 18%, transparent);
 }
 
-.thumb-col {
-	width: 76px;
+.title-text {
+	max-width: 24ch;
 }
 
-.thumb-td {
-	width: 76px;
-	min-width: 76px;
-	max-width: 76px;
+.link-text {
+	max-width: 22ch;
+}
+
+.title-edit-row {
+	display: flex;
+	align-items: center;
+	gap: 0.375rem;
+	min-width: 0;
+}
+
+.title-edit-input {
+	height: 2rem;
+	width: 100%;
+	min-width: 0;
+	padding: 0 0.5rem;
+	border-radius: 0.375rem;
+	border: 1px solid var(--border-default);
+	background: var(--bg-default);
+}
+
+.capability-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+}
+
+.capability-pill {
+	padding: 0.125rem 0.45rem;
+	border-radius: 999px;
+	font-size: 0.625rem;
+	font-weight: 700;
+	line-height: 1.1;
+	text-align: center;
+}
+
+.status-chip {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.125rem 0.5rem;
+	border-radius: 999px;
+	font-size: 0.72rem;
+	font-weight: 700;
+	line-height: 1.2;
+	white-space: nowrap;
+}
+
+.table-mini-btn {
+	height: 1.8rem;
+	min-height: 1.8rem;
+	padding: 0 0.5rem;
+	border-radius: 0.375rem;
+	font-size: 0.72rem;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.expires-cell {
+	white-space: normal;
+}
+
+.expiry-editor {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	min-width: 0;
+	font-size: 0.75rem;
+}
+
+.expiry-fields-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 0.3rem;
+	min-width: 0;
+}
+
+.expiry-field-row {
+	display: grid;
+	grid-template-columns: 3rem minmax(0, 1fr);
+	align-items: center;
+	gap: 0.35rem;
+	min-width: 0;
+}
+
+.expiry-field-row span {
+	font-size: 0.7rem;
+	opacity: 0.75;
+	white-space: nowrap;
+}
+
+.expiry-input {
+	width: 100%;
+	min-width: 0;
+	height: 1.75rem;
+	padding: 0 0.4rem;
+	text-align: left;
+}
+
+.expiry-wide-btn {
+	width: 100%;
+	height: 1.75rem;
+	min-height: 1.75rem;
+	padding: 0 0.4rem;
+	border-radius: 0.375rem;
+	font-size: 0.72rem;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.expiry-action-row {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.3rem;
+}
+
+.expiry-action-btn {
+	height: 1.75rem;
+	min-height: 1.75rem;
+	padding: 0 0.4rem;
+	border-radius: 0.375rem;
+	font-size: 0.72rem;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.actions-cell {
+	white-space: normal;
+}
+
+.actions-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.35rem;
+	align-items: center;
+}
+
+.table-action-btn {
+	height: 1.9rem;
+	min-height: 1.9rem;
+	padding: 0 0.45rem;
+	border-radius: 0.375rem;
+	font-size: 0.76rem;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.actions-delete-btn {
+	grid-column: 1 / -1;
+}
+
+@media (min-width: 1400px) {
+	.manage-table {
+		min-width: 1360px;
+	}
+
+	.title-text {
+		max-width: 34ch;
+	}
+
+	.link-text {
+		max-width: 30ch;
+	}
+}
+
+@media (max-width: 980px) {
+	.manage-header {
+		padding-top: 0.25rem;
+	}
+
+	.manage-toolbar {
+		align-items: stretch;
+	}
+
+	.manage-search-input,
+	.manage-filter-select,
+	.manage-refresh-btn {
+		width: 100%;
+		flex: 1 1 100%;
+		margin-left: 0;
+	}
 }
 </style>

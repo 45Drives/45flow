@@ -41,7 +41,7 @@ export type RsyncOpts = {
   apiToken?: string
 }
 export type LinkType = 'upload' | 'download' | 'collection' | 'combined'
-export type Status = 'active' | 'expired' | 'disabled'
+export type Status = 'active' | 'expired' | 'disabled' | 'archived'
 
 export type LinkItem = {
   id: number | string
@@ -54,6 +54,7 @@ export type LinkItem = {
   createdAt: number
   expiresAt: number | null
   isDisabled: boolean
+  archived?: boolean
   passwordRequired?: boolean
   access_mode?: 'open' | 'restricted'
   auth_mode?: 'none' | 'password'

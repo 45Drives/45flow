@@ -262,6 +262,7 @@ import { ref, computed, watch } from 'vue'
 import { PencilIcon } from '@heroicons/vue/24/outline'
 import type { Comment } from '../../composables/useComments'
 import { useApi } from '../../composables/useApi'
+import { useTimeFormat } from '../../composables/useTimeFormat'
 
 const props = defineProps<{
   modelValue: boolean
@@ -360,9 +361,11 @@ function formatTimecode(seconds: number | null): string {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`
 }
 
+const { hour12 } = useTimeFormat()
+
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr)
-  return date.toLocaleString()
+  return date.toLocaleString(undefined, { hour12: hour12.value })
 }
 
 async function loadFrame() {

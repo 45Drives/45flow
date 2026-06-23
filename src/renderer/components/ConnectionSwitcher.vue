@@ -12,13 +12,14 @@
       @click="toggle"
       title="Switch active server for operations"
     >
-      <span class="inline-block w-2 h-2 rounded-full" :class="{
+      <span v-if="isAllServers" class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-500 text-white text-[9px] font-bold">{{ allConnectedServers.length }}</span>
+      <span v-else class="inline-block w-2 h-2 rounded-full" :class="{
         'bg-green-500': activeConnection?.status === 'connected',
         'bg-red-500': activeConnection?.status === 'disconnected' || activeConnection?.status === 'error',
         'bg-yellow-500': activeConnection?.status === 'checking'
       }" />
-      <span class="text-sm font-medium w-[120px] truncate">
-        {{ activeConnection?.name || 'No Connection' }}
+      <span class="text-sm font-medium w-[120px] truncate text-default">
+        {{ isAllServers ? 'All Servers' : (activeConnection?.name || 'No Connection') }}
       </span>
       <svg
         class="w-4 h-4 transition-transform flex-shrink-0"
@@ -44,23 +45,38 @@
           <div class="p-3 border-b border-default">
             <div class="text-xs text-muted mb-2">Active Server (for operations)</div>
             <div class="max-h-60 overflow-y-auto space-y-1">
+              <!-- All Servers option (only if multiple connected) -->
+              <button
+                v-if="allConnectedServers.length > 1"
+                class="w-full flex items-center gap-2 px-3 py-2 rounded-md text-left transition-colors"
+                :class="{
+                  'bg-primary text-white': isAllServers,
+                  'hover:bg-well': !isAllServers
+                }"
+                @click="switchToAll"
+              >
+                <span class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold"
+                  :class="isAllServers ? 'bg-white/20 text-white' : 'bg-blue-500 text-white'">{{ allConnectedServers.length }}</span>
+                <span class="flex-1 text-sm truncate text-default">All Servers</span>
+              </button>
+
               <button
                 v-for="conn in sortedConnections"
                 :key="conn.connectionId"
                 class="w-full flex items-center gap-2 px-3 py-2 rounded-md text-left transition-colors"
                 :class="{
-                  'bg-primary text-white': conn.isActive,
-                  'hover:bg-well': !conn.isActive
+                  'bg-primary text-white': !isAllServers && conn.isActive,
+                  'hover:bg-well': isAllServers || !conn.isActive
                 }"
                 @click="switchTo(conn.connectionId)"
               >
                 <span class="inline-block w-2 h-2 rounded-full" :class="{
-                  'bg-green-300': conn.status === 'connected' && conn.isActive,
-                  'bg-green-500': conn.status === 'connected' && !conn.isActive,
+                  'bg-green-300': conn.status === 'connected' && !isAllServers && conn.isActive,
+                  'bg-green-500': conn.status === 'connected' && (isAllServers || !conn.isActive),
                   'bg-red-500': conn.status === 'disconnected' || conn.status === 'error',
                   'bg-yellow-500': conn.status === 'checking'
                 }" />
-                <span class="flex-1 text-sm text-default truncate">{{ conn.name }}</span>
+                <span class="flex-1 text-sm text-white truncate">{{ conn.name }}</span>
                 <span v-if="conn.isFavorite" class="text-yellow-500">★</span>
               </button>
             </div>
@@ -93,11 +109,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useConnections } from '../composables/useConnections'
+import { useServerFilter } from '../composables/useServerFilter'
 import { useRouter } from 'vue-router'
 import ConnectionManagerModal from './modals/ConnectionManagerModal.vue'
 
 const router = useRouter()
 const { sortedConnections, activeConnection, setActive } = useConnections()
+const { selectedFilter, setFilter, allConnectedServers } = useServerFilter()
+
+const isAllServers = computed(() => selectedFilter.value === 'all' && allConnectedServers.value.length > 1)
 
 const isOpen = ref(false)
 const showManager = ref(false)
@@ -117,7 +137,13 @@ async function toggle() {
   }
 }
 
+function switchToAll() {
+  setFilter('all')
+  isOpen.value = false
+}
+
 function switchTo(connectionId: string) {
+  setFilter(connectionId)
   setActive(connectionId)
   isOpen.value = false
 }

@@ -1158,15 +1158,6 @@ onMounted(async () => {
 
         window.appLog?.info('auto-login.restored', { ip: saved.serverIp, connectionId: actualConnectionId })
 
-        if (restoredLicense?.licenseFallback) {
-            pushNotification(new Notification(
-                'License Expired',
-                'Your license has expired. Premium features remain available, but app updates are paused until you renew.',
-                'warning',
-                9000,
-            ))
-        }
-
         statusLine.value = ''
         isBusy.value = false
 

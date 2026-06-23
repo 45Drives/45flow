@@ -3071,6 +3071,8 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
       
       markTransfer(id, 'completed')
     } else if (process.platform === 'win32') {
+      inflightRsync.delete(id)
+      removeQueuedMatch(src, opts.host, opts.destDir)
       event.sender.send(`upload:progress:${id}`, { percent: 0, raw: 'starting' })
 
       // NOTE: runWinSftp expects SSH port (22) normally.

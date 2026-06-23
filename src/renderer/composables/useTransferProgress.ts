@@ -581,14 +581,10 @@ export function useTransferProgress() {
         _state.tasks.filter(t => isActiveTask(t)).length
     )
 
-    // Auto-open drawer when transfers start
+    // Auto-close drawer only when all tasks are cleared (no auto-open)
     watch(
         () => hasActive.value,
-        (active, wasActive) => {
-            // rising edge: inactive -> active
-            if (active && !wasActive && !_state.suppressAutoOpen) {
-                _state.open = true
-            }
+        (active) => {
             if (!active) {
                 // Keep the drawer open if there are finished/failed tasks to review.
                 if (_state.tasks.length === 0) _state.open = false
@@ -1456,6 +1452,9 @@ export function useTransferProgress() {
             if (!Array.isArray(list) || !list.length) return
 
             for (const t of list) {
+                // Skip transfers that are already in a terminal state
+                if (t.status === 'completed' || t.status === 'failed' || t.status === 'canceled') continue
+
                 // Skip if we already have a task for this id
                 if (_state.tasks.some(x => x.taskId === t.id)) continue
 

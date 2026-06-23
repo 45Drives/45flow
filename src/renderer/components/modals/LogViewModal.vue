@@ -284,6 +284,7 @@
 <script setup lang="ts">
 import { CardContainer } from "@45drives/houston-common-ui";
 import { computed, onMounted, ref, watch } from "vue";
+import { useTimeFormat } from "../../composables/useTimeFormat";
 import { useTourManager, type TourStep } from "../../composables/useTourManager";
 import { useOnboarding } from "../../composables/useOnboarding";
 import { useApi } from "../../composables/useApi";
@@ -530,10 +531,12 @@ const displayRows = computed<DisplayRow[]>(() => {
   return groupedRows(rows);
 });
 
+const { hour12 } = useTimeFormat()
+
 function formatTs(ts: string) {
   const d = new Date(ts);
   if (Number.isNaN(d.getTime())) return ts;
-  return d.toLocaleString();
+  return d.toLocaleString(undefined, { hour12: hour12.value });
 }
 
 function switchSource(newSource: LogSource) {

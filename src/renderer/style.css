@@ -882,11 +882,17 @@
 .btn-primary:disabled,
 .btn-secondary.disabled,
 .btn-primary.disabled {
-  background-color: #d3d3d3 !important;
+  background: #d3d3d3 !important;
   border-color: #d3d3d3 !important;
   color: #6c757d !important;
   cursor: not-allowed;
   opacity: 0.65;
+}
+
+.btn-primary:disabled:hover,
+.btn-secondary:disabled:hover {
+  background: #d3d3d3 !important;
+  border-color: #d3d3d3 !important;
 }
 
 /* Helpers */
@@ -1163,6 +1169,12 @@ textarea:focus-visible {
   border-color: #f3d49d;
 }
 
+.ss-chip--danger {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #f9a8a8;
+}
+
 .ss-chip--muted {
   color: #4b5563;
   background: #eceff4;
@@ -1185,6 +1197,12 @@ textarea:focus-visible {
   color: #f4cf8b;
   background: color-mix(in srgb, #f59e0b 20%, transparent);
   border-color: color-mix(in srgb, #f59e0b 42%, transparent);
+}
+
+.dark .ss-chip--danger {
+  color: #fca5a5;
+  background: color-mix(in srgb, #ef4444 18%, transparent);
+  border-color: color-mix(in srgb, #ef4444 44%, transparent);
 }
 
 .dark .ss-chip--muted {

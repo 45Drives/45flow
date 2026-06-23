@@ -46,7 +46,7 @@
                                             <code class="block truncate" :title="`${r.name} → ${r.mountpoint}`">{{
                                                 r.mountpoint }}</code>
                                         </div>
-                                        <div class="flex gap-2 flex-shrink-0">
+                                        <div class="flex gap-2 shrink-0">
                                             <button class="btn btn-primary" @click="chooseProject(r.mountpoint)">Select</button>
                                         </div>
                                     </div>
@@ -62,7 +62,7 @@
                                         <div class="min-w-0 flex-1">
                                             <code class="block truncate" :title="currentRoot">{{ currentRoot }}</code>
                                         </div>
-                                        <div class="flex gap-2 flex-shrink-0">
+                                        <div class="flex gap-2 shrink-0">
                                             <button class="btn btn-primary" @click="chooseProject(currentRoot)">Select</button>
                                         </div>
                                     </div>
@@ -111,7 +111,7 @@
 
                                 <div v-show="showSelected" class="max-h-40 overflow-auto min-w-0">
                                     <div v-for="(f, i) in files" :key="f"
-                                        class="grid items-center [grid-template-columns:minmax(0,1fr)_auto] border-t border-default text-sm min-w-0">
+                                        class="grid items-center grid-cols-[minmax(0,1fr)_auto] border-t border-default text-sm min-w-0">
                                         <div class="relative px-3 py-2 rounded-md bg-default min-w-0">
                                             <span aria-hidden="true"
                                                 class="pointer-events-none absolute inset-0 rounded-md bg-green-500/50 animate-pulse z-0"></span>
@@ -131,7 +131,7 @@
                                         <div data-tour="share-expiry" class="flex flex-col gap-3 min-w-0">
                                             <!-- Row 1: label + input + select (always one row; inputs stay together) -->
                                             <div class="flex items-center gap-3 min-w-0">
-                                                <label class="font-semibold whitespace-nowrap flex-shrink-0">Expires
+                                                <label class="font-semibold whitespace-nowrap shrink-0">Expires
                                                     in:</label>
 
                                                 <div class="flex items-center gap-2 min-w-0 flex-1">
@@ -333,6 +333,9 @@
                                 </span>
                                 <span v-else>Generate Flow link</span>
                             </button>
+                        </div>
+                        <div v-if="files.length === 0" class="text-xs text-red-400 mt-2">
+                            Select at least one file to generate a share link.
                         </div>
                         <div v-if="hasActiveTranscodeForSelection" class="text-xs text-amber-700 dark:text-amber-300 mt-2">
                             A transcode is already running for this selection. You can still generate a link and choose whether to overwrite or keep existing/in-progress outputs.

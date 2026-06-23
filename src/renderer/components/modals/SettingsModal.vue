@@ -219,7 +219,7 @@
                                         <span>{{ issue.message }}</span>
                                     </div>
                                 </div>
-                                <div class="text-xs text-accent mt-2">Checked: {{ publicSharingCheckResult.checkedAt ? new Date(publicSharingCheckResult.checkedAt).toLocaleString() : '' }}</div>
+                                <div class="text-xs text-accent mt-2">Checked: {{ publicSharingCheckResult.checkedAt ? new Date(publicSharingCheckResult.checkedAt).toLocaleString(undefined, { hour12: hour12 }) : '' }}</div>
                             </div>
 
                             <!-- Repair Results -->
@@ -2161,7 +2161,7 @@ const cleanupMissingFiles = computed(() =>
     Array.isArray(cleanupResult.value?.missingFiles) ? cleanupResult.value.missingFiles : []
 );
 const cleanupLastRunAtLabel = computed(() =>
-    cleanupLastRunAt.value ? new Date(cleanupLastRunAt.value).toLocaleString() : "—"
+    cleanupLastRunAt.value ? new Date(cleanupLastRunAt.value).toLocaleString(undefined, { hour12: hour12.value }) : "—"
 );
 
 // Read-only server-reported effective base (when auto)
@@ -2582,7 +2582,7 @@ const publicSharingFirewallLabel = computed(() => {
 });
 
 function formatBootstrapTime(iso: string) {
-    try { return new Date(iso).toLocaleString(); }
+    try { return new Date(iso).toLocaleString(undefined, { hour12: hour12.value }); }
     catch { return iso; }
 }
 

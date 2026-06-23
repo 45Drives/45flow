@@ -113,6 +113,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick, computed } from 'vue'
+import { useTimeFormat } from '../composables/useTimeFormat'
 defineOptions({ name: 'TreeNode' })
 
 type TogglePayload = { path: string; isDir: boolean }
@@ -230,13 +231,15 @@ function fmtBytes(n?: number) {
     return `${x.toFixed(x >= 10 || i === 0 ? 0 : 1)} ${u[i]}`
 }
 
+const { hour12 } = useTimeFormat()
+
 function fmtDate(ms?: number) {
     if (!Number.isFinite(ms!)) return '—'
     const d = new Date(ms!)
     if (Number.isNaN(d.getTime())) return '—'
     return new Intl.DateTimeFormat(undefined, {
         year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', hour12: false,
+        hour: '2-digit', minute: '2-digit', hour12: hour12.value,
     }).format(d)
 }
 
@@ -244,7 +247,7 @@ function fmtDateFull(ms?: number) {
     if (!Number.isFinite(ms!)) return '—'
     const d = new Date(ms!)
     if (Number.isNaN(d.getTime())) return '—'
-    return d.toLocaleString() 
+    return d.toLocaleString(undefined, { hour12: hour12.value }) 
 }
 
 // --- Shift-click range selection ---

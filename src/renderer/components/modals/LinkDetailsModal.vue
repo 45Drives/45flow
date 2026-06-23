@@ -120,11 +120,11 @@
             </div>
             <div>
               <span class="text-default font-bold">Created:</span>
-              <div class="opacity-90">{{ link ? new Date(link.createdAt).toLocaleString() : '—' }}</div>
+              <div class="opacity-90">{{ link ? new Date(link.createdAt).toLocaleString(undefined, { hour12: hour12 }) : '—' }}</div>
             </div>
             <div>
               <span class="text-default font-bold">Expires:</span>
-              <div class="opacity-90">{{ link?.expiresAt ? new Date(link.expiresAt).toLocaleString() : 'Never' }}</div>
+              <div class="opacity-90">{{ link?.expiresAt ? new Date(link.expiresAt).toLocaleString(undefined, { hour12: hour12 }) : 'Never' }}</div>
             </div>
           </div>
         </section>
@@ -582,7 +582,7 @@
                       }}</td>
                     <td v-if="link?.type === 'upload'" class="px-3 py-2 border border-default">{{ f.ip || '—' }}</td>
                     <td v-if="link?.type === 'upload'" class="px-3 py-2 border border-default">
-                      {{ f.ts ? new Date(f.ts).toLocaleString() : '—' }}
+                      {{ f.ts ? new Date(f.ts).toLocaleString(undefined, { hour12: hour12 }) : '—' }}
                     </td>
                   </tr>
                 </tbody>
@@ -700,7 +700,7 @@
                   <template v-else v-for="v in versions" :key="`v-${v.asset_version_id}`">
                     <tr class="border-t border-default">
                       <td class="px-3 py-2 border border-default">v{{ v.version_index }}</td>
-                      <td class="px-3 py-2 border border-default">{{ v.created_at ? new Date(v.created_at).toLocaleString() : '—' }}</td>
+                      <td class="px-3 py-2 border border-default">{{ v.created_at ? new Date(v.created_at).toLocaleString(undefined, { hour12: hour12 }) : '—' }}</td>
                       <td class="px-3 py-2 border border-default">{{ snapshotName(v.snapshot_rel) }}</td>
                       <td class="px-3 py-2 text-right border border-default">{{ fmtBytes(v.snapshot_size_bytes) }}</td>
                       <td class="px-3 py-2 border border-default text-right">
@@ -910,6 +910,7 @@
 <script setup lang="ts">
 import { computed, inject, ref, watch, toRaw } from 'vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { useTimeFormat } from '../../composables/useTimeFormat'
 import { faTrash } from '@fortawesome/free-solid-svg-icons'
 import { ChatBubbleLeftRightIcon } from '@heroicons/vue/24/outline'
 import AddUsersModal from './AddUsersModal.vue'
@@ -2278,9 +2279,11 @@ function compactUserAgent(ua?: string | null) {
   return s.length > 36 ? `${s.slice(0, 36)}…` : s
 }
 
+const { hour12 } = useTimeFormat()
+
 function formatTs(v: number) {
   if (!Number.isFinite(v) || v <= 0) return '—'
-  return new Date(v).toLocaleString()
+  return new Date(v).toLocaleString(undefined, { hour12: hour12.value })
 }
 
 function actorLabel(a: AuditActivityRow) {
@@ -2360,8 +2363,8 @@ function activitySummary(a: AuditActivityRow) {
     if (a.type === 'expiry_changed') {
       const fromMs = Number(typed.from_ms)
       const toMs = Number(typed.to_ms)
-      const from = Number.isFinite(fromMs) && fromMs > 0 ? new Date(fromMs).toLocaleString() : 'Never'
-      const to = Number.isFinite(toMs) && toMs > 0 ? new Date(toMs).toLocaleString() : 'Never'
+      const from = Number.isFinite(fromMs) && fromMs > 0 ? new Date(fromMs).toLocaleString(undefined, { hour12: hour12.value }) : 'Never'
+      const to = Number.isFinite(toMs) && toMs > 0 ? new Date(toMs).toLocaleString(undefined, { hour12: hour12.value }) : 'Never'
       return `${from} -> ${to}`
     }
 

@@ -88,6 +88,7 @@
 </template>
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
+import { useTimeFormat } from '../composables/useTimeFormat'
 defineOptions({ name: 'IconBrowserGrid' })
 import { FolderIcon, FileIcon, ImageIcon, VideoIcon, AudioIcon } from "../assets/icons/index"
 
@@ -206,13 +207,14 @@ function fmtBytes(n?: number) {
     while (x >= 1024 && i < u.length - 1) { x /= 1024; i++ }
     return `${x.toFixed(x >= 10 || i === 0 ? 0 : 1)} ${u[i]}`
 }
+const { hour12: hour12Pref } = useTimeFormat()
 function fmtDate(ms?: number) {
     if (!Number.isFinite(ms!)) return '—'
     const d = new Date(ms!)
     if (Number.isNaN(d.getTime())) return '—'
     return new Intl.DateTimeFormat(undefined, {
         year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', hour12: false,
+        hour: '2-digit', minute: '2-digit', hour12: hour12Pref.value,
     }).format(d)
 }
 

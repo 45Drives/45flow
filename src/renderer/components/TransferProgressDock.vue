@@ -1,11 +1,12 @@
 <!-- src/renderer/components/TransferProgressDock.vue -->
 <template>
     <!-- Single wrapper: tab + panel slide together -->
-    <div class="drawer-wrapper" :class="{ 'drawer-wrapper--open': state.open }">
+    <div ref="wrapperRef" class="drawer-wrapper" :class="{ 'drawer-wrapper--open': state.open }">
 
         <!-- Tab (absolutely positioned on the left edge of the wrapper) -->
         <button
             class="drawer-tab"
+            :class="{ 'drawer-tab--highlight': tabHighlight }"
             data-tour="transfer-dock-tab"
             @click="setOpen(!state.open)"
             :title="state.open ? 'Close transfers panel' : 'Open transfers panel'"
@@ -133,7 +134,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, watch, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { useConnections } from '../composables/useConnections'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
@@ -156,6 +157,32 @@ const {
 
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()
+
+// ── Highlight tab when active count changes ──
+const tabHighlight = ref(false)
+watch(activeCount, (newVal, oldVal) => {
+    if (newVal > oldVal) {
+        tabHighlight.value = true
+        setTimeout(() => { tabHighlight.value = false }, 1500)
+    }
+})
+
+// ── Click outside to close ──
+const wrapperRef = ref<HTMLElement | null>(null)
+
+function onDocumentClick(e: MouseEvent) {
+    if (!state.open) return
+    if (!wrapperRef.value) return
+    if (wrapperRef.value.contains(e.target as Node)) return
+    setOpen(false)
+}
+
+onMounted(() => {
+    document.addEventListener('mousedown', onDocumentClick, true)
+})
+onBeforeUnmount(() => {
+    document.removeEventListener('mousedown', onDocumentClick, true)
+})
 
 const transferDockTourSteps: TourStep[] = [
 	{
@@ -589,6 +616,17 @@ function dismissGroup(groupKey: string) {
 
 .drawer-tab:hover {
     background: var(--btn-primary-hover-fill);
+}
+
+/* Highlight pulse when new transfer added */
+.drawer-tab--highlight {
+    animation: tab-pulse 1.5s ease;
+}
+
+@keyframes tab-pulse {
+    0%   { background: var(--btn-primary-fill); box-shadow: -2px 0 8px rgba(0, 0, 0, 0.18); }
+    20%  { background: #22c55e; box-shadow: -2px 0 16px rgba(34, 197, 94, 0.5); }
+    100% { background: var(--btn-primary-fill); box-shadow: -2px 0 8px rgba(0, 0, 0, 0.18); }
 }
 
 .drawer-tab-chevron {

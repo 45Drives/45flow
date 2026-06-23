@@ -160,7 +160,7 @@
 
 								<div v-show="showSelected" class="max-h-40 overflow-auto min-w-0">
 									<div v-for="(f, i) in shareFiles" :key="f"
-										class="grid items-center [grid-template-columns:minmax(0,1fr)_auto] border-t border-default text-sm min-w-0">
+										class="grid items-center grid-cols-[minmax(0,1fr)_auto] border-t border-default text-sm min-w-0">
 										<div class="relative px-3 py-2 rounded-md bg-default min-w-0">
 											<span aria-hidden="true"
 												class="pointer-events-none absolute inset-0 rounded-md bg-green-500/50 animate-pulse z-0"></span>
@@ -179,7 +179,7 @@
 								<template #expiry>
 									<div class="flex flex-col gap-3 min-w-0">
 										<div class="flex items-center gap-3 min-w-0">
-											<label class="font-semibold whitespace-nowrap flex-shrink-0">Expires in:</label>
+											<label class="font-semibold whitespace-nowrap shrink-0">Expires in:</label>
 											<div class="flex items-center gap-2 min-w-0 flex-1">
 												<input
 													type="number"
@@ -328,6 +328,9 @@
 									</span>
 									<span v-else>Generate Flow link</span>
 								</button>
+							</div>
+							<div v-if="opts.shareEnabled.value && shareFiles.length === 0" class="text-xs text-red-400 mt-2">
+								Select at least one file to generate a share link.
 							</div>
 
 							<div v-if="resultUrl" class="p-3 border rounded flex flex-col items-center mt-1 min-w-0">
