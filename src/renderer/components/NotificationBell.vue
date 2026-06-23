@@ -46,7 +46,8 @@
           <div
             v-for="item in history"
             :key="item.id"
-            class="px-4 py-2.5 hover:bg-well/50 transition-colors"
+            class="px-4 py-2.5 hover:bg-well/50 transition-colors cursor-pointer"
+            @click="toggleExpand(item.id)"
           >
             <div class="flex items-start gap-2">
               <span class="mt-0.5 w-2 h-2 rounded-full shrink-0" :class="levelDot(item.level)"></span>
@@ -55,7 +56,7 @@
                   <span class="text-xs font-medium text-default truncate">{{ item.title }}</span>
                   <span class="text-[10px] text-muted whitespace-nowrap">{{ timeAgo(item.timestamp) }}</span>
                 </div>
-                <p class="text-xs text-muted mt-0.5 line-clamp-2">{{ item.body }}</p>
+                <p class="text-xs text-muted mt-0.5" :class="expandedId === item.id ? '' : 'line-clamp-2'">{{ item.body }}</p>
               </div>
             </div>
           </div>
@@ -72,6 +73,11 @@ import { useNotificationCenter } from '../composables/useNotificationCenter'
 
 const { history, unreadCount, bellOpen, toggleBell, clearHistory } = useNotificationCenter()
 const bellRef = ref<HTMLElement | null>(null)
+const expandedId = ref<symbol | null>(null)
+
+function toggleExpand(id: symbol) {
+  expandedId.value = expandedId.value === id ? null : id
+}
 
 function levelDot(level: string) {
   switch (level) {
