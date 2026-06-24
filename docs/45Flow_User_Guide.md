@@ -418,7 +418,7 @@ A project is a named workspace that:
 
 Below the project list on the Dashboard, a collapsible **"Unassigned Links"** section shows all links that are not assigned to any project. This includes:
 
-- Links created via QuickShare (which don't require a project)
+- Links created via QuickShare without a Project selected
 - Links whose project was deleted
 - Links explicitly created without a project assignment
 
