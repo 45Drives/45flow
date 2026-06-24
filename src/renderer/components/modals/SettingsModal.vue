@@ -413,6 +413,12 @@
                                         </Switch>
                                     </div>
                                 </SettingRow>
+                                <SettingRow label="Default link list view" description="Choose which links are shown by default when viewing the Manage Links list.">
+                                    <select v-model="linkListDefault" class="text-sm bg-well border border-default rounded px-2 py-1">
+                                        <option value="">All Links</option>
+                                        <option value="active">Active Only</option>
+                                    </select>
+                                </SettingRow>
                             </div>
 
                             <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Path Defaults</p>
@@ -1434,6 +1440,7 @@ import { useOnboarding } from "../../composables/useOnboarding";
 import { useTimeFormat } from "../../composables/useTimeFormat";
 import { useClientTranscode } from "../../composables/useClientTranscode";
 import { useProjectMode } from "../../composables/useProjectMode";
+import { useLinkListDefault } from "../../composables/useLinkListDefault";
 import { useTourManager, type TourStep } from "../../composables/useTourManager";
 import { useTourPreferences } from "../../composables/useTourPreferences";
 import { appLog } from "../../composables/useLog";
@@ -1473,6 +1480,7 @@ const { onboarding, resetAll: resetOnboarding, markDone } = useOnboarding();
 const { hour12 } = useTimeFormat();
 const { enabled: clientTranscodeEnabled, preset: transcodePreset, hwAccel: hwAccelEnabled } = useClientTranscode();
 const { projectModeEnabled } = useProjectMode();
+const { linkListDefault } = useLinkListDefault();
 const { requestTour } = useTourManager();
 const { setCustomThemeColors, setCustomThemeEnabled } = useThemeFromAlias();
 const { toursDisabled } = useTourPreferences();

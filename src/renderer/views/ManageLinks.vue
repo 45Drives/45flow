@@ -61,11 +61,11 @@
 						</div>
 
 						<div class="bulk-actions-buttons">
-							<button class="btn btn-success bulk-action-btn" @click="bulkEnable">
+							<button v-if="selectionHasDisabled" class="btn btn-success bulk-action-btn" @click="bulkEnable">
 								Enable
 							</button>
 
-							<button class="btn btn-danger bulk-action-btn" @click="bulkDisable">
+							<button v-if="selectionHasEnabled" class="btn btn-danger bulk-action-btn" @click="bulkDisable">
 								Disable
 							</button>
 
@@ -75,6 +75,10 @@
 
 							<button class="btn btn-warning bulk-action-btn" @click="bulkArchive">
 								Archive
+							</button>
+
+							<button class="btn btn-primary bulk-action-btn bg-red-600! hover:bg-red-500!" @click="bulkDeleteOpen = true">
+								Delete
 							</button>
 
 							<button class="btn btn-secondary bulk-action-btn bulk-action-clear" @click="clearSelection">
@@ -479,7 +483,7 @@
 		</div>
 	</div>
 
-	<LinkDetailsModal v-model="showModal" :link="current" :apiFetch="apiFetch" @updated="applyLinkPatch" />
+	<LinkDetailsModal v-model="showModal" :link="current" :apiFetch="apiFetch" @updated="applyLinkPatch" @requestDelete="onRequestDeleteFromDetails" />
 
 	<Teleport to="body">
 		<div v-if="linkToDelete" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50"
@@ -622,6 +626,74 @@
 			</div>
 		</div>
 	</Teleport>
+
+	<!-- Bulk Delete Confirmation Modal -->
+	<Teleport to="body">
+		<div v-if="bulkDeleteOpen" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50"
+			@click.self="cancelBulkDelete">
+			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto bg-accent text-default">
+				<div class="flex items-center gap-2 mb-3">
+					<span class="text-red-500 dark:text-red-400 text-xl">!</span>
+					<h3 class="text-lg font-semibold text-red-600 dark:text-red-400">Delete {{ selectedIds.size }} Links</h3>
+				</div>
+
+				<div class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 mb-4">
+					<p class="text-sm text-red-700 dark:text-red-300 font-medium mb-2">
+						This action is irreversible and will permanently destroy:
+					</p>
+					<ul class="text-sm text-red-600 dark:text-red-300/80 list-disc list-inside space-y-1">
+						<li>All {{ selectedIds.size }} selected links</li>
+						<li>All activity history and access logs for each link</li>
+						<li>All user access permissions</li>
+					</ul>
+				</div>
+
+				<div class="border border-default rounded-lg p-3 mb-4 space-y-3">
+					<p class="text-sm font-medium">Optional: Clean up associated files</p>
+
+					<label class="flex items-start gap-2 cursor-pointer select-none">
+						<input type="checkbox" v-model="bulkDeleteGenerated" class="styled-checkbox mt-0.5" />
+						<div>
+							<span class="text-sm">Delete generated files</span>
+							<p class="text-xs text-default">Transcodes, proxy videos, HLS streams, watermarked images</p>
+						</div>
+					</label>
+
+					<label class="flex items-start gap-2 cursor-pointer select-none">
+						<input type="checkbox" v-model="bulkDeleteOriginals" class="styled-checkbox mt-0.5" />
+						<div>
+							<span class="text-sm text-red-600 dark:text-red-400 font-medium">Delete original source files</span>
+							<p class="text-xs text-red-500 dark:text-red-300/80">
+								The actual media files on disk. Cannot be recovered.
+							</p>
+						</div>
+					</label>
+
+					<div v-if="bulkDeleteOriginals" class="p-2 rounded bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700">
+						<p class="text-xs text-red-700 dark:text-red-300 font-medium">
+							Danger: original source files will be permanently deleted for each link where they are not shared with other links.
+						</p>
+					</div>
+				</div>
+
+				<label class="block text-sm text-default mb-1">
+					Type <strong class="text-red-600 dark:text-red-400">DELETE</strong> to confirm:
+				</label>
+				<input v-model="bulkDeleteConfirmText" type="text"
+					class="input-textlike w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-800 bg-default mb-4"
+					placeholder="DELETE" autocomplete="off" />
+
+				<div class="flex items-center justify-end gap-2">
+					<button class="btn btn-secondary px-4 py-2" @click="cancelBulkDelete">Cancel</button>
+					<button class="btn btn-primary px-4 py-2 bg-red-600! hover:bg-red-500!"
+						:disabled="bulkDeleteConfirmText !== 'DELETE'"
+						@click="executeBulkDelete">
+						Delete {{ selectedIds.size }} Links
+					</button>
+				</div>
+			</div>
+		</div>
+	</Teleport>
 </template>
 	
 <script setup lang="ts">
@@ -637,6 +709,7 @@ import LinkDetailsModal from "../components/modals/LinkDetailsModal.vue"
 import type { LinkItem, LinkType, Status } from '../typings/electron'
 import { useTime } from '../composables/useTime'
 import { useTimeFormat } from '../composables/useTimeFormat'
+import { useLinkListDefault } from '../composables/useLinkListDefault'
 type SortKey = 'title' | 'type' | 'url' | 'expires' | 'status' | 'access' | 'created'
 type SortDir = 'asc' | 'desc'
 
@@ -845,6 +918,9 @@ function getSelectedLinks(): LinkItem[] {
 	return rows.value.filter(r => selectedIds.value.has(r.id))
 }
 
+const selectionHasDisabled = computed(() => getSelectedLinks().some(l => l.isDisabled))
+const selectionHasEnabled = computed(() => getSelectedLinks().some(l => !l.isDisabled))
+
 async function bulkEnable() {
 	const links = getSelectedLinks()
 	let success = 0
@@ -949,6 +1025,46 @@ function cancelBulkExpiry() {
 	bulkExpiryOpen.value = false
 }
 
+// Bulk delete
+const bulkDeleteOpen = ref(false)
+const bulkDeleteGenerated = ref(false)
+const bulkDeleteOriginals = ref(false)
+const bulkDeleteConfirmText = ref('')
+
+function cancelBulkDelete() {
+	bulkDeleteOpen.value = false
+	bulkDeleteGenerated.value = false
+	bulkDeleteOriginals.value = false
+	bulkDeleteConfirmText.value = ''
+}
+
+async function executeBulkDelete() {
+	const links = getSelectedLinks()
+	let success = 0
+	let failed = 0
+	const deletedIds = new Set<number | string>()
+	for (const link of links) {
+		try {
+			const qs = new URLSearchParams()
+			if (bulkDeleteGenerated.value) qs.set('deleteGenerated', '1')
+			if (bulkDeleteOriginals.value) qs.set('deleteOriginals', '1')
+			const qsStr = qs.toString() ? `?${qs.toString()}` : ''
+			await apiFetch(`/api/links/${link.id}${qsStr}`, { method: 'DELETE' })
+			deletedIds.add(link.id)
+			success++
+		} catch { failed++ }
+	}
+	rows.value = rows.value.filter(r => !deletedIds.has(r.id))
+	cancelBulkDelete()
+	clearSelection()
+	pushNotification(new Notification(
+		'Bulk Delete',
+		`${success} link${success !== 1 ? 's' : ''} permanently deleted${failed ? `, ${failed} failed` : ''}.`,
+		failed ? 'warning' : 'success',
+		8000,
+	))
+}
+
 /* ----------- fetch/list endpoints ----------- */
 async function listLinks(params: { q?: string; type?: '' | LinkType; status?: '' | Status; limit?: number; offset?: number }) {
 	const qs = new URLSearchParams()
@@ -967,13 +1083,15 @@ async function patchLink(linkItem: any, body: any) {
 	return apiFetch(`/api/links/${linkItem.id}`, { method: 'PATCH', body: JSON.stringify(body) })
 }
 
+const { linkListDefault } = useLinkListDefault()
+
 /* ------------------- state ------------------- */
 const loading = ref(false)
 const error = ref<string | null>(null)
 const rows = ref<LinkItem[]>([])
 const q = ref('')
 const typeFilter = ref<'' | LinkType | 'review'>('')
-const statusFilter = ref<'' | Status>('active') // match “Currently Active Links” by default
+const statusFilter = ref<'' | Status>(linkListDefault.value)
 const fetchLimit = ref(200)
 const pageSize = ref(10)
 const currentPage = ref(1)
@@ -1254,6 +1372,11 @@ function confirmDelete(it: LinkItem) {
 	deleteLinkConfirmText.value = ''
 	deletePreview.value = null
 	loadDeletePreview(it)
+}
+
+function onRequestDeleteFromDetails(link: LinkItem) {
+	showModal.value = false
+	confirmDelete(link)
 }
 
 function cancelDelete() {

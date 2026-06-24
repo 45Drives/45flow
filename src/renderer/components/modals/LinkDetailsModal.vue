@@ -807,10 +807,23 @@
           </div>
         </section>
 
-      </div>
+        <!-- Danger Zone -->
+        <section v-if="!editMode" class="w-full">
+          <div class="border border-red-300 dark:border-red-800 rounded-lg p-3 mt-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <h4 class="font-semibold text-red-600 dark:text-red-400 text-sm">Danger Zone</h4>
+                <p class="text-xs opacity-70">Permanently delete this link and all associated data.</p>
+              </div>
+              <button class="btn btn-primary bg-red-600! hover:bg-red-500! px-3 py-1.5 text-sm"
+                @click="emit('requestDelete', link!)">
+                Delete Link
+              </button>
+            </div>
+          </div>
+        </section>
 
-      <!-- Files editor modal -->
-      <EditLinkFilesModal v-model="filesEditorOpen" :apiFetch="apiFetch"
+      </div>
         :initialPaths="draftFilePaths"
         :base="linkProjectBase" :startDir="linkStartDir" @apply="onApplyFilePaths" />
 
@@ -989,6 +1002,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
   (e: 'updated', payload: Partial<LinkItem> & { id: LinkItem['id'] }): void
+  (e: 'requestDelete', link: LinkItem): void
 }>()
 
 // Tour: trigger on first open

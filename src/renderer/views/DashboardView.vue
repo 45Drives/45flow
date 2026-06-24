@@ -44,7 +44,13 @@
 		<div v-else-if="!activeProject" class="dashboard-content-wrap" data-tour="project-list">
 			<div class="flex items-center justify-between gap-3 mb-3 px-1">
 				<h3 class="text-base font-semibold">Projects</h3>
-				<button class="btn btn-secondary text-xs px-3 py-1.5" @click="showCreateProjectModal = true">+ New Project</button>
+				<div class="flex items-center gap-3">
+					<label class="flex items-center gap-1.5 cursor-pointer select-none">
+						<input type="checkbox" v-model="showArchivedProjects" class="styled-checkbox" />
+						<span class="text-xs text-muted">Show Archived</span>
+					</label>
+					<button class="btn btn-secondary text-xs px-3 py-1.5" @click="showCreateProjectModal = true">+ New Project</button>
+				</div>
 			</div>
 
 			<div v-if="projectsLoading" class="flex items-center justify-center py-8">
@@ -62,15 +68,33 @@
 						v-for="project in pagedProjects"
 						:key="`${project._connectionId || 'local'}-${project.id}`"
 						class="project-card panel rounded-xl p-4 cursor-pointer border border-default bg-default"
-						:class="{ 'opacity-60': project.archived }"
+						:class="{ 'opacity-60': project.archived, 'opacity-70': project.is_disabled && !project.archived }"
 						@click="openProject(project)"
 					>
 						<div class="flex items-start justify-between gap-2 mb-2">
 							<div class="flex items-center gap-2 min-w-0">
-								<h4 class="font-semibold text-sm truncate">{{ project.name }}</h4>
+								<h4 class="font-semibold text-sm truncate" :class="{ 'text-muted': project.is_disabled }">{{ project.name }}</h4>
+								<span v-if="project.is_disabled" class="ss-chip ss-chip--danger text-xs shrink-0">DISABLED</span>
 								<span v-if="project.archived" class="ss-chip ss-chip--muted text-xs shrink-0">Archived</span>
 							</div>
 							<div class="flex items-center gap-1 shrink-0" @click.stop>
+								<button
+									class="btn btn-secondary px-2 py-1 text-xs"
+									title="Edit project name, directory, and description"
+									@click="openEditProjectFromCard(project)"
+								>Edit</button>
+								<button
+									v-if="!project.archived && !project.is_disabled"
+									class="btn btn-danger px-2 py-1 text-xs"
+									title="Disable this project and all its links"
+									@click="confirmCardDisable(project)"
+								>Disable</button>
+								<button
+									v-if="!project.archived && project.is_disabled"
+									class="btn btn-success px-2 py-1 text-xs"
+									title="Enable this project and re-enable all links"
+									@click="confirmCardEnable(project)"
+								>Enable</button>
 								<button
 									v-if="!project.archived"
 									class="btn btn-warning px-2 py-1 text-xs"
@@ -217,18 +241,19 @@
 							</div>
 							<button type="button" class="btn btn-danger px-3 py-2 text-sm"
 								title="Permanently remove the project. Links will be unlinked but not deleted."
-								@click="editModalConfirm = 'delete'">Delete Project</button>
+								@click="editModalConfirm = 'delete'; resetProjectDeleteState(); loadProjectDeletePreview(activeProject!)">Delete Project</button>
+						</div>
+
+						<hr class="border-default" />
+						<div class="flex items-center justify-end gap-2">
+							<button type="button" class="btn btn-secondary px-4 py-2"
+								@click="closeEditModal">Cancel</button>
+							<button type="submit" class="btn btn-primary px-4 py-2"
+								:disabled="!editProjectName.trim() || !editProjectRoot.trim() || savingProject">
+								{{ savingProject ? 'Saving…' : 'Save' }}
+							</button>
 						</div>
 					</form>
-					<hr class="border-default my-3" />
-					<div class="flex items-center justify-end gap-2 mt-2">
-						<button type="button" class="btn btn-secondary px-4 py-2"
-							@click="closeEditModal">Cancel</button>
-						<button type="submit" class="btn btn-primary px-4 py-2"
-							:disabled="!editProjectName.trim() || !editProjectRoot.trim() || savingProject">
-							{{ savingProject ? 'Saving…' : 'Save' }}
-						</button>
-					</div>
 				</template>
 
 				<!-- Confirm: Archive -->
@@ -275,14 +300,88 @@
 						<p class="text-sm text-red-700 dark:text-red-300 font-medium mb-2">This action is irreversible and will permanently destroy:</p>
 						<ul class="text-sm text-red-600 dark:text-red-300/80 list-disc list-inside space-y-1">
 							<li>The project and all its metadata</li>
-							<li>All links will be unlinked from this project</li>
-							<li>Links themselves will NOT be deleted</li>
+							<li>All links will be unlinked from this project (unless you choose to delete them below)</li>
 						</ul>
 					</div>
-					<p class="text-sm text-default mb-4">Permanently delete <strong>{{ activeProject.name }}</strong>?</p>
+
+					<div class="border border-default rounded-lg p-3 mb-4 space-y-3">
+						<p class="text-sm font-medium">Optional: Delete links and files</p>
+
+						<div v-if="projectDeletePreviewLoading" class="text-xs text-default flex items-center gap-2">
+							<span class="inline-block w-3 h-3 border-2 border-default border-t-transparent rounded-full animate-spin"></span>
+							Loading file info...
+						</div>
+
+						<template v-if="projectDeletePreview && !projectDeletePreviewLoading">
+							<label class="flex items-start gap-2 cursor-pointer select-none">
+								<input type="checkbox" v-model="projectDeleteLinks" class="styled-checkbox mt-0.5" />
+								<div>
+									<span class="text-sm">Delete all {{ projectDeletePreview.summary.totalLinks }} link(s) in this project</span>
+									<p class="text-xs text-default">Permanently removes all links, their activity history, and access permissions</p>
+								</div>
+							</label>
+
+							<template v-if="projectDeleteLinks && projectDeletePreview.summary.totalFiles > 0">
+								<div class="text-xs text-default space-y-1 ml-5">
+									<p>{{ projectDeletePreview.summary.totalFiles }} file(s) across all links</p>
+									<p v-if="projectDeletePreview.summary.sharedFiles > 0" class="text-amber-600 dark:text-amber-400">
+										{{ projectDeletePreview.summary.sharedFiles }} file(s) shared with links outside this project — will be kept
+									</p>
+								</div>
+
+								<label class="flex items-start gap-2 cursor-pointer select-none ml-5">
+									<input type="checkbox" v-model="projectDeleteGenerated" class="styled-checkbox mt-0.5" />
+									<div>
+										<span class="text-sm">Delete generated files</span>
+										<p class="text-xs text-default">
+											Transcodes, proxy videos, HLS streams, watermarked images
+											({{ formatBytes(projectDeletePreview.summary.totalGeneratedBytes) }})
+										</p>
+									</div>
+								</label>
+
+								<label class="flex items-start gap-2 cursor-pointer select-none ml-5">
+									<input type="checkbox" v-model="projectDeleteOriginals" class="styled-checkbox mt-0.5" />
+									<div>
+										<span class="text-sm text-red-600 dark:text-red-400 font-medium">Delete original source files</span>
+										<p class="text-xs text-red-500 dark:text-red-300/80">
+											The actual media files on disk. Cannot be recovered.
+											({{ formatBytes(projectDeletePreview.summary.totalOriginalBytes) }})
+										</p>
+									</div>
+								</label>
+
+								<div v-if="projectDeleteOriginals" class="p-2 rounded bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 ml-5">
+									<p class="text-xs text-red-700 dark:text-red-300 font-medium">
+										Danger: this will permanently delete the original source files from disk.
+									</p>
+									<div v-if="projectDeletePreview.files.filter((f: any) => !f.sharedWithOtherLinks).length > 0"
+										class="mt-2 max-h-24 overflow-y-auto">
+										<p class="text-xs text-default mb-1">Files that will be deleted:</p>
+										<ul class="text-xs text-red-600 dark:text-red-200/70 list-disc list-inside">
+											<li v-for="f in projectDeletePreview.files.filter((f: any) => !f.sharedWithOtherLinks)"
+												:key="f.id" class="truncate">
+												{{ f.relPath }} ({{ formatBytes(f.originalBytes) }})
+											</li>
+										</ul>
+									</div>
+								</div>
+							</template>
+						</template>
+					</div>
+
+					<label class="block text-sm text-default mb-1">
+						Type <strong class="text-red-600 dark:text-red-400">DELETE</strong> to confirm:
+					</label>
+					<input v-model="projectDeleteConfirmText" type="text"
+						class="input-textlike w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-800 bg-default mb-4"
+						placeholder="DELETE" autocomplete="off" />
+
 					<div class="flex items-center justify-end gap-2">
 						<button class="btn btn-secondary px-4 py-2" @click="editModalConfirm = null">Back</button>
-						<button class="btn btn-danger px-4 py-2" @click="deleteProject">Delete</button>
+						<button class="btn btn-primary px-4 py-2 bg-red-600! hover:bg-red-500!"
+							:disabled="projectDeleteConfirmText !== 'DELETE'"
+							@click="deleteProject">Delete Permanently</button>
 					</div>
 				</template>
 
@@ -338,20 +437,98 @@
 	<!-- Card-level Delete Confirmation Modal -->
 	<Teleport to="body">
 		<div v-if="cardActionProject && cardAction === 'delete'" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50" @click.self="clearCardAction()">
-			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 text-default bg-accent">
+			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto text-default bg-accent">
 				<h3 class="text-lg font-semibold mb-2 text-red-600 dark:text-red-400">Delete Project</h3>
 				<div class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 mb-4">
 					<p class="text-sm text-red-700 dark:text-red-300 font-medium mb-2">This action is irreversible and will permanently destroy:</p>
 					<ul class="text-sm text-red-600 dark:text-red-300/80 list-disc list-inside space-y-1">
 						<li>The project and all its metadata</li>
-						<li>All links will be unlinked from this project</li>
-						<li>Links themselves will NOT be deleted</li>
+						<li>All links will be unlinked from this project (unless you choose to delete them below)</li>
 					</ul>
 				</div>
-				<p class="text-sm text-default mb-4">Permanently delete <strong>{{ cardActionProject.name }}</strong>?</p>
+
+				<p class="text-sm text-default mb-3">
+					Deleting <strong>{{ cardActionProject.name }}</strong>
+				</p>
+
+				<div class="border border-default rounded-lg p-3 mb-4 space-y-3">
+					<p class="text-sm font-medium">Optional: Delete links and files</p>
+
+					<div v-if="projectDeletePreviewLoading" class="text-xs text-default flex items-center gap-2">
+						<span class="inline-block w-3 h-3 border-2 border-default border-t-transparent rounded-full animate-spin"></span>
+						Loading file info...
+					</div>
+
+					<template v-if="projectDeletePreview && !projectDeletePreviewLoading">
+						<label class="flex items-start gap-2 cursor-pointer select-none">
+							<input type="checkbox" v-model="projectDeleteLinks" class="styled-checkbox mt-0.5" />
+							<div>
+								<span class="text-sm">Delete all {{ projectDeletePreview.summary.totalLinks }} link(s) in this project</span>
+								<p class="text-xs text-default">Permanently removes all links, their activity history, and access permissions</p>
+							</div>
+						</label>
+
+						<template v-if="projectDeleteLinks && projectDeletePreview.summary.totalFiles > 0">
+							<div class="text-xs text-default space-y-1 ml-5">
+								<p>{{ projectDeletePreview.summary.totalFiles }} file(s) across all links</p>
+								<p v-if="projectDeletePreview.summary.sharedFiles > 0" class="text-amber-600 dark:text-amber-400">
+									{{ projectDeletePreview.summary.sharedFiles }} file(s) shared with links outside this project — will be kept
+								</p>
+							</div>
+
+							<label class="flex items-start gap-2 cursor-pointer select-none ml-5">
+								<input type="checkbox" v-model="projectDeleteGenerated" class="styled-checkbox mt-0.5" />
+								<div>
+									<span class="text-sm">Delete generated files</span>
+									<p class="text-xs text-default">
+										Transcodes, proxy videos, HLS streams, watermarked images
+										({{ formatBytes(projectDeletePreview.summary.totalGeneratedBytes) }})
+									</p>
+								</div>
+							</label>
+
+							<label class="flex items-start gap-2 cursor-pointer select-none ml-5">
+								<input type="checkbox" v-model="projectDeleteOriginals" class="styled-checkbox mt-0.5" />
+								<div>
+									<span class="text-sm text-red-600 dark:text-red-400 font-medium">Delete original source files</span>
+									<p class="text-xs text-red-500 dark:text-red-300/80">
+										The actual media files on disk. Cannot be recovered.
+										({{ formatBytes(projectDeletePreview.summary.totalOriginalBytes) }})
+									</p>
+								</div>
+							</label>
+
+							<div v-if="projectDeleteOriginals" class="p-2 rounded bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 ml-5">
+								<p class="text-xs text-red-700 dark:text-red-300 font-medium">
+									Danger: this will permanently delete the original source files from disk.
+								</p>
+								<div v-if="projectDeletePreview.files.filter((f: any) => !f.sharedWithOtherLinks).length > 0"
+									class="mt-2 max-h-24 overflow-y-auto">
+									<p class="text-xs text-default mb-1">Files that will be deleted:</p>
+									<ul class="text-xs text-red-600 dark:text-red-200/70 list-disc list-inside">
+										<li v-for="f in projectDeletePreview.files.filter((f: any) => !f.sharedWithOtherLinks)"
+											:key="f.id" class="truncate">
+											{{ f.relPath }} ({{ formatBytes(f.originalBytes) }})
+										</li>
+									</ul>
+								</div>
+							</div>
+						</template>
+					</template>
+				</div>
+
+				<label class="block text-sm text-default mb-1">
+					Type <strong class="text-red-600 dark:text-red-400">DELETE</strong> to confirm:
+				</label>
+				<input v-model="projectDeleteConfirmText" type="text"
+					class="input-textlike w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-800 bg-default mb-4"
+					placeholder="DELETE" autocomplete="off" />
+
 				<div class="flex items-center justify-end gap-2">
 					<button class="btn btn-secondary px-4 py-2" @click="clearCardAction()">Cancel</button>
-					<button class="btn btn-danger px-4 py-2" @click="deleteProject">Delete</button>
+					<button class="btn btn-primary px-4 py-2 bg-red-600! hover:bg-red-500!"
+						:disabled="projectDeleteConfirmText !== 'DELETE'"
+						@click="deleteProject">Delete Permanently</button>
 				</div>
 			</div>
 		</div>
@@ -426,6 +603,7 @@ interface Project {
 	root_dir: string
 	description: string | null
 	archived: number
+	is_disabled: number
 	link_count: number
 	active_count: number
 	expired_count: number
@@ -438,6 +616,7 @@ interface Project {
 const projects = ref<Project[]>([])
 const projectsLoading = ref(true)
 const activeProject = ref<Project | null>(null)
+const showArchivedProjects = ref(false)
 
 const showCreateProjectModal = ref(false)
 
@@ -465,9 +644,10 @@ const editKey = ref(0)
 
 async function fetchProjects() {
 	projectsLoading.value = true
+	const archiveParam = showArchivedProjects.value ? '?includeArchived=1' : ''
 	try {
 		if (selectedFilter.value === 'all' && filteredConnections.value.length > 1) {
-			const results = await apiFetchAll<{ projects: Project[] }>(filteredConnections.value, '/api/projects')
+			const results = await apiFetchAll<{ projects: Project[] }>(filteredConnections.value, `/api/projects${archiveParam}`)
 			const allProjects: Project[] = []
 			for (const r of results) {
 				if (r.success && r.data?.projects) {
@@ -483,7 +663,7 @@ async function fetchProjects() {
 			}
 			projects.value = allProjects
 		} else {
-			const data = await apiFetch('/api/projects')
+			const data = await apiFetch(`/api/projects${archiveParam}`)
 			projects.value = (data.projects || []).map((p: Project) => ({
 				...p,
 				_serverName: activeConnection.value?.name,
@@ -497,6 +677,8 @@ async function fetchProjects() {
 		projectsLoading.value = false
 	}
 }
+
+watch(showArchivedProjects, () => fetchProjects())
 
 /** Sync the theme picker's custom branding button with the server's branding state */
 async function syncBrandingTheme() {
@@ -641,16 +823,78 @@ function confirmCardUnarchive(project: Project) {
 function confirmCardDelete(project: Project) {
 	cardActionProject.value = project
 	cardAction.value = 'delete'
+	resetProjectDeleteState()
+	loadProjectDeletePreview(project)
+}
+async function confirmCardDisable(project: Project) {
+	try {
+		await apiFetch(`/api/projects/${project.id}/close`, { method: 'POST' })
+		pushNotification(new Notification('Project Disabled', `"${project.name}" and all its links have been disabled.`, 'success', 4000))
+		await fetchProjects()
+	} catch (e: any) {
+		pushNotification(new Notification('Failed to disable project', e?.message || '', 'error', 8000))
+	}
+}
+async function confirmCardEnable(project: Project) {
+	try {
+		await apiFetch(`/api/projects/${project.id}/reopen`, { method: 'POST' })
+		pushNotification(new Notification('Project Enabled', `"${project.name}" and all its links have been re-enabled.`, 'success', 4000))
+		await fetchProjects()
+	} catch (e: any) {
+		pushNotification(new Notification('Failed to enable project', e?.message || '', 'error', 8000))
+	}
+}
+function openEditProjectFromCard(project: Project) {
+	activeProject.value = project
+	startEditProject()
 }
 
 function clearCardAction() {
 	cardActionProject.value = null
 	cardAction.value = null
+	resetProjectDeleteState()
 }
 
 function closeEditModal() {
 	showEditProjectModal.value = false
 	editModalConfirm.value = null
+	resetProjectDeleteState()
+}
+
+// ── Project Delete Preview ──
+const projectDeletePreview = ref<any>(null)
+const projectDeletePreviewLoading = ref(false)
+const projectDeleteLinks = ref(false)
+const projectDeleteGenerated = ref(false)
+const projectDeleteOriginals = ref(false)
+const projectDeleteConfirmText = ref('')
+
+function resetProjectDeleteState() {
+	projectDeletePreview.value = null
+	projectDeletePreviewLoading.value = false
+	projectDeleteLinks.value = false
+	projectDeleteGenerated.value = false
+	projectDeleteOriginals.value = false
+	projectDeleteConfirmText.value = ''
+}
+
+async function loadProjectDeletePreview(project: Project) {
+	projectDeletePreviewLoading.value = true
+	try {
+		const data = await apiFetch(`/api/projects/${project.id}/delete-preview`)
+		projectDeletePreview.value = data
+	} catch {
+		projectDeletePreview.value = null
+	} finally {
+		projectDeletePreviewLoading.value = false
+	}
+}
+
+function formatBytes(bytes: number): string {
+	if (bytes === 0) return '0 B'
+	const units = ['B', 'KB', 'MB', 'GB', 'TB']
+	const i = Math.floor(Math.log(bytes) / Math.log(1024))
+	return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`
 }
 
 async function archiveProject() {
@@ -696,11 +940,16 @@ async function deleteProject() {
 	const target = actionTarget.value
 	if (!target) return
 	try {
-		await apiFetch(`/api/projects/${target.id}?hard=1`, { method: 'DELETE' })
+		const qs = new URLSearchParams({ hard: '1' })
+		if (projectDeleteLinks.value) qs.set('deleteLinks', '1')
+		if (projectDeleteGenerated.value) qs.set('deleteGenerated', '1')
+		if (projectDeleteOriginals.value) qs.set('deleteOriginals', '1')
+		await apiFetch(`/api/projects/${target.id}?${qs.toString()}`, { method: 'DELETE' })
 		editModalConfirm.value = null
 		showEditProjectModal.value = false
 		clearCardAction()
-		pushNotification(new Notification('Project Deleted', 'The project has been permanently deleted.', 'success', 4000))
+		const extra = projectDeleteLinks.value ? ' Links and associated files removed.' : ''
+		pushNotification(new Notification('Project Deleted', `The project has been permanently deleted.${extra}`, 'success', 4000))
 		if (activeProject.value) backToProjects()
 		else await fetchProjects()
 	} catch (e: any) {
