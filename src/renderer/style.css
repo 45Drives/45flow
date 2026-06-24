@@ -857,15 +857,14 @@
    ===================== */
 .btn-primary {
   background: var(--btn-primary-fill) !important;
-  background-clip: padding-box;
-  border-color: var(--btn-primary-border) !important;
+  border: none !important;
+  box-shadow: none !important;
   color: white !important;
 }
 
 .btn-primary:hover {
   background: var(--btn-primary-hover-fill) !important;
-  background-clip: padding-box;
-  border-color: var(--btn-primary-hover-border) !important;
+  border: none !important;
 }
 
 .btn-secondary {
@@ -1092,7 +1091,7 @@ body {
 }
 
 .btn {
-  transition: background-color 160ms ease, border-color 160ms ease, transform 120ms ease, box-shadow 160ms ease;
+  transition: background 160ms ease, border-color 160ms ease, transform 120ms ease, box-shadow 160ms ease;
 }
 
 .btn:hover:not(:disabled) {
