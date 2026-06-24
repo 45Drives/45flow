@@ -769,15 +769,18 @@
                             <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Set Up Trusted Certificate</p>
 
                             <div class="divide-y divide-default">
-                                <SettingRow label="Domain" description="Your custom domain name (e.g. studio.yourcompany.com). Auto-synced from External Base if set.">
+                                <SettingRow label="Domain *" description="Your custom domain name (e.g. studio.yourcompany.com). Auto-synced from External Base if set.">
                                     <input v-model="certDomainInput" type="text" :disabled="certBusy"
                                         class="input-textlike border border-default px-2 py-1 rounded text-sm w-56"
-                                        placeholder="studio.yourcompany.com" />
+                                        placeholder="studio.yourcompany.com" required />
                                 </SettingRow>
-                                <SettingRow label="Contact email" description="Let's Encrypt sends renewal notices here.">
-                                    <input v-model="certEmailInput" type="text" :disabled="certBusy"
+                                <SettingRow label="Contact email *" description="Required — Let's Encrypt sends renewal notices here.">
+                                    <input v-model="certEmailInput" type="email" :disabled="certBusy"
                                         class="input-textlike border border-default px-2 py-1 rounded text-sm w-56"
-                                        placeholder="admin@yourcompany.com" />
+                                        :class="{ 'border-red-400 dark:border-red-600': certEmailTouched && !certEmailInput.trim() }"
+                                        placeholder="admin@yourcompany.com" required
+                                        @blur="certEmailTouched = true" />
+                                    <p v-if="certEmailTouched && !certEmailInput.trim()" class="text-xs text-red-500 mt-1">Email is required to install a trusted certificate.</p>
                                 </SettingRow>
                             </div>
 
@@ -831,6 +834,11 @@
                                     <span v-else>Revert to Self-Signed</span>
                                 </button>
                             </div>
+                            <p v-if="!certEmailInput.trim() || !certDomainInput.trim() || !certDnsVerified" class="text-xs text-accent mt-2">
+                                Requires: <span :class="certDomainInput.trim() ? 'line-through opacity-50' : 'font-semibold'">domain</span>,
+                                <span :class="certEmailInput.trim() ? 'line-through opacity-50' : 'font-semibold'">email</span>,
+                                <span :class="certDnsVerified ? 'line-through opacity-50' : 'font-semibold'">DNS verified</span>
+                            </p>
 
                             <!-- Status messages -->
                             <div v-if="certDnsResult && !certDnsResult.ok" class="mt-3 rounded-lg border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 p-3 text-sm">
@@ -2649,6 +2657,7 @@ const certError = ref<string | null>(null);
 const certSuccessMsg = ref<string | null>(null);
 const certDomainInput = ref('');
 const certEmailInput = ref('');
+const certEmailTouched = ref(false);
 const certDnsVerified = ref(false);
 const certDnsResult = ref<{ ok: boolean; wanIp?: string; resolvedIps?: string[]; message?: string } | null>(null);
 const certStatus = ref<{
