@@ -389,6 +389,29 @@
 		</div>
 	</Teleport>
 
+	<!-- Card-level Disable Confirmation Modal -->
+	<Teleport to="body">
+		<div v-if="cardActionProject && cardAction === 'disable'" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50" @click.self="clearCardAction()">
+			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 text-default bg-accent">
+				<h3 class="text-lg font-semibold mb-2 text-red-600 dark:text-red-400">Disable Project</h3>
+				<div class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 mb-4">
+					<p class="text-sm text-red-700 dark:text-red-300 font-medium mb-2">This will disable the project and all its links:</p>
+					<ul class="text-sm text-red-600 dark:text-red-300/80 list-disc list-inside space-y-1">
+						<li>All active links will be disabled immediately</li>
+						<li>The project will appear greyed out with a DISABLED badge</li>
+						<li>No files or links are deleted</li>
+						<li>You can re-enable the project at any time</li>
+					</ul>
+				</div>
+				<p class="text-sm text-default mb-4">Disable <strong>{{ cardActionProject.name }}</strong>?</p>
+				<div class="flex items-center justify-end gap-2">
+					<button class="btn btn-secondary px-4 py-2" @click="clearCardAction()">Cancel</button>
+					<button class="btn btn-danger px-4 py-2" @click="disableProject">Disable</button>
+				</div>
+			</div>
+		</div>
+	</Teleport>
+
 	<!-- Card-level Archive Confirmation Modal (project list view) -->
 	<Teleport to="body">
 		<div v-if="cardActionProject && cardAction === 'archive'" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50" @click.self="clearCardAction()">
@@ -791,7 +814,7 @@ const editModalConfirm = ref<'archive' | 'unarchive' | 'delete' | null>(null)
 
 // For card-level actions (project list view)
 const cardActionProject = ref<Project | null>(null)
-const cardAction = ref<'archive' | 'unarchive' | 'delete' | null>(null)
+const cardAction = ref<'archive' | 'unarchive' | 'delete' | 'disable' | null>(null)
 
 const projectHasActiveLinks = ref(false)
 const projectHasDisabledLinks = ref(false)
@@ -826,10 +849,17 @@ function confirmCardDelete(project: Project) {
 	resetProjectDeleteState()
 	loadProjectDeletePreview(project)
 }
-async function confirmCardDisable(project: Project) {
+function confirmCardDisable(project: Project) {
+	cardActionProject.value = project
+	cardAction.value = 'disable'
+}
+async function disableProject() {
+	const project = actionTarget.value
+	if (!project) return
 	try {
 		await apiFetch(`/api/projects/${project.id}/close`, { method: 'POST' })
 		pushNotification(new Notification('Project Disabled', `"${project.name}" and all its links have been disabled.`, 'success', 4000))
+		clearCardAction()
 		await fetchProjects()
 	} catch (e: any) {
 		pushNotification(new Notification('Failed to disable project', e?.message || '', 'error', 8000))

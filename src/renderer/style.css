@@ -857,12 +857,14 @@
    ===================== */
 .btn-primary {
   background: var(--btn-primary-fill) !important;
+  background-clip: padding-box;
   border-color: var(--btn-primary-border) !important;
   color: white !important;
 }
 
 .btn-primary:hover {
   background: var(--btn-primary-hover-fill) !important;
+  background-clip: padding-box;
   border-color: var(--btn-primary-hover-border) !important;
 }
 

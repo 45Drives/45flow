@@ -3,9 +3,9 @@
     <div class="absolute inset-0 bg-black/50" @click="close"></div>
 
     <div
-      class="absolute inset-x-0 top-12 mx-auto w-11/12 max-w-5xl bg-accent border border-default rounded-lg shadow-lg z-50">
+      class="absolute inset-x-0 top-12 mx-auto w-11/12 max-w-5xl bg-accent border border-default rounded-lg shadow-lg z-50 flex flex-col max-h-[calc(100vh-4rem)]">
       <!-- Header -->
-      <div class="flex items-center justify-between px-4 py-3 border-b border-default" data-tour="link-details-header">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-default shrink-0" data-tour="link-details-header">
         <h3 class="text-lg font-semibold">
           Link Details — {{ link?.title || (link && fallbackTitle(link)) }}
         </h3>
@@ -23,20 +23,12 @@
 
           <button v-if="!editMode" class="btn btn-primary" @click="beginEdit" :disabled="!link">Edit</button>
 
-          <button v-else class="btn btn-success" @click="saveAll" :disabled="saveDisabled" :title="hasActiveTranscodes ? 'Transcode in progress - please wait' : ''">
-            <span v-if="hasActiveTranscodes" class="opacity-70">⏳ Transcoding...</span>
-            <span v-else>Save Changes</span>
-          </button>
-          <button v-if="editMode" class="btn btn-secondary" @click="cancelEdit" :disabled="saving">
-            Cancel
-          </button>
-
           <button class="btn btn-danger" @click="close">Close</button>
         </div>
       </div>
 
       <!-- Body -->
-      <div class="px-4 pt-4 pb-4 text-sm text-left space-y-4 overflow-y-auto max-h-[78vh]">
+      <div class="px-4 pt-4 pb-4 text-sm text-left space-y-4 overflow-y-auto flex-1 min-h-0">
         <!-- Meta -->
         <section class="grid gap-3 lg:grid-cols-3" data-tour="link-details-meta">
           <div class="lg:col-span-2 rounded-lg border border-default bg-default/20 p-3 space-y-2">
@@ -461,11 +453,16 @@
                   <span v-if="filesDirty" class="ml-2 text-amber-400">Pending changes</span>
                 </div>
 
-                <div v-if="draftFilePaths.length"
-                  class="rounded border border-default bg-default/30 max-h-40 overflow-auto">
-                  <div v-for="(p, i) in draftFilePaths" :key="p + ':' + i"
-                    class="px-3 py-2 border-b border-default last:border-b-0">
-                    <code>{{ p }}</code>
+                <div v-if="draftFilePaths.length">
+                  <button class="text-xs text-blue-500 hover:underline mt-1" @click="fileListExpanded = !fileListExpanded">
+                    {{ fileListExpanded ? 'Hide file list ▲' : 'Show file list ▼' }}
+                  </button>
+                  <div v-if="fileListExpanded"
+                    class="rounded border border-default bg-default/30 max-h-40 overflow-auto mt-1">
+                    <div v-for="(p, i) in draftFilePaths" :key="p + ':' + i"
+                      class="px-3 py-2 border-b border-default last:border-b-0">
+                      <code>{{ p }}</code>
+                    </div>
                   </div>
                 </div>
                 <div v-else class="text-sm text-amber-500">No files selected. Click "Manage files…" to select files.</div>
@@ -824,6 +821,17 @@
         </section>
 
       </div>
+
+      <!-- Footer (always visible) -->
+      <div v-if="editMode" class="flex items-center justify-end gap-2 px-4 py-3 border-t border-default shrink-0">
+        <button class="btn btn-secondary px-4 py-2" @click="cancelEdit" :disabled="saving">Cancel</button>
+        <button class="btn btn-success px-4 py-2" @click="saveAll" :disabled="saveDisabled" :title="hasActiveTranscodes ? 'Transcode in progress - please wait' : ''">
+          <span v-if="hasActiveTranscodes" class="opacity-70">⏳ Transcoding...</span>
+          <span v-else>Save Changes</span>
+        </button>
+      </div>
+
+      <EditLinkFilesModal v-if="filesEditorOpen" :apiFetch="apiFetch"
         :initialPaths="draftFilePaths"
         :base="linkProjectBase" :startDir="linkStartDir" @apply="onApplyFilePaths" />
 
@@ -1187,6 +1195,7 @@ const watermarkPreviewUrl = computed(() =>
 )
 
 const filesEditorOpen = ref(false)
+const fileListExpanded = ref(false)
 const draftFilePaths = ref<string[]>([])
 const originalFilePaths = ref<string[]>([])
 const configuredProjectRootForEdit = ref('')
