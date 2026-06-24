@@ -30,8 +30,11 @@
           <ConnectionSwitcher v-if="route.name !== 'server-selection' && isPremiumActive" />
           <BasicServerBadge v-else-if="route.name !== 'server-selection'" />
         </div>
-        <span v-if="isTrial && trialDaysRemaining !== null" class="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-300 font-medium whitespace-nowrap">
+        <span v-if="isTrial && trialDaysRemaining !== null" class="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 font-medium whitespace-nowrap">
           Pro Trial — {{ trialDaysRemaining }} {{ trialDaysRemaining === 1 ? 'day' : 'days' }} left
+        </span>
+        <span v-else-if="isTrialExpired" class="text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-800 dark:text-red-300 font-medium whitespace-nowrap">
+          Trial Expired
         </span>
         <NotificationBell />
         <GlobalMenu />
@@ -94,7 +97,7 @@ const { activeTour, finishTour, cancelTour } = useTourManager()
 
 // Initialize multi-server connection management
 const { activeConnection } = useConnections()
-const { isPremiumActive, isUpdateEligible, isFallback, isTrial, trialDaysRemaining } = useLicenseStatus()
+const { isPremiumActive, isUpdateEligible, isFallback, isTrial, isTrialExpired, trialDaysRemaining } = useLicenseStatus()
 const { activeProject } = useActiveProject()
 
 // Initialize WebSocket manager (auto-connects to active connection)
@@ -170,16 +173,18 @@ const { discoveryState } = useServerDiscovery()
 provide(discoveryStateInjectionKey, discoveryState as DiscoveryState)
 
 // Build ConnectionMeta from active connection for legacy compatibility
-const connectionMeta = computed<ConnectionMeta>(() => {
-  if (!activeConnection.value) return { port: 9095 }
-  return {
-    token: activeConnection.value.token,
-    port: activeConnection.value.apiPort,
-    httpsHost: activeConnection.value.baseUrl ? new URL(activeConnection.value.baseUrl).hostname : undefined,
-    apiBase: activeConnection.value.baseUrl,
-    ssh: activeConnection.value.ssh
+// Use a writable ref so Connect2Server can set it during login before activeConnection exists
+const connectionMeta = ref<ConnectionMeta>({ port: 9095 })
+watch(activeConnection, (conn) => {
+  if (!conn) return
+  connectionMeta.value = {
+    token: conn.token,
+    port: conn.apiPort,
+    httpsHost: conn.baseUrl ? new URL(conn.baseUrl).hostname : undefined,
+    apiBase: conn.baseUrl,
+    ssh: conn.ssh
   }
-})
+}, { immediate: true })
 provide(connectionMetaInjectionKey, connectionMeta)
 
 const { currentDivision, currentTheme, setThemeControlsUnlocked } = useThemeFromAlias()

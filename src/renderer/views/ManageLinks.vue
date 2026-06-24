@@ -40,6 +40,10 @@
 							Edit Expiry
 						</button>
 
+						<button class="btn btn-primary bulk-action-btn" @click="openBulkMoveToProject">
+							Move to Project
+						</button>
+
 						<button class="btn btn-warning bulk-action-btn" @click="bulkArchive">
 							Archive
 						</button>
@@ -574,13 +578,15 @@
 					</template>
 				</div>
 
-				<label class="block text-sm text-default mb-1">
-					Type <strong class="text-red-600 dark:text-red-400">DELETE</strong> to confirm:
-				</label>
+				<template v-if="deleteGeneratedFiles || deleteOriginalFiles">
+					<label class="block text-sm text-default mb-1">
+						Type <strong class="text-red-600 dark:text-red-400">DELETE</strong> to confirm:
+					</label>
 
-				<input v-model="deleteLinkConfirmText" type="text"
-					class="input-textlike w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-800 bg-default mb-4"
-					placeholder="DELETE" autocomplete="off" />
+					<input v-model="deleteLinkConfirmText" type="text"
+						class="input-textlike w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-800 bg-default mb-4"
+						placeholder="DELETE" autocomplete="off" />
+				</template>
 
 				<div class="flex items-center justify-end gap-2">
 					<button class="btn btn-secondary px-4 py-2" @click="cancelDelete">
@@ -588,7 +594,7 @@
 					</button>
 					<button
 						class="btn btn-delete px-4 py-2"
-						:disabled="deleteLinkConfirmText !== 'DELETE'" @click="deleteLink">
+						:disabled="(deleteGeneratedFiles || deleteOriginalFiles) && deleteLinkConfirmText !== 'DELETE'" @click="deleteLink">
 						Delete Permanently
 					</button>
 				</div>
@@ -676,20 +682,101 @@
 					</div>
 				</div>
 
-				<label class="block text-sm text-default mb-1">
-					Type <strong class="text-red-600 dark:text-red-400">DELETE</strong> to confirm:
-				</label>
-				<input v-model="bulkDeleteConfirmText" type="text"
-					class="input-textlike w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-800 bg-default mb-4"
-					placeholder="DELETE" autocomplete="off" />
+				<template v-if="bulkDeleteGenerated || bulkDeleteOriginals">
+					<label class="block text-sm text-default mb-1">
+						Type <strong class="text-red-600 dark:text-red-400">DELETE</strong> to confirm:
+					</label>
+					<input v-model="bulkDeleteConfirmText" type="text"
+						class="input-textlike w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-800 bg-default mb-4"
+						placeholder="DELETE" autocomplete="off" />
+				</template>
 
 				<div class="flex items-center justify-end gap-2">
 					<button class="btn btn-secondary px-4 py-2" @click="cancelBulkDelete">Cancel</button>
 					<button class="btn btn-delete px-4 py-2"
-						:disabled="bulkDeleteConfirmText !== 'DELETE'"
+						:disabled="(bulkDeleteGenerated || bulkDeleteOriginals) && bulkDeleteConfirmText !== 'DELETE'"
 						@click="executeBulkDelete">
 						Delete {{ selectedIds.size }} Links
 					</button>
+				</div>
+			</div>
+		</div>
+	</Teleport>
+
+	<!-- Bulk Move to Project Modal -->
+	<Teleport to="body">
+		<div v-if="bulkMoveProjectOpen" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50"
+			@click.self="cancelBulkMoveProject">
+			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 bg-accent text-default">
+				<h3 class="text-lg font-semibold mb-4 text-default">Move {{ selectedIds.size }} Link{{ selectedIds.size !== 1 ? 's' : '' }} to Project</h3>
+
+				<div v-if="bulkMoveProjectsLoading" class="flex items-center gap-2 text-sm text-muted mb-4">
+					<span class="inline-block w-3 h-3 border-2 border-default border-t-transparent rounded-full animate-spin"></span>
+					Loading projects...
+				</div>
+
+				<template v-else>
+					<select v-model="bulkMoveTargetProjectId"
+						class="input-textlike w-full px-3 py-2 rounded-lg border border-default bg-default mb-4">
+						<option :value="null">— Unassigned —</option>
+						<option v-for="proj in bulkMoveProjects" :key="proj.id" :value="proj.id">{{ proj.name }}</option>
+					</select>
+				</template>
+
+				<div class="flex items-center justify-end gap-2">
+					<button class="btn btn-secondary px-4 py-2" @click="cancelBulkMoveProject">Cancel</button>
+					<button class="btn btn-primary px-4 py-2"
+						:disabled="bulkMoveProjectsLoading"
+						@click="executeBulkMoveProject">
+						Move
+					</button>
+				</div>
+			</div>
+		</div>
+	</Teleport>
+
+	<!-- Single Link Archive Confirmation Modal -->
+	<Teleport to="body">
+		<div v-if="linkToArchive" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50"
+			@click.self="linkToArchive = null">
+			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 text-default bg-accent">
+				<h3 class="text-lg font-semibold mb-2 text-orange-600 dark:text-orange-400">Archive Link</h3>
+				<div class="p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-800 mb-4">
+					<p class="text-sm text-orange-700 dark:text-orange-300 font-medium mb-2">This will deactivate and hide the link:</p>
+					<ul class="text-sm text-orange-600 dark:text-orange-300/80 list-disc list-inside space-y-1">
+						<li>The link will be disabled immediately and no longer accessible</li>
+						<li>It will be hidden from the default view</li>
+						<li>No files are deleted</li>
+						<li>You can unarchive the link at any time to restore it</li>
+					</ul>
+				</div>
+				<p class="text-sm text-default mb-4">Archive <strong>{{ linkToArchive?.title || 'Untitled' }}</strong>?</p>
+				<div class="flex items-center justify-end gap-2">
+					<button class="btn btn-secondary px-4 py-2" @click="linkToArchive = null">Cancel</button>
+					<button class="btn btn-warning px-4 py-2" @click="executeArchiveLink">Archive</button>
+				</div>
+			</div>
+		</div>
+	</Teleport>
+
+	<!-- Bulk Archive Confirmation Modal -->
+	<Teleport to="body">
+		<div v-if="bulkArchiveOpen" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50"
+			@click.self="bulkArchiveOpen = false">
+			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 text-default bg-accent">
+				<h3 class="text-lg font-semibold mb-2 text-orange-600 dark:text-orange-400">Archive {{ selectedIds.size }} Links</h3>
+				<div class="p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-800 mb-4">
+					<p class="text-sm text-orange-700 dark:text-orange-300 font-medium mb-2">This will deactivate and hide the selected links:</p>
+					<ul class="text-sm text-orange-600 dark:text-orange-300/80 list-disc list-inside space-y-1">
+						<li>All {{ selectedIds.size }} links will be disabled immediately</li>
+						<li>They will be hidden from the default view</li>
+						<li>No files are deleted</li>
+						<li>You can unarchive them at any time to restore access</li>
+					</ul>
+				</div>
+				<div class="flex items-center justify-end gap-2">
+					<button class="btn btn-secondary px-4 py-2" @click="bulkArchiveOpen = false">Cancel</button>
+					<button class="btn btn-warning px-4 py-2" @click="executeBulkArchive">Archive {{ selectedIds.size }} Links</button>
 				</div>
 			</div>
 		</div>
@@ -962,6 +1049,11 @@ async function bulkDisable() {
 }
 
 async function bulkArchive() {
+	bulkArchiveOpen.value = true
+}
+
+async function executeBulkArchive() {
+	bulkArchiveOpen.value = false
 	const links = getSelectedLinks()
 	let success = 0
 	let failed = 0
@@ -1063,6 +1155,57 @@ async function executeBulkDelete() {
 		failed ? 'warning' : 'success',
 		8000,
 	))
+}
+
+// Bulk move to project
+const bulkMoveProjectOpen = ref(false)
+const bulkMoveProjects = ref<{ id: number; name: string }[]>([])
+const bulkMoveProjectsLoading = ref(false)
+const bulkMoveTargetProjectId = ref<number | null>(null)
+
+async function openBulkMoveToProject() {
+	bulkMoveProjectOpen.value = true
+	bulkMoveTargetProjectId.value = null
+	bulkMoveProjectsLoading.value = true
+	try {
+		const data = await apiFetch('/api/projects')
+		bulkMoveProjects.value = (data?.projects || []).map((p: any) => ({ id: p.id, name: p.name }))
+	} catch {
+		bulkMoveProjects.value = []
+	} finally {
+		bulkMoveProjectsLoading.value = false
+	}
+}
+
+function cancelBulkMoveProject() {
+	bulkMoveProjectOpen.value = false
+	bulkMoveTargetProjectId.value = null
+}
+
+async function executeBulkMoveProject() {
+	const links = getSelectedLinks()
+	let success = 0
+	let failed = 0
+	for (const link of links) {
+		try {
+			await patchLink(link, { projectId: bulkMoveTargetProjectId.value })
+			;(link as any).project_id = bulkMoveTargetProjectId.value
+			success++
+		} catch { failed++ }
+	}
+	cancelBulkMoveProject()
+	clearSelection()
+	const targetName = bulkMoveTargetProjectId.value
+		? bulkMoveProjects.value.find(p => p.id === bulkMoveTargetProjectId.value)?.name || 'project'
+		: 'Unassigned'
+	pushNotification(new Notification(
+		'Move to Project',
+		`${success} link${success !== 1 ? 's' : ''} moved to ${targetName}${failed ? `, ${failed} failed` : ''}.`,
+		failed ? 'warning' : 'success',
+		8000,
+	))
+	// Refresh to reflect project changes
+	await refresh()
 }
 
 /* ----------- fetch/list endpoints ----------- */
@@ -1328,17 +1471,19 @@ async function toggleDisable(it: LinkItem) {
 }
 
 async function toggleArchive(it: LinkItem) {
-	const archive = !it.archived
+	if (!it.archived) {
+		// Show confirmation modal before archiving
+		linkToArchive.value = it
+		return
+	}
+	// Unarchive directly (non-destructive restore)
 	try {
-		await apiFetch(`/api/links/${it.id}/${archive ? 'archive' : 'unarchive'}`, { method: 'POST' })
-		it.archived = archive
-		if (archive) it.isDisabled = true
+		await apiFetch(`/api/links/${it.id}/unarchive`, { method: 'POST' })
+		it.archived = false
 		pushNotification(
 			new Notification(
-				archive ? 'Link Archived' : 'Link Unarchived',
-				archive
-					? 'The link has been archived and hidden from normal views.'
-					: 'The link has been restored. It is still disabled — enable it to make it accessible again.',
+				'Link Unarchived',
+				'The link has been restored. It is still disabled — enable it to make it accessible again.',
 				'success',
 				8000,
 			)
@@ -1355,6 +1500,34 @@ function viewLink(it: LinkItem) {
 	const anyIt: any = it as any
 	const u = anyIt.url
 	if (u) window.open(u, '_blank', 'noopener,noreferrer')
+}
+
+/* ------------------- archive link ------------------- */
+const linkToArchive = ref<LinkItem | null>(null)
+const bulkArchiveOpen = ref(false)
+
+async function executeArchiveLink() {
+	const it = linkToArchive.value
+	if (!it) return
+	linkToArchive.value = null
+	try {
+		await apiFetch(`/api/links/${it.id}/archive`, { method: 'POST' })
+		it.archived = true
+		it.isDisabled = true
+		pushNotification(
+			new Notification(
+				'Link Archived',
+				'The link has been archived and hidden from normal views.',
+				'success',
+				8000,
+			)
+		)
+	} catch (e: any) {
+		const msg = e?.message || e?.error || String(e)
+		pushNotification(
+			new Notification('Failed to Archive Link', msg, 'error', 8000)
+		)
+	}
 }
 
 /* ------------------- delete link ------------------- */
@@ -2094,8 +2267,8 @@ function formatLocal(ts: unknown, opts: Intl.DateTimeFormatOptions) {
 	min-width: 0;
 	padding: 0 0.5rem;
 	border-radius: 0.375rem;
-	border: 1px solid var(--border-default);
-	background: var(--bg-default);
+	border: 2px solid var(--btn-primary-bg, #3b82f6);
+	background: var(--bg-well);
 }
 
 .capability-stack {

@@ -1582,6 +1582,7 @@ async function startUploadAndShare() {
       const { createTranscodePollingTasks, runClientTranscode } = useUploadTranscode()
       const fileRecordsForTranscode: any[] = Array.isArray(data?.files) ? data.files : []
       const videoExtsSet = new Set(['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv', 'wmv', 'mxf', 'mts', 'm2ts', 'mod', 'tod', 'vob', 'f4v', 'asf', 'rm', 'rmvb', 'ts', 'ogv', '3gp', '3g2', 'mj2', 'm4v', 'qt', 'dv', 'divx', 'hevc', 'h264', 'h265', 'vp8', 'vp9', 'av1', 'dnxhd', 'prores', 'r3d', 'braw', 'ari', 'cine', 'dav'])
+      const transcodePromises: Promise<void>[] = []
 
       for (let fi = 0; fi < fileRecordsForTranscode.length; fi++) {
         const rec = fileRecordsForTranscode[fi]
@@ -1622,7 +1623,7 @@ async function startUploadAndShare() {
           watermarkSettingsToRaw: localWatermarkPath ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
           watermarkEnabled: watermarkEnabled.value,
         })
-        ;(async () => {
+        transcodePromises.push((async () => {
           const result = await runClientTranscode({
             assetVersionId: avId,
             sourceFilePath: localFile.path,
@@ -1631,6 +1632,7 @@ async function startUploadAndShare() {
             generateHls: true,
             watermarkPath: localWatermarkPath,
             watermarkSettings: localWatermarkPath ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
+            skipWatermarkCleanup: true,
             ssh: {
               host: host || '',
               user: user || '',
@@ -1644,7 +1646,14 @@ async function startUploadAndShare() {
           } else {
             console.warn(`[quick-share] client transcode failed for ${localFile.name}: ${result.error}`)
           }
-        })()
+        })())
+      }
+
+      // Clean up shared watermark temp file after ALL transcodes complete
+      if (localWatermarkPath && transcodePromises.length > 0) {
+        Promise.allSettled(transcodePromises).then(() => {
+          (window as any).electron.cleanupWatermarkTemp(localWatermarkPath!).catch(() => {})
+        })
       }
     }
 

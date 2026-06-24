@@ -831,7 +831,7 @@
         </button>
       </div>
 
-      <EditLinkFilesModal v-if="filesEditorOpen" :apiFetch="apiFetch"
+      <EditLinkFilesModal v-model="filesEditorOpen" :apiFetch="apiFetch"
         :initialPaths="draftFilePaths"
         :base="linkProjectBase" :startDir="linkStartDir" @apply="onApplyFilePaths" />
 

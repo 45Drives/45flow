@@ -39,8 +39,8 @@
       <!-- Main Content -->
       <div v-else class="flex-1 flex min-h-0 overflow-hidden">
         <!-- Left: Preview -->
-        <div class="flex-1 flex flex-col p-6 overflow-auto">
-          <div class="flex-1 flex items-center justify-center">
+        <div class="flex-1 flex flex-col p-6 min-h-0 overflow-hidden">
+          <div class="flex-1 flex items-center justify-center min-h-0">
             <div ref="imageContainerRef" class="relative inline-block max-w-full max-h-full">
               <!-- Frame Image -->
               <img

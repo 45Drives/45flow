@@ -326,8 +326,11 @@ function extractRsyncError(logFile: string): string | null {
       if (/Host key verification failed/i.test(line)) {
         return 'Host key verification failed - server identity changed';
       }
+      if (/Permission denied.*publickey/i.test(line) || /ssh.*Permission denied/i.test(line)) {
+        return 'SSH authentication failed - check SSH key and credentials';
+      }
       if (/Permission denied/i.test(line)) {
-        return 'Permission denied - check SSH key and credentials';
+        return `Remote permission denied - cannot write to destination directory. (${line.trim().substring(0, 120)})`;
       }
       // Generic rsync errors
       if (/rsync error:/i.test(line)) {

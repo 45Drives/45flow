@@ -370,17 +370,19 @@
 						</template>
 					</div>
 
-					<label class="block text-sm text-default mb-1">
-						Type <strong class="text-red-600 dark:text-red-400">DELETE</strong> to confirm:
-					</label>
-					<input v-model="projectDeleteConfirmText" type="text"
-						class="input-textlike w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-800 bg-default mb-4"
-						placeholder="DELETE" autocomplete="off" />
+					<template v-if="projectDeleteGenerated || projectDeleteOriginals">
+						<label class="block text-sm text-default mb-1">
+							Type <strong class="text-red-600 dark:text-red-400">DELETE</strong> to confirm:
+						</label>
+						<input v-model="projectDeleteConfirmText" type="text"
+							class="input-textlike w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-800 bg-default mb-4"
+							placeholder="DELETE" autocomplete="off" />
+					</template>
 
 					<div class="flex items-center justify-end gap-2">
 						<button class="btn btn-secondary px-4 py-2" @click="editModalConfirm = null">Back</button>
 						<button class="btn btn-delete px-4 py-2"
-							:disabled="projectDeleteConfirmText !== 'DELETE'"
+							:disabled="(projectDeleteGenerated || projectDeleteOriginals) && projectDeleteConfirmText !== 'DELETE'"
 							@click="deleteProject">Delete Permanently</button>
 					</div>
 				</template>
@@ -540,17 +542,19 @@
 					</template>
 				</div>
 
-				<label class="block text-sm text-default mb-1">
-					Type <strong class="text-red-600 dark:text-red-400">DELETE</strong> to confirm:
-				</label>
-				<input v-model="projectDeleteConfirmText" type="text"
-					class="input-textlike w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-800 bg-default mb-4"
-					placeholder="DELETE" autocomplete="off" />
+				<template v-if="projectDeleteGenerated || projectDeleteOriginals">
+					<label class="block text-sm text-default mb-1">
+						Type <strong class="text-red-600 dark:text-red-400">DELETE</strong> to confirm:
+					</label>
+					<input v-model="projectDeleteConfirmText" type="text"
+						class="input-textlike w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-800 bg-default mb-4"
+						placeholder="DELETE" autocomplete="off" />
+				</template>
 
 				<div class="flex items-center justify-end gap-2">
 					<button class="btn btn-secondary px-4 py-2" @click="clearCardAction()">Cancel</button>
 					<button class="btn btn-delete px-4 py-2"
-						:disabled="projectDeleteConfirmText !== 'DELETE'"
+						:disabled="(projectDeleteGenerated || projectDeleteOriginals) && projectDeleteConfirmText !== 'DELETE'"
 						@click="deleteProject">Delete Permanently</button>
 				</div>
 			</div>

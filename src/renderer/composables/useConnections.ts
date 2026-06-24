@@ -30,6 +30,7 @@ export interface Connection {
     server: string
     username: string
     port: number
+    keyPath?: string                // Resolved during ensure-ssh-ready
   }
   
   // ── Server Metadata (cached) ──
@@ -45,6 +46,7 @@ export interface Connection {
   // ── License Status (cached) ──
   licensed: boolean                 // Last known license state (false = unlicensed/basic mode)
   licenseFallback: boolean          // Was-ever-licensed but now expired (keeps features, no updates)
+  licenseReason?: string            // Server reason: "ok", "trial_expired", "license_revoked", etc.
   licenseCheckedAt?: number         // Timestamp of last check
   licenseInfo?: {                   // License details from server
     licenseId?: string

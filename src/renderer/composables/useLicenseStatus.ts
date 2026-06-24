@@ -53,7 +53,7 @@ export function useLicenseStatus() {
 
   const licenseInfo = computed<LicenseInfo | null>(() => {
     const conn = activeConnection.value
-    if (!conn?.licensed && !conn?.licenseFallback) return null
+    if (!conn?.licensed && !conn?.licenseFallback && conn?.licenseReason !== 'trial_expired') return null
     return (conn as any).licenseInfo ?? null
   })
 
@@ -61,6 +61,11 @@ export function useLicenseStatus() {
     const info = licenseInfo.value
     if (!info) return false
     return info.notes === 'trial' && !info.perpetual && !!info.expiresAt
+  })
+
+  const isTrialExpired = computed<boolean>(() => {
+    const conn = activeConnection.value
+    return conn?.licenseReason === 'trial_expired'
   })
 
   const trialDaysRemaining = computed<number | null>(() => {
@@ -89,6 +94,7 @@ export function useLicenseStatus() {
       const updates: Record<string, any> = {
         licensed: !!body.licensed,
         licenseFallback: !!body.fallback,
+        licenseReason: body.reason || undefined,
         licenseCheckedAt: Date.now(),
       }
 
@@ -132,6 +138,7 @@ export function useLicenseStatus() {
     isUpdateEligible,
     isFallback,
     isTrial,
+    isTrialExpired,
     trialDaysRemaining,
     licenseInfo,
     checkLicenseInBackground,

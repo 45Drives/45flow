@@ -262,6 +262,18 @@ function subscribe(
   const wsConn = wsConnections.get(connectionId)
   
   if (!wsConn || wsConn.status !== 'open') {
+    // If previously blacklisted due to connection failure (not auth), retry once
+    if (authFailedConnections.has(connectionId)) {
+      const oldConn = wsConnections.get(connectionId)
+      if (!oldConn?.authFailed) {
+        // Was a connection failure, not auth — clear and attempt reconnect
+        authFailedConnections.delete(connectionId)
+        const { activeConnection } = useConnections()
+        if (activeConnection.value?.connectionId === connectionId) {
+          connect(activeConnection.value as Connection)
+        }
+      }
+    }
     // WebSocket not available - caller should fallback to polling
     return false
   }

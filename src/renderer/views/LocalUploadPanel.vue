@@ -997,6 +997,7 @@ async function runClientFullTranscode(opts: {
 		generateHls: true,
 		watermarkPath: opts.localWatermarkPath,
 		watermarkSettings: opts.localWatermarkPath ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
+		skipWatermarkCleanup: true,
 		ssh: {
 			host: ssh?.server || '',
 			user: ssh?.username || '',
@@ -1914,6 +1915,10 @@ async function startUploads() {
 				// Check if everything is finished
 				if (activeUploads.value === 0 && queueIdx >= queue.length) {
 					isUploading.value = false
+					// Clean up shared watermark temp file after all uploads/transcodes complete
+					if (localWatermarkPath) {
+						(window as any).electron.cleanupWatermarkTemp(localWatermarkPath).catch(() => {})
+					}
 				}
 			})
 		}

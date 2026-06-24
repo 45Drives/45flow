@@ -25,7 +25,7 @@
     >
       <div
         v-if="bellOpen"
-        class="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto rounded-xl shadow-2xl border border-default bg-default z-50"
+        class="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto rounded-xl shadow-2xl border border-default bg-default z-50 text-left"
       >
         <div class="flex items-center justify-between px-4 py-2.5 border-b border-default">
           <span class="text-sm font-semibold text-default">Notifications</span>
@@ -56,7 +56,7 @@
                   <span class="text-xs font-medium text-default truncate">{{ item.title }}</span>
                   <span class="text-[10px] text-muted whitespace-nowrap">{{ timeAgo(item.timestamp) }}</span>
                 </div>
-                <p class="text-xs text-muted mt-0.5" :class="expandedId === item.id ? '' : 'line-clamp-2'">{{ item.body }}</p>
+                <p class="text-xs text-muted mt-0.5" :class="expandedId === item.id ? '' : 'truncate'">{{ item.body }}</p>
               </div>
             </div>
           </div>

@@ -621,9 +621,6 @@
                                         <p v-if="trialDaysRemaining != null">
                                             <span class="font-semibold">{{ trialDaysRemaining }}</span> {{ trialDaysRemaining === 1 ? 'day' : 'days' }} remaining
                                         </p>
-                                        <p v-if="licenseInfo?.customerEmail" class="text-xs opacity-80">
-                                            Trial registered to: {{ licenseInfo.customerEmail }}
-                                        </p>
                                     </div>
                                 </div>
 
@@ -660,7 +657,103 @@
                                 <div v-if="upgradeError" class="text-danger text-sm mt-3">{{ upgradeError }}</div>
                             </div>
 
-                            <!-- Unlicensed -->
+                            <!-- Unlicensed — Pro expired (legacy/fallback mode) -->
+                            <div v-else-if="isFallback" class="space-y-3">
+                                <div class="rounded-lg border border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/20 p-4">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <div class="text-sm font-semibold text-amber-800 dark:text-amber-400">License Expired</div>
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400">Legacy Mode</span>
+                                    </div>
+                                    <div class="text-sm text-amber-700 dark:text-amber-400 space-y-1">
+                                        <p>Your Pro license has expired. Premium features remain available at your current app version, but app updates are paused until you renew.</p>
+                                        <p v-if="licenseInfo?.expiresAt" class="text-xs opacity-80">
+                                            Expired: {{ new Date(licenseInfo.expiresAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="rounded-lg border border-default bg-default/40 p-4">
+                                    <div class="text-sm font-semibold text-default mb-1">Renew License</div>
+                                    <p class="text-sm text-accent leading-relaxed mb-3">
+                                        Renew to restore app updates and continued support.
+                                        <a href="https://45drivesstudio.com/contact" target="_blank" rel="noopener noreferrer" 
+                                           class="text-blue-500 hover:text-blue-600 underline">Contact 45Studio</a> to renew.
+                                    </p>
+                                    <div class="py-3">
+                                        <label class="block text-sm font-medium text-default mb-1">License Key</label>
+                                        <div class="flex gap-2">
+                                            <input
+                                                v-model="upgradeKey"
+                                                type="text"
+                                                class="input-textlike border border-default px-3 py-2 rounded text-sm flex-1"
+                                                placeholder="STUDIO-XXXX-XXXX-XXXX-XXXX"
+                                                :disabled="upgradeBusy"
+                                                @keydown.enter.prevent="handleUpgradeActivate"
+                                            />
+                                            <button
+                                                class="btn btn-primary text-sm px-4"
+                                                type="button"
+                                                :disabled="upgradeBusy || !upgradeKey.trim()"
+                                                @click="handleUpgradeActivate"
+                                            >
+                                                {{ upgradeBusy ? 'Activating…' : 'Activate' }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div v-if="upgradeError" class="text-danger text-sm mt-3">{{ upgradeError }}</div>
+                            </div>
+
+                            <!-- Unlicensed — Trial expired (community mode) -->
+                            <div v-else-if="isTrialExpired" class="space-y-3">
+                                <div class="rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-4">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <div class="text-sm font-semibold text-red-800 dark:text-red-400">Trial Expired</div>
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400">Community Mode</span>
+                                    </div>
+                                    <div class="text-sm text-red-700 dark:text-red-400 space-y-1">
+                                        <p>Your 30-day Pro trial has expired. The server is now in Community mode — premium features are disabled.</p>
+                                        <p v-if="licenseInfo?.expiresAt" class="text-xs opacity-80">
+                                            Trial ended: {{ new Date(licenseInfo.expiresAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="rounded-lg border border-default bg-default/40 p-4">
+                                    <div class="text-sm font-semibold text-default mb-1">Upgrade to Full License</div>
+                                    <p class="text-sm text-accent leading-relaxed mb-3">
+                                        Purchase a Pro license to restore all premium features.
+                                        <a href="https://45drivesstudio.com/contact" target="_blank" rel="noopener noreferrer" 
+                                           class="text-blue-500 hover:text-blue-600 underline">Contact 45Studio</a> to purchase.
+                                    </p>
+                                    <div class="py-3">
+                                        <label class="block text-sm font-medium text-default mb-1">License Key</label>
+                                        <div class="flex gap-2">
+                                            <input
+                                                v-model="upgradeKey"
+                                                type="text"
+                                                class="input-textlike border border-default px-3 py-2 rounded text-sm flex-1"
+                                                placeholder="STUDIO-XXXX-XXXX-XXXX-XXXX"
+                                                :disabled="upgradeBusy"
+                                                @keydown.enter.prevent="handleUpgradeActivate"
+                                            />
+                                            <button
+                                                class="btn btn-primary text-sm px-4"
+                                                type="button"
+                                                :disabled="upgradeBusy || !upgradeKey.trim()"
+                                                @click="handleUpgradeActivate"
+                                            >
+                                                {{ upgradeBusy ? 'Activating…' : 'Activate' }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div v-if="upgradeError" class="text-danger text-sm mt-3">{{ upgradeError }}</div>
+                            </div>
+
+                            <!-- Unlicensed (never licensed) -->
                             <div v-else>
                                 <div class="rounded-lg border border-default bg-default/40 p-4 mb-4">
                                     <div class="text-sm font-semibold text-default mb-1">45Flow Pro Edition</div>
@@ -680,21 +773,13 @@
                                             Try all Pro features free for 30 days. Limited to 1 activation per trial.
                                         </p>
                                         <div class="flex gap-2">
-                                            <input
-                                                v-model="trialEmail"
-                                                type="email"
-                                                class="input-textlike border border-default px-3 py-2 rounded text-sm flex-1"
-                                                placeholder="your@email.com"
-                                                :disabled="trialBusy"
-                                                @keydown.enter.prevent="handleTrialRequest"
-                                            />
                                             <button
                                                 class="btn btn-primary text-sm px-4"
                                                 type="button"
-                                                :disabled="trialBusy || !trialEmail.trim() || !isValidEmail(trialEmail)"
+                                                :disabled="trialBusy"
                                                 @click="handleTrialRequest"
                                             >
-                                                {{ trialBusy ? 'Requesting…' : 'Request Trial' }}
+                                                {{ trialBusy ? 'Requesting…' : 'Start Trial' }}
                                             </button>
                                         </div>
                                         <div v-if="trialError" class="text-danger text-xs mt-2">{{ trialError }}</div>
@@ -893,16 +978,27 @@
                                                     <span class="text-muted">Status:</span>
                                                     <span class="ml-1 font-mono">
                                                         <span v-if="server.license.licensed" class="text-green-500">Licensed</span>
-                                                        <span v-else class="text-red-500">{{ server.license.needsActivation ? 'Not Activated' : 'Unlicensed' }}</span>
+                                                        <span v-else-if="server.license.reason === 'trial_expired'" class="text-red-500">Trial Expired</span>
+                                                        <span v-else-if="server.license.fallback" class="text-amber-500">Pro Expired (Legacy)</span>
+                                                        <span v-else-if="server.license.needsActivation" class="text-red-500">Not Activated</span>
+                                                        <span v-else class="text-red-500">Unlicensed</span>
                                                     </span>
                                                 </div>
-                                                <div v-if="server.license.licensed && server.license.license">
+                                                <div v-if="server.license.license">
                                                     <span class="text-muted">Type:</span>
-                                                    <span class="ml-1 font-mono">{{ server.license.license.perpetual ? 'Perpetual' : 'Subscription' }}</span>
+                                                    <span class="ml-1 font-mono">{{ server.license.license.perpetual ? 'Perpetual' : (server.license.trial ? 'Trial' : 'Subscription') }}</span>
                                                 </div>
                                                 <div v-if="server.license.licensed && server.license.license && !server.license.license.perpetual && server.license.license.expiresAt" class="col-span-2">
                                                     <span class="text-muted">Expires:</span>
                                                     <span class="ml-1 font-mono">{{ new Date(server.license.license.expiresAt).toLocaleDateString() }}</span>
+                                                </div>
+                                                <div v-if="!server.license.licensed && server.license.license && server.license.license.expiresAt" class="col-span-2">
+                                                    <span class="text-muted">Expired:</span>
+                                                    <span class="ml-1 font-mono">{{ new Date(server.license.license.expiresAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) }}</span>
+                                                </div>
+                                                <div v-if="!server.license.licensed && server.license.revokedAt" class="col-span-2">
+                                                    <span class="text-muted">Revoked:</span>
+                                                    <span class="ml-1 font-mono">{{ new Date(server.license.revokedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) }}</span>
                                                 </div>
                                             </div>
 
@@ -1485,7 +1581,7 @@ const { requestTour } = useTourManager();
 const { setCustomThemeColors, setCustomThemeEnabled } = useThemeFromAlias();
 const { toursDisabled } = useTourPreferences();
 const { connections } = useConnections();
-const { isPremiumActive, isTrial, trialDaysRemaining, licenseInfo } = useLicenseStatus();
+const { isPremiumActive, isTrial, isTrialExpired, isFallback, trialDaysRemaining, licenseInfo } = useLicenseStatus();
 
 const hardwareCapabilities = ref<any>(null);
 
@@ -1602,45 +1698,34 @@ const upgradeKey = ref('')
 const upgradeBusy = ref(false)
 const upgradeError = ref('')
 
-const trialEmail = ref('')
 const trialBusy = ref(false)
 const trialError = ref('')
 const trialSuccess = ref('')
 
-function isValidEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email.trim())
-}
-
 const TRIAL_SERVER_URL = 'https://studio-license.45d.io'
 
 async function handleTrialRequest() {
-    const email = trialEmail.value.trim().toLowerCase()
-    if (!email || !isValidEmail(email)) return
-
     trialBusy.value = true
     trialError.value = ''
     trialSuccess.value = ''
 
     try {
-        // Call the VPS license server trial endpoint
+        // Call the VPS license server trial endpoint (no email needed)
         const response = await fetch(`${TRIAL_SERVER_URL}/api/licenses/trial`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ email }),
+            body: JSON.stringify({}),
         })
 
         const result = await response.json()
 
         if (!response.ok || !result?.ok) {
-            if (result?.error === 'trial_rate_limited') {
-                trialError.value = 'Only one trial per email per day. Please try again later.'
-            } else if (result?.error === 'trial_already_exists') {
-                trialError.value = 'A trial license already exists for this email. Check your email for the license key.'
-            } else if (result?.error === 'valid_email_required') {
-                trialError.value = 'Please enter a valid email address.'
+            if (result?.error === 'rate_limited') {
+                trialError.value = 'Too many requests. Please try again later.'
+            } else if (result?.error === 'trial_already_active') {
+                trialError.value = result?.message || 'This server already has an active trial.'
             } else {
                 trialError.value = result?.message || result?.error || 'Trial request failed.'
             }
@@ -1651,10 +1736,8 @@ async function handleTrialRequest() {
         if (result?.license?.key) {
             upgradeKey.value = result.license.key
             trialSuccess.value = `Trial key generated! It has been filled in below. Click Activate to enable your 30-day trial.`
-            trialEmail.value = ''
         } else {
-            trialSuccess.value = 'Trial key generated! Check your email for the license key.'
-            trialEmail.value = ''
+            trialSuccess.value = 'Trial key generated!'
         }
     } catch (err: any) {
         trialError.value = err?.message || 'Network error. Please check your internet connection.'

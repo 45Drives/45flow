@@ -27,6 +27,8 @@ export interface ClientTranscodeOpts {
     generateHls: boolean
     watermarkPath?: string | null
     watermarkSettings?: WatermarkSettings | null
+    /** When true, do NOT delete the watermark temp file after transcode (caller handles cleanup) */
+    skipWatermarkCleanup?: boolean
     // SSH connection for rsync of outputs
     ssh: { host: string; user: string; port: number; keyPath?: string }
     // Server API
@@ -349,8 +351,8 @@ export function useUploadTranscode() {
 
             stopHeartbeat()
 
-            // Clean up watermark temp file if one was downloaded
-            if (opts.watermarkPath) {
+            // Clean up watermark temp file if one was downloaded (skip if caller manages cleanup)
+            if (opts.watermarkPath && !opts.skipWatermarkCleanup) {
                 (window as any).electron.cleanupWatermarkTemp(opts.watermarkPath).catch(() => {})
             }
 
