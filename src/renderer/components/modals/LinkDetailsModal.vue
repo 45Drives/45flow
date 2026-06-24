@@ -812,7 +812,7 @@
                 <h4 class="font-semibold text-red-600 dark:text-red-400 text-sm">Danger Zone</h4>
                 <p class="text-xs opacity-70">Permanently delete this link and all associated data.</p>
               </div>
-              <button class="btn btn-primary bg-red-600! hover:bg-red-500! px-3 py-1.5 text-sm"
+              <button class="btn btn-delete px-3 py-1.5 text-sm"
                 @click="emit('requestDelete', link!)">
                 Delete Link
               </button>

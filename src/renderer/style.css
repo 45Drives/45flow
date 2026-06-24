@@ -897,6 +897,27 @@
   border-color: #d3d3d3 !important;
 }
 
+/* Delete button — darker red (45d brand red) for destructive permanent actions */
+.btn-delete {
+  background: #b91c1c !important;
+  border-color: #b91c1c !important;
+  color: white !important;
+}
+
+.btn-delete:hover {
+  background: #991b1b !important;
+  border-color: #991b1b !important;
+}
+
+.btn-delete:disabled,
+.btn-delete.disabled {
+  background: #d3d3d3 !important;
+  border-color: #d3d3d3 !important;
+  color: #6c757d !important;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 /* Helpers */
 .bg-primary {
   background: var(--btn-primary-fill) !important;

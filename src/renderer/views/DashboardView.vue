@@ -108,7 +108,7 @@
 									@click="confirmCardUnarchive(project)"
 								>Unarchive</button>
 								<button
-									class="btn btn-danger px-2 py-1 text-xs"
+									class="btn btn-delete px-2 py-1 text-xs"
 									title="Permanently delete this project"
 									@click="confirmCardDelete(project)"
 								>Delete</button>
@@ -187,7 +187,7 @@
 
 	<!-- Edit Project Modal -->
 	<Teleport to="body">
-		<div v-if="showEditProjectModal && activeProject" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 text-default" @click.self="closeEditModal">
+		<div v-if="showEditProjectModal && actionTarget" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 text-default" @click.self="closeEditModal">
 			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-4xl mx-4 bg-accent">
 
 				<!-- Default: Edit Form -->
@@ -230,18 +230,18 @@
 						
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-2">
-								<button v-if="!activeProject?.archived" type="button"
+								<button v-if="!actionTarget?.archived" type="button"
 									class="btn btn-warning px-3 py-2 text-sm"
 									title="Deactivate all links and hide the project from the default view. You can unarchive it later."
 									@click="editModalConfirm = 'archive'">Archive</button>
-								<button v-if="activeProject?.archived" type="button"
+								<button v-if="actionTarget?.archived" type="button"
 									class="btn btn-success px-3 py-2 text-sm"
 									title="Restore the project and re-enable all previously disabled links."
 									@click="editModalConfirm = 'unarchive'">Unarchive</button>
 							</div>
-							<button type="button" class="btn btn-danger px-3 py-2 text-sm"
+							<button type="button" class="btn btn-delete px-3 py-2 text-sm"
 								title="Permanently remove the project. Links will be unlinked but not deleted."
-								@click="editModalConfirm = 'delete'; resetProjectDeleteState(); loadProjectDeletePreview(activeProject!)">Delete Project</button>
+								@click="editModalConfirm = 'delete'; resetProjectDeleteState(); loadProjectDeletePreview(actionTarget!)">Delete Project</button>
 						</div>
 
 						<hr class="border-default" />
@@ -268,7 +268,7 @@
 							<li>You can unarchive the project at any time to restore it</li>
 						</ul>
 					</div>
-					<p class="text-sm text-default mb-4">Archive <strong>{{ activeProject.name }}</strong>?</p>
+					<p class="text-sm text-default mb-4">Archive <strong>{{ actionTarget.name }}</strong>?</p>
 					<div class="flex items-center justify-end gap-2">
 						<button class="btn btn-secondary px-4 py-2" @click="editModalConfirm = null">Back</button>
 						<button class="btn btn-warning px-4 py-2" @click="archiveProject">Archive</button>
@@ -286,7 +286,7 @@
 							<li>Expired links will remain expired</li>
 						</ul>
 					</div>
-					<p class="text-sm text-default mb-4">Unarchive <strong>{{ activeProject.name }}</strong>?</p>
+					<p class="text-sm text-default mb-4">Unarchive <strong>{{ actionTarget.name }}</strong>?</p>
 					<div class="flex items-center justify-end gap-2">
 						<button class="btn btn-secondary px-4 py-2" @click="editModalConfirm = null">Back</button>
 						<button class="btn btn-success px-4 py-2" @click="unarchiveProject">Unarchive</button>
@@ -379,7 +379,7 @@
 
 					<div class="flex items-center justify-end gap-2">
 						<button class="btn btn-secondary px-4 py-2" @click="editModalConfirm = null">Back</button>
-						<button class="btn btn-primary px-4 py-2 bg-red-600! hover:bg-red-500!"
+						<button class="btn btn-delete px-4 py-2"
 							:disabled="projectDeleteConfirmText !== 'DELETE'"
 							@click="deleteProject">Delete Permanently</button>
 					</div>
@@ -406,7 +406,7 @@
 				<p class="text-sm text-default mb-4">Disable <strong>{{ cardActionProject.name }}</strong>?</p>
 				<div class="flex items-center justify-end gap-2">
 					<button class="btn btn-secondary px-4 py-2" @click="clearCardAction()">Cancel</button>
-					<button class="btn btn-danger px-4 py-2" @click="disableProject">Disable</button>
+					<button class="btn btn-secondary px-4 py-2" @click="disableProject">Disable</button>
 				</div>
 			</div>
 		</div>
@@ -549,7 +549,7 @@
 
 				<div class="flex items-center justify-end gap-2">
 					<button class="btn btn-secondary px-4 py-2" @click="clearCardAction()">Cancel</button>
-					<button class="btn btn-primary px-4 py-2 bg-red-600! hover:bg-red-500!"
+					<button class="btn btn-delete px-4 py-2"
 						:disabled="projectDeleteConfirmText !== 'DELETE'"
 						@click="deleteProject">Delete Permanently</button>
 				</div>
@@ -783,10 +783,11 @@ function startEditProject() {
 }
 
 async function saveProject() {
-	if (!activeProject.value || !editProjectName.value.trim() || !editProjectRoot.value.trim()) return
+	const target = actionTarget.value
+	if (!target || !editProjectName.value.trim() || !editProjectRoot.value.trim()) return
 	savingProject.value = true
 	try {
-		await apiFetch(`/api/projects/${activeProject.value.id}`, {
+		await apiFetch(`/api/projects/${target.id}`, {
 			method: 'PATCH',
 			body: JSON.stringify({
 				name: editProjectName.value.trim(),
@@ -794,14 +795,17 @@ async function saveProject() {
 				description: editProjectDescription.value.trim() || null,
 			}),
 		})
-		activeProject.value = {
-			...activeProject.value,
-			name: editProjectName.value.trim(),
-			root_dir: editProjectRoot.value.trim(),
-			description: editProjectDescription.value.trim() || null,
+		if (activeProject.value && activeProject.value.id === target.id) {
+			activeProject.value = {
+				...activeProject.value,
+				name: editProjectName.value.trim(),
+				root_dir: editProjectRoot.value.trim(),
+				description: editProjectDescription.value.trim() || null,
+			}
 		}
-		showEditProjectModal.value = false
+		closeEditModal()
 		pushNotification(new Notification('Project Updated', '', 'success', 4000))
+		await fetchProjects()
 	} catch (e: any) {
 		pushNotification(new Notification('Failed to update project', e?.message || '', 'error', 8000))
 	} finally {
@@ -875,8 +879,14 @@ async function confirmCardEnable(project: Project) {
 	}
 }
 function openEditProjectFromCard(project: Project) {
-	activeProject.value = project
-	startEditProject()
+	cardActionProject.value = project
+	editProjectName.value = project.name
+	editProjectRoot.value = project.root_dir
+	editProjectPickerBase.value = project.root_dir
+	editProjectDescription.value = project.description || ''
+	editKey.value++
+	editModalConfirm.value = null
+	showEditProjectModal.value = true
 }
 
 function clearCardAction() {
@@ -889,6 +899,8 @@ function closeEditModal() {
 	showEditProjectModal.value = false
 	editModalConfirm.value = null
 	resetProjectDeleteState()
+	cardActionProject.value = null
+	cardAction.value = null
 }
 
 // ── Project Delete Preview ──

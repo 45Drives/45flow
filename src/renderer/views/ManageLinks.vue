@@ -17,7 +17,44 @@
 			</div>
 		</div>
 
-		<div class="manage-surface p-2 bg-well rounded-md min-w-0 flex flex-col">
+		<div class="manage-surface p-2 bg-well rounded-md min-w-0 flex flex-col relative">
+			<Transition enter-active-class="transition-all duration-200 ease-out"
+				enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0"
+				leave-active-class="transition-all duration-150 ease-in"
+				leave-from-class="opacity-100 translate-y-0" leave-to-class="opacity-0 -translate-y-2">
+				<div v-if="selectedIds.size > 0" class="bulk-actions-bar">
+					<div class="bulk-actions-count">
+						<span>{{ selectedIds.size }} selected</span>
+					</div>
+
+					<div class="bulk-actions-buttons">
+						<button v-if="selectionHasDisabled" class="btn btn-success bulk-action-btn" @click="bulkEnable">
+							Enable
+						</button>
+
+						<button v-if="selectionHasEnabled" class="btn btn-danger bulk-action-btn" @click="bulkDisable">
+							Disable
+						</button>
+
+						<button class="btn btn-primary bulk-action-btn" @click="bulkEditExpiry">
+							Edit Expiry
+						</button>
+
+						<button class="btn btn-warning bulk-action-btn" @click="bulkArchive">
+							Archive
+						</button>
+
+						<button class="btn btn-delete bulk-action-btn" @click="bulkDeleteOpen = true">
+							Delete
+						</button>
+
+						<button class="btn btn-secondary bulk-action-btn bulk-action-clear" @click="clearSelection">
+							Clear
+						</button>
+					</div>
+				</div>
+			</Transition>
+
 			<div data-tour="manage-links-toolbar" class="manage-toolbar">
 				<input v-model="q" type="search" placeholder="Search title, directory, file..."
 					class="input-textlike px-3 py-2 border border-default rounded-lg bg-default text-default manage-search-input" />
@@ -51,42 +88,6 @@
 
 			<div data-tour="manage-links-table"
 				class="manage-table-wrap overflow-x-auto min-w-0 overscroll-x-contain touch-pan-x">
-				<Transition enter-active-class="transition-all duration-200 ease-out"
-					enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0"
-					leave-active-class="transition-all duration-150 ease-in"
-					leave-from-class="opacity-100 translate-y-0" leave-to-class="opacity-0 -translate-y-2">
-					<div v-if="selectedIds.size > 0" class="bulk-actions-bar">
-						<div class="bulk-actions-count">
-							<span>{{ selectedIds.size }} selected</span>
-						</div>
-
-						<div class="bulk-actions-buttons">
-							<button v-if="selectionHasDisabled" class="btn btn-success bulk-action-btn" @click="bulkEnable">
-								Enable
-							</button>
-
-							<button v-if="selectionHasEnabled" class="btn btn-danger bulk-action-btn" @click="bulkDisable">
-								Disable
-							</button>
-
-							<button class="btn btn-primary bulk-action-btn" @click="bulkEditExpiry">
-								Edit Expiry
-							</button>
-
-							<button class="btn btn-warning bulk-action-btn" @click="bulkArchive">
-								Archive
-							</button>
-
-							<button class="btn btn-primary bulk-action-btn bg-red-600! hover:bg-red-500!" @click="bulkDeleteOpen = true">
-								Delete
-							</button>
-
-							<button class="btn btn-secondary bulk-action-btn bulk-action-clear" @click="clearSelection">
-								Clear
-							</button>
-						</div>
-					</div>
-				</Transition>
 
 				<table class="manage-table text-sm border-collapse">
 					<colgroup>
@@ -105,9 +106,9 @@
 
 					<thead>
 						<tr class="manage-table-head-row border-b border-default">
-							<th class="p-1 border border-default select-cell">
-								<input type="checkbox" class="input-checkbox" :checked="allPageSelected"
-									:indeterminate="somePageSelected && !allPageSelected" @change="toggleSelectAll" />
+							<th class="p-1 border border-default select-cell cursor-pointer" @click="toggleSelectAll">
+								<input type="checkbox" class="input-checkbox pointer-events-none" :checked="allPageSelected"
+									:indeterminate="somePageSelected && !allPageSelected" />
 							</th>
 
 							<th class="p-1 border border-default thumb-td"></th>
@@ -289,9 +290,8 @@
 						<tr v-for="it in pagedRows" :key="'link-' + it.id" v-else
 							class="hover:bg-black/10 dark:hover:bg-white/10 transition border border-default h-12"
 							:class="{ 'bg-blue-500/10': selectedIds.has(it.id) }">
-							<td class="p-1 border border-default align-middle text-center select-cell">
-								<input type="checkbox" class="input-checkbox" :checked="selectedIds.has(it.id)"
-									@change="toggleSelect(it)" />
+							<td class="p-1 border border-default align-middle text-center select-cell cursor-pointer" @click="toggleSelect(it)">
+								<input type="checkbox" class="input-checkbox pointer-events-none" :checked="selectedIds.has(it.id)" />
 							</td>
 
 							<td class="p-1 border border-default align-middle thumb-td">
@@ -450,7 +450,7 @@
 										{{ it.archived ? 'Unarchive' : 'Archive' }}
 									</button>
 
-									<button class="btn btn-danger table-action-btn actions-delete-btn"
+									<button class="btn btn-delete table-action-btn actions-delete-btn"
 										@click="confirmDelete(it)">
 										Delete
 									</button>
@@ -587,7 +587,7 @@
 						Cancel
 					</button>
 					<button
-						class="btn btn-primary px-4 py-2 bg-red-600! hover:bg-red-500!"
+						class="btn btn-delete px-4 py-2"
 						:disabled="deleteLinkConfirmText !== 'DELETE'" @click="deleteLink">
 						Delete Permanently
 					</button>
@@ -685,7 +685,7 @@
 
 				<div class="flex items-center justify-end gap-2">
 					<button class="btn btn-secondary px-4 py-2" @click="cancelBulkDelete">Cancel</button>
-					<button class="btn btn-primary px-4 py-2 bg-red-600! hover:bg-red-500!"
+					<button class="btn btn-delete px-4 py-2"
 						:disabled="bulkDeleteConfirmText !== 'DELETE'"
 						@click="executeBulkDelete">
 						Delete {{ selectedIds.size }} Links
@@ -1805,9 +1805,11 @@ function formatLocal(ts: unknown, opts: Intl.DateTimeFormatOptions) {
 }
 
 .bulk-actions-bar {
-	position: sticky;
+	position: absolute;
+	top: 0;
 	left: 0;
-	z-index: 4;
+	right: 0;
+	z-index: 10;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
