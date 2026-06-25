@@ -4,59 +4,6 @@ import path from 'path';
 import SftpClient from 'ssh2-sftp-client';
 import { jl } from '../main';
 
-/**
- * Quick probe to check if the SSH user can write to the destination directory.
- * Attempts to create and remove a temp directory via SFTP.
- * Returns true if writable, false if permission denied.
- */
-export async function probeSftpWriteAccess(opts: {
-  host: string;
-  user: string;
-  destDir: string;
-  port?: number;
-  keyPath?: string;
-  id: string;
-}): Promise<boolean> {
-  const sftp = new SftpClient();
-  const privateKey = opts.keyPath ? fs.readFileSync(opts.keyPath) : undefined;
-  const probeDir = `${opts.destDir.replace(/\/+$/, '')}/.45flow-probe-${Date.now()}`;
-
-  try {
-    await sftp.connect({
-      host: opts.host,
-      port: opts.port ?? 22,
-      username: opts.user,
-      privateKey,
-      readyTimeout: 15000,
-      retries: 0,
-    });
-
-    // Try to create a probe directory
-    await sftp.mkdir(probeDir);
-    // Clean up immediately
-    await sftp.rmdir(probeDir);
-    jl('info', 'sftp.probe.writable', { id: opts.id, destDir: opts.destDir });
-    return true;
-  } catch (err: any) {
-    const msg = err?.message || String(err);
-    if (msg.includes('Permission denied') || msg.includes('EACCES') || msg.includes('permission denied')) {
-      jl('info', 'sftp.probe.denied', { id: opts.id, destDir: opts.destDir, error: msg });
-      return false;
-    }
-    // If the directory doesn't exist, try to create it
-    if (msg.includes('No such file')) {
-      jl('info', 'sftp.probe.nodir', { id: opts.id, destDir: opts.destDir });
-      // Can't write if directory doesn't exist and we can't create it — staging will handle it
-      return false;
-    }
-    // Other errors (network, auth) — don't treat as permission issue, re-throw
-    jl('warn', 'sftp.probe.error', { id: opts.id, destDir: opts.destDir, error: msg });
-    throw err;
-  } finally {
-    try { await sftp.end(); } catch { /* ok */ }
-  }
-}
-
 // Match the rsync progress object shape your UI expects
 export type TransferProgress = {
   percent?: number;

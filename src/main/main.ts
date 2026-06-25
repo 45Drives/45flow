@@ -387,7 +387,7 @@ import { NodeSSH } from 'node-ssh';
 import { buildRsyncCmdAndArgs } from './transfers/rsync-path';
 import { registerSensitiveToken, scrubSecrets } from './scrubSecrets';
 import { runRsyncDetached, reattachTailer, type LogTailer } from './transfers/rsync-runner';
-import { runWinSftp, probeSftpWriteAccess } from './transfers/win-file-sftp';
+import { runWinSftp } from './transfers/win-file-sftp';
 import {
   upsertTransfer, getRunningTransfers, getQueuedTransfers,
   markTransfer, markTransferRunning, removeTransfer, removeQueuedMatch,
@@ -3177,65 +3177,70 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
       // If separate sshPort, pass that instead. For now default to 22.
       const sshPort = 22
 
-      // ── Permission probe: check if SSH user can write to destination ──
-      let useStagingFallback = false
+      // ── Try direct upload; on permission denied, fallback to staging ──
       let stagingSessionId: string | undefined
-      let stagingPath: string | undefined
+      let usedStaging = false
 
       try {
-        const canWrite = await probeSftpWriteAccess({
+        await runWinSftp({
+          id,
+          src: actualSrc,
           host: opts.host,
           user: opts.user,
           destDir: opts.destDir,
           port: sshPort,
           keyPath,
-          id,
+          onProgress: (p) => {
+            event.sender.send(`upload:progress:${id}`, p)
+          },
         })
+      } catch (sftpErr: any) {
+        const errMsg = sftpErr?.message || String(sftpErr)
+        const isPermissionDenied = errMsg.includes('Permission denied') &&
+          !errMsg.includes('Authentication failed') &&
+          !errMsg.includes('authentication methods failed')
 
-        if (!canWrite) {
-          jl('info', 'upload.staging.needed', { id, host: opts.host, destDir: opts.destDir, user: opts.user })
-          // Request a staging directory from the server
-          const stageResult = await requestStagingDir({
-            host: opts.host,
-            dest: opts.destDir,
-            username: opts.user,
-            apiToken: opts.apiToken,
-          })
-          if (stageResult.ok) {
-            useStagingFallback = true
-            stagingSessionId = stageResult.sessionId
-            stagingPath = stageResult.stagingPath
-            jl('info', 'upload.staging.ready', { id, sessionId: stagingSessionId, stagingPath })
-          } else {
-            jl('warn', 'upload.staging.request.failed', { id, error: stageResult.error })
-            // Fall through to direct upload — it will likely fail with permission denied,
-            // but gives the user the original error message
-          }
+        if (!isPermissionDenied) throw sftpErr
+
+        // Permission denied on destination — request staging dir and retry
+        jl('info', 'upload.sftp.permission-denied.staging', { id, destDir: opts.destDir })
+
+        const stageResult = await requestStagingDir({
+          host: opts.host,
+          dest: opts.destDir,
+          username: opts.user,
+          apiToken: opts.apiToken,
+        })
+        if (!stageResult.ok) {
+          jl('warn', 'upload.sftp.staging.request.failed', { id, error: stageResult.error })
+          throw sftpErr // re-throw original error
         }
-      } catch (probeErr: any) {
-        // Probe threw a non-permission error (network, auth) — skip staging, let direct upload handle it
-        jl('warn', 'upload.probe.error', { id, error: probeErr?.message || String(probeErr) })
+
+        stagingSessionId = stageResult.sessionId
+        usedStaging = true
+        jl('info', 'upload.sftp.staging.retry', { id, stagingPath: stageResult.stagingPath })
+
+        // Reset progress and retry upload to staging path
+        event.sender.send(`upload:progress:${id}`, { percent: 0, raw: 'retrying to staging' })
+
+        await runWinSftp({
+          id,
+          src: actualSrc,
+          host: opts.host,
+          user: opts.user,
+          destDir: stageResult.stagingPath,
+          port: sshPort,
+          keyPath,
+          onProgress: (p) => {
+            event.sender.send(`upload:progress:${id}`, p)
+          },
+        })
       }
-
-      const effectiveDestDir = useStagingFallback && stagingPath ? stagingPath : opts.destDir
-
-      await runWinSftp({
-        id,
-        src: actualSrc,
-        host: opts.host,
-        user: opts.user,
-        destDir: effectiveDestDir,
-        port: sshPort,
-        keyPath,
-        onProgress: (p) => {
-          event.sender.send(`upload:progress:${id}`, p)
-        },
-      })
 
       event.sender.send(`upload:progress:${id}`, { percent: 100, raw: 'done' })
 
       // If staging was used, finalize (move files to final dest + ingest)
-      if (useStagingFallback && stagingSessionId) {
+      if (usedStaging && stagingSessionId) {
         const fileName = path.basename(actualSrc)
         let fileSize: number | undefined
         try { fileSize = fs.statSync(actualSrc).size } catch { /* ok */ }
@@ -3279,7 +3284,6 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
             })
           }
         }
-        // Skip the normal ingest section below (finalize already handled it)
         event.sender.send(`upload:done:${id}`, { ok: true })
         jl('info', 'upload.done.staged', { id, ok: true, sessionId: stagingSessionId })
         if (isTempCopy) { try { fs.unlinkSync(actualSrc); } catch {} }
@@ -3295,70 +3299,7 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
       // Do NOT return; ingest below must run for Windows too.
     } else {
       // ── Mac/Linux rsync path ─────────────────────────────────────────
-      // Permission probe: check if SSH user can write to destination
-      let useStagingFallback = false
-      let stagingSessionId: string | undefined
-      let stagingPath: string | undefined
-
-      try {
-        // Use ssh to test if the user can write to the destination
-        const { execSync } = require('child_process')
-        const sshPort = opts.port || 22
-        const sshOpts = [
-          '-o', 'BatchMode=yes',
-          '-o', 'StrictHostKeyChecking=accept-new',
-          '-o', 'ConnectTimeout=5',
-          ...(keyPath ? ['-i', keyPath, '-o', 'IdentitiesOnly=yes'] : []),
-          '-p', String(sshPort),
-        ].join(' ')
-        const destDirEscaped = opts.destDir.replace(/'/g, "'\\''")
-        const probeCmd = `ssh ${sshOpts} ${opts.user}@${opts.host} "mkdir -p '${destDirEscaped}' && test -w '${destDirEscaped}' && rmdir '${destDirEscaped}/.45flow-probe-$$' 2>/dev/null; touch '${destDirEscaped}/.45flow-probe-$$' && rm -f '${destDirEscaped}/.45flow-probe-$$'"`
-
-        try {
-          execSync(probeCmd, { encoding: 'utf-8', timeout: 10000, stdio: 'pipe' })
-          jl('info', 'upload.rsync.probe.writable', { id, destDir: opts.destDir })
-        } catch (probeErr: any) {
-          const probeMsg = probeErr?.stderr || probeErr?.message || String(probeErr)
-          // Distinguish SSH auth failures from filesystem permission issues
-          const isAuthFailure = probeMsg.includes('publickey') ||
-            probeMsg.includes('authentication') ||
-            probeMsg.includes('Connection refused') ||
-            probeMsg.includes('Could not resolve') ||
-            probeMsg.includes('No route to host') ||
-            probeMsg.includes('Connection timed out')
-          const isFilesystemDenied = !isAuthFailure && (
-            probeMsg.includes('Permission denied') ||
-            probeMsg.includes('permission denied') ||
-            probeMsg.includes('Read-only')
-          )
-
-          if (isFilesystemDenied) {
-            jl('info', 'upload.rsync.probe.denied', { id, destDir: opts.destDir, error: probeMsg })
-
-            const stageResult = await requestStagingDir({
-              host: opts.host,
-              dest: opts.destDir,
-              username: opts.user,
-              apiToken: opts.apiToken,
-            })
-            if (stageResult.ok) {
-              useStagingFallback = true
-              stagingSessionId = stageResult.sessionId
-              stagingPath = stageResult.stagingPath
-              jl('info', 'upload.rsync.staging.ready', { id, sessionId: stagingSessionId, stagingPath })
-            } else {
-              jl('warn', 'upload.rsync.staging.request.failed', { id, error: stageResult.error })
-            }
-          } else {
-            jl('warn', 'upload.rsync.probe.error', { id, error: probeMsg })
-          }
-        }
-      } catch (e: any) {
-        jl('warn', 'upload.rsync.probe.exception', { id, error: e?.message || String(e) })
-      }
-
-      const effectiveDestDir = useStagingFallback && stagingPath ? stagingPath : opts.destDir
-      const rsyncOpts = { ...opts, src: actualSrc, keyPath, knownHostsPath, destDir: effectiveDestDir }
+      const rsyncOpts = { ...opts, src: actualSrc, keyPath, knownHostsPath }
       const picked = buildRsyncCmdAndArgs(rsyncOpts)
 
       // ── Detached spawn: survives app closure ─────────────────────────
@@ -3410,67 +3351,105 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
       inflightTailers.delete(id)
 
       if (!result.ok) {
-        markTransfer(id, 'failed')
         const errorMsg = result.error || 'rsync failed (detached)'
-        event.sender.send(`upload:done:${id}`, { error: errorMsg })
-        jl('info', 'rsync.detached.failed', { id, pid, error: errorMsg })
-        return
-      }
+        // Check if this is a permission denied error — if so, retry via staging
+        const isPermDenied = errorMsg.includes('Permission denied') &&
+          !errorMsg.includes('publickey') &&
+          !errorMsg.includes('authentication')
 
-      // If staging was used, finalize (move files to final dest + ingest)
-      if (useStagingFallback && stagingSessionId) {
-        const fileName = path.basename(actualSrc)
-        let fileSizeForFinalize: number | undefined
-        try { fileSizeForFinalize = fs.statSync(actualSrc).size } catch { /* ok */ }
+        if (isPermDenied) {
+          jl('info', 'upload.rsync.permission-denied.staging', { id, destDir: opts.destDir, error: errorMsg })
 
-        const wantsProxy = (opts as any).transcodeProxy === true
-        const wantsWatermark = (opts as any).watermark === true
-        const rawWatermarkFileName = typeof (opts as any).watermarkFileName === 'string'
-          ? String((opts as any).watermarkFileName).trim() : ''
+          const stageResult = await requestStagingDir({
+            host: opts.host,
+            dest: opts.destDir,
+            username: opts.user,
+            apiToken: opts.apiToken,
+          })
 
-        const finalizeResult = await finalizeStagedUpload({
-          host: opts.host,
-          sessionId: stagingSessionId,
-          dest: opts.destDir,
-          username: opts.user,
-          files: [{ name: fileName, size: fileSizeForFinalize }],
-          uploader: os.userInfo().username,
-          proxy: wantsProxy,
-          proxyQualities: Array.isArray((opts as any).proxyQualities) ? (opts as any).proxyQualities : undefined,
-          hls: wantsProxy,
-          watermark: wantsWatermark && rawWatermarkFileName.length > 0,
-          watermarkFile: wantsWatermark ? rawWatermarkFileName : undefined,
-          watermarkSettings: opts.watermarkSettings,
-          watermarkProxyQualities: Array.isArray((opts as any).watermarkProxyQualities) ? (opts as any).watermarkProxyQualities : undefined,
-          noIngest: opts.noIngest,
-          apiToken: opts.apiToken,
-        })
+          if (stageResult.ok) {
+            // Retry rsync to staging path
+            jl('info', 'upload.rsync.staging.retry', { id, stagingPath: stageResult.stagingPath })
+            event.sender.send(`upload:progress:${id}`, { percent: 0, raw: 'retrying to staging' })
 
-        markTransfer(id, 'completed')
-
-        // Emit ingest result from finalize response
-        if (finalizeResult?.ok && finalizeResult?.results?.[0]?.ok && !opts.noIngest) {
-          const r = finalizeResult.results[0]
-          if (r.fileId) {
-            event.sender.send(`upload:ingest:${id}`, {
-              ok: true,
-              fileId: r.fileId,
-              assetVersionId: r.assetVersionId || null,
-              host: opts.host,
-              apiPort: 9095,
-              transcodes: r.assetVersionId ? [{ assetVersionId: r.assetVersionId, jobs: r.jobs || {} }] : [],
+            const stagingRsyncOpts = { ...opts, src: actualSrc, keyPath, knownHostsPath, destDir: stageResult.stagingPath }
+            const stagingPicked = buildRsyncCmdAndArgs(stagingRsyncOpts)
+            const stagingLogFile = makeLogPath(id + '-staging')
+            const staging = runRsyncDetached({
+              id: id + '-staging',
+              cmd: stagingPicked.cmd,
+              args: stagingPicked.args,
+              logFile: stagingLogFile,
+              win: BrowserWindow.getAllWindows()[0],
             })
+
+            const stagingResult = await staging.tailer.done
+
+            if (!stagingResult.ok) {
+              markTransfer(id, 'failed')
+              event.sender.send(`upload:done:${id}`, { error: stagingResult.error || 'staging rsync failed' })
+              jl('info', 'rsync.staging.failed', { id, error: stagingResult.error })
+              return
+            }
+
+            // Finalize — move from staging to destination
+            const fileName = path.basename(actualSrc)
+            let fileSizeForFinalize: number | undefined
+            try { fileSizeForFinalize = fs.statSync(actualSrc).size } catch { /* ok */ }
+
+            const wantsProxy = (opts as any).transcodeProxy === true
+            const wantsWatermark = (opts as any).watermark === true
+            const rawWatermarkFileName = typeof (opts as any).watermarkFileName === 'string'
+              ? String((opts as any).watermarkFileName).trim() : ''
+
+            const finalizeResult = await finalizeStagedUpload({
+              host: opts.host,
+              sessionId: stageResult.sessionId,
+              dest: opts.destDir,
+              username: opts.user,
+              files: [{ name: fileName, size: fileSizeForFinalize }],
+              uploader: os.userInfo().username,
+              proxy: wantsProxy,
+              proxyQualities: Array.isArray((opts as any).proxyQualities) ? (opts as any).proxyQualities : undefined,
+              hls: wantsProxy,
+              watermark: wantsWatermark && rawWatermarkFileName.length > 0,
+              watermarkFile: wantsWatermark ? rawWatermarkFileName : undefined,
+              watermarkSettings: opts.watermarkSettings,
+              watermarkProxyQualities: Array.isArray((opts as any).watermarkProxyQualities) ? (opts as any).watermarkProxyQualities : undefined,
+              noIngest: opts.noIngest,
+              apiToken: opts.apiToken,
+            })
+
+            markTransfer(id, 'completed')
+
+            if (finalizeResult?.ok && finalizeResult?.results?.[0]?.ok && !opts.noIngest) {
+              const r = finalizeResult.results[0]
+              if (r.fileId) {
+                event.sender.send(`upload:ingest:${id}`, {
+                  ok: true,
+                  fileId: r.fileId,
+                  assetVersionId: r.assetVersionId || null,
+                  host: opts.host,
+                  apiPort: 9095,
+                  transcodes: r.assetVersionId ? [{ assetVersionId: r.assetVersionId, jobs: r.jobs || {} }] : [],
+                })
+              }
+            }
+            event.sender.send(`upload:done:${id}`, { ok: true })
+            jl('info', 'upload.done.staged.rsync', { id, ok: true, sessionId: stageResult.sessionId })
+            if (isTempCopy) { try { fs.unlinkSync(actualSrc); } catch {} }
+            inflightRsync.delete(id)
+            inflightPids.delete(id)
+            inflightTailers.delete(id)
+            pendingRsyncCancel.delete(id)
+            drainPersistedQueue()
+            return
           }
         }
-        // Skip the normal ingest section below (finalize already handled it)
-        event.sender.send(`upload:done:${id}`, { ok: true })
-        jl('info', 'upload.done.staged.rsync', { id, ok: true, sessionId: stagingSessionId })
-        if (isTempCopy) { try { fs.unlinkSync(actualSrc); } catch {} }
-        inflightRsync.delete(id)
-        inflightPids.delete(id)
-        inflightTailers.delete(id)
-        pendingRsyncCancel.delete(id)
-        drainPersistedQueue()
+
+        markTransfer(id, 'failed')
+        event.sender.send(`upload:done:${id}`, { error: errorMsg })
+        jl('info', 'rsync.detached.failed', { id, pid, error: errorMsg })
         return
       }
 
