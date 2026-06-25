@@ -34,6 +34,10 @@ export type CommentExport = {
   resolved_at: string | null
   resolved_by: number | null
   tags: string[] | null
+
+  // Version tracking
+  asset_version_id: number | null
+  version_index: number | null
 }
 
 export type CommentStats = {

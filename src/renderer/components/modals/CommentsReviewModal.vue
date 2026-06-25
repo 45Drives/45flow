@@ -67,6 +67,8 @@
               <option value="csv">CSV</option>
               <option value="markdown">Markdown</option>
               <option value="webvtt">WebVTT (Subtitles)</option>
+              <option value="pdf">PDF Report</option>
+              <option value="edl">EDL (Edit Decision List)</option>
             </select>
           </div>
 
@@ -162,6 +164,17 @@
             </select>
           </div>
 
+          <!-- Version Filter -->
+          <div v-if="allVersions.length > 0" class="space-y-2">
+            <label class="text-xs font-semibold opacity-70">Version</label>
+            <select v-model="versionFilter" class="w-full px-2 py-1.5 text-sm border border-default rounded bg-default">
+              <option value="">All Versions</option>
+              <option v-for="v in allVersions" :key="v.id ?? 'none'" :value="String(v.id ?? '')">
+                {{ v.label }} ({{ v.count }})
+              </option>
+            </select>
+          </div>
+
           <!-- Sort Options -->
           <div class="space-y-2">
             <label class="text-xs font-semibold opacity-70">Sort By</label>
@@ -170,6 +183,7 @@
               <option value="date">Date Created</option>
               <option value="author">Author Name</option>
               <option value="status">Status</option>
+              <option value="version">Version</option>
             </select>
           </div>
 
@@ -437,12 +451,13 @@ const stats = ref<CommentStats | null>(null)
 const selectedFileFilter = ref('')
 const searchText = ref('')
 const authorFilter = ref('')
-const sortBy = ref<'timecode' | 'date' | 'author' | 'status'>('timecode')
+const sortBy = ref<'timecode' | 'date' | 'author' | 'status' | 'version'>('timecode')
 const sortReverse = ref(false)
 
 // Bulk selection
 const selectedCommentIds = ref<Set<number>>(new Set())
 const statusFilter = ref<'all' | 'resolved' | 'unresolved'>('all')
+const versionFilter = ref('')
 
 // Export state
 const exportFileFilter = ref('all')
@@ -479,6 +494,21 @@ const allAuthors = computed(() => {
   return Array.from(authors).sort()
 })
 
+// Get unique versions from comments
+const allVersions = computed(() => {
+  const vMap = new Map<string, { id: number | null, index: number | null, count: number }>()
+  comments.value.filter(c => !c.parent_id).forEach(c => {
+    const key = c.asset_version_id != null ? String(c.asset_version_id) : ''
+    if (!vMap.has(key)) {
+      vMap.set(key, { id: c.asset_version_id, index: c.version_index, count: 0 })
+    }
+    vMap.get(key)!.count++
+  })
+  return Array.from(vMap.entries())
+    .map(([key, v]) => ({ id: v.id, label: v.index != null ? `V${v.index}` : 'Unversioned', count: v.count }))
+    .sort((a, b) => (b.id ?? 0) - (a.id ?? 0))
+})
+
 // Get all top-level comments
 const topLevelComments = computed(() => {
   return comments.value.filter(c => !c.parent_id)
@@ -508,6 +538,15 @@ const filteredComments = computed(() => {
     })
   }
 
+  // Filter by version
+  if (versionFilter.value !== '') {
+    const vId = versionFilter.value ? Number(versionFilter.value) : null
+    result = result.filter(c => {
+      if (vId === null) return c.asset_version_id == null
+      return c.asset_version_id === vId
+    })
+  }
+
   // Filter by search text
   if (searchText.value.trim()) {
     const search = searchText.value.toLowerCase()
@@ -532,6 +571,8 @@ const filteredComments = computed(() => {
       }
       case 'status':
         return (a.resolved ? 1 : 0) - (b.resolved ? 1 : 0)
+      case 'version':
+        return (a.version_index ?? 0) - (b.version_index ?? 0)
       default:
         return 0
     }
@@ -784,18 +825,20 @@ async function handleExport() {
       params.set('file', exportFileFilter.value)
     }
 
+    const isPdf = exportFormat.value === 'pdf'
     const response = await apiFetch(`/api/links/${props.link.id}/export/comments?${params.toString()}`, {
-      parse: 'text'
+      parse: isPdf ? 'blob' : 'text'
     })
 
     // Determine file extension
-    const ext = exportFormat.value === 'markdown' ? 'md' : exportFormat.value === 'webvtt' ? 'vtt' : exportFormat.value
+    const extMap: Record<string, string> = { markdown: 'md', webvtt: 'vtt', json: 'json', csv: 'csv', pdf: 'pdf', edl: 'edl' }
+    const ext = extMap[exportFormat.value] || exportFormat.value
     const fileName = exportFileFilter.value === 'all' 
       ? `comments-all.${ext}`
       : `comments-${exportFileFilter.value.replace(/[^a-z0-9_-]/gi, '_')}.${ext}`
 
     // Create download
-    const blob = new Blob([response], { type: 'text/plain' })
+    const blob = isPdf ? response : new Blob([response], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url

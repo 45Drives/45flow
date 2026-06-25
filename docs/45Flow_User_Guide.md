@@ -41,7 +41,7 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
 | **Collaboration** | | |
 | Timecoded comments on videos | ✅  | ✅ |
 | Annotations & drawing tools | ❌ | ✅ |
-| Comment export (JSON, CSV, Markdown, WebVTT) | ❌ | ✅ |
+| Comment export (JSON, CSV, Markdown, WebVTT, PDF, EDL) | ❌ | ✅ |
 | **Branding & Customization** | | |
 | Custom branding / white label | ❌ | ✅ |
 | Custom themes & colors | ❌ | ✅ |
@@ -1374,10 +1374,19 @@ From the Link Details view, click the **"Comments"** button to review and manage
 **Reviewing Comments:**
 
 - View all comments across all files in a link in one place.
-- **Filter** by file, by resolved/unresolved status, or by user.
+- **Filter** by file, by resolved/unresolved status, by user, or by **version**.
 - **Resolve/Unresolve** individual comments or bulk-resolve all.
-- Each comment shows its timecode, author, annotation indicator, and tags.
+- **Sort** by timecode, date, author, status, or version.
+- Each comment shows its timecode, author, annotation indicator, tags, and the version it was made on.
 - If a comment has an annotation, click **"View Annotation"** to see the drawing overlaid on the video frame at that timecode.
+
+**Version Tracking:**
+
+Comments are automatically tagged with the file version that was being reviewed when they were posted. This lets you:
+
+- See which notes belong to V1, V2, V3, etc.
+- Filter the review panel to show only comments from a specific version.
+- Track which feedback has been addressed across revisions.
 
 **Exporting Comments:**
 
@@ -1385,10 +1394,12 @@ Export comments in multiple formats for use in external tools:
 
 | Format | Description |
 |--------|-------------|
-| **JSON** | Structured data with all fields — timestamps, authors, annotations, tags, resolved status. |
+| **JSON** | Structured data with all fields — timestamps, authors, annotations, tags, resolved status, version info. |
 | **CSV** | Spreadsheet-compatible tabular export. |
 | **Markdown** | Human-readable formatted list, suitable for reports or emails. |
 | **WebVTT** | Subtitle/caption format — timecoded comments as VTT cues for use in NLEs or other players. |
+| **PDF** | Styled report with comments grouped by file and version, resolved status checkmarks, and tags. |
+| **EDL** | Edit Decision List (CMX 3600) with markers — import directly into Premiere, Resolve, or Avid to see notes as timeline markers. |
 
 Click **"Edit"** at the top of the Link Details view to modify the link's settings (see next section).
 
@@ -1485,10 +1496,11 @@ If comments are enabled on the link, a **Comments Panel** appears alongside the 
 ![Comments panel with timecoded threads](images/video-player-comments-v3.png)
 
 - **Viewing comments:** Comments are displayed with the author's name, timecode, and color-coded indicator. Click a timecode to jump to that point in the video.
-- **Adding comments:** Click the comment input area, type your message, and submit. The comment is automatically tagged to the current playback position.
+- **Adding comments:** Click the comment input area, type your message, and submit. The comment is automatically tagged to the current playback position and the file version being viewed.
 - **Replies:** Click on any comment to reply, creating threaded conversations.
 - **Timecode markers:** Visual markers appear on the seek bar indicating where comments exist.
 - **SMPTE timecodes:** Comments display professional SMPTE timecodes (HH:MM:SS:FF) when the video's frame rate is detected.
+- **Previous Version Notes:** If a file has multiple versions and earlier versions have comments, a collapsible **"Previous Version Notes"** section appears below the comments list. This shows all notes from prior versions with their resolved/unresolved status, letting reviewers see what was addressed without switching versions.
 
 > **Note:** Commenting availability depends on the link's access mode and whether comments were enabled when creating the link.
 
