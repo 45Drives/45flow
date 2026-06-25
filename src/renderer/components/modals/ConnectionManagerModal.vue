@@ -41,7 +41,7 @@
             @click="switchTo(conn.connectionId)"
           >
             <div class="flex items-start justify-between gap-4">
-              <div class="flex-1 min-w-0">
+              <div class="flex-1 min-w-0 text-left">
                 <!-- Name and Status -->
                 <div class="flex items-center gap-2 mb-1">
                   <button
@@ -118,7 +118,7 @@
   <!-- Confirm Remove Dialog -->
   <div v-if="removeConfirmFor" class="fixed inset-0 z-[2100] flex items-center justify-center" @click.self="removeConfirmFor = null">
     <div class="absolute inset-0 bg-black/50" />
-    <div class="relative bg-accent rounded-lg shadow-xl p-6 max-w-md">
+    <div class="relative bg-accent rounded-lg shadow-xl p-6 max-w-md text-left">
       <h3 class="text-lg font-semibold mb-2">Remove Connection?</h3>
       <p class="text-sm text-muted mb-4">
         Are you sure you want to remove the connection to <strong>{{ removeConfirmFor.name }}</strong>?

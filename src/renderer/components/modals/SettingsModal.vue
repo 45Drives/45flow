@@ -13,7 +13,7 @@
                         <h2 class="text-lg font-semibold text-default">45Flow Settings</h2>
                         <div class="text-xs text-accent mt-0.5">Adjust global settings for share links.</div>
                     </div>
-                    <button class="btn btn-secondary" type="button" @click="close" :disabled="busy">Close</button>
+                    <button class="btn btn-secondary" type="button" @click="close">Close</button>
                 </div>
 
                 <!-- Body: sidebar + content -->
@@ -33,8 +33,17 @@
                     <!-- Content -->
                     <div class="flex-1 overflow-y-auto px-5 py-4 text-left" data-tour="settings-modal-urls">
 
+                        <!-- Loading state: show skeleton until settings loaded from server -->
+                        <div v-if="!settingsLoaded && (activeSection === 'sharing' || activeSection === 'linkOptions')" class="flex flex-col items-center justify-center h-full gap-3 py-12">
+                            <svg class="animate-spin h-6 w-6 text-muted" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            <span class="text-sm text-muted">Loading settings…</span>
+                        </div>
+
                         <!-- ═══ Link Sharing ══════════════════════════════════ -->
-                        <template v-if="activeSection === 'sharing'">
+                        <template v-if="activeSection === 'sharing' && settingsLoaded">
                             <div class="divide-y divide-default">
                                 <SettingRow label="Default Link Access" description="External uses your public domain or IP. Internal uses LAN or VPN routing.">
                                     <div class="flex items-center gap-3">
@@ -264,7 +273,7 @@
                         </template>
 
                         <!-- ═══ Default Link Options ══════════════════════════ -->
-                        <template v-if="activeSection === 'linkOptions'">
+                        <template v-if="activeSection === 'linkOptions' && settingsLoaded">
                             <div class="divide-y divide-default">
                                 <SettingRow label="Restrict access to users"
                                     description="New links will require user accounts by default.">

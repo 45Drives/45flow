@@ -33,10 +33,9 @@
     </button>
 
     <!-- Dropdown Menu -->
-    <teleport to="body">
-      <transition name="dropdown">
+    <teleport v-if="isOpen" to="body">
+      <transition name="dropdown" appear>
         <div
-          v-if="isOpen"
           ref="menuRef"
           class="fixed z-[1000] w-80 bg-accent border border-default rounded-lg shadow-xl overflow-hidden"
           :style="menuStyle"
@@ -57,7 +56,7 @@
               >
                 <span class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold"
                   :class="isAllServers ? 'bg-white/20 text-white' : 'bg-blue-500 text-white'">{{ allConnectedServers.length }}</span>
-                <span class="flex-1 text-sm truncate text-default">All Servers</span>
+                <span class="flex-1 text-sm truncate" :class="isAllServers ? 'text-white' : 'text-default'">All Servers</span>
               </button>
 
               <button
@@ -76,7 +75,8 @@
                   'bg-red-500': conn.status === 'disconnected' || conn.status === 'error',
                   'bg-yellow-500': conn.status === 'checking'
                 }" />
-                <span class="flex-1 text-sm text-white truncate">{{ conn.name }}</span>
+                <span class="flex-1 text-sm truncate" :class="!isAllServers && conn.isActive ? 'text-white' : 'text-default'">{{ conn.name }}</span>
+                <span class="text-[10px] font-medium px-1.5 py-0.5 rounded text-white" :class="licenseBadgeClass(conn)">{{ licenseBadgeLabel(conn) }}</span>
                 <span v-if="conn.isFavorite" class="text-yellow-500">★</span>
               </button>
             </div>
@@ -156,6 +156,22 @@ function openManager() {
 function addServer() {
   isOpen.value = false
   router.push({ name: 'server-selection', query: { skipAutoLogin: 'true' } })
+}
+
+function isTrialLicense(conn: any): boolean {
+  return conn.licensed && conn.licenseInfo?.notes === 'trial' && !conn.licenseInfo?.perpetual && !!conn.licenseInfo?.expiresAt
+}
+
+function licenseBadgeLabel(conn: any): string {
+  if (!conn.licensed) return 'Community'
+  if (isTrialLicense(conn)) return 'Pro Trial'
+  return 'Pro'
+}
+
+function licenseBadgeClass(conn: any): string {
+  if (!conn.licensed) return 'bg-gray-500'
+  if (isTrialLicense(conn)) return 'bg-blue-500'
+  return 'bg-green-600'
 }
 
 function handleClickOutside(event: MouseEvent) {
