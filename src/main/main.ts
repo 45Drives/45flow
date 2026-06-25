@@ -582,6 +582,7 @@ async function finalizeStagedUpload(opts: {
   host: string;
   sessionId: string;
   dest: string;
+  username: string;
   files: { name: string; size?: number }[];
   uploader?: string;
   proxy?: boolean;
@@ -603,6 +604,7 @@ async function finalizeStagedUpload(opts: {
   const body: any = {
     sessionId: opts.sessionId,
     dest: opts.dest,
+    username: opts.username,
     files: opts.files,
     uploader: opts.uploader || os.userInfo().username,
   };
@@ -3247,6 +3249,7 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
           host: opts.host,
           sessionId: stagingSessionId,
           dest: opts.destDir,
+          username: opts.user,
           files: [{ name: fileName, size: fileSize }],
           uploader: os.userInfo().username,
           proxy: wantsProxy,
@@ -3429,6 +3432,7 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
           host: opts.host,
           sessionId: stagingSessionId,
           dest: opts.destDir,
+          username: opts.user,
           files: [{ name: fileName, size: fileSizeForFinalize }],
           uploader: os.userInfo().username,
           proxy: wantsProxy,
