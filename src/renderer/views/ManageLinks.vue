@@ -77,8 +77,12 @@
 					<option value="active">Active</option>
 					<option value="expired">Expired</option>
 					<option value="disabled">Disabled</option>
-					<option value="archived">Archived</option>
 				</select>
+
+				<label class="flex items-center gap-1.5 cursor-pointer select-none">
+					<input type="checkbox" v-model="showArchived" class="styled-checkbox" />
+					<span class="text-xs text-muted whitespace-nowrap">Show Archived</span>
+				</label>
 
 				<button class="btn btn-secondary px-4 py-2 manage-refresh-btn" @click="refresh" :disabled="loading">
 					{{ loading ? 'Refreshing...' : 'Refresh' }}
@@ -293,7 +297,7 @@
 
 						<tr v-for="it in pagedRows" :key="'link-' + it.id" v-else
 							class="hover:bg-black/10 dark:hover:bg-white/10 transition border border-default h-12"
-							:class="{ 'bg-blue-500/10': selectedIds.has(it.id) }">
+							:class="{ 'bg-blue-500/10': selectedIds.has(it.id), 'opacity-50': it.archived }">
 							<td class="p-1 border border-default align-middle text-center select-cell cursor-pointer" @click="toggleSelect(it)">
 								<input type="checkbox" class="input-checkbox pointer-events-none" :checked="selectedIds.has(it.id)" />
 							</td>
@@ -400,10 +404,13 @@
 							</td>
 
 							<td class="p-2 border border-default align-middle whitespace-nowrap">
-								<span class="status-chip bg-default dark:bg-well/75"
-									:class="statusChipClass(statusOf(it))">
-									{{ statusOf(it).toUpperCase() }}
-								</span>
+								<div class="flex items-center gap-1.5">
+									<span class="status-chip bg-default dark:bg-well/75"
+										:class="statusChipClass(statusOf(it))">
+										{{ statusOf(it) === 'archived' ? (it.expiresAt && it.expiresAt <= Date.now() ? 'EXPIRED' : (it.isDisabled ? 'DISABLED' : 'ACTIVE')) : statusOf(it).toUpperCase() }}
+									</span>
+									<span v-if="it.archived" class="ss-chip ss-chip--muted text-xs shrink-0">ARCHIVED</span>
+								</div>
 							</td>
 
 							<td class="p-2 border border-default align-middle whitespace-nowrap">
@@ -450,7 +457,7 @@
 										{{ statusOf(it) === 'disabled' ? 'Enable' : 'Disable' }}
 									</button>
 
-									<button class="btn btn-warning table-action-btn" @click="toggleArchive(it)">
+									<button class="btn table-action-btn" :class="it.archived ? 'btn-success' : 'btn-warning'" @click="toggleArchive(it)">
 										{{ it.archived ? 'Unarchive' : 'Archive' }}
 									</button>
 
@@ -865,6 +872,7 @@ async function refresh() {
 		if (trimQ) qs.set('q', trimQ)
 		if (typeFilter.value && typeFilter.value !== 'review') qs.set('type', typeFilter.value)
 		if (statusFilter.value) qs.set('status', statusFilter.value)
+		if (showArchived.value) qs.set('includeArchived', '1')
 		if (fetchLimit.value) qs.set('limit', String(fetchLimit.value))
 		if (props.projectId) qs.set('project_id', String(props.projectId))
 
@@ -1235,6 +1243,7 @@ const rows = ref<LinkItem[]>([])
 const q = ref('')
 const typeFilter = ref<'' | LinkType | 'review'>('')
 const statusFilter = ref<'' | Status>(linkListDefault.value)
+const showArchived = ref(false)
 const fetchLimit = ref(200)
 const pageSize = ref(10)
 const currentPage = ref(1)
@@ -1245,12 +1254,16 @@ watch([q, typeFilter, statusFilter], () => {
 	currentPage.value = 1
 	refresh()
 })
+watch(showArchived, () => {
+	currentPage.value = 1
+	refresh()
+})
 watch([sortKey, sortDir], () => {
 	currentPage.value = 1
 })
 
 // Clear multi-select when filters change
-watch([q, typeFilter, statusFilter], () => {
+watch([q, typeFilter, statusFilter, showArchived], () => {
 	selectedIds.value = new Set()
 })
 
@@ -1696,8 +1709,15 @@ const filteredRows = computed(() => {
 			return r.type === typeFilter.value
 		})
 		.filter(r => {
+			// Hide archived unless showArchived is checked
+			if (r.archived && !showArchived.value) return false
 			const s = statusOf(r)
-			return statusFilter.value ? s === statusFilter.value : true
+			if (statusFilter.value) {
+				// When a status filter is set, match non-archived status
+				if (r.archived) return true // already shown via showArchived
+				return s === statusFilter.value
+			}
+			return true
 		})
 		.filter(r => {
 			const needle = q.value.trim().toLowerCase()
@@ -2071,9 +2091,9 @@ function formatLocal(ts: unknown, opts: Intl.DateTimeFormatOptions) {
 }
 
 .manage-search-input {
-	width: 18rem;
-	min-width: 14rem;
-	flex: 1 1 18rem;
+	width: 13rem;
+	min-width: 10rem;
+	flex: 0 1 13rem;
 }
 
 .manage-filter-select {

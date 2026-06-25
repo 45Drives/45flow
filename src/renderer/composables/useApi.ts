@@ -202,17 +202,15 @@ export function useApi(connectionId?: string) {
                     const requestId = requestIdBody || requestIdHeader
                     const parsedError = parsed && typeof parsed.error === 'string' ? parsed.error : ''
                     const parsedMessage = parsed && typeof parsed.message === 'string' ? parsed.message : ''
+                    // Prefer human-readable message over error codes for user-facing errors
                     const baseMessage = res.status >= 500
                         ? 'Internal server error'
-                        : (parsedError || parsedMessage || detail || `HTTP ${res.status}`)
-                    const withRequestId = requestId && !baseMessage.includes(requestId)
-                        ? `${baseMessage} (request ${requestId})`
-                        : baseMessage
+                        : (parsedMessage || parsedError || detail || `HTTP ${res.status}`)
 
-                    const e = Object.assign(new Error(withRequestId), {
+                    const e = Object.assign(new Error(baseMessage), {
                         status: res.status,
                         requestId: requestId || undefined,
-                        code: parsed && typeof parsed.code === 'string' ? parsed.code : undefined,
+                        code: parsedError || (parsed && typeof parsed.code === 'string' ? parsed.code : undefined),
                     })
                     throw e
                 }

@@ -30,10 +30,10 @@
           <ConnectionSwitcher v-if="route.name !== 'server-selection' && isPremiumActive" />
           <BasicServerBadge v-else-if="route.name !== 'server-selection'" />
         </div>
-        <span v-if="isTrial && trialDaysRemaining !== null" class="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 font-medium whitespace-nowrap">
+        <span v-if="isTrial && trialDaysRemaining !== null && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 font-medium whitespace-nowrap">
           Pro Trial — {{ trialDaysRemaining }} {{ trialDaysRemaining === 1 ? 'day' : 'days' }} left
         </span>
-        <span v-else-if="isTrialExpired" class="text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-800 dark:text-red-300 font-medium whitespace-nowrap">
+        <span v-else-if="isTrialExpired && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-800 dark:text-red-300 font-medium whitespace-nowrap">
           Trial Expired
         </span>
         <NotificationBell />

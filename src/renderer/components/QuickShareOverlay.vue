@@ -190,7 +190,8 @@
               v-model:showDefaultWatermarks="showDefaultWatermarks"
               :watermarkFile="watermarkFile"
               :existingWatermarkFiles="existingWatermarkFiles"
-              :effectiveWatermarkName="watermarkFile ? watermarkFile.name : (selectedExistingWatermark ? selectedExistingWatermark.split('/').pop() || '' : '')"
+              :defaultWatermarks="validDefaultWatermarks"
+              :effectiveWatermarkName="effectiveWatermarkName"
               dataTour="qs-video-options"
               :compact="true"
               :watermarkLabel="hasVideo ? 'Watermark Videos' : 'Watermark Images'"
@@ -208,7 +209,7 @@
                 :watermarkPreviewUrl="watermarkPreviewUrl"
               />
               <WatermarkPreview v-else
-                :previewUrl="watermarkPreviewUrl"
+                :previewUrl="watermarkPreviewUrl || ''"
                 label="Watermark (bottom-right)"
               />
             </div>
@@ -322,7 +323,7 @@ import VideoOptionsPanel from './VideoOptionsPanel.vue'
 import WatermarkCustomizer from './WatermarkCustomizer.vue'
 import WatermarkPreview from './WatermarkPreview.vue'
 import { useLicenseStatus } from '../composables/useLicenseStatus'
-import type { WatermarkSettings } from '../types/watermark'
+import type { WatermarkSettings, Default45FlowWatermark } from '../types/watermark'
 import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../types/watermark'
 import type { Commenter, RsyncProgress } from '../typings/electron'
 
@@ -661,8 +662,18 @@ const watermarkFile = ref<LocalFile | null>(null)
 const watermarkSettings = ref<WatermarkSettings>(createDefaultWatermarkSettings())
 const showDefaultWatermarks = ref(true)
 const existingWatermarkFiles = ref<string[]>([])
+const validDefaultWatermarks = ref<Default45FlowWatermark[]>([])
 const selectedExistingWatermark = ref('')
 const existingWatermarkPreviewUrl = ref<string | null>(null)
+const effectiveWatermarkName = computed(() => {
+  if (watermarkFile.value?.name) return watermarkFile.value.name
+  if (selectedExistingWatermark.value) {
+    const builtin = validDefaultWatermarks.value.find(w => w.path === selectedExistingWatermark.value)
+    if (builtin) return builtin.name
+    return selectedExistingWatermark.value.split('/').pop() || ''
+  }
+  return ''
+})
 
 // Step 3: Progress
 type UploadPhase = 'idle' | 'uploading' | 'generating' | 'done' | 'error'
@@ -959,26 +970,27 @@ async function loadExistingWatermarkFiles() {
       DEFAULT_45FLOW_WATERMARKS.map(async (wm) => {
         const url = `${base}/api/watermarks/defaults/${wm.id}/stream`
         const res = await fetch(url, { method: 'HEAD', headers: { 'Authorization': `Bearer ${token}` } })
-        return res.ok ? wm.path : null
+        return res.ok ? wm : null
       })
     )
-    const validBuiltins = builtinChecks
-      .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && r.value !== null)
+    validDefaultWatermarks.value = builtinChecks
+      .filter((r): r is PromiseFulfilledResult<Default45FlowWatermark> => r.status === 'fulfilled' && r.value !== null)
       .map(r => r.value)
     
-    // User watermarks first, default watermarks last
-    existingWatermarkFiles.value = showDefaultWatermarks.value ? [...allCustom, ...validBuiltins] : allCustom
+    existingWatermarkFiles.value = allCustom
     
     // Auto-select last used watermark if available
     try {
+      const allFiles = [...allCustom, ...validDefaultWatermarks.value.map(w => w.path)]
       const lastUsed = localStorage.getItem('45flow-last-watermark')
-      if (lastUsed && existingWatermarkFiles.value.includes(lastUsed) && !watermarkFile.value && !selectedExistingWatermark.value) {
+      if (lastUsed && allFiles.includes(lastUsed) && !watermarkFile.value && !selectedExistingWatermark.value) {
         selectedExistingWatermark.value = lastUsed
         void fetchExistingWatermarkPreview(lastUsed)
       }
     } catch { /* ignore storage errors */ }
   } catch {
     existingWatermarkFiles.value = []
+    validDefaultWatermarks.value = []
   }
 }
 
@@ -1288,6 +1300,7 @@ async function startUploadAndShare() {
           apiToken: connectionMeta.value.token || undefined,
           clientTranscoded,
           clientWatermarked: clientAppliedWatermark,
+          noIngest: true,
         },
         (p: { percent?: number; bytesTransferred?: number; raw?: string; rate?: string; eta?: string }) => {
           let pct: number | undefined =
@@ -1517,6 +1530,8 @@ async function startUploadAndShare() {
                 progress: j?.progress ?? payload?.hlsProgress ?? 0,
                 etaSeconds: j?.eta_seconds ?? null,
                 speedX: j?.speed_x ?? null,
+                transcoder: j?.transcoder,
+                encoder: j?.encoder,
               }
             }
           })
@@ -1541,6 +1556,8 @@ async function startUploadAndShare() {
                 qualityOrder: j?.quality_order ?? j?.qualityOrder,
                 activeQuality: j?.active_quality ?? j?.activeQuality,
                 perQualityProgress: j?.per_quality_progress ?? j?.perQualityProgress,
+                transcoder: j?.transcoder,
+                encoder: j?.encoder,
               }
             }
           })

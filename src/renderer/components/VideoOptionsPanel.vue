@@ -78,7 +78,15 @@
           <select :value="selectedExistingWatermark" @change="$emit('update:selectedExistingWatermark', ($event.target as HTMLSelectElement).value)"
             :class="compact ? 'input-textlike border rounded px-2 py-1 text-xs min-w-[14rem]' : 'input-textlike border rounded px-2 py-1 text-sm min-w-[16rem]'">
             <option value="">{{ compact ? 'Existing watermark…' : 'Select existing watermark file…' }}</option>
-            <option v-for="wm in existingWatermarkFiles" :key="wm" :value="wm">{{ wm }}</option>
+            <optgroup v-if="showDefaultWatermarks && defaultWatermarks.length && existingWatermarkFiles.length" label="User Uploads">
+              <option v-for="wm in existingWatermarkFiles" :key="wm" :value="wm">{{ wm.split('/').pop() }}</option>
+            </optgroup>
+            <template v-else-if="existingWatermarkFiles.length">
+              <option v-for="wm in existingWatermarkFiles" :key="wm" :value="wm">{{ wm.split('/').pop() }}</option>
+            </template>
+            <optgroup v-if="showDefaultWatermarks && defaultWatermarks.length" label="45Flow Defaults">
+              <option v-for="wm in defaultWatermarks" :key="wm.id" :value="wm.path">{{ wm.name }}</option>
+            </optgroup>
           </select>
           <button class="btn btn-secondary px-2 py-1 text-xs" @click="$emit('refreshWatermarks')">Refresh</button>
         </div>
@@ -99,6 +107,7 @@
 
 <script setup lang="ts">
 import { Switch } from '@headlessui/vue'
+import type { Default45FlowWatermark } from '../types/watermark'
 
 type LocalFile = { path: string; name: string; size: number; dataUrl?: string | null }
 
@@ -119,6 +128,8 @@ const props = withDefaults(defineProps<{
   selectedExistingWatermark: string
   /** Available existing watermark files on server */
   existingWatermarkFiles: string[]
+  /** Validated default/built-in watermarks */
+  defaultWatermarks: Default45FlowWatermark[]
   /** Whether to show default/built-in watermarks in the dropdown */
   showDefaultWatermarks: boolean
   /** Computed display name of the active watermark */

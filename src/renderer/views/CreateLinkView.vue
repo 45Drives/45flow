@@ -100,7 +100,7 @@
 									<input
 										type="checkbox"
 										v-model="autoShareUploads"
-										class="mt-0.5 h-4 w-4 rounded border-default accent-blue-600 cursor-pointer"
+										class="proxy-quality-checkbox mt-0.5"
 									/>
 									<div class="min-w-0">
 										<div class="text-sm font-medium">Auto-share uploaded files</div>
@@ -114,7 +114,7 @@
 										type="checkbox"
 										v-model="autoWatermarkUploads"
 										:disabled="!watermarkEnabled"
-										class="mt-0.5 h-4 w-4 rounded border-default accent-blue-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+										class="proxy-quality-checkbox mt-0.5"
 									/>
 									<div class="min-w-0">
 										<div class="text-sm font-medium" :class="{ 'opacity-50': !watermarkEnabled }">Auto-watermark uploaded files</div>
@@ -271,6 +271,7 @@
 								v-model:showDefaultWatermarks="showDefaultWatermarks"
 								:watermarkFile="watermarkFile"
 								:existingWatermarkFiles="existingWatermarkFiles"
+								:defaultWatermarks="validDefaultWatermarks"
 								:effectiveWatermarkPreviewUrl="effectiveWatermarkPreviewUrl"
 								:effectiveWatermarkName="effectiveWatermarkName"
 								:usingExistingWatermark="usingExistingWatermark"
@@ -454,7 +455,7 @@ import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
 import ConfirmDeleteModal from '../components/modals/ConfirmDeleteModal.vue'
 import AddUsersModal from '../components/modals/AddUsersModal.vue'
-import { DEFAULT_45FLOW_WATERMARKS, createDefaultWatermarkSettings, type WatermarkSettings } from '../types/watermark'
+import { DEFAULT_45FLOW_WATERMARKS, createDefaultWatermarkSettings, type WatermarkSettings, type Default45FlowWatermark } from '../types/watermark'
 
 useHeader('Create Link')
 const route = useRoute()
@@ -520,6 +521,7 @@ const watermarkFile = ref<{ path: string; name: string; size: number; dataUrl?: 
 const selectedExistingWatermark = ref('')
 const showDefaultWatermarks = ref(false)
 const existingWatermarkFiles = ref<string[]>([])
+const validDefaultWatermarks = ref<Default45FlowWatermark[]>([])
 const existingWatermarkPreviewUrl = ref<string | null>(null)
 const watermarkSettings = ref<WatermarkSettings>(createDefaultWatermarkSettings())
 
@@ -528,7 +530,11 @@ const effectiveWatermarkPreviewUrl = computed(() =>
 )
 const effectiveWatermarkName = computed(() => {
 	if (watermarkFile.value?.name) return watermarkFile.value.name
-	if (selectedExistingWatermark.value) return selectedExistingWatermark.value.split('/').pop() || ''
+	if (selectedExistingWatermark.value) {
+		const builtin = validDefaultWatermarks.value.find(w => w.path === selectedExistingWatermark.value)
+		if (builtin) return builtin.name
+		return selectedExistingWatermark.value.split('/').pop() || ''
+	}
 	return ''
 })
 const usingExistingWatermark = computed(() => !watermarkFile.value && !!selectedExistingWatermark.value)
@@ -654,25 +660,27 @@ async function loadExistingWatermarks() {
 			DEFAULT_45FLOW_WATERMARKS.map(async (wm) => {
 				const url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(wm.path)}`
 				const res = await fetch(url, { method: 'HEAD', headers: { 'Authorization': `Bearer ${token}` } })
-				return res.ok ? wm.path : null
+				return res.ok ? wm : null
 			})
 		)
-		const validBuiltins = builtinChecks
-			.filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && r.value !== null)
+		validDefaultWatermarks.value = builtinChecks
+			.filter((r): r is PromiseFulfilledResult<Default45FlowWatermark> => r.status === 'fulfilled' && r.value !== null)
 			.map(r => r.value)
 
-		existingWatermarkFiles.value = showDefaultWatermarks.value ? [...serverWatermarks, ...validBuiltins] : serverWatermarks
+		existingWatermarkFiles.value = serverWatermarks
 
-		if (!selectedExistingWatermark.value && existingWatermarkFiles.value.length) {
+		const allFiles = [...serverWatermarks, ...validDefaultWatermarks.value.map(w => w.path)]
+		if (!selectedExistingWatermark.value && allFiles.length) {
 			const last = localStorage.getItem('45flow-last-watermark')
-			if (last && existingWatermarkFiles.value.includes(last)) {
+			if (last && allFiles.includes(last)) {
 				selectedExistingWatermark.value = last
-			} else if (existingWatermarkFiles.value.length) {
-				selectedExistingWatermark.value = existingWatermarkFiles.value[0]
+			} else if (allFiles.length) {
+				selectedExistingWatermark.value = allFiles[0]
 			}
 		}
 	} catch {
 		existingWatermarkFiles.value = []
+		validDefaultWatermarks.value = []
 	}
 }
 

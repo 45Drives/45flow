@@ -167,11 +167,11 @@
                   <div class="text-default font-semibold mb-2">Link Capabilities</div>
                   <div class="flex flex-wrap items-center gap-3">
                     <label class="inline-flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" v-model="draftShareEnabled" class="w-4 h-4" />
+                      <input type="checkbox" v-model="draftShareEnabled" class="proxy-quality-checkbox" />
                       <span class="text-sm">Enable Review/Share</span>
                     </label>
                     <label class="inline-flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" v-model="draftUploadEnabled" class="w-4 h-4" />
+                      <input type="checkbox" v-model="draftUploadEnabled" class="proxy-quality-checkbox" />
                       <span class="text-sm">Enable Upload</span>
                     </label>
                   </div>
@@ -865,9 +865,15 @@
                   class="input-textlike border rounded px-2 py-1 text-sm min-w-[20rem]"
                 >
                   <option value="">Select existing watermark file…</option>
-                  <option v-for="wm in existingWatermarkFilesForEdit" :key="wm" :value="wm">
-                    {{ wm }}
-                  </option>
+                  <optgroup v-if="showDefaultWatermarksForEdit && validDefaultWatermarksForEdit.length && existingWatermarkFilesForEdit.length" label="User Uploads">
+                    <option v-for="wm in existingWatermarkFilesForEdit" :key="wm" :value="wm">{{ wm.split('/').pop() }}</option>
+                  </optgroup>
+                  <template v-else-if="existingWatermarkFilesForEdit.length">
+                    <option v-for="wm in existingWatermarkFilesForEdit" :key="wm" :value="wm">{{ wm.split('/').pop() }}</option>
+                  </template>
+                  <optgroup v-if="showDefaultWatermarksForEdit && validDefaultWatermarksForEdit.length" label="45Flow Defaults">
+                    <option v-for="wm in validDefaultWatermarksForEdit" :key="wm.id" :value="wm.path">{{ wm.name }}</option>
+                  </optgroup>
                 </select>
                 <button type="button" class="btn btn-secondary px-2 py-1 text-xs" @click="loadExistingWatermarkFilesForEdit">
                   Refresh
@@ -941,7 +947,7 @@ import PathInput from '../PathInput.vue'
 import WatermarkCustomizer from '../WatermarkCustomizer.vue'
 import WatermarkPreview from '../WatermarkPreview.vue'
 import type { LinkItem, LinkType, AccessRow, Status, ExistingUser } from '../../typings/electron'
-import type { WatermarkSettings } from '../../types/watermark'
+import type { WatermarkSettings, Default45FlowWatermark } from '../../types/watermark'
 import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../../types/watermark'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { Switch } from '@headlessui/vue'
@@ -1188,6 +1194,7 @@ const draftWatermarkSettings = ref<WatermarkSettings>(createDefaultWatermarkSett
 const watermarkConfigModalOpen = ref(false)
 const showDefaultWatermarksForEdit = ref(true)
 const existingWatermarkFilesForEdit = ref<string[]>([])
+const validDefaultWatermarksForEdit = ref<Default45FlowWatermark[]>([])
 const existingWatermarkPreviewUrlForEdit = ref<string | null>(null)
 
 const watermarkPreviewUrl = computed(() =>
@@ -1787,12 +1794,16 @@ async function loadExistingWatermarkFilesForEdit() {
       } catch {}
     }
     const dirRel = resolveWatermarkDirRelForEdit()
-    const data = await props.apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' })
-    const entries = Array.isArray(data?.entries) ? data.entries : []
-    const serverWatermarks = entries
+    const [dirData, globalData] = await Promise.all([
+      props.apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' }).catch(() => null),
+      props.apiFetch('/api/files/watermarks', { method: 'GET' }).catch(() => null),
+    ])
+    const dirEntries = Array.isArray(dirData?.entries) ? dirData.entries : []
+    const dirWatermarks = dirEntries
       .filter((e: any) => !e?.isDir && typeof e?.name === 'string' && String(e.name).trim())
       .map((e: any) => resolveWatermarkRelPathForEdit(String(e.name).trim()))
-      .sort((a: string, b: string) => a.localeCompare(b))
+    const globalWatermarks = Array.isArray(globalData?.watermarks) ? globalData.watermarks : []
+    const serverWatermarks = [...new Set([...dirWatermarks, ...globalWatermarks])].sort()
     
     // Check which built-in watermarks actually exist on the server
     const base = connectionMeta?.value?.apiBase ?? ''
@@ -1801,38 +1812,37 @@ async function loadExistingWatermarkFilesForEdit() {
       DEFAULT_45FLOW_WATERMARKS.map(async (wm) => {
         const url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(wm.path)}`
         const res = await fetch(url, { method: 'HEAD', headers: { 'Authorization': `Bearer ${token}` } })
-        return res.ok ? wm.path : null
+        return res.ok ? wm : null
       })
     )
-    const validBuiltins = builtinChecks
-      .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && r.value !== null)
+    validDefaultWatermarksForEdit.value = builtinChecks
+      .filter((r): r is PromiseFulfilledResult<Default45FlowWatermark> => r.status === 'fulfilled' && r.value !== null)
       .map(r => r.value)
     
-    // User watermarks first, default watermarks last
-    existingWatermarkFilesForEdit.value = showDefaultWatermarksForEdit.value ? [...serverWatermarks, ...validBuiltins] : serverWatermarks
+    existingWatermarkFilesForEdit.value = serverWatermarks
     
     // Auto-select: prefer current watermark from link metadata (what's actually in the video),
     // then fall back to localStorage last-used
+    const allFiles = [...serverWatermarks, ...validDefaultWatermarksForEdit.value.map(w => w.path)]
     if (!draftWatermarkLocalFile.value && !draftWatermarkFile.value) {
       const detected = currentWatermarkFile.value
-      if (detected && existingWatermarkFilesForEdit.value.includes(detected)) {
+      if (detected && allFiles.includes(detected)) {
         draftWatermarkFile.value = detected
-        originalWatermarkFile.value = detected
         originalWatermarkFile.value = detected
         return
       }
 
       try {
         const lastUsed = localStorage.getItem('45flow-last-watermark')
-        if (lastUsed && existingWatermarkFilesForEdit.value.includes(lastUsed)) {
+        if (lastUsed && allFiles.includes(lastUsed)) {
           draftWatermarkFile.value = lastUsed
-          originalWatermarkFile.value = lastUsed
           originalWatermarkFile.value = lastUsed
         }
       } catch { /* ignore storage errors */ }
     }
   } catch {
     existingWatermarkFilesForEdit.value = []
+    validDefaultWatermarksForEdit.value = []
   }
 }
 

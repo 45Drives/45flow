@@ -1011,43 +1011,56 @@ tbody tr.row-selected>td {
 /* =====================
    Checkbox (theme-matched)
    ===================== */
-.input-checkbox {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  accent-color: var(--btn-primary-bg);
-  /* fallback if UA draws native */
-  background-color: var(--checkbox-bg, #fff);
-  border: 1px solid var(--checkbox-border);
-  border-radius: 0.25rem;
-  height: 1rem;
+.input-checkbox,
+input[type="checkbox"].styled-checkbox {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  accent-color: initial !important;
   width: 1rem;
-  outline: none;
-  box-shadow: 0 0 0 2px transparent;
+  height: 1rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--border-color, #94a3b8);
+  background: var(--surface-color, #ffffff);
   cursor: pointer;
-  transition: background-color .2s, border-color .2s;
+  box-shadow: none;
+  position: relative;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
 }
 
-.input-checkbox:focus-visible {
-  outline: 2px solid var(--outline-color);
+.input-checkbox:focus-visible,
+input[type="checkbox"].styled-checkbox:focus-visible {
+  outline: 2px solid #22c55e;
   outline-offset: 2px;
 }
 
-.input-checkbox:checked {
-  border-color: var(--checkbox-checked-border);
-  background-color: var(--checkbox-checked-bg) !important;
+.input-checkbox:checked,
+input[type="checkbox"].styled-checkbox:checked {
+  background-color: var(--btn-primary-bg);
+  border-color: var(--btn-primary-border);
 }
 
-.input-checkbox:checked::after {
+.input-checkbox:checked::after,
+input[type="checkbox"].styled-checkbox:checked::after {
   content: "";
-  display: block;
+  position: absolute;
+  left: 0.25rem;
+  top: 0.095rem;
   width: 0.25rem;
   height: 0.5rem;
   border: 2px solid #fff;
   border-top: 0;
   border-left: 0;
-  transform: translate(0.20rem, -0.05rem) rotate(45deg);
+  transform: rotate(45deg);
   box-sizing: content-box;
+}
+
+.input-checkbox:disabled,
+input[type="checkbox"].styled-checkbox:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* =====================

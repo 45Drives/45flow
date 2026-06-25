@@ -329,7 +329,7 @@
                                     <div v-if="defaultWatermarkEnabled" class="space-y-2">
                                         <div class="flex items-center gap-2 mb-2">
                                             <label class="inline-flex items-center gap-1.5 text-xs">
-                                                <input type="checkbox" v-model="showDefaultWatermarksInSettings" class="rounded" />
+                                                <input type="checkbox" v-model="showDefaultWatermarksInSettings" class="proxy-quality-checkbox" />
                                                 <span>Include 45Flow defaults</span>
                                             </label>
                                         </div>
@@ -342,11 +342,14 @@
                                             <select v-model="selectedExistingWatermark" @change="onSelectExistingWatermark"
                                                 class="input-textlike border rounded px-2 py-1 text-xs min-w-[14rem]">
                                                 <option value="">Select existing watermark…</option>
+                                                <optgroup v-if="showDefaultWatermarksInSettings && defaultWatermarkPresets.length && existingWatermarkFiles.length" label="User Uploads">
+                                                    <option v-for="wm in existingWatermarkFiles" :key="wm" :value="wm">{{ wm.split('/').pop() }}</option>
+                                                </optgroup>
+                                                <template v-else-if="existingWatermarkFiles.length">
+                                                    <option v-for="wm in existingWatermarkFiles" :key="wm" :value="wm">{{ wm.split('/').pop() }}</option>
+                                                </template>
                                                 <optgroup v-if="showDefaultWatermarksInSettings && defaultWatermarkPresets.length" label="45Flow Defaults">
                                                     <option v-for="preset in defaultWatermarkPresets" :key="preset.id" :value="preset.id">{{ preset.name }}</option>
-                                                </optgroup>
-                                                <optgroup v-if="existingWatermarkFiles.length" label="Server Watermarks">
-                                                    <option v-for="wm in existingWatermarkFiles" :key="wm" :value="wm">{{ wm.split('/').pop() }}</option>
                                                 </optgroup>
                                             </select>
                                             <button class="btn btn-secondary px-2 py-1 text-xs" @click="refreshWatermarks">Refresh</button>
@@ -1794,7 +1797,25 @@ async function handleUpgradeActivate() {
         pushNotification(new Notification('Pro Edition', licenseMsg, 'success', 8000))
         upgradeKey.value = ''
     } catch (err: any) {
-        upgradeError.value = err?.message || 'Activation failed.'
+        // Map known error codes/messages to user-friendly text
+        const raw = err?.message || ''
+        const code = err?.code || ''
+        const friendlyMap: Record<string, string> = {
+            admin_required: 'Admin access required. Please log in with server credentials.',
+            session_expired: 'Session expired. Please log in again.',
+            premium_required: 'This feature requires a Pro license.',
+        }
+        const friendly = friendlyMap[code] || ''
+        if (friendly) {
+            upgradeError.value = friendly
+        } else if (raw.includes('Admin access required') || raw === 'Forbidden') {
+            upgradeError.value = 'Admin access required. Please log in with server credentials.'
+        } else if (raw.includes('Session expired') || raw.includes('Invalid token') || raw === 'Unauthorized') {
+            upgradeError.value = 'Session expired. Please log in again.'
+        } else {
+            // Strip request IDs from display
+            upgradeError.value = raw.replace(/\s*\(request [0-9a-f-]+\)/gi, '').trim() || 'Activation failed.'
+        }
     } finally {
         upgradeBusy.value = false
     }
@@ -1876,14 +1897,24 @@ function setLicenseActivationState(connectionId: string, patch: {
 }
 
 function buildActivateErrorMessage(resp: Response, body: any, rawText: string) {
-    const requestId = String(
-        resp.headers.get('x-request-id') ||
-        (typeof body?.requestId === 'string' ? body.requestId : '')
-    ).trim();
-    const base = body?.error || body?.detail?.error || body?.message || rawText || `HTTP ${resp.status}`;
-    return requestId && !String(base).includes(requestId)
-        ? `${base} (request ${requestId})`
-        : String(base);
+    // Map known error codes to user-friendly messages
+    const friendlyMessages: Record<string, string> = {
+        admin_required: 'Admin access required. Please log in with server credentials.',
+        session_expired: 'Session expired. Please log in again.',
+        invalid_license_key: 'Invalid license key. Please check and try again.',
+        missing_license_server_url: 'License server not configured on this server.',
+        license_activate_failed: 'Activation failed. Please check your key or try again later.',
+        forbidden: 'Access denied. Please log in again with admin credentials.',
+    }
+    const errorCode = typeof body?.error === 'string' ? body.error : ''
+    const friendly = friendlyMessages[errorCode]
+    if (friendly) return friendly
+
+    // Prefer message field over raw error code
+    const base = body?.message || body?.error || body?.detail?.error || rawText || `HTTP ${resp.status}`
+    // Strip request IDs from display — they confuse end users
+    const cleaned = String(base).replace(/\s*\(request [0-9a-f-]+\)/gi, '').trim()
+    return cleaned || 'License activation failed.'
 }
 
 async function activateLicenseForServer(server: {
@@ -2222,19 +2253,20 @@ async function onSelectExistingWatermark() {
 
 async function loadExistingWatermarkFiles() {
     try {
-        // console.log('[settings] Loading existing watermark files...');
-        // Load server watermarks
+        // Load server watermarks from both local dir and global search
         const dirRel = '.45flow/watermarks';
-        const data = await apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`);
-        // console.log('[settings] API response:', data);
-        const entries = Array.isArray(data?.entries) ? data.entries : [];
-        const serverWatermarks = entries
+        const [dirData, globalData] = await Promise.all([
+            apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`).catch(() => null),
+            apiFetch('/api/files/watermarks', { method: 'GET' }).catch(() => null),
+        ]);
+        const dirEntries = Array.isArray(dirData?.entries) ? dirData.entries : [];
+        const dirWatermarks = dirEntries
             .filter((e: any) => !e?.isDir && typeof e?.name === 'string' && String(e.name).trim())
-            .map((e: any) => `${dirRel}/${String(e.name).trim()}`)
-            .sort((a: string, b: string) => a.localeCompare(b));
+            .map((e: any) => `${dirRel}/${String(e.name).trim()}`);
+        const globalWatermarks = Array.isArray(globalData?.watermarks) ? globalData.watermarks : [];
+        const serverWatermarks = [...new Set([...dirWatermarks, ...globalWatermarks])].sort();
         
         existingWatermarkFiles.value = serverWatermarks;
-        // console.log('[settings] Loaded watermark files:', serverWatermarks);
     } catch (err) {
         console.warn('[settings] Failed to load watermarks:', err);
         existingWatermarkFiles.value = [];

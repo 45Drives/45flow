@@ -254,10 +254,11 @@
 									v-model:showDefaultWatermarks="showDefaultWatermarks"
 									:watermarkFile="watermarkFile"
 									:existingWatermarkFiles="existingWatermarkFiles"
+									:defaultWatermarks="validDefaultWatermarks"
 									:hideProxyQualities="!hasVideoSelected"
 									:showHeading="false"
 									:watermarkLabel="hasVideoSelected ? 'Watermark Videos' : 'Watermark Images'"
-									:effectiveWatermarkName="watermarkFile ? watermarkFile.name : (selectedExistingWatermark ? selectedExistingWatermark.split('/').pop() || '' : '')"
+									:effectiveWatermarkName="effectiveWatermarkName"
 									:usingExistingWatermark="!watermarkFile && !!selectedExistingWatermark"
 
 									@pickWatermark="pickWatermark"
@@ -319,7 +320,7 @@ import WatermarkCustomizer from '../components/WatermarkCustomizer.vue'
 import WatermarkPreview from '../components/WatermarkPreview.vue'
 import { useLicenseStatus } from '../composables/useLicenseStatus'
 import { connectionMetaInjectionKey } from '../keys/injection-keys';
-import type { WatermarkSettings } from '../types/watermark'
+import type { WatermarkSettings, Default45FlowWatermark } from '../types/watermark'
 import type { RsyncProgress, TranscodeProgress } from '../typings/electron'
 import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../types/watermark'
 import { useHeader } from '../composables/useHeader';
@@ -474,9 +475,19 @@ const watermarkAfterUpload = ref(false)
 const watermarkFile = ref<LocalFile | null>(null)
 const watermarkSettings = ref<WatermarkSettings>(createDefaultWatermarkSettings())
 const existingWatermarkFiles = ref<string[]>([])
+const validDefaultWatermarks = ref<Default45FlowWatermark[]>([])
 const selectedExistingWatermark = ref('')
 const existingWatermarkPreviewUrl = ref<string | null>(null)
 const showDefaultWatermarks = ref(false)
+const effectiveWatermarkName = computed(() => {
+	if (watermarkFile.value?.name) return watermarkFile.value.name
+	if (selectedExistingWatermark.value) {
+		const builtin = validDefaultWatermarks.value.find(w => w.path === selectedExistingWatermark.value)
+		if (builtin) return builtin.name
+		return selectedExistingWatermark.value.split('/').pop() || ''
+	}
+	return ''
+})
 const adaptiveHls = ref(false)
 
 // ----- TYPES -----
@@ -710,17 +721,17 @@ async function loadExistingWatermarkFiles() {
 			DEFAULT_45FLOW_WATERMARKS.map(async (wm) => {
 				const url = `${base}/api/watermarks/defaults/${wm.id}/stream`
 				const res = await fetch(url, { method: 'HEAD', headers: { 'Authorization': `Bearer ${token}` } })
-				return res.ok ? wm.path : null
+				return res.ok ? wm : null
 			})
 		)
-		const validBuiltins = builtinChecks
-			.filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled' && r.value !== null)
+		validDefaultWatermarks.value = builtinChecks
+			.filter((r): r is PromiseFulfilledResult<Default45FlowWatermark> => r.status === 'fulfilled' && r.value !== null)
 			.map(r => r.value)
 		
-		// User watermarks first, default watermarks last
-		existingWatermarkFiles.value = showDefaultWatermarks.value ? [...allCustom, ...validBuiltins] : allCustom
+		existingWatermarkFiles.value = allCustom
 	} catch {
 		existingWatermarkFiles.value = []
+		validDefaultWatermarks.value = []
 	}
 }
 

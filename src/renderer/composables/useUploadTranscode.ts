@@ -1,7 +1,7 @@
 // src/renderer/composables/useUploadTranscode.ts
 //
 // Unified client-side transcode orchestrator.
-// Used by: LocalUploadPanel, QuickShareOverlay, SelectAndShareFiles
+// Used by: LocalUploadPanel, QuickShareOverlay, CreateLinkView
 //
 // Flow (each phase is INDEPENDENT — if proxy fails, HLS is already done):
 //   1. Get transcode plan from server (output paths + claim jobs)

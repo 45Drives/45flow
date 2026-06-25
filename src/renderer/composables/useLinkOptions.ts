@@ -1,6 +1,5 @@
 // src/renderer/composables/useLinkOptions.ts
-// Shared link-option state & helpers extracted from SelectAndShareFile,
-// LinkUploadPanel, and QuickShareOverlay.
+// Shared link-option state & helpers extracted from CreateLinkView and QuickShareOverlay.
 
 import { ref, computed, watch, type Ref } from 'vue'
 import { useApi } from './useApi'
