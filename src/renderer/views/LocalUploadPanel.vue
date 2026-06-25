@@ -1036,15 +1036,26 @@ function waitForIngestAndStartTranscode(opts: {
 	taskId?: string
 }) {
 	const chan = `upload:ingest:${opts.uploadId}`
+	// Track that we're waiting for an ingest event that will start a client transcode
+	const expectsClientTranscode = !!(opts.clientTranscode && opts.isVideo)
+	let ingestReceived = false
+	if (expectsClientTranscode) pendingIngests.value++
 
 	const startTranscodeFromPayload = (payload: any) => {
 		const fileId = Number(payload.fileId);
 		const assetVersionId = Number(payload.assetVersionId);
 
+		// Ingest received — transfer responsibility from pendingIngests to pendingFullTranscodes
+		if (expectsClientTranscode && !ingestReceived) {
+			ingestReceived = true
+			pendingIngests.value = Math.max(0, pendingIngests.value - 1)
+		}
+
 		if (!Number.isFinite(fileId) || fileId <= 0) return;
 
 		// ── Client-side full transcode path ──────────────────────────────────────
 		if (opts.clientTranscode && opts.sourceFilePath && Number.isFinite(assetVersionId) && assetVersionId > 0) {
+			pendingFullTranscodes.value++
 			runClientFullTranscode({
 				assetVersionId,
 				sourceFilePath: opts.sourceFilePath,
@@ -1055,6 +1066,9 @@ function waitForIngestAndStartTranscode(opts: {
 				wantProxy: opts.wantProxy,
 				localWatermarkPath: opts.localWatermarkPath ?? null,
 				taskId: opts.taskId,
+			}).finally(() => {
+				pendingFullTranscodes.value = Math.max(0, pendingFullTranscodes.value - 1)
+				_checkWatermarkCleanup?.()
 			});
 			// Fall through to create polling tasks — the composable pushes progress to
 			// server DB and the polling tasks display it in the TransferDock UI.
@@ -1220,11 +1234,24 @@ function waitForIngestAndStartTranscode(opts: {
 			startTranscodeFromPayload(payload);
 		} finally {
 			window.electron?.ipcRenderer.removeListener(chan, handler);
+			if (expectsClientTranscode && !ingestReceived) {
+				ingestReceived = true
+				pendingIngests.value = Math.max(0, pendingIngests.value - 1)
+				_checkWatermarkCleanup?.()
+			}
 		}
 	};
 
 	window.electron?.ipcRenderer.on(chan, handler)
-	return () => window.electron?.ipcRenderer.removeListener(chan, handler)
+	return () => {
+		window.electron?.ipcRenderer.removeListener(chan, handler)
+		// If listener removed before ingest fired (upload failed), decrement counter
+		if (expectsClientTranscode && !ingestReceived) {
+			ingestReceived = true
+			pendingIngests.value = Math.max(0, pendingIngests.value - 1)
+			_checkWatermarkCleanup?.()
+		}
+	}
 }
 
 function makeUploadKey(path: string, dest: string) {
@@ -1414,6 +1441,11 @@ const rafState = new Map<
 /** ── Concurrency-limited upload engine ─────────────────── */
 const MAX_CONCURRENT_UPLOADS = 3
 const activeUploads = ref(0)
+const pendingFullTranscodes = ref(0)
+// Tracks videos awaiting ingest events (between upload-done and ingest-received)
+const pendingIngests = ref(0)
+// Callback set per upload batch to check if watermark can be cleaned up
+let _checkWatermarkCleanup: (() => void) | null = null
 // Tracks cumulative completed count for batched notifications
 let completedSinceStart = 0
 let failedSinceStart = 0
@@ -1916,6 +1948,20 @@ async function startUploads() {
 		)
 	} catch { /* best-effort */ }
 
+	let watermarkCleaned = false
+	function maybeCleanupWatermark() {
+		if (watermarkCleaned) return
+		if (activeUploads.value === 0 && queueIdx >= queue.length && pendingIngests.value === 0 && pendingFullTranscodes.value === 0) {
+			isUploading.value = false
+			if (localWatermarkPath) {
+				watermarkCleaned = true
+				;(window as any).electron.cleanupWatermarkTemp(localWatermarkPath).catch(() => {})
+			}
+		}
+	}
+	// Register so post-upload full transcodes can trigger cleanup check
+	_checkWatermarkCleanup = maybeCleanupWatermark
+
 	function drainQueue() {
 		while (activeUploads.value < MAX_CONCURRENT_UPLOADS && queueIdx < queue.length) {
 			const row = queue[queueIdx++]
@@ -1923,14 +1969,8 @@ async function startUploads() {
 			uploadOneFile(row, watermarkRelPathForIngest, localWatermarkPath, () => {
 				// When a file finishes, try to start the next queued one
 				drainQueue()
-				// Check if everything is finished
-				if (activeUploads.value === 0 && queueIdx >= queue.length) {
-					isUploading.value = false
-					// Clean up shared watermark temp file after all uploads/transcodes complete
-					if (localWatermarkPath) {
-						(window as any).electron.cleanupWatermarkTemp(localWatermarkPath).catch(() => {})
-					}
-				}
+				// Check if everything is finished (uploads + full transcodes)
+				maybeCleanupWatermark()
 			})
 		}
 	}

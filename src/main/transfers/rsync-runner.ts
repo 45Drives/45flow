@@ -246,11 +246,22 @@ export function tailLogFile(opts: TailOpts): LogTailer {
       } catch { /* ok */ }
 
       // Heuristic: check the last progress line for 100% to decide success
-      const ok = lastProgressWas100(logFile);
+      let ok = lastProgressWas100(logFile);
       
+      // Even if progress reached 100%, check for receiver-side write errors
+      // (rsync sender reports 100% but remote can't write to destination)
+      let errorMsg: string | null = null;
+      if (ok) {
+        errorMsg = extractRsyncError(logFile);
+        if (errorMsg) {
+          ok = false;
+          jl('warn', 'rsync.detached.progress-ok-but-error', { id, pid, error: errorMsg });
+        }
+      }
+
       if (!ok) {
         // Extract error message from log file for better diagnostics
-        const errorMsg = extractRsyncError(logFile);
+        if (!errorMsg) errorMsg = extractRsyncError(logFile);
         jl('info', 'rsync.detached.exit', { id, pid, ok, error: errorMsg });
         _resolve?.({ ok: false, error: errorMsg || 'Transfer did not complete' });
       } else {
@@ -331,6 +342,10 @@ function extractRsyncError(logFile: string): string | null {
       }
       if (/Permission denied/i.test(line)) {
         return `Remote permission denied - cannot write to destination directory. (${line.trim().substring(0, 120)})`;
+      }
+      // Receiver-side write failure (ZFS/permission issues often report this instead of "Permission denied")
+      if (/open ".*" failed: No such file or directory/i.test(line) || /failed: No such file or directory \(\d+\)/i.test(line)) {
+        return `Remote write failed - SSH user cannot write to destination directory. (${line.trim().substring(0, 120)})`;
       }
       // Generic rsync errors
       if (/rsync error:/i.test(line)) {

@@ -510,11 +510,12 @@ function normalizeDestRel(destDir: string, shareRoot?: string): string {
 }
 
 // Cache shareRoot per host so we don't fetch it every upload
-const shareRootByHost = new Map<string, string>();
+const shareRootByHost = new Map<string, { value: string; ts: number }>();
+const SHARE_ROOT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 async function getShareRootForHost(host: string, port = 9095): Promise<string | undefined> {
   const cached = shareRootByHost.get(host);
-  if (cached) return cached;
+  if (cached && (Date.now() - cached.ts) < SHARE_ROOT_CACHE_TTL) return cached.value;
 
   const url = `http://${host}:${port}/.well-known/houston`;
   try {
@@ -523,7 +524,7 @@ async function getShareRootForHost(host: string, port = 9095): Promise<string | 
 
     const sr = typeof j?.shareRoot === 'string' ? j.shareRoot : undefined;
     if (sr) {
-      shareRootByHost.set(host, sr);
+      shareRootByHost.set(host, { value: sr, ts: Date.now() });
       jl('info', 'wellknown.houston.ok', { host, port, shareRoot: sr });
       return sr;
     }
@@ -921,15 +922,11 @@ function defaultClientKey(): string | undefined {
     const edExists = fs.existsSync(ed);
     const rsExists = fs.existsSync(rs);
     
-    // If only one exists, return it
-    if (edExists && !rsExists) return ed;
-    if (rsExists && !edExists) return rs;
-    if (!edExists && !rsExists) return undefined;
-    
-    // Both exist: prefer the most recently modified (most recently planted/verified)
-    const edStat = fs.statSync(ed);
-    const rsStat = fs.statSync(rs);
-    return edStat.mtimeMs > rsStat.mtimeMs ? ed : rs;
+    // Always prefer ed25519 — it's the primary key format planted by ensure-ssh-ready.
+    // RSA is only generated as a last-resort fallback for specific hosts that reject ed25519.
+    if (edExists) return ed;
+    if (rsExists) return rs;
+    return undefined;
   } catch { return undefined; }
 }
 
@@ -3196,14 +3193,17 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
         })
       } catch (sftpErr: any) {
         const errMsg = sftpErr?.message || String(sftpErr)
-        const isPermissionDenied = errMsg.includes('Permission denied') &&
-          !errMsg.includes('Authentication failed') &&
-          !errMsg.includes('authentication methods failed')
+        const isAuthError = errMsg.includes('Authentication failed') ||
+          errMsg.includes('authentication methods failed')
+        const isWriteFailure = !isAuthError && (
+          errMsg.includes('Permission denied') ||
+          errMsg.includes('No such file or directory')
+        )
 
-        if (!isPermissionDenied) throw sftpErr
+        if (!isWriteFailure) throw sftpErr
 
-        // Permission denied on destination — request staging dir and retry
-        jl('info', 'upload.sftp.permission-denied.staging', { id, destDir: opts.destDir })
+        // Write failure on destination — request staging dir and retry
+        jl('warn', 'upload.sftp.permission-denied.staging-fallback', { id, destDir: opts.destDir, reason: 'Destination directory not writable by SSH user — using staging upload workaround' })
 
         const stageResult = await requestStagingDir({
           host: opts.host,
@@ -3285,7 +3285,7 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
           }
         }
         event.sender.send(`upload:done:${id}`, { ok: true })
-        jl('info', 'upload.done.staged', { id, ok: true, sessionId: stagingSessionId })
+        jl('warn', 'upload.done.staged', { id, ok: true, sessionId: stagingSessionId, note: 'Upload completed via staging fallback (SMB permission workaround)' })
         if (isTempCopy) { try { fs.unlinkSync(actualSrc); } catch {} }
         inflightRsync.delete(id)
         inflightPids.delete(id)
@@ -3352,13 +3352,16 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
 
       if (!result.ok) {
         const errorMsg = result.error || 'rsync failed (detached)'
-        // Check if this is a permission denied error — if so, retry via staging
-        const isPermDenied = errorMsg.includes('Permission denied') &&
-          !errorMsg.includes('publickey') &&
-          !errorMsg.includes('authentication')
+        // Check if this is a permission/write error — if so, retry via staging
+        const isAuthError = errorMsg.includes('publickey') || errorMsg.includes('authentication')
+        const isWriteFailure = !isAuthError && (
+          errorMsg.includes('Permission denied') ||
+          errorMsg.includes('cannot write to destination') ||
+          errorMsg.includes('Remote write failed')
+        )
 
-        if (isPermDenied) {
-          jl('info', 'upload.rsync.permission-denied.staging', { id, destDir: opts.destDir, error: errorMsg })
+        if (isWriteFailure) {
+          jl('warn', 'upload.rsync.permission-denied.staging-fallback', { id, destDir: opts.destDir, error: errorMsg, reason: 'Destination directory not writable by SSH user — using staging upload workaround' })
 
           const stageResult = await requestStagingDir({
             host: opts.host,
@@ -3436,7 +3439,7 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
               }
             }
             event.sender.send(`upload:done:${id}`, { ok: true })
-            jl('info', 'upload.done.staged.rsync', { id, ok: true, sessionId: stageResult.sessionId })
+            jl('warn', 'upload.done.staged.rsync', { id, ok: true, sessionId: stageResult.sessionId, note: 'Upload completed via staging fallback (SMB permission workaround)' })
             if (isTempCopy) { try { fs.unlinkSync(actualSrc); } catch {} }
             inflightRsync.delete(id)
             inflightPids.delete(id)
