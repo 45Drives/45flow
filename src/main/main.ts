@@ -3316,7 +3316,20 @@ ipcMain.on('upload:start', async (event, opts: RsyncStartOpts) => {
           jl('info', 'upload.rsync.probe.writable', { id, destDir: opts.destDir })
         } catch (probeErr: any) {
           const probeMsg = probeErr?.stderr || probeErr?.message || String(probeErr)
-          if (probeMsg.includes('Permission denied') || probeMsg.includes('permission denied') || probeMsg.includes('Read-only')) {
+          // Distinguish SSH auth failures from filesystem permission issues
+          const isAuthFailure = probeMsg.includes('publickey') ||
+            probeMsg.includes('authentication') ||
+            probeMsg.includes('Connection refused') ||
+            probeMsg.includes('Could not resolve') ||
+            probeMsg.includes('No route to host') ||
+            probeMsg.includes('Connection timed out')
+          const isFilesystemDenied = !isAuthFailure && (
+            probeMsg.includes('Permission denied') ||
+            probeMsg.includes('permission denied') ||
+            probeMsg.includes('Read-only')
+          )
+
+          if (isFilesystemDenied) {
             jl('info', 'upload.rsync.probe.denied', { id, destDir: opts.destDir, error: probeMsg })
 
             const stageResult = await requestStagingDir({
