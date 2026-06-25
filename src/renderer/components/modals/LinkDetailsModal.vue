@@ -23,6 +23,9 @@
 
           <button v-if="!editMode" class="btn btn-primary" @click="beginEdit" :disabled="!link">Edit</button>
 
+          <button v-if="editMode" class="btn btn-secondary px-4 py-2" @click="cancelEdit" :disabled="saving">Cancel Edit</button>
+          <button v-if="editMode" class="btn btn-success px-4 py-2" @click="saveAll" :disabled="saveDisabled">Save & Close</button>
+
           <button class="btn btn-danger" @click="close">Close</button>
         </div>
       </div>
@@ -822,14 +825,7 @@
 
       </div>
 
-      <!-- Footer (always visible) -->
-      <div v-if="editMode" class="flex items-center justify-end gap-2 px-4 py-3 border-t border-default shrink-0">
-        <button class="btn btn-secondary px-4 py-2" @click="cancelEdit" :disabled="saving">Cancel</button>
-        <button class="btn btn-success px-4 py-2" @click="saveAll" :disabled="saveDisabled" :title="hasActiveTranscodes ? 'Transcode in progress - please wait' : ''">
-          <span v-if="hasActiveTranscodes" class="opacity-70">⏳ Transcoding...</span>
-          <span v-else>Save Changes</span>
-        </button>
-      </div>
+
 
       <EditLinkFilesModal v-model="filesEditorOpen" :apiFetch="apiFetch"
         :initialPaths="draftFilePaths"
@@ -1000,7 +996,7 @@ const linkDetailsEditTourSteps = computed<TourStep[]>(() => [
 	},
 	{
 		target: '[data-tour="link-details-header"]',
-		message: 'Click "Save Changes" when done, or "Cancel" to discard edits.\n\nChanges take effect immediately after saving — active links will reflect the new settings.',
+		message: 'Click "Save & Close" when done, or "Cancel Edit" to discard edits.\n\nChanges take effect immediately after saving — active links will reflect the new settings.',
 	},
 ])
 
@@ -1112,25 +1108,11 @@ const versionFileById = computed(() => {
 const editMode = ref(false)
 const saving = ref(false)
 const reprocessingMedia = ref(false)
-
-/**
- * Check if there are active transcodes for this link
- * Prevents starting duplicate transcodes when clicking Save/Overwrite multiple times
- */
-const hasActiveTranscodes = computed(() => {
-  if (!props.link?.id) return false
-  const groupId = `link:${props.link.id}`
-  return transfer.state.tasks.some(t => {
-    if (t.kind !== 'transcode') return false
-    // Check if task is active (queued, running, unknown)
-    if (t.status !== 'queued' && t.status !== 'running' && t.status !== 'unknown') return false
-    // Check if task belongs to this link
-    return t.context?.groupId === groupId
-  })
-})
+const mediaWasReprocessed = ref(false)
 
 const hasUnsavedChanges = computed(() => {
   if (!editMode.value || !props.link) return false
+  if (mediaWasReprocessed.value) return true
   if ((draftTitle.value || '') !== (props.link.title || '')) return true
   if ((draftNotes.value || '') !== (((props.link as any).notes) || '')) return true
   if (draftAccessMode.value !== (props.link.access_mode || 'open')) return true
@@ -1166,7 +1148,6 @@ const capabilitiesSatisfied = computed(() => {
 
 const saveDisabled = computed(() =>
   saving.value ||
-  hasActiveTranscodes.value ||
   (editMode.value && (!accessSatisfied.value || !passwordSatisfied.value || !capabilitiesSatisfied.value || !hasUnsavedChanges.value))
 )
 
@@ -1640,7 +1621,20 @@ function clearLocalWatermark() {
   draftWatermarkLocalFile.value = null
 }
 
-function openWatermarkConfigModal() {
+async function openWatermarkConfigModal() {
+  // Wait for details fetch to finish so watermarkFile/watermarkSettings are available
+  if (detailsLoading.value) {
+    await new Promise<void>(resolve => {
+      const stop = watch(detailsLoading, (loading) => {
+        if (!loading) { stop(); resolve() }
+      }, { immediate: true })
+    })
+  }
+  // Ensure watermark file is synced from link details (handles case where details loaded after beginEdit)
+  if (!draftWatermarkFile.value && currentWatermarkFile.value) {
+    draftWatermarkFile.value = currentWatermarkFile.value
+    originalWatermarkFile.value = currentWatermarkFile.value
+  }
   // Initialize with stored settings from the link if available, otherwise defaults
   const storedSettings = (props.link as any)?.watermarkSettings
   if (storedSettings && typeof storedSettings === 'object' && storedSettings.position) {
@@ -1680,7 +1674,7 @@ async function saveWatermarkConfig() {
   pushNotification(
     new Notification(
       'Watermark Configuration Applied',
-      'Click "Save Changes" to persist changes and regenerate outputs',
+      'Click "Save & Close" to persist changes and regenerate outputs',
       'info',
       4000
     )
@@ -2576,6 +2570,18 @@ async function reprocessMedia() {
       body: JSON.stringify(body),
       timeoutMs: 5 * 60 * 1000,
     })
+    mediaWasReprocessed.value = true
+    // Sync original values so Save won't re-send the same media settings
+    if (props.link) {
+      const target = props.link as any
+      target.generateReviewProxy = !!draftGenerateReviewProxy.value
+      target.watermark = !!draftWatermarkEnabled.value
+      target.watermarkFile = draftWatermarkFile.value.trim() || null
+      target.watermarkSettings = draftWatermarkEnabled.value ? JSON.parse(JSON.stringify(draftWatermarkSettings.value)) : null
+      target.proxyQualities = nextProxyQualities
+    }
+    originalProxyQualities.value = nextProxyQualities.slice()
+    originalWatermarkFile.value = draftWatermarkFile.value.trim()
     if (resp?.hasTranscodes) {
       startLinkTranscodeTracking({
         resp,
@@ -2583,6 +2589,7 @@ async function reprocessMedia() {
         wantsHls: true,
         addedPaths: draftFilePaths.value.slice(),
         proxyQualities: draftGenerateReviewProxy.value ? nextProxyQualities : [],
+        suppressInfoNotifications: true,
       })
       pushNotification(
         new Notification(
@@ -2622,6 +2629,7 @@ function startLinkTranscodeTracking(opts: {
   wantsHls: boolean
   addedPaths: string[]
   proxyQualities?: string[]
+  suppressInfoNotifications?: boolean
 }) {
   if (!opts.wantsProxy && !opts.wantsHls) return
   // console.log('[link-details:tracking] entry', {
@@ -2764,23 +2772,27 @@ function startLinkTranscodeTracking(opts: {
       ]))
 
       if (proxyInProgressIds.length) {
-        pushNotification(
-          new Notification(
-            'Review Copies Already In Progress',
-            `Review copy generation is already in progress for ${proxyInProgressIds.length} item(s).`,
-            'info',
-            6000
+        if (!opts.suppressInfoNotifications) {
+          pushNotification(
+            new Notification(
+              'Review Copies Already In Progress',
+              `Review copy generation is already in progress for ${proxyInProgressIds.length} item(s).`,
+              'info',
+              6000
+            )
           )
-        )
+        }
       } else if (proxySplit.skipped.length) {
-        pushNotification(
-          new Notification(
-            'Review Copies Already Available',
-            `Review copy generation was skipped for ${proxySplit.skipped.length} item(s) (already exists).`,
-            'info',
-            6000
+        if (!opts.suppressInfoNotifications) {
+          pushNotification(
+            new Notification(
+              'Review Copies Already Available',
+              `Review copy generation was skipped for ${proxySplit.skipped.length} item(s) (already exists).`,
+              'info',
+              6000
+            )
           )
-        )
+        }
       }
     }
 
@@ -2854,23 +2866,27 @@ function startLinkTranscodeTracking(opts: {
       ]))
 
       if (hlsInProgressIds.length) {
-        pushNotification(
-          new Notification(
-            'Stream Already In Progress',
-            `Browser stream generation is already in progress for ${hlsInProgressIds.length} item(s).`,
-            'info',
-            6000
+        if (!opts.suppressInfoNotifications) {
+          pushNotification(
+            new Notification(
+              'Stream Already In Progress',
+              `Browser stream generation is already in progress for ${hlsInProgressIds.length} item(s).`,
+              'info',
+              6000
+            )
           )
-        )
+        }
       } else if (hlsSplit.skipped.length) {
-        pushNotification(
-          new Notification(
-            'Stream Already Available',
-            `Browser stream generation was skipped for ${hlsSplit.skipped.length} item(s) (already exists).`,
-            'info',
-            6000
+        if (!opts.suppressInfoNotifications) {
+          pushNotification(
+            new Notification(
+              'Stream Already Available',
+              `Browser stream generation was skipped for ${hlsSplit.skipped.length} item(s) (already exists).`,
+              'info',
+              6000
+            )
           )
-        )
+        }
       }
     }
 
@@ -3297,6 +3313,22 @@ async function fetchDetailsFor() {
     await hydrateMediaSettingsFromArtifacts()
 
     if (selectedVersionFileId.value) await loadVersions(selectedVersionFileId.value)
+
+    // If user entered edit mode before details finished loading, re-seed watermark drafts
+    // so that the Configure Watermark modal picks up the correct file and settings.
+    if (editMode.value) {
+      if (!draftWatermarkFile.value && currentWatermarkFile.value) {
+        draftWatermarkFile.value = currentWatermarkFile.value
+        originalWatermarkFile.value = currentWatermarkFile.value
+      }
+      if (!draftWatermarkEnabled.value && currentWatermark.value) {
+        draftWatermarkEnabled.value = true
+      }
+      const freshSettings = (props.link as any)?.watermarkSettings
+      if (freshSettings && typeof freshSettings === 'object' && freshSettings.position) {
+        draftWatermarkSettings.value = JSON.parse(JSON.stringify(freshSettings))
+      }
+    }
   } catch {
     // Keep the modal usable even if details fetch fails; UI falls back to list-level file metadata.
     detailsToken.value = String(props.link?.token || '')
@@ -3466,6 +3498,7 @@ function beginEdit() {
 
 function cancelEdit() {
   editMode.value = false
+  mediaWasReprocessed.value = false
 
   draftTitle.value = props.link?.title || ''
   draftNotes.value = (props.link as any)?.notes || ''
@@ -4015,7 +4048,6 @@ async function saveAll() {
     // Optional success notification (only if something changed)
     if (did.details || did.files || did.uploadDest) {
       console.log('[link-details:save] Save complete!', { did, capabilitiesChanged, uploadEnabledChanged, shareEnabledChanged })
-      close();
       pushNotification(
         new Notification(
           'Saved',
@@ -4024,11 +4056,11 @@ async function saveAll() {
           6000
         )
       )
-    } else {
-      console.warn('[link-details:save] No changes were saved', { did, shouldUpdateDetails, shouldUpdateFiles, shouldUpdateUploadDest })
     }
 
+    close()
     editMode.value = false
+    mediaWasReprocessed.value = false
   } finally {
     saving.value = false
   }

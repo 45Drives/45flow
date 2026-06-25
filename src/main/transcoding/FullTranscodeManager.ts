@@ -10,7 +10,7 @@ import { getFfmpegPath, getFfprobePath } from './ffmpeg-paths';
 import { detectHardwareCapabilities } from './hardware-detect';
 import { acquire, release } from './ffmpeg-semaphore';
 import type { FullTranscodeOptions, FullTranscodeProgress, FullTranscodeResult, WatermarkSettings } from '../preload';
-import { buildWatermarkFilter } from './watermark-filter';
+import { buildWatermarkFilter, computeOverlayPosition } from './watermark-filter';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -528,12 +528,25 @@ export class FullTranscodeManager {
         hwUpload = 'format=nv12,hwupload=extra_hw_frames=64'
       }
 
+      // Probe watermark dimensions for accurate positioning
+      let wmDims: { width: number; height: number } | null = null
+      try {
+        const probeCmd = getFfprobePath()
+        const raw = execSync(
+          `"${probeCmd}" -v quiet -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${opts.watermarkPath}"`,
+          { timeout: 10000, encoding: 'utf-8' }
+        )
+        const [w, h] = raw.trim().split(',').map(Number)
+        if (w > 0 && h > 0) wmDims = { width: w, height: h }
+      } catch {}
+
       // Build watermark filter (premium custom or legacy fixed position)
       const filterComplex = buildWatermarkFilter(
         opts.watermarkSettings,
         opts.height,
         opts.sourceHeight,
-        hwUpload
+        hwUpload,
+        wmDims
       )
 
       args.push('-i', ffp(opts.watermarkPath));
@@ -638,12 +651,25 @@ export class FullTranscodeManager {
         hwUpload = 'format=nv12,hwupload=extra_hw_frames=64';
       }
 
+      // Probe watermark dimensions for accurate positioning
+      let wmDims: { width: number; height: number } | null = null;
+      try {
+        const probeCmd = getFfprobePath();
+        const raw = execSync(
+          `"${probeCmd}" -v quiet -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${opts.watermarkPath}"`,
+          { timeout: 10000, encoding: 'utf-8' },
+        );
+        const [w, h] = raw.trim().split(',').map(Number);
+        if (w > 0 && h > 0) wmDims = { width: w, height: h };
+      } catch {}
+
       // Use buildWatermarkFilter for both legacy and custom positioning
       const filterComplex = buildWatermarkFilter(
         opts.watermarkSettings,
         opts.height,
         opts.sourceHeight,
         hwUpload,
+        wmDims,
       );
 
       args.push('-i', ffp(opts.watermarkPath));
@@ -737,6 +763,20 @@ export class FullTranscodeManager {
       args.push('-i', ffp(opts.watermarkPath!));
     }
 
+    // Probe watermark dimensions for accurate center-based positioning
+    let wmAspect: number | null = null;
+    if (useWatermark) {
+      try {
+        const probeCmd = getFfprobePath();
+        const raw = execSync(
+          `"${probeCmd}" -v quiet -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${opts.watermarkPath}"`,
+          { timeout: 10000, encoding: 'utf-8' },
+        );
+        const [w, h] = raw.trim().split(',').map(Number);
+        if (w > 0 && h > 0) wmAspect = w / h;
+      } catch {}
+    }
+
     // Build filter_complex: split → scale per rendition → optional watermark overlay
     const vLabels = Array.from({ length: n }, (_, i) => `v${i + 1}`);
     const oLabels = Array.from({ length: n }, (_, i) => `v${i}o`);
@@ -763,43 +803,24 @@ export class FullTranscodeManager {
 
         const wmSize = settings ? Math.round((h * scale) / 100) : Math.round(h / 5);
 
-        // Calculate overlay position
-        let overlayX = 'W-w-24';
-        let overlayY = 'H-h-24';
-
-        if (settings) {
-          if (pos.xUnit === '%') {
-            switch (pos.anchor) {
-              case 'top-left': case 'bottom-left': overlayX = `W*${pos.x / 100}`; break;
-              case 'top-right': case 'bottom-right': overlayX = `W-w-W*${pos.x / 100}`; break;
-              case 'center': overlayX = `(W-w)/2+W*${pos.x / 100}`; break;
-            }
-          } else {
-            switch (pos.anchor) {
-              case 'top-left': case 'bottom-left': overlayX = String(pos.x); break;
-              case 'top-right': case 'bottom-right': overlayX = `W-w-${pos.x}`; break;
-              case 'center': overlayX = `(W-w)/2+${pos.x}`; break;
-            }
-          }
-          if (pos.yUnit === '%') {
-            switch (pos.anchor) {
-              case 'top-left': case 'top-right': overlayY = `H*${pos.y / 100}`; break;
-              case 'bottom-left': case 'bottom-right': overlayY = `H-h-H*${pos.y / 100}`; break;
-              case 'center': overlayY = `(H-h)/2+H*${pos.y / 100}`; break;
-            }
-          } else {
-            switch (pos.anchor) {
-              case 'top-left': case 'top-right': overlayY = String(pos.y); break;
-              case 'bottom-left': case 'bottom-right': overlayY = `H-h-${pos.y}`; break;
-              case 'center': overlayY = `(H-h)/2+${pos.y}`; break;
-            }
-          }
+        // Calculate overlay position using center-based model
+        let overlayX: string;
+        let overlayY: string;
+        if (settings && wmAspect) {
+          const wmW = Math.round(wmSize * wmAspect);
+          ({ overlayX, overlayY } = computeOverlayPosition(pos, wmW, wmSize));
+        } else {
+          // Legacy or no dimensions — use old edge-based formula
+          overlayX = 'W-w-W*0.03';
+          overlayY = 'H-h-H*0.03';
         }
 
         filterParts.push(`[${v}]scale=-2:${h}:flags=lanczos,format=yuv420p[${v}s];`);
 
-        // Build watermark processing chain
-        let wmChain = `[wm_raw${i}]scale=${wmSize}:-1:flags=lanczos`;
+        // Build watermark processing chain — scale by height to match CSS preview
+        let wmChain = settings
+          ? `[wm_raw${i}]scale=-1:${wmSize}:flags=lanczos`
+          : `[wm_raw${i}]scale=${wmSize}:-1:flags=lanczos`;
         if (opacity < 1.0) {
           wmChain += `,format=yuva420p,colorchannelmixer=aa=${opacity}`;
         } else {
@@ -810,7 +831,7 @@ export class FullTranscodeManager {
 
         if (rotation > 0 && rotation !== 360) {
           const rotRad = (rotation * Math.PI) / 180;
-          filterParts.push(`[wm${i}a]rotate=${rotRad}:ow='hypot(iw,ih)':oh=ow:c=none[wm${i}];`);
+          filterParts.push(`[wm${i}a]rotate=${rotRad}:ow=rotw(${rotRad}):oh=roth(${rotRad}):c=none[wm${i}];`);
         } else {
           filterParts.push(`[wm${i}a]null[wm${i}];`);
         }

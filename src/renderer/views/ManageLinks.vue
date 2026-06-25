@@ -215,7 +215,7 @@
 							<td class="p-1 border border-default align-middle thumb-td">
 								<div class="thumb-cell">
 									<div class="thumb-placeholder" :class="thumbIconClass(it)">
-										{{ thumbIconLabel(it) }}
+										<component :is="thumbIconComponent(it)" class="w-5 h-5" />
 									</div>
 								</div>
 							</td>
@@ -306,7 +306,7 @@
 								<div class="thumb-cell">
 									<img v-if="hasThumbnail(it)" :src="thumbSrc(it)" class="thumb-img" />
 									<div v-else class="thumb-placeholder" :class="thumbIconClass(it)">
-										{{ thumbIconLabel(it) }}
+										<component :is="thumbIconComponent(it)" class="w-5 h-5" />
 									</div>
 								</div>
 							</td>
@@ -804,6 +804,7 @@ import type { LinkItem, LinkType, Status } from '../typings/electron'
 import { useTime } from '../composables/useTime'
 import { useTimeFormat } from '../composables/useTimeFormat'
 import { useLinkListDefault } from '../composables/useLinkListDefault'
+import { FilmIcon, PhotoIcon, MusicalNoteIcon, ArrowUpTrayIcon, DocumentIcon } from '@heroicons/vue/24/outline'
 type SortKey = 'title' | 'type' | 'url' | 'expires' | 'status' | 'access' | 'created'
 type SortDir = 'asc' | 'desc'
 
@@ -1350,14 +1351,14 @@ function thumbIconClass(it: LinkItem) {
 	return 'thumb-icon--file'
 }
 
-function thumbIconLabel(it: LinkItem) {
-	if (it.type === 'upload') return '⬆'
+function thumbIconComponent(it: LinkItem) {
+	if (it.type === 'upload') return ArrowUpTrayIcon
 	const firstFile = it.target?.files?.[0]
-	if (!firstFile?.mime) return '📄'
-	if (firstFile.mime.startsWith('video/')) return '🎬'
-	if (firstFile.mime.startsWith('image/')) return '🖼'
-	if (firstFile.mime.startsWith('audio/')) return '🎵'
-	return '📄'
+	if (!firstFile?.mime) return DocumentIcon
+	if (firstFile.mime.startsWith('video/')) return FilmIcon
+	if (firstFile.mime.startsWith('image/')) return PhotoIcon
+	if (firstFile.mime.startsWith('audio/')) return MusicalNoteIcon
+	return DocumentIcon
 }
 
 function isDisabled(it: LinkItem) {

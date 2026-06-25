@@ -268,12 +268,25 @@ export class TranscodeManager {
         hwUpload = 'hwupload=extra_hw_frames=64'
       }
 
+      // Probe watermark dimensions for accurate positioning
+      let wmDims: { width: number; height: number } | null = null
+      try {
+        const probeCmd = getFfprobePath()
+        const raw = execSync(
+          `"${probeCmd}" -v quiet -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${options.watermarkPath}"`,
+          { timeout: 10000, encoding: 'utf-8' }
+        )
+        const [w, h] = raw.trim().split(',').map(Number)
+        if (w > 0 && h > 0) wmDims = { width: w, height: h }
+      } catch {}
+
       // Build watermark filter (premium custom or legacy fixed position)
       const filterComplex = buildWatermarkFilter(
         options.watermarkSettings,
         targetHeight || null,
         sourceHeight,
-        hwUpload
+        hwUpload,
+        wmDims
       )
 
       args.push('-filter_complex', filterComplex);

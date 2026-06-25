@@ -6,6 +6,97 @@
 import type { WatermarkSettings } from '../preload'
 
 /**
+ * Compute FFmpeg overlay X:Y expressions that match the CSS preview positioning.
+ *
+ * CSS positions the watermark's UNROTATED bounding box, then rotates visually
+ * around center (transform-origin: center). The center stays in place.
+ *
+ * In FFmpeg, the watermark is first rotated (expanding canvas via rotw/roth),
+ * then positioned via overlay=X:Y. To match CSS, we compute where the CENTER
+ * of the unrotated watermark should be, then position the rotated overlay so
+ * its center is at that point: overlayX = center_x - w/2.
+ */
+export function computeOverlayPosition(
+  pos: { x: number; y: number; xUnit: string; yUnit: string; anchor: string },
+  origW: number,
+  origH: number,
+): { overlayX: string; overlayY: string } {
+  const halfW = Math.round(origW / 2)
+  const halfH = Math.round(origH / 2)
+
+  let overlayX: string
+  let overlayY: string
+
+  // X positioning
+  if (pos.xUnit === '%') {
+    switch (pos.anchor) {
+      case 'top-left':
+      case 'bottom-left':
+        overlayX = `W*${pos.x / 100}+${halfW}-w/2`
+        break
+      case 'top-right':
+      case 'bottom-right':
+        overlayX = `W*${(100 - pos.x) / 100}-${halfW}-w/2`
+        break
+      case 'center':
+      default:
+        overlayX = '(W-w)/2'
+        break
+    }
+  } else {
+    switch (pos.anchor) {
+      case 'top-left':
+      case 'bottom-left':
+        overlayX = `${pos.x}+${halfW}-w/2`
+        break
+      case 'top-right':
+      case 'bottom-right':
+        overlayX = `W-${pos.x}-${halfW}-w/2`
+        break
+      case 'center':
+      default:
+        overlayX = '(W-w)/2'
+        break
+    }
+  }
+
+  // Y positioning
+  if (pos.yUnit === '%') {
+    switch (pos.anchor) {
+      case 'top-left':
+      case 'top-right':
+        overlayY = `H*${pos.y / 100}+${halfH}-h/2`
+        break
+      case 'bottom-left':
+      case 'bottom-right':
+        overlayY = `H*${(100 - pos.y) / 100}-${halfH}-h/2`
+        break
+      case 'center':
+      default:
+        overlayY = '(H-h)/2'
+        break
+    }
+  } else {
+    switch (pos.anchor) {
+      case 'top-left':
+      case 'top-right':
+        overlayY = `${pos.y}+${halfH}-h/2`
+        break
+      case 'bottom-left':
+      case 'bottom-right':
+        overlayY = `H-${pos.y}-${halfH}-h/2`
+        break
+      case 'center':
+      default:
+        overlayY = '(H-h)/2'
+        break
+    }
+  }
+
+  return { overlayX, overlayY }
+}
+
+/**
  * Build FFmpeg watermark overlay filter with custom positioning
  * Falls back to legacy fixed position if settings not provided
  * 
@@ -13,6 +104,7 @@ import type { WatermarkSettings } from '../preload'
  * @param videoHeight - Target video height (or null for original)
  * @param sourceHeight - Source video height for legacy calculations
  * @param hwUpload - Hardware upload filter string (e.g., 'format=nv12,hwupload' for VAAPI)
+ * @param wmDims - Optional probed watermark dimensions { width, height }
  * @returns FFmpeg filter_complex string
  */
 export function buildWatermarkFilter(
@@ -20,8 +112,9 @@ export function buildWatermarkFilter(
   videoHeight: number | null,
   sourceHeight: number,
   hwUpload: string | null,
+  wmDims?: { width: number; height: number } | null,
 ): string {
-  console.log('[watermark-filter] called with settings:', JSON.stringify(settings), 'videoHeight:', videoHeight, 'sourceHeight:', sourceHeight)
+  console.log('[watermark-filter] called with settings:', JSON.stringify(settings), 'videoHeight:', videoHeight, 'sourceHeight:', sourceHeight, 'wmDims:', wmDims)
   const height = videoHeight || sourceHeight
 
   // Legacy: No custom settings (free version or no customization)
@@ -45,106 +138,21 @@ export function buildWatermarkFilter(
   const pos = settings.position || { x: 3, y: 3, xUnit: '%', yUnit: '%', anchor: 'bottom-right' }
   console.log('[watermark-filter] scale:', scale, 'opacity:', opacity, 'rotation:', rotation, 'pos:', JSON.stringify(pos))
 
-  // Calculate watermark dimensions
+  // wmSize = target watermark height (scale% of video height, matching CSS preview)
   const wmSize = Math.round((height * scale) / 100)
+  const wmAspect = (wmDims?.width && wmDims?.height) ? wmDims.width / wmDims.height : null
+  const wmW = wmAspect ? Math.round(wmSize * wmAspect) : wmSize // fallback: assume square
 
-  // Calculate overlay position based on anchor and offset
-  let overlayX = 'W-w-24' // default bottom-right X
-  let overlayY = 'H-h-24' // default bottom-right Y
+  // Compute overlay position using center-based model (matches CSS transform-origin: center)
+  const { overlayX, overlayY } = computeOverlayPosition(pos, wmW, wmSize)
 
-  if (pos.xUnit === '%') {
-    switch (pos.anchor) {
-      case 'top-left':
-      case 'bottom-left':
-        overlayX = `W*${pos.x / 100}`
-        break
-      case 'top-right':
-      case 'bottom-right':
-        overlayX = `W-w-W*${pos.x / 100}`
-        break
-      case 'center':
-        overlayX = `(W-w)/2+W*${pos.x / 100}`
-        break
-    }
-  } else {
-    // px unit
-    switch (pos.anchor) {
-      case 'top-left':
-      case 'bottom-left':
-        overlayX = String(pos.x)
-        break
-      case 'top-right':
-      case 'bottom-right':
-        overlayX = `W-w-${pos.x}`
-        break
-      case 'center':
-        overlayX = `(W-w)/2+${pos.x}`
-        break
-    }
-  }
-
-  if (pos.yUnit === '%') {
-    switch (pos.anchor) {
-      case 'top-left':
-      case 'top-right':
-        overlayY = `H*${pos.y / 100}`
-        break
-      case 'bottom-left':
-      case 'bottom-right':
-        overlayY = `H-h-H*${pos.y / 100}`
-        break
-      case 'center':
-        overlayY = `(H-h)/2+H*${pos.y / 100}`
-        break
-    }
-  } else {
-    // px unit
-    switch (pos.anchor) {
-      case 'top-left':
-      case 'top-right':
-        overlayY = String(pos.y)
-        break
-      case 'bottom-left':
-      case 'bottom-right':
-        overlayY = `H-h-${pos.y}`
-        break
-      case 'center':
-        overlayY = `(H-h)/2+${pos.y}`
-        break
-    }
-  }
-
-  // Rotation correction: ffmpeg's rotate filter expands the canvas to the rotated
-  // bounding box, but CSS rotates around center (position unchanged). Adjust
-  // overlay position to keep the watermark center in the same place.
-  // Note: wmSize here is the width (scale=wmSize:-1), height is unknown without aspect ratio.
-  // Approximate using wmSize for both dims when aspect unknown (conservative).
-  if (rotation > 0 && rotation !== 360 && wmSize > 0) {
-    const angleRad = (rotation * Math.PI) / 180
-    const cosA = Math.abs(Math.cos(angleRad))
-    const sinA = Math.abs(Math.sin(angleRad))
-    // Without knowing exact height, use wmSize as approximation for offset calc
-    const rotW = Math.ceil(wmSize * cosA + wmSize * sinA)
-    const offsetX = Math.round((rotW - wmSize) / 2)
-    const offsetY = offsetX // symmetric approximation
-
-    if (offsetX !== 0 || offsetY !== 0) {
-      const anchor = pos.anchor || 'bottom-right'
-      if (anchor === 'top-left' || anchor === 'bottom-left') {
-        overlayX = `(${overlayX})-${offsetX}`
-        overlayY = anchor === 'top-left' ? `(${overlayY})-${offsetY}` : `(${overlayY})+${offsetY}`
-      } else if (anchor === 'top-right' || anchor === 'bottom-right') {
-        overlayX = `(${overlayX})+${offsetX}`
-        overlayY = anchor === 'top-right' ? `(${overlayY})-${offsetY}` : `(${overlayY})+${offsetY}`
-      }
-    }
-  }
-
-  // Build filter chain
+  // Build filter chain — scale by height to match CSS preview
   const scaleExpr = videoHeight ? `scale=-2:${videoHeight}:flags=lanczos,` : ''
   const base = videoHeight ? `[0:v]${scaleExpr}format=yuv420p[base];` : '[0:v]format=yuv420p[base];'
 
-  let watermarkChain = `[1:v]scale=${wmSize}:-1:flags=lanczos[scaled];`
+  let watermarkChain = wmAspect
+    ? `[1:v]scale=${wmW}:${wmSize}:flags=lanczos[scaled];`
+    : `[1:v]scale=-1:${wmSize}:flags=lanczos[scaled];`
 
   // Apply opacity if not fully opaque
   if (opacity < 1.0) {
@@ -153,10 +161,12 @@ export function buildWatermarkFilter(
     watermarkChain += `[scaled]format=yuva420p,colorchannelmixer=aa=1[transparent];`
   }
 
-  // Apply rotation if needed (negate for clockwise to match CSS transform)
+  // Apply rotation if needed (positive radians = clockwise, same as CSS)
+  // Use ow=rotw(a):oh=roth(a) to expand output to the rotated bounding box
+  // so the watermark is not clipped at the original image bounds.
   if (rotation > 0 && rotation !== 360) {
-    const rotRad = -(rotation * Math.PI) / 180
-    watermarkChain += `[transparent]rotate=${rotRad}:c=none[rotated];`
+    const rotRad = (rotation * Math.PI) / 180
+    watermarkChain += `[transparent]rotate=${rotRad}:ow=rotw(${rotRad}):oh=roth(${rotRad}):c=none[rotated];`
   } else {
     watermarkChain += `[transparent]null[rotated];`
   }

@@ -10,7 +10,8 @@
                 class="flex items-center px-3 py-2 cursor-pointer text-base"
                 :class="i === highlighted ? 'bg-accent' : ''" @mouseenter="highlighted = i"
                 @mousedown.prevent="accept(s)" data-option>
-                <span class="mr-2 opacity-70">{{ s.isDir ? '📁' : '📄' }}</span>
+                <FolderIcon v-if="s.isDir" class="w-4 h-4 mr-2 opacity-70 shrink-0" />
+                <DocumentIcon v-else class="w-4 h-4 mr-2 opacity-70 shrink-0" />
                 <span class="truncate">{{ s.path }}</span>
             </div>
         </div>
@@ -19,6 +20,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
+import { FolderIcon, DocumentIcon } from '@heroicons/vue/24/outline'
 
 // Required: a function that calls your authenticated API
 const props = defineProps<{

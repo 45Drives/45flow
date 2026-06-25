@@ -453,6 +453,13 @@ if (props.modelValue) {
   settings.value = { ...props.modelValue }
 }
 
+// Watch for external modelValue changes (e.g. parent re-seeds after details load)
+watch(() => props.modelValue, (newVal) => {
+  if (newVal && JSON.stringify(newVal) !== JSON.stringify(settings.value)) {
+    settings.value = { ...newVal }
+  }
+}, { deep: true })
+
 // Emit changes to parent
 const emitUpdate = () => {
   emit('update:modelValue', settings.value)
