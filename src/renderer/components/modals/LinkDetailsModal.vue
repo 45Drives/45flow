@@ -1893,27 +1893,21 @@ async function ensureServerDirExistsForEdit(dir: string) {
 
 async function uploadDraftLocalWatermark() {
   if (!draftWatermarkLocalFile.value) return { ok: false, error: 'no local watermark selected' as string }
-  const ssh = connectionMeta?.value?.ssh
-  const host = ssh?.server
-  const user = ssh?.username
-  if (!host || !user) return { ok: false, error: 'missing ssh connection info' as string }
+  if (!draftWatermarkLocalFile.value?.path) return { ok: false, error: 'no local watermark file selected' as string }
 
   const destDir = resolveWatermarkUploadDirForEdit()
   const ensured = await ensureServerDirExistsForEdit(destDir)
   if (!ensured) return { ok: false, error: 'failed to prepare remote watermark directory' as string }
-  if (!draftWatermarkLocalFile.value?.path) return { ok: false, error: 'no local watermark file selected' as string }
-  const { id: rsyncId, done } = await window.electron.rsyncStart({
-    host,
-    user,
+
+  const { done } = await window.electron.httpUploadStart({
     src: draftWatermarkLocalFile.value.path,
-    destDir,
-    port: 22,
-    keyPath: ssh?.keyPath,
-    noIngest: true,
+    apiBase: connectionMeta?.value?.apiBase || '',
+    apiToken: connectionMeta?.value?.token || '',
+    dest: destDir,
   })
   const res = await done
-  if (!res?.ok) return { ok: false, error: res?.error || 'watermark upload failed' as string, uploadId: rsyncId }
-  return { ok: true, relPath: resolveWatermarkRelPathForEdit(draftWatermarkLocalFile.value.name), uploadId: rsyncId }
+  if (!res?.ok) return { ok: false, error: res?.error || 'watermark upload failed' as string }
+  return { ok: true, relPath: resolveWatermarkRelPathForEdit(draftWatermarkLocalFile.value.name) }
 }
 
 function computeAddedPaths(next: string[], prev: string[]) {
@@ -3740,17 +3734,6 @@ async function saveAll() {
 
     if (draftWatermarkEnabled.value && draftWatermarkLocalFile.value && watermarkChanged) {
       const up = await uploadDraftLocalWatermark()
-      
-      // Dismiss the watermark upload task from Transfer Dock since it's not a user-facing upload
-      if (up.uploadId) {
-        const uploadTasks = transfer.state.tasks.filter(
-          t => t.kind === 'upload' && t.taskId === up.uploadId
-        )
-        for (const task of uploadTasks) {
-          transfer.removeTask(task.taskId)
-        }
-      }
-      
       if (!up.ok) {
         pushNotification(
           new Notification(

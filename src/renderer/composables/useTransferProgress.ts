@@ -4,7 +4,7 @@ import type { ProgressItem, VersionProgressItem } from './transcodeProgress'
 import { startProgressPolling } from './transcodeProgress'
 import { useWebSocketManager } from './useWebSocketManager'
 
-type UploadStatus = 'queued' | 'uploading' | 'done' | 'canceled' | 'error'
+type UploadStatus = 'queued' | 'transcoding' | 'uploading' | 'done' | 'canceled' | 'error'
 type TranscodeStatus = 'queued' | 'running' | 'done' | 'failed' | 'unknown'
 
 export type TransferContext = {
@@ -447,6 +447,17 @@ const _state = reactive({
     suppressAutoOpen: false,
 })
 
+/**
+ * Track asset version IDs that the user has dismissed (removed/cleared from dock).
+ * Prevents restoreActiveTranscodes from re-creating polling tasks for these.
+ * Cleared on full page reload / app restart (which is fine — fresh start = fresh dock).
+ */
+const _dismissedAssetVersions = new Set<string>() // "avId:jobKind"
+
+function dismissedKey(avId: number, jobKind: string) {
+    return `${avId}:${jobKind}`
+}
+
 function upsertTask(task: TransferTask) {
     const idx = _state.tasks.findIndex(t => t.taskId === task.taskId)
     if (idx === -1) _state.tasks.unshift(task)
@@ -454,7 +465,7 @@ function upsertTask(task: TransferTask) {
 }
 
 function isActiveTask(t: TransferTask) {
-    if (t.kind === 'upload') return t.status === 'uploading' || t.status === 'queued'
+    if (t.kind === 'upload') return t.status === 'uploading' || t.status === 'queued' || t.status === 'transcoding'
     return t.status === 'queued' || t.status === 'running' || t.status === 'unknown'
 }
 
@@ -565,10 +576,28 @@ function splitActiveTranscodeAssetVersions(assetVersionIds: number[], jobKind?: 
 }
 
 function removeTask(taskId: string) {
+    const task = _state.tasks.find(t => t.taskId === taskId)
+    // Track dismissed transcode asset versions so restoreActiveTranscodes won't re-create them
+    if (task && task.kind === 'transcode' && task.assetVersionIds?.length) {
+        const kind = task.jobKind || 'any'
+        for (const avId of task.assetVersionIds) {
+            _dismissedAssetVersions.add(dismissedKey(avId, kind))
+        }
+    }
     _state.tasks = _state.tasks.filter(t => t.taskId !== taskId)
 }
 
 function clearFinished() {
+    // Track all finished transcode asset versions as dismissed
+    for (const t of _state.tasks) {
+        if (!isFinishedTask(t)) continue
+        if (t.kind === 'transcode' && t.assetVersionIds?.length) {
+            const kind = t.jobKind || 'any'
+            for (const avId of t.assetVersionIds) {
+                _dismissedAssetVersions.add(dismissedKey(avId, kind))
+            }
+        }
+    }
     _state.tasks = _state.tasks.filter(t => !isFinishedTask(t))
 }
 
@@ -670,6 +699,20 @@ export function useTransferProgress() {
             t.cancel?.()
         } catch { }
         updateUpload(taskId, { status: 'canceled', completedAt: now(), speed: null, eta: null })
+    }
+
+    function completeTranscodeTask(taskId: string) {
+        const t = _state.tasks.find(x => x.taskId === taskId && x.kind === 'transcode') as
+            | Extract<TransferTask, { kind: 'transcode' }>
+            | undefined
+        if (!t) return
+        if (t.status === 'done') return // already done
+        t.status = 'done'
+        t.progress = 100
+        t.speed = null
+        t.eta = null
+        t.completedAt = now()
+        try { t.stop?.() } catch { }
     }
 
     async function cancelTranscode(taskId: string) {
@@ -1441,98 +1484,12 @@ export function useTransferProgress() {
     }
 
     /**
-     * Restore persisted (detached-rsync) uploads from the main process.
-     * These are uploads that were started in a previous session and may
-     * still be running in the background even though the renderer was closed.
+     * Legacy: was used to restore detached rsync uploads from the main process.
+     * No longer needed — uploads now use HTTP chunked API which doesn't persist across restarts.
+     * Kept as no-op to avoid breaking callers.
      */
     async function restorePersistedUploads() {
-        try {
-            if (!window.electron?.listPersistedUploads) return
-            const list = await window.electron.listPersistedUploads()
-            if (!Array.isArray(list) || !list.length) return
-
-            for (const t of list) {
-                // Skip transfers that are already in a terminal state
-                if (t.status === 'completed' || t.status === 'failed' || t.status === 'canceled') continue
-
-                // Skip if we already have a task for this id
-                if (_state.tasks.some(x => x.taskId === t.id)) continue
-
-                // Also skip if we already have a task with the same file + destDir
-                // (prevents duplicates when renderer's own queue is still active).
-                // context.file may be a full absolute path while t.fileName is just
-                // the basename, so compare basenames to catch both cases.
-                if (_state.tasks.some(x => {
-                    if (x.kind !== 'upload') return false
-                    if (x.context?.destDir !== t.destDir) return false
-                    const ctxFile = x.context?.file
-                    if (!ctxFile) return false
-                    const ctxBase = ctxFile.includes('/') ? ctxFile.slice(ctxFile.lastIndexOf('/') + 1) : ctxFile
-                    return ctxBase === t.fileName
-                })) continue
-
-                const isQueued = t.status === 'queued'
-                const taskId = t.id
-                const task: TransferTask = {
-                    taskId,
-                    kind: 'upload',
-                    title: isQueued ? `Queued: ${t.fileName}` : `Uploading: ${t.fileName}`,
-                    detail: t.destDir,
-                    status: isQueued ? 'queued' : 'uploading',
-                    progress: 0,
-                    speed: null,
-                    eta: null,
-                    error: null,
-                    startedAt: t.startedAt || now(),
-                    cancel: () => {
-                        window.electron?.rsyncCancel?.(taskId)
-                    },
-                    context: {
-                        source: 'upload' as const,
-                        destDir: t.destDir,
-                        file: t.fileName,
-                    },
-                }
-                upsertTask(task)
-
-                // Subscribe to progress updates from the log-file tailer
-                // (for queued items, main will start sending progress once they begin)
-                if (window.electron?.listenUploadProgress) {
-                    const unsub = window.electron.listenUploadProgress(taskId, (p) => {
-                        let pct: number | undefined = typeof p.percent === 'number' ? p.percent : undefined
-                        if (pct === undefined && typeof p.bytesTransferred === 'number' && t.fileSize && t.fileSize > 0) {
-                            pct = (p.bytesTransferred / t.fileSize) * 100
-                        }
-                        updateUpload(taskId, {
-                            status: 'uploading',
-                            progress: typeof pct === 'number' ? pct : undefined,
-                            speed: p.rate ?? null,
-                            eta: p.eta ?? null,
-                        })
-                    })
-
-                    // Also listen for completion
-                    const dch = `upload:done:${taskId}`
-                    const doneHandler = (_ev: any, res: any) => {
-                        unsub()
-                        window.electron?.ipcRenderer?.removeListener?.(dch, doneHandler)
-                        if (res?.ok) {
-                            finishUpload(taskId, true)
-                        } else {
-                            finishUpload(taskId, false, res?.error || 'rsync failed')
-                        }
-                    }
-                    window.electron?.ipcRenderer?.on?.(dch, doneHandler)
-                }
-            }
-
-            // If we restored tasks, open the dock
-            if (_state.tasks.some(isActiveTask)) {
-                _state.open = true
-            }
-        } catch (e: any) {
-            window.appLog?.warn?.('transfer.restore.persisted.error', { error: e?.message || String(e) })
-        }
+        // No-op: rsync persistence is no longer used
     }
 
     /**
@@ -1623,6 +1580,19 @@ export function useTransferProgress() {
                     // Skip if we already have an active task for this version+kind
                     if (hasActiveTranscode({ assetVersionIds: [assetVersionId], file: filePath, jobKind })) continue
 
+                    // Skip if this was previously dismissed by the user
+                    if (_dismissedAssetVersions.has(dismissedKey(assetVersionId, jobKind))) continue
+
+                    // Skip if we already have a finished (done/failed) task for this version+kind
+                    // (prevents duplicates when navigating back to dashboard)
+                    const hasExistingTask = _state.tasks.some(t => {
+                        if (t.kind !== 'transcode') return false
+                        if (!jobKindMatches(t.jobKind, jobKind)) return false
+                        const taskIds = t.assetVersionIds || []
+                        return taskIds.includes(assetVersionId)
+                    })
+                    if (hasExistingTask) continue
+
                     const label = kind === 'hls' ? 'Generating browser stream'
                         : kind === 'proxy_mp4' ? 'Generating review copies'
                         : 'Generating transcodes'
@@ -1671,6 +1641,7 @@ export function useTransferProgress() {
         finishUpload,
         cancelUpload,
         cancelTranscode,
+        completeTranscodeTask,
         retryTranscode,
 
         startTranscodeTask,

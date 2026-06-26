@@ -83,19 +83,35 @@
           </div>
 
           <!-- Actions -->
-          <div class="p-2 flex gap-2">
-            <button
-              class="flex-1 btn btn-sm btn-secondary"
-              @click="openManager"
-            >
-              Manage
-            </button>
-            <button
-              class="flex-1 btn btn-sm btn-primary"
-              @click="addServer"
-            >
-              + Add
-            </button>
+          <div class="p-2 space-y-2">
+            <div class="flex gap-2">
+              <button
+                class="flex-1 btn btn-sm btn-secondary"
+                @click="openManager"
+              >
+                Manage
+              </button>
+              <button
+                class="flex-1 btn btn-sm btn-primary"
+                @click="addServer"
+              >
+                + Add
+              </button>
+            </div>
+            <div class="flex gap-2">
+              <button
+                class="flex-1 btn btn-sm btn-secondary"
+                @click="openSettings"
+              >
+                Settings
+              </button>
+              <button
+                class="flex-1 btn btn-sm btn-secondary"
+                @click="openLogs"
+              >
+                View Logs
+              </button>
+            </div>
           </div>
         </div>
       </transition>
@@ -103,6 +119,14 @@
 
     <!-- Connection Manager Modal -->
     <ConnectionManagerModal v-model="showManager" />
+    <!-- Settings Modal -->
+    <teleport to="body">
+      <SettingsModal v-if="showSettings" @close="showSettings = false" />
+    </teleport>
+    <!-- Log View Modal -->
+    <teleport to="body">
+      <LogViewModal v-if="showLogs" @close="showLogs = false" />
+    </teleport>
   </div>
 </template>
 
@@ -112,6 +136,8 @@ import { useConnections } from '../composables/useConnections'
 import { useServerFilter } from '../composables/useServerFilter'
 import { useRouter } from 'vue-router'
 import ConnectionManagerModal from './modals/ConnectionManagerModal.vue'
+import SettingsModal from './modals/SettingsModal.vue'
+import LogViewModal from './modals/LogViewModal.vue'
 
 const router = useRouter()
 const { sortedConnections, activeConnection, setActive } = useConnections()
@@ -121,6 +147,8 @@ const isAllServers = computed(() => selectedFilter.value === 'all' && allConnect
 
 const isOpen = ref(false)
 const showManager = ref(false)
+const showSettings = ref(false)
+const showLogs = ref(false)
 const triggerRef = ref<HTMLElement | null>(null)
 const menuRef = ref<HTMLElement | null>(null)
 const menuStyle = ref({ top: '0px', left: '0px' })
@@ -156,6 +184,16 @@ function openManager() {
 function addServer() {
   isOpen.value = false
   router.push({ name: 'server-selection', query: { skipAutoLogin: 'true' } })
+}
+
+function openSettings() {
+  isOpen.value = false
+  showSettings.value = true
+}
+
+function openLogs() {
+  isOpen.value = false
+  showLogs.value = true
 }
 
 function isTrialLicense(conn: any): boolean {

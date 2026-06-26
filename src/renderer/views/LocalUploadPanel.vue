@@ -321,7 +321,7 @@ import WatermarkPreview from '../components/WatermarkPreview.vue'
 import { useLicenseStatus } from '../composables/useLicenseStatus'
 import { connectionMetaInjectionKey } from '../keys/injection-keys';
 import type { WatermarkSettings, Default45FlowWatermark } from '../types/watermark'
-import type { RsyncProgress, TranscodeProgress } from '../typings/electron'
+import type { TranscodeProgress } from '../typings/electron'
 import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../types/watermark'
 import { useHeader } from '../composables/useHeader';
 import { useResilientNav } from '../composables/useResilientNav'
@@ -367,8 +367,8 @@ const localUploadTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="upload-step-3"]',
 		message: isPremiumActive.value
-			? 'Step 3: Review your files and start the upload.\n\nThe overall progress bar at the top tracks all files. When client-side transcoding is enabled, video files show a two-phase workflow: Transcode → Upload. Each file shows its own inline progress bar with speed and ETA.\n\nFor video files, you can configure review copy qualities and watermarks with full customization — position, size, opacity, and tiling (Pro). For image files, you can apply watermark overlays as well.'
-			: 'Step 3: Review your files and start the upload.\n\nThe overall progress bar at the top tracks all files. When client-side transcoding is enabled, video files show a two-phase workflow: Transcode → Upload. Each file shows its own inline progress bar with speed and ETA.\n\nFor video files, you can configure review copy qualities and a basic watermark (bottom-right). For image files, you can apply a basic watermark overlay. Upgrade to Pro for full watermark customization.',
+			? 'Step 3: Review your files and start the upload.\n\nThe overall progress bar at the top tracks all files. When client-side transcoding is enabled, video files show a two-phase workflow: Transcode → Upload. The transcode generates a Stream (HLS for browser playback) and Review Copies (downloadable MP4s), then the raw file uploads to the server.\n\nFor video files, you can configure review copy qualities and watermarks with full customization — position, size, opacity, and tiling (Pro). For image files, you can apply watermark overlays as well.'
+			: 'Step 3: Review your files and start the upload.\n\nThe overall progress bar at the top tracks all files. When client-side transcoding is enabled, video files show a two-phase workflow: Transcode → Upload. The transcode generates a Stream (HLS for browser playback) and Review Copies (downloadable MP4s), then the raw file uploads to the server.\n\nFor video files, you can configure review copy qualities and a basic watermark (bottom-right). For image files, you can apply a basic watermark overlay. Upgrade to Pro for full watermark customization.',
 		placement: 'top',
 	},
 	{
@@ -458,7 +458,7 @@ const destFolderRel = ref<string>('')       // FolderPicker v-model
 const projectBase = ref<string>('')
 const configuredProjectRoot = ref<string>('')
 
-// Normalize the destination we actually use with rsync
+// Normalize the destination path for upload
 const normalizedDest = computed(() =>
 	`/${destFolderRel.value.replace(/^\/+/, '')}`
 )
@@ -497,7 +497,7 @@ type UploadRow = {
 	name: string
 	size: number
 	dest: string
-	rsyncId?: string | null
+	uploadId?: string | null
 	status: 'queued' | 'transcoding' | 'uploading' | 'done' | 'canceled' | 'error'
 	error: string | null
 	progress: number
@@ -1009,12 +1009,8 @@ async function runClientFullTranscode(opts: {
 		watermarkPath: opts.localWatermarkPath,
 		watermarkSettings: opts.localWatermarkPath ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
 		skipWatermarkCleanup: true,
-		ssh: {
-			host: ssh?.server || '',
-			user: ssh?.username || '',
-			port: serverPort,
-			keyPath: privateKeyPath.value!,
-		},
+		apiBase: connectionMeta.value.apiBase || '',
+		apiToken: connectionMeta.value.token || '',
 		apiFetch,
 	})
 	// If this fails, server-side jobs remain queued as fallback
@@ -1279,7 +1275,7 @@ function prepareRows(): UploadRow[] {
 			name: f.name,
 			size: f.size,
 			dest,
-			rsyncId: null,
+			uploadId: null,
 			progress: already ? 100 : 0,
 			status: already ? 'done' : 'queued',
 			error: null,
@@ -1494,7 +1490,6 @@ function uploadOneFile(
 	localWatermarkPath: string | null,
 	onDone: () => void
 ) {
-	row.status = 'uploading'
 	row.startedAt = row.startedAt ?? Date.now()
 	activeUploads.value++
 
@@ -1502,13 +1497,23 @@ function uploadOneFile(
 	const destDirAbs = row.dest
 	const destFileAbs = joinPath(destDirAbs, row.name)
 
+	// Determine if this is a video file and if we should transcode client-side
+	const ext = String(row.name || '').toLowerCase().split('.').pop() || ''
+	const isVideo = videoExts.has(ext)
+	const { enabled: clientTranscodeEnabled, preset: transcodePreset, hwAccel: hwAccelSetting } = useClientTranscode()
+	const shouldTranscodeClient = isVideo && clientTranscodeEnabled.value && transcodeProxyAfterUpload.value
+
+	// Set initial status based on workflow path
+	row.status = shouldTranscodeClient ? 'transcoding' : 'uploading'
+
 	// Reuse pre-created dock task, or create one if missing
 	let taskId = row.dockTaskId || ''
 	if (taskId) {
-		// Update existing queued task to show it's now uploading
+		// Update existing queued task to show current phase
 		transfer.updateUpload(taskId, {
-			status: 'uploading',
+			status: shouldTranscodeClient ? 'transcoding' : 'uploading',
 			progress: 0,
+			detail: shouldTranscodeClient ? 'Registering…' : undefined,
 		})
 		// Update the context with the groupId now that we have it
 		const existing = (transfer.state.tasks as any[]).find((t: any) => t.taskId === taskId)
@@ -1523,7 +1528,7 @@ function uploadOneFile(
 				row.status = 'canceled'
 				try { row.ingestUnsub?.(); } catch { }
 				row.ingestUnsub = null
-				if (row.rsyncId) window.electron.rsyncCancel(row.rsyncId)
+				if (row.uploadId) window.electron.httpUploadCancel(row.uploadId)
 			},
 			context: {
 				source: 'upload',
@@ -1537,48 +1542,23 @@ function uploadOneFile(
 
 	const enableWatermark = watermarkAfterUpload.value && !!watermarkRelPathForIngest
 
-	// Determine if this is a video file and if we should transcode client-side
-	const ext = String(row.name || '').toLowerCase().split('.').pop() || ''
-	const isVideo = videoExts.has(ext)
-	const { enabled: clientTranscodeEnabled, preset: transcodePreset, hwAccel: hwAccelSetting } = useClientTranscode()
-	// Old single-quality client transcode is replaced by full multi-output transcode
-	// that runs after ingest (via runClientFullTranscode). Always upload the raw file.
-	const shouldTranscodeClient = false
-
-	const doUpload = async (filePathToUpload: string, clientTranscoded: boolean = false, clientWatermarked: boolean = false) => {
-		// Tell server we WILL transcode client-side (pre-claim jobs to prevent server from picking them up)
-		const clientWillTranscode = !clientTranscoded && isVideo && clientTranscodeEnabled.value && transcodeProxyAfterUpload.value
-		return window.electron.rsyncStart(
+	const doUpload = async (clientTranscoded: boolean = false) => {
+		return window.electron.httpUploadStart(
 			{
-				host: ssh?.server,
-				user: ssh?.username,
-				src: filePathToUpload,
-				destDir: row.dest,
-				port: serverPort,
-				keyPath: privateKeyPath.value,
-				transcodeProxy: transcodeProxyAfterUpload.value, // Server generates proxy variants (scaling) even when client transcoded
+				src: row.path,
+				apiBase: connectionMeta.value.apiBase || '',
+				apiToken: connectionMeta.value.token || '',
+				dest: row.dest,
+				clientTranscode: clientTranscoded,
+				proxy: transcodeProxyAfterUpload.value,
 				proxyQualities: proxyQualities.value.slice(),
+				hls: transcodeProxyAfterUpload.value,
 				watermark: enableWatermark,
-				watermarkFileName: enableWatermark ? watermarkRelPathForIngest : undefined,
-				watermarkProxyQualities: enableWatermark ? proxyQualities.value.slice() : undefined,
+				watermarkFile: enableWatermark ? watermarkRelPathForIngest : undefined,
 				watermarkSettings: enableWatermark ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
-				apiToken: connectionMeta.value.token || undefined,
-				clientTranscoded, // Tell server we transcoded client-side
-				clientWatermarked, // Tell server watermark was applied client-side
-				clientTranscode: clientWillTranscode, // Tell server we WILL transcode (claim jobs)
 			},
-		(p: RsyncProgress) => {
-				let pct: number | undefined =
-					typeof p.percent === 'number' && !Number.isNaN(p.percent) ? p.percent : undefined;
-
-				if (pct === undefined && typeof p.bytesTransferred === 'number' && row.size > 0) {
-					pct = (p.bytesTransferred / row.size) * 100;
-				}
-
-				if (pct === undefined && typeof p.raw === 'string') {
-					const m = p.raw.match(/(\d+(?:\.\d+)?)%/);
-					if (m) pct = parseFloat(m[1]);
-				}
+		(p: any) => {
+				const pct = typeof p.percent === 'number' ? p.percent : undefined;
 
 				updateRowProgress(row, pct, p.rate, p.eta);
 
@@ -1593,60 +1573,74 @@ function uploadOneFile(
 	}
 
 	// Handle transcode and upload workflow
+	// Client transcode path: register → transcode locally → upload raw
+	// Server transcode path: upload raw → server transcodes
 	const startUploadWorkflow = async () => {
 		if (shouldTranscodeClient) {
-			const transcodeQuality = proxyQualities.value.includes('original') ? 'original' : proxyQualities.value[0] || '720p'
-			
 			try {
+				// 1. Register metadata — get fileId + assetVersionId before upload
 				row.status = 'transcoding'
-				transfer.updateUpload(taskId, {
-					detail: 'Transcoding locally…',
+				transfer.updateUpload(taskId, { detail: 'Registering…' })
+
+				const registerRes = await apiFetch('/api/local-upload/register', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						filename: row.name,
+						fileSize: row.size,
+						dest: row.dest,
+						mimeType: `video/${ext === 'mov' ? 'quicktime' : ext}`,
+					}),
+				})
+				if (!registerRes?.ok) {
+					throw new Error(registerRes?.error || 'Failed to register file metadata')
+				}
+				const { fileId, assetVersionId } = registerRes
+
+				// 2. Client transcode locally (source is on this workstation)
+				// Polling tasks are created INSIDE runClientTranscode after transcode-plan
+				// creates the DB jobs — this avoids the race where pollers find no jobs.
+				transfer.updateUpload(taskId, { detail: 'Transcoding locally…' })
+				const { runClientTranscode } = useUploadTranscode()
+
+				const transcodeContext = {
+					source: 'upload' as const,
+					groupId,
+					destDir: destDirAbs,
+					file: destFileAbs,
+					proxyQualities: proxyQualities.value.slice(),
+					connectionId: activeConnection.value?.connectionId,
+				}
+
+				await runClientTranscode({
+					assetVersionId,
+					sourceFilePath: row.path,
+					filename: row.name,
+					proxyQualities: proxyQualities.value.slice(),
+					generateHls: true,
+					watermarkPath: localWatermarkPath || undefined,
+					watermarkSettings: localWatermarkPath ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
+					skipWatermarkCleanup: true,
+					apiBase: connectionMeta.value.apiBase || '',
+					apiToken: connectionMeta.value.token || '',
+					apiFetch,
+					context: transcodeContext,
+					onProgress: (phase, percent) => {
+						// Update wizard row progress directly from FFmpeg ticks
+						updateRowProgress(row, percent)
+					},
 				})
 
-				const { jobId, done } = await window.electron.transcodeStart(
-					{
-						inputPath: row.path,
-						quality: transcodeQuality as 'original' | '1080p' | '720p',
-						outputFormat: 'mp4',
-						useHardwareAccel: hwAccelSetting.value,
-						preset: transcodePreset.value,
-						watermarkPath: (enableWatermark && localWatermarkPath) ? localWatermarkPath : undefined,
-							watermarkSettings: enableWatermark ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
-					},
-					(progress: TranscodeProgress) => {
-						row.progress = progress.percent
-						transfer.updateUpload(taskId, {
-							progress: progress.percent,
-							speed: progress.speed || null,
-							eta: progress.eta || null,
-							detail: `Transcoding: ${progress.fps}fps @ ${progress.speed} - ETA ${progress.eta}`,
-						})
-					}
-				)
-
-				const result = await done
-				if (result?.ok && result?.outputPath) {
-					row.status = 'uploading'
-					row.progress = 0
-					transfer.updateUpload(taskId, {
-						detail: 'Uploading…',
-						progress: 0,
-						speed: null,
-						eta: null,
-					})
-					const clientWatermarked = !!(enableWatermark && localWatermarkPath)
-					return doUpload(result.outputPath, true, clientWatermarked)
-				} else {
-					const errorMsg = result?.error || 'Transcode failed — try disabling client-side transcoding in Settings to let the server handle it.'
-					throw new Error(errorMsg)
-				}
+				// 3. Upload raw file (server won't queue transcodes — clientTranscode:true)
+				row.status = 'uploading'
+				row.progress = 0
+				transfer.updateUpload(taskId, { detail: 'Uploading…', progress: 0, speed: null, eta: null })
+				return doUpload(true)
 			} catch (err) {
 				const errorMsg = err instanceof Error ? err.message : String(err)
 				row.status = 'error'
 				row.error = `Transcode error: ${errorMsg}`
-				transfer.updateUpload(taskId, {
-					status: 'error',
-				})
+				transfer.updateUpload(taskId, { status: 'error' })
 				pushNotification(
 					new Notification(
 						'Transcode Failed',
@@ -1657,48 +1651,52 @@ function uploadOneFile(
 				)
 				activeUploads.value = Math.max(0, activeUploads.value - 1)
 				onDone()
-				throw err // Re-throw to prevent upload
+				throw err
 			}
 		} else {
-			// No client transcode needed, upload directly
-			return doUpload(row.path, false)
+			// Server transcode path: upload raw, server queues transcode jobs
+			return doUpload(false)
 		}
 	}
 
 	startUploadWorkflow()
 		.then(uploadPromise => uploadPromise)
 		.then(({ id, done }) => {
-		row.rsyncId = id;
+		row.uploadId = id;
 		if (row.status === 'canceled') {
-			window.electron.rsyncCancel(id)
+			window.electron.httpUploadCancel(id)
 		}
 
-		// Start listening for ingest -> fileId (so we can track transcode progress)
-		const stopIngestListener = waitForIngestAndStartTranscode({
-			uploadId: id,
-			rowName: row.name,
-			isVideo: videoExts.has(String(row.name || '').toLowerCase().split('.').pop() || ''),
-			wantProxy: transcodeProxyAfterUpload.value,
-			groupId,
-			destDir: destDirAbs,
-			destFileAbs,
-			watermarkRelPath: watermarkRelPathForIngest,
-			// Client-side full transcode
-			clientTranscode: clientTranscodeEnabled.value && videoExts.has(String(row.name || '').toLowerCase().split('.').pop() || ''),
-			sourceFilePath: row.path,
-			localWatermarkPath: localWatermarkPath,
-			taskId,
-		})
-		row.ingestUnsub = stopIngestListener
+		// With HTTP upload, ingest is included in the /complete response.
+		// If client transcode already ran, skip waitForIngestAndStartTranscode entirely —
+		// the transcode is done and progress was already pushed to the server.
+		let stopIngestListener: (() => void) | null = null
+		if (!shouldTranscodeClient) {
+			stopIngestListener = waitForIngestAndStartTranscode({
+				uploadId: id,
+				rowName: row.name,
+				isVideo: videoExts.has(String(row.name || '').toLowerCase().split('.').pop() || ''),
+				wantProxy: transcodeProxyAfterUpload.value,
+				groupId,
+				destDir: destDirAbs,
+				destFileAbs,
+				watermarkRelPath: watermarkRelPathForIngest,
+				clientTranscode: false,
+				sourceFilePath: row.path,
+				localWatermarkPath: localWatermarkPath,
+				taskId,
+			})
+			row.ingestUnsub = stopIngestListener
+		}
 
 		const cleanup = () => {
 			try { stopIngestListener?.(); } catch { }
 		};
 
 		done.then((res: any) => {
-			// Don't immediately remove the ingest listener on success — the ingest
-			// IPC arrives AFTER upload:done (server API call has latency). The handler
-			// self-cleans via its finally block. Use a generous timeout as safety net.
+			// HTTP upload /complete emits upload:ingest:{id} from main process
+			// so waitForIngestAndStartTranscode picks it up automatically.
+
 			if (res.ok) {
 				setTimeout(cleanup, 60000)
 			} else {
@@ -1715,6 +1713,17 @@ function uploadOneFile(
 					transfer.finishUpload(taskId, true);
 				}
 
+				// Notify user if filename was sanitized during upload
+				if (res.file?.savedAs && res.file.savedAs !== row.name) {
+					pushNotification(
+						new Notification(
+							{ title: `File renamed: "${row.name}" → "${res.file.savedAs}"`, body: 'Special characters were replaced for compatibility.' },
+							'info', 8000
+						)
+					)
+					row.name = res.file.savedAs
+				}
+
 				if (row.status === 'done') {
 					markUploaded(row.path, row.dest);
 					const end = Date.now();
@@ -1726,8 +1735,8 @@ function uploadOneFile(
 				}
 			} else if (row.status !== 'canceled') {
 				row.status = 'error';
-				row.error = res.error || 'rsync failed';
-				transfer.finishUpload(taskId, false, res.error || 'rsync failed');
+				row.error = res.error || 'Upload failed';
+				transfer.finishUpload(taskId, false, res.error || 'Upload failed');
 				failedSinceStart++;
 				scheduleBatchNotification();
 			}
@@ -1740,7 +1749,7 @@ function uploadOneFile(
 			if (row.status !== 'canceled') {
 				row.status = 'error';
 				row.error = err?.message || String(err);
-				transfer.finishUpload(taskId, false, err?.message || 'rsync failed');
+				transfer.finishUpload(taskId, false, err?.message || 'Upload failed');
 				failedSinceStart++;
 				scheduleBatchNotification();
 			}
@@ -1748,7 +1757,7 @@ function uploadOneFile(
 			onDone();
 		});
 	}).catch((err: any) => {
-		// rsyncStart itself failed (couldn't even start the process)
+		// httpUploadStart itself failed
 		activeUploads.value = Math.max(0, activeUploads.value - 1)
 		row.status = 'error';
 		row.error = err?.message || 'Failed to start upload';
@@ -1764,43 +1773,7 @@ async function startUploads() {
 	failedSinceStart = 0
 	let watermarkRelPathForIngest = ''
 
-	// Ensure SSH keys are deployed before uploading
-	const host = ssh?.server
-	const user = ssh?.username
-	const port = serverPort ?? 22
-	if (host && user) {
-		try {
-			const sshReady = await window.electron.ensureSshReady({
-				host,
-				username: user,
-				password: undefined, // No password available; rely on existing keys/agent
-				sshPort: port,
-			})
-			if (!sshReady?.ok) {
-				pushNotification(
-					new Notification(
-						'Upload Failed',
-						'SSH authentication setup failed. Please reconnect to the server from the Connections page to re-establish SSH keys.',
-						'error',
-						10000
-					)
-				)
-				isUploading.value = false
-				return
-			}
-		} catch (e: any) {
-			pushNotification(
-				new Notification(
-					'Upload Failed',
-					`SSH setup error: ${e?.message || String(e)}. Please reconnect to the server.`,
-					'error',
-					10000
-				)
-			)
-			isUploading.value = false
-			return
-		}
-	}
+	// HTTP upload uses JWT auth — no SSH key setup needed
 
 	if (watermarkAfterUpload.value) {
 		isUploading.value = true
@@ -1838,15 +1811,12 @@ async function startUploads() {
 				isUploading.value = false
 				return
 			}
-			const { done } = await window.electron.rsyncStart(
+			const { done } = await window.electron.httpUploadStart(
 				{
-					host: ssh?.server,
-					user: ssh?.username,
 					src: watermarkFile.value.path,
-					destDir: watermarkDestDir,
-					port: serverPort,
-					keyPath: privateKeyPath.value,
-					noIngest: true,
+					apiBase: connectionMeta.value.apiBase || '',
+					apiToken: connectionMeta.value.token || '',
+					dest: watermarkDestDir,
 				}
 			)
 			const res = await done
@@ -1910,7 +1880,7 @@ async function startUploads() {
 					row.status = 'canceled'
 					try { row.ingestUnsub?.(); } catch { }
 					row.ingestUnsub = null
-					if (row.rsyncId) window.electron.rsyncCancel(row.rsyncId)
+					if (row.uploadId) window.electron.httpUploadCancel(row.uploadId)
 				},
 				context: {
 					source: 'upload',
@@ -1925,28 +1895,17 @@ async function startUploads() {
 	isUploading.value = true
 	let queueIdx = 0
 
-	// Persist queued items so they survive app restart
-	const enableWm = watermarkAfterUpload.value && !!watermarkRelPathForIngest
-	try {
-		window.electron.persistUploadQueue?.(
-			queue.map(row => ({
-				src: row.path,
-				fileName: row.name,
-				fileSize: row.size,
-				host: ssh?.server,
-				user: ssh?.username,
-				destDir: row.dest,
-				port: serverPort,
-				keyPath: privateKeyPath.value,
-				transcodeProxy: transcodeProxyAfterUpload.value,
-				proxyQualities: proxyQualities.value.slice(),
-				watermark: enableWm,
-				watermarkFileName: enableWm ? watermarkRelPathForIngest : undefined,
-				watermarkProxyQualities: enableWm ? proxyQualities.value.slice() : undefined,
-				apiToken: connectionMeta.value.token || undefined,
-			}))
+	// Let user know they can leave this screen
+	pushNotification(
+		new Notification(
+			'Uploads Queued',
+			`${queue.length} file${queue.length !== 1 ? 's' : ''} queued in the Transfer Dock — you can leave this screen and progress will continue.`,
+			'info',
+			8000
 		)
-	} catch { /* best-effort */ }
+	)
+
+
 
 	let watermarkCleaned = false
 	function maybeCleanupWatermark() {
@@ -1982,8 +1941,8 @@ async function startUploads() {
 function cancelOne(row: UploadRow) {
 	if (row.dockTaskId) {
 		transfer.cancelUpload(row.dockTaskId)
-	} else if (row.rsyncId) {
-		window.electron.rsyncCancel(row.rsyncId)
+	} else if (row.uploadId) {
+		window.electron.httpUploadCancel(row.uploadId)
 	}
 	try { row.ingestUnsub?.(); } catch { }
 	row.ingestUnsub = null;

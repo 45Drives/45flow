@@ -5,41 +5,52 @@ import type { IpcRendererEvent } from 'electron'
 export type UploadResult = { ok?: boolean; path?: string; error?: string }
 export type ProgressPayload = { percent: number; speed?: string; eta?: string }
 
-export type RsyncProgress = {
-  percent?: number
+export type HttpUploadOpts = {
+  src: string
+  apiBase: string
+  apiToken: string
+  dest: string
+  chunkSize?: number
+  fileId?: number
+  assetVersionId?: number
+  clientTranscode?: boolean
+  proxy?: boolean
+  proxyQualities?: string[]
+  hls?: boolean
+  watermark?: boolean
+  watermarkFile?: string
+  watermarkSettings?: any
+}
+
+export type HttpUploadProgress = {
+  percent: number
+  bytesTransferred: number
+  totalBytes: number
   rate?: string
   eta?: string
-  bytesTransferred?: number
-  raw?: string
+  chunksCompleted: number
+  totalChunks: number
 }
-export type RsyncOpts = {
-  /** local source path (file or directory) */
-  src: string
-  host: string
-  user: string
-  destDir: string
-  port?: number
-  /** path to private key (optional if using ssh-agent) */
-  keyPath?: string
-  /** limit bandwidth in KB/s */
-  bwlimitKb?: number
-  /** extra rsync flags */
-  extraArgs?: string[]
-  /** request proxy transcode after ingest */
-  transcodeProxy?: boolean
-  /** requested proxy qualities (e.g. ['720p','1080p','original']) */
-  proxyQualities?: string[]
-  /** request watermark for video files */
-  watermark?: boolean
-  /** watermark image filename already present in destDir */
-  watermarkFileName?: string
-  /** qualities that should receive watermark (defaults to proxyQualities) */
-  watermarkProxyQualities?: string[]
-  /** skip ingest/register after transfer */
-  noIngest?: boolean
-  /** JWT token for authenticated ingest/register calls */
-  apiToken?: string
+
+export type HttpUploadResult = {
+  ok: boolean
+  error?: string
+  file?: {
+    id: number
+    assetId: number
+    assetVersionId: number
+    savedAs: string
+    name: string
+    size: number
+    mime: string
+    relDir: string
+  }
+  transcodes?: {
+    queued: string[]
+    skipped: string[]
+  }
 }
+
 export type LinkType = 'upload' | 'download' | 'collection' | 'combined'
 export type Status = 'active' | 'expired' | 'disabled' | 'archived'
 
@@ -126,7 +137,6 @@ export type Commenter = {
   role?: Role | null
 
 }
-export type RsyncResult = { ok?: boolean; error?: string }
 export type ExistingUser = {
   id?: string | number
   username: string
@@ -261,27 +271,13 @@ export interface ElectronApi {
   pickFolder: () => Promise<Array<{ path: string; name: string; size: number }>>
   pickWatermark: () => Promise<{ path: string; name: string; size: number; dataUrl?: string | null } | null>
 
-  /** -------- rsync over SSH (recommended path) -------- */
-  rsyncStart: (
-    opts: RsyncOpts,
-    onProgress?: (p: RsyncProgress) => void
-  ) => Promise<{ id: string; done: Promise<RsyncResult> }>
+  /** -------- HTTP chunked upload (primary path) -------- */
+  httpUploadStart: (
+    opts: HttpUploadOpts,
+    onProgress?: (p: HttpUploadProgress) => void
+  ) => Promise<{ id: string; done: Promise<HttpUploadResult> }>
 
-  rsyncCancel: (id: string) => void
-
-  // Persisted uploads (detached rsync)
-  listPersistedUploads: () => Promise<Array<{
-    id: string
-    fileName: string
-    fileSize?: number
-    host: string
-    destDir: string
-    startedAt: number
-    status: string
-  }>>
-
-  /** Subscribe to progress for an already-running detached rsync */
-  listenUploadProgress: (id: string, onProgress: (p: RsyncProgress) => void) => () => void
+  httpUploadCancel: (id: string) => void
 
   /** -------- Client-side Transcoding -------- */
   transcodeStart: (
@@ -320,9 +316,6 @@ export interface ElectronApi {
     ffmpegVersion: string
     probeResults: Record<string, boolean>
   }>
-
-  /** Persist the upload queue for crash recovery */
-  persistUploadQueue: (items: any[]) => Promise<void>
 
   /** Get the real filesystem path for a File from drag-and-drop (replaces deprecated File.path) */
   getPathForFile: (file: File) => string

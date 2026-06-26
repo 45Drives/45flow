@@ -7,51 +7,51 @@ const genId = () => Math.random().toString(36).slice(2)
 export type UploadResult = { ok?: boolean; path?: string; error?: string }
 export type ProgressPayload = { percent: number; speed?: string; eta?: string }
 
-export type RsyncProgress = {
-  percent?: number
+export type HttpUploadOpts = {
+  src: string
+  apiBase: string
+  apiToken: string
+  dest: string
+  chunkSize?: number
+  fileId?: number
+  assetVersionId?: number
+  clientTranscode?: boolean
+  proxy?: boolean
+  proxyQualities?: string[]
+  hls?: boolean
+  watermark?: boolean
+  watermarkFile?: string
+  watermarkSettings?: WatermarkSettings
+}
+
+export type HttpUploadProgress = {
+  percent: number
+  bytesTransferred: number
+  totalBytes: number
   rate?: string
   eta?: string
-  bytesTransferred?: number
-  raw?: string
+  chunksCompleted: number
+  totalChunks: number
 }
 
-export type RsyncOpts = {
-  /** local source path (file or directory) */
-  src: string
-  host: string
-  user: string
-  destDir: string
-  port?: number
-  /** path to a private key file; omit to use ssh-agent */
-  keyPath?: string
-  /** optional bandwidth limit in KB/s */
-  bwlimitKb?: number
-  /** extra rsync flags */
-  extraArgs?: string[]
-  /** request proxy transcode after ingest */
-  transcodeProxy?: boolean
-  /** requested proxy qualities (e.g. ['720p','1080p','original']) */
-  proxyQualities?: string[]
-  /** request watermark for video files */
-  watermark?: boolean
-  /** watermark image filename already present in destDir */
-  watermarkFileName?: string
-  /** qualities that should receive watermark (defaults to proxyQualities) */
-  watermarkProxyQualities?: string[]
-  /** premium: custom watermark settings (position, scale, opacity, rotation) */
-  watermarkSettings?: WatermarkSettings
-  /** skip ingest/register step after transfer (useful for helper assets like watermark images) */
-  noIngest?: boolean
-  /** JWT token for authenticated ingest/register calls */
-  apiToken?: string
-  /** file was transcoded on client side, skip server transcode */
-  clientTranscoded?: boolean
-  clientWatermarked?: boolean
-  /** client will transcode (pre-claim jobs to prevent server from picking them up) */
-  clientTranscode?: boolean
+export type HttpUploadResult = {
+  ok: boolean
+  error?: string
+  file?: {
+    id: number
+    assetId: number
+    assetVersionId: number
+    savedAs: string
+    name: string
+    size: number
+    mime: string
+    relDir: string
+  }
+  transcodes?: {
+    queued: string[]
+    skipped: string[]
+  }
 }
-
-export type RsyncResult = { ok?: boolean; error?: string }
 
 export type WatermarkSettings = {
   position: {
@@ -148,27 +148,13 @@ export type ElectronApi = {
   pickFolder: () => Promise<Array<{ path: string; name: string; size: number }>>
   pickWatermark: () => Promise<{ path: string; name: string; size: number; dataUrl?: string | null } | null>
 
-  // New: rsync over SSH
-  rsyncStart: (
-    opts: RsyncOpts,
-    onProgress?: (p: RsyncProgress) => void
-  ) => Promise<{ id: string; done: Promise<RsyncResult> }>
+  // HTTP chunked upload)
+  httpUploadStart: (
+    opts: HttpUploadOpts,
+    onProgress?: (p: HttpUploadProgress) => void
+  ) => Promise<{ id: string; done: Promise<HttpUploadResult> }>
 
-  rsyncCancel: (id: string) => void
-
-  // Persisted uploads (detached rsync)
-  listPersistedUploads: () => Promise<Array<{
-    id: string
-    fileName: string
-    fileSize?: number
-    host: string
-    destDir: string
-    startedAt: number
-    status: string
-  }>>
-
-  /** Subscribe to progress for an already-running detached rsync */
-  listenUploadProgress: (id: string, onProgress: (p: RsyncProgress) => void) => () => void
+  httpUploadCancel: (id: string) => void
 
   /** ========== Client-side Transcoding ========== */
   /** Transcode a video file on the client machine (using local hardware acceleration) */
@@ -192,7 +178,16 @@ export type ElectronApi = {
   /** Cancel an active full transcode */
   fullTranscodeCancel: (jobId: string) => void
 
-  /** Remove a transcode temp directory after rsync */
+  /** Upload transcode outputs (HLS segments, proxy MP4s) to the server via HTTP */
+  uploadTranscodeOutput: (opts: {
+    outputDir: string
+    targetDir: string
+    apiBase: string
+    apiToken: string
+    subDir?: string
+  }) => Promise<{ ok: boolean; error?: string; filesUploaded?: number }>
+
+  /** Remove a transcode temp directory */
   cleanupTranscodeTemp: (dirPath: string) => Promise<{ ok: boolean; error?: string }>
   /** Remove a downloaded watermark temp file */
   cleanupWatermarkTemp: (filePath: string) => Promise<{ ok: boolean; error?: string }>
@@ -213,26 +208,6 @@ export type ElectronApi = {
 
   /** Get the real filesystem path for a File from drag-and-drop */
   getPathForFile: (file: File) => string
-
-  /** Persist queued upload items so they survive app restart */
-  persistUploadQueue: (items: Array<{
-    src: string
-    fileName: string
-    fileSize?: number
-    host: string
-    user: string
-    destDir: string
-    port?: number
-    keyPath?: string
-    shareRoot?: string
-    knownHostsPath?: string
-    transcodeProxy?: boolean
-    proxyQualities?: string[]
-    watermark?: boolean
-    watermarkFileName?: string
-    watermarkProxyQualities?: string[]
-    noIngest?: boolean
-  }>) => Promise<void>
 }
 
 /** ===== Implementation ===== */
@@ -260,21 +235,21 @@ const api: ElectronApi = {
   pickWatermark: () => ipcRenderer.invoke('dialog:pickWatermark'),
 
 
-  /** ========== rsync over SSH ========== */
-  rsyncStart: (opts, onProgress) => {
+  /** ========== HTTP chunked upload ========== */
+  httpUploadStart: (opts, onProgress) => {
     const id = genId()
-    const pch = `upload:progress:${id}`
-    const dch = `upload:done:${id}`
+    const pch = `http-upload:progress:${id}`
+    const dch = `http-upload:done:${id}`
 
-    const ph = (_: IpcRendererEvent, payload: RsyncProgress) => {
+    const ph = (_: IpcRendererEvent, payload: HttpUploadProgress) => {
       try { onProgress?.(payload) } catch {}
     }
     ipcRenderer.on(pch, ph)
 
-    ipcRenderer.send('upload:start', { id, ...opts })
+    ipcRenderer.send('http-upload:start', { id, ...opts })
 
-    const done: Promise<RsyncResult> = new Promise((resolve) => {
-      ipcRenderer.once(dch, (_ev, res: RsyncResult) => {
+    const done: Promise<HttpUploadResult> = new Promise((resolve) => {
+      ipcRenderer.once(dch, (_ev, res: HttpUploadResult) => {
         ipcRenderer.removeAllListeners(pch)
         resolve(res)
       })
@@ -283,20 +258,7 @@ const api: ElectronApi = {
     return Promise.resolve({ id, done })
   },
 
-  rsyncCancel: (id) => ipcRenderer.send('upload:cancel', { id }),
-
-  listPersistedUploads: () => ipcRenderer.invoke('upload:list-persisted'),
-
-  persistUploadQueue: (items) => ipcRenderer.invoke('upload:persist-queue', items),
-
-  listenUploadProgress: (id: string, onProgress: (p: RsyncProgress) => void) => {
-    const ch = `upload:progress:${id}`
-    const handler = (_: IpcRendererEvent, payload: RsyncProgress) => {
-      try { onProgress(payload) } catch {}
-    }
-    ipcRenderer.on(ch, handler)
-    return () => ipcRenderer.removeListener(ch, handler)
-  },
+  httpUploadCancel: (id) => ipcRenderer.send('http-upload:cancel', id),
 
   /** ========== Client-side Transcoding ========== */
   transcodeStart: (options: TranscodeOptions, onProgress?: (p: TranscodeProgress) => void) => {
@@ -372,6 +334,14 @@ const api: ElectronApi = {
   },
 
   fullTranscodeCancel: (jobId: string) => ipcRenderer.invoke('transcode:full-cancel', { jobId }),
+
+  uploadTranscodeOutput: (opts: {
+    outputDir: string
+    targetDir: string
+    apiBase: string
+    apiToken: string
+    subDir?: string
+  }) => ipcRenderer.invoke('transcode-output-upload', opts),
 
   cleanupTranscodeTemp: (dirPath: string) => ipcRenderer.invoke('transcode:cleanup-temp', { dirPath }),
   cleanupWatermarkTemp: (filePath: string) => ipcRenderer.invoke('transcode:cleanup-watermark', { filePath }),

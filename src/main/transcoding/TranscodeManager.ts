@@ -41,7 +41,7 @@ export class TranscodeManager {
     onProgress: (progress: TranscodeProgress) => void
   ): Promise<string> {
     // Use a job-specific temp directory but preserve the original filename
-    // so that rsync uploads it to the server with the correct name.
+    // so the output gets the correct name for upload.
     const outputDir = path.join(app.getPath('temp'), `45flow-transcode-${jobId}`);
     fs.mkdirSync(outputDir, { recursive: true });
     const outputName = path.basename(options.inputPath).replace(/\.[^.]+$/, '.mp4');

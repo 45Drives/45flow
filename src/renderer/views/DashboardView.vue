@@ -149,7 +149,7 @@
 						<path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
 					</svg>
 					<h3 class="text-base font-semibold">Unassigned Links</h3>
-					<span class="text-xs text-muted">(links not assigned to any project)</span>
+					<span class="text-xs text-muted">(<b v-if="unassignedCount != null">{{ unassignedCount }}</b> link{{ unassignedCount === 1 ? '' : 's' }} not assigned to any project)</span>
 				</button>
 				<div v-show="unassignedOpen" class="mt-2">
 					<ManageLinks projectId="none" key="unassigned" :tourActive="tourShowDemoLinks"/>
@@ -649,6 +649,16 @@ const showCreateProjectModal = ref(false)
 
 // Unassigned links disclosure
 const unassignedOpen = ref(false)
+const unassignedCount = ref<number | null>(null)
+
+async function fetchUnassignedCount() {
+	try {
+		const data = await apiFetch('/api/links?project_id=none&limit=1&offset=0')
+		unassignedCount.value = typeof data?.total === 'number' ? data.total : null
+	} catch {
+		unassignedCount.value = null
+	}
+}
 
 // Project pagination
 const projectPageSize = 9
@@ -1035,6 +1045,7 @@ onMounted(async () => {
 	transfer.restorePersistedUploads()
 	void checkLicenseInBackground()
 	await fetchProjects()
+	fetchUnassignedCount()
 	syncBrandingTheme()
 
 	// Restore active project from global state after projects list is available

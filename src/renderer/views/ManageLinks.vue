@@ -1268,6 +1268,16 @@ watch([q, typeFilter, statusFilter, showArchived], () => {
 	selectedIds.value = new Set()
 })
 
+// Prune selected IDs when rows change (e.g. after bulk delete)
+watch(rows, () => {
+	if (selectedIds.value.size === 0) return
+	const validIds = new Set(rows.value.map(r => r.id))
+	const pruned = new Set([...selectedIds.value].filter(id => validIds.has(id)))
+	if (pruned.size !== selectedIds.value.size) {
+		selectedIds.value = pruned
+	}
+})
+
 /* ------------------- mappers/helpers ------------------- */
 function fallbackTitle(it: LinkItem) {
 	if (it.type === 'upload') return it.target?.dirRel || '(Upload)'

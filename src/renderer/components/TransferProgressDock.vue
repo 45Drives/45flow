@@ -55,7 +55,7 @@
                             <div class="text-sm font-semibold truncate" :title="g.title">{{ g.title }}</div>
                             <div v-if="g.subtitle" class="text-xs opacity-70 truncate" :title="g.subtitle">{{ g.subtitle }}</div>
                         </div>
-                        <button class="btn btn-secondary px-2 py-1 text-xs flex-shrink-0" @click="dismissGroup(g.key)">
+                        <button class="btn btn-secondary px-2 py-1 text-xs shrink-0" @click="dismissGroup(g.key)">
                             Dismiss all
                         </button>
                     </div>
@@ -68,7 +68,7 @@
                                 <div class="text-sm font-semibold truncate" :title="fg.fileTitle">{{ fg.fileTitle }}</div>
                                 <div v-if="fg.fileSubtitle" class="text-[11px] opacity-50 truncate" :title="fg.fileSubtitle">{{ fg.fileSubtitle }}</div>
                             </div>
-                            <div class="flex items-center gap-1.5 flex-shrink-0">
+                            <div class="flex items-center gap-1.5 shrink-0">
                                 <span class="drawer-status-badge" :class="statusClass(bestOfTasks(fg.tasks))">
                                     {{ statusLabel(bestOfTasks(fg.tasks)) }}
                                 </span>
@@ -86,7 +86,7 @@
                                         <span class="text-[11px] font-semibold opacity-80">{{ taskRowLabel(t) }}</span>
                                         <span v-if="t.kind === 'transcode' && transcodeMethodLabel(t)" class="text-[9px] opacity-50 whitespace-nowrap">{{ transcodeMethodLabel(t) }}</span>
                                         <button
-                                            v-if="t.kind === 'upload' && (t.status === 'uploading' || t.status === 'queued')"
+                                            v-if="t.kind === 'upload' && (t.status === 'uploading' || t.status === 'queued' || t.status === 'transcoding')"
                                             class="btn btn-danger px-1.5 py-0 text-[9px] leading-tight"
                                             @click="cancelUpload(t.taskId)">
                                             Cancel
@@ -104,7 +104,7 @@
                                             Retry
                                         </button>
                                     </div>
-                                    <div class="flex items-center gap-2 flex-shrink-0 text-[10px] opacity-60 tabular-nums">
+                                    <div class="flex items-center gap-2 shrink-0 text-[10px] opacity-60 tabular-nums">
                                         <span v-if="t.speed">{{ t.speed }}</span>
                                         <span v-if="t.eta">ETA {{ t.eta }}</span>
                                         <span class="font-semibold opacity-100">{{ Math.round(t.progress || 0) }}%</span>
@@ -237,7 +237,7 @@ function basename(p?: string) {
 
 function isActiveTask(t: any) {
     return (
-        (t.kind === 'upload' && (t.status === 'uploading' || t.status === 'queued')) ||
+        (t.kind === 'upload' && (t.status === 'uploading' || t.status === 'queued' || t.status === 'transcoding')) ||
         (t.kind !== 'upload' && (t.status === 'queued' || t.status === 'running' || t.status === 'unknown'))
     )
 }
@@ -246,6 +246,7 @@ function isActiveTask(t: any) {
 function statusPriority(t: any): number {
     const s = String(t?.status || '').toLowerCase()
     if (s === 'uploading' || s === 'running') return 0
+    if (s === 'transcoding') return 0
     if (s === 'queued') return 1
     if (s === 'unknown') return 2
     if (s === 'error' || s === 'failed') return 3
@@ -258,6 +259,7 @@ function statusPriority(t: any): number {
 function statusLabel(t: any): string {
     const s = String(t?.status || '').toLowerCase()
     if (s === 'uploading') return 'Uploading'
+    if (s === 'transcoding') return 'Waiting'
     if (s === 'running') return 'Running'
     if (s === 'queued') return 'Queued'
     if (s === 'unknown') return 'Checking…'
@@ -271,6 +273,7 @@ function statusLabel(t: any): string {
 function statusClass(t: any): string {
     const s = String(t?.status || '').toLowerCase()
     if (s === 'uploading' || s === 'running') return 'drawer-status--active'
+    if (s === 'transcoding') return 'drawer-status--queued'
     if (s === 'queued') return 'drawer-status--queued'
     if (s === 'unknown') return 'drawer-status--queued'
     if (s === 'done') return 'drawer-status--done'
@@ -303,7 +306,7 @@ function transcodeMethodLabel(t: any): string {
 function taskRowLabel(t: any) {
     if (t?.kind === 'upload') {
         const detail = String(t?.detail || '')
-        if (detail.startsWith('Transcoding')) return 'Transcode'
+        if (detail.startsWith('Transcoding') || detail.startsWith('Registering')) return 'Awaiting Transcode…'
         return 'Upload'
     }
     if (t?.kind === 'transcode') {

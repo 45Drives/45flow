@@ -6,8 +6,8 @@
 // Flow (each phase is INDEPENDENT — if proxy fails, HLS is already done):
 //   1. Get transcode plan from server (output paths + claim jobs)
 //   2. Heartbeat keeps claims alive throughout
-//   3. Phase A: FFmpeg HLS → rsync HLS → transcode-complete HLS
-//   4. Phase B: FFmpeg proxy → rsync proxy → transcode-complete proxy
+//   3. Phase A: FFmpeg HLS → upload HLS → transcode-complete HLS
+//   4. Phase B: FFmpeg proxy → upload proxy → transcode-complete proxy
 //
 // Progress is always tracked via polling tasks (startAssetVersionTranscodeTask)
 // that read from the server DB. This composable never updates TransferDock tasks
@@ -29,10 +29,15 @@ export interface ClientTranscodeOpts {
     watermarkSettings?: WatermarkSettings | null
     /** When true, do NOT delete the watermark temp file after transcode (caller handles cleanup) */
     skipWatermarkCleanup?: boolean
-    // SSH connection for rsync of outputs
-    ssh: { host: string; user: string; port: number; keyPath?: string }
+    // HTTP upload of transcode outputs to server
+    apiBase: string
+    apiToken: string
     // Server API
     apiFetch: ApiFetch
+    /** Called on each FFmpeg progress tick (unthrottled) so callers can update their own UI */
+    onProgress?: (phase: 'hls' | 'proxy_mp4', percent: number, detail?: { speed?: string; eta?: string }) => void
+    /** TransferContext for dock tasks — if provided, polling tasks are created internally after transcode-plan */
+    context?: TransferContext
 }
 
 export interface TranscodePollingOpts {
@@ -107,7 +112,7 @@ export function useUploadTranscode() {
     /**
      * Run the full client-side transcode flow.
      * HLS and proxy are run as SEPARATE FFmpeg calls, each independently
-     * rsynced and marked complete. This means:
+     * uploaded and marked complete. This means:
      *   - If proxy fails, HLS is already done (watermark shows, stream plays)
      *   - Server unblocks proxy pickup as soon as HLS is marked done
      *   - No complex overallPercent math — each phase is 0-100 on its own
@@ -121,7 +126,7 @@ export function useUploadTranscode() {
             hwAccel: hwAccelSetting.value,
             preset: transcodePreset.value,
             watermark: opts.watermarkPath || 'none',
-            ssh: { host: opts.ssh.host, user: opts.ssh.user, port: opts.ssh.port },
+            apiBase: opts.apiBase,
         })
 
         // Log hardware detection results to renderer console for debugging
@@ -158,7 +163,23 @@ export function useUploadTranscode() {
                 console.error('[client-transcode] transcode-plan failed:', plan)
                 return { ok: false, error: 'Transcode plan failed — server will handle' }
             }
-            // console.log('[client-transcode] plan:', { dir: plan.transcodesDir, jobs: plan.jobs })
+
+            // Create Transfer Dock polling tasks NOW (after transcode-plan created the DB jobs)
+            // so they find jobs immediately on first poll.
+            let dockHlsTaskId: string | null = null
+            let dockProxyTaskId: string | null = null
+            if (opts.context) {
+                const ids = createTranscodePollingTasks({
+                    assetVersionId: opts.assetVersionId,
+                    filename: opts.filename,
+                    proxyQualities: opts.proxyQualities,
+                    generateHls: opts.generateHls,
+                    apiFetch: opts.apiFetch,
+                    context: opts.context,
+                })
+                dockHlsTaskId = ids.hlsTaskId
+                dockProxyTaskId = ids.proxyTaskId
+            }
 
             // Initial heartbeat to keep claims alive
             await pushHeartbeat(opts.apiFetch, opts.assetVersionId)
@@ -200,24 +221,18 @@ export function useUploadTranscode() {
                 }).catch(() => {})
             }
 
-            // ── Helper: rsync outputs to server ──────────────────────────
-            const rsyncToServer = async (outputDir: string): Promise<boolean> => {
-                const rsyncOpts = {
-                    src: outputDir + '/',
-                    host: opts.ssh.host,
-                    user: opts.ssh.user,
-                    destDir: plan.transcodesAbsDir + '/',
-                    port: opts.ssh.port,
-                    keyPath: opts.ssh.keyPath,
-                    noIngest: true,
+            // ── Helper: upload transcode outputs to server via HTTP ─────
+            const uploadOutputs = async (outputDir: string, subDir?: string): Promise<boolean> => {
+                const res = await (window as any).electron.uploadTranscodeOutput({
+                    outputDir,
+                    targetDir: plan.transcodesDir,
+                    apiBase: opts.apiBase,
+                    apiToken: opts.apiToken,
+                    subDir,
+                })
+                if (!res?.ok) {
+                    console.error('[client-transcode] upload outputs failed:', res?.error)
                 }
-                // console.log('[client-transcode] rsync starting:', JSON.stringify(rsyncOpts, null, 2))
-                const { done: rsyncDone } = await (window as any).electron.rsyncStart(
-                    rsyncOpts,
-                    (p: any) => { /* console.log('[client-transcode] rsync progress:', p) */ }
-                )
-                const res = await rsyncDone
-                // console.log('[client-transcode] rsync result:', JSON.stringify(res))
                 return !!res?.ok
             }
 
@@ -244,23 +259,26 @@ export function useUploadTranscode() {
                             if (progress.phase === 'hls') {
                                 // overallPercent is HLS progress directly (only phase running)
                                 reportProgress('hls', progress, progress.overallPercent)
+                                opts.onProgress?.('hls', progress.overallPercent, {
+                                    speed: progress.speed,
+                                    eta: progress.eta,
+                                })
                             }
                         }
                     )
 
                     const result = await done
                     if (result?.ok && result?.hlsDir) {
-                        // Push HLS to ~100% before rsync
+                        // Push HLS to ~100% before upload
                         lastReport['hls'] = 0
                         reportProgress('hls', { speed: '0' }, 99)
 
-                        // console.log('[client-transcode] HLS done, rsyncing…')
-                        const rsynced = await rsyncToServer(result.outputDir)
-                        // Clean up HLS temp dir regardless of rsync outcome
+                        const uploaded = await uploadOutputs(result.outputDir, 'hls')
+                        // Clean up HLS temp dir regardless of upload outcome
                         if (result.outputDir) {
                             (window as any).electron.cleanupTranscodeTemp(result.outputDir).catch(() => {})
                         }
-                        if (rsynced) {
+                        if (uploaded) {
                             await opts.apiFetch('/api/ingest/transcode-complete', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -272,9 +290,10 @@ export function useUploadTranscode() {
                                 }),
                             }).catch((e: any) => console.error('[client-transcode] HLS complete failed:', e))
                             hlsOk = true
-                            // console.log('[client-transcode] ✓ HLS done + rsynced + marked complete')
+                            opts.onProgress?.('hls', 100)
+                            if (dockHlsTaskId) transfer.completeTranscodeTask(dockHlsTaskId)
                         } else {
-                            console.error('[client-transcode] HLS rsync failed')
+                            console.error('[client-transcode] HLS upload failed')
                         }
                     } else {
                         console.error('[client-transcode] HLS FFmpeg failed:', result?.error)
@@ -313,19 +332,22 @@ export function useUploadTranscode() {
                                     perQualityProgress: progress.perQualityProgress || null,
                                     qualityOrder: opts.proxyQualities,
                                 })
+                                opts.onProgress?.('proxy_mp4', avg, {
+                                    speed: progress.speed,
+                                    eta: progress.eta,
+                                })
                             }
                         }
                     )
 
                     const result = await done
                     if (result?.ok && result?.proxyFiles && Object.keys(result.proxyFiles).length > 0) {
-                        // console.log('[client-transcode] proxy done, rsyncing…')
-                        const rsynced = await rsyncToServer(result.outputDir)
-                        // Clean up proxy temp dir regardless of rsync outcome
+                        const uploaded = await uploadOutputs(result.outputDir)
+                        // Clean up proxy temp dir regardless of upload outcome
                         if (result.outputDir) {
                             (window as any).electron.cleanupTranscodeTemp(result.outputDir).catch(() => {})
                         }
-                        if (rsynced) {
+                        if (uploaded) {
                             await opts.apiFetch('/api/ingest/transcode-complete', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -337,9 +359,10 @@ export function useUploadTranscode() {
                                 }),
                             }).catch((e: any) => console.error('[client-transcode] proxy complete failed:', e))
                             proxyOk = true
-                            // console.log('[client-transcode] ✓ proxy done + rsynced + marked complete')
+                            opts.onProgress?.('proxy_mp4', 100)
+                            if (dockProxyTaskId) transfer.completeTranscodeTask(dockProxyTaskId)
                         } else {
-                            console.error('[client-transcode] proxy rsync failed')
+                            console.error('[client-transcode] proxy upload failed')
                         }
                     } else {
                         console.error('[client-transcode] proxy FFmpeg failed:', result?.error)

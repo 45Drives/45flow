@@ -926,24 +926,29 @@ When branding is enabled, recipients viewing your share links will see:
 
 ## 9. Drag and Drop QuickShare
 
-The **QuickShare** feature provides the fastest way to create a share link. Simply drag files from your desktop or file manager directly into 45Flow to instantly generate a shareable link with one click.
+The **QuickShare** feature provides the fastest way to create a share link. Drag files from your desktop or file manager directly into 45Flow, configure a few options, and generate a shareable link in seconds.
 
 ![QuickShare drag and drop interface](images/quickshare-dragdrop-v3.png)
 
 ### How to Use QuickShare
 
 1. **Drag Files:** From anywhere on your computer, drag one or more files directly into the QuickShare drop zone.
-2. **Files Upload:** The selected files are automatically uploaded to your server.
-3. **One-Click Share:** Once uploaded, click the **"QuickShare"** button to instantly generate a shareable link with default settings.
+2. **Choose Destination:** Select the folder on the server where your files will be stored.
+3. **Configure Options:** For video files, choose review copy qualities and watermark settings. Set link expiry, title, and access controls.
+4. **Generate Link:** Click **"Share"** to upload, transcode, and generate a shareable link.
 
-### QuickShare Link Settings
+**Video Processing:** When client-side transcoding is enabled (Settings → Performance), video files are transcoded on your machine before upload — this generates both a **Stream** (HLS for browser playback) and **Review Copies** (downloadable MP4s). With server-side mode, files upload first and the server handles processing.
 
-QuickShare links are created with the following default settings:
+### QuickShare Options
 
-- **Expiration:** 7 days from creation
-- **Access Mode:** Anyone with the link (no password required)
-- **Network:** Local network access (LAN/VPN)
-- **Comments:** Enabled by default
+QuickShare lets you configure:
+
+- **Destination folder** — Where files are stored on the server
+- **Link expiration** — How long the link remains active (default: 7 days)
+- **Access mode** — Open (anyone with link), password-protected, or invited users/groups
+- **Review copy qualities** — 720p, 1080p, and/or full resolution (for video)
+- **Watermark** — Overlay a watermark on video and image files (Pro: full positioning; Community: basic)
+- **Network mode** — Local (LAN/VPN) or External (port-forwarded)
 
 These defaults can be customized in [Settings](#6-settings) under **Default Link Options**.
 
@@ -1156,6 +1161,8 @@ If you're uploading video or image files, you can configure **Advanced Options**
 
 Click **"Start Upload"** to begin transferring files.
 
+> **Note:** Filenames are automatically sanitized during upload for cross-platform compatibility. Special characters such as apostrophes (`'`), colons (`:`), and other non-standard characters are replaced with underscores (`_`). If a file is renamed, a notification will appear showing the new filename.
+
 **During Upload:**
 
 The upload table shows each file with real-time status:
@@ -1171,10 +1178,16 @@ The upload table shows each file with real-time status:
 A progress bar at the top shows overall completion across all files.
 
 When **client-side transcoding** is enabled (Settings → Performance), video files go through a two-phase workflow:
-1. **Transcode** — The video is processed on your machine (shown as "Transcode XX%")
-2. **Upload** — The processed file is transferred to the server (shown as "Upload XX%")
+1. **Transcode** — The video is processed on your machine using hardware acceleration (GPU) if available. This generates both the **Stream** (HLS adaptive bitrate for browser playback) and **Review Copies** (downloadable MP4 files at your chosen qualities). Shown as "Transcode XX%" in the table.
+2. **Upload** — The raw source file is transferred to the server for archival. Shown as "Upload XX%".
 
-This offloads video processing from the server to your workstation. If you don't have client-side transcoding enabled, the server handles video processing after upload.
+This offloads video processing from the server to your workstation, typically completing much faster with hardware-accelerated encoding.
+
+If client-side transcoding is **not enabled**, the workflow is reversed:
+1. **Upload** — The raw file uploads to the server first.
+2. **Server Transcode** — The server queues and processes video encoding in the background.
+
+You can monitor both modes in the [Transfer Dock](#12-transfer-dock).
 
 ![Upload table with file statuses](images/upload-local-table-v3.png)
 
@@ -1222,6 +1235,12 @@ Each file in the Transfer Dock shows:
 ### Transcode Status
 
 When review copies or streaming proxies are being generated, each transcode entry shows:
+
+- **Stream** — The HLS (HTTP Live Streaming) adaptive bitrate output used for browser-based video playback. This is what link recipients see when they click play.
+- **Review Copy** — Downloadable MP4 files at specific qualities (720p, 1080p, or full resolution). These are used for offline review and download. When multiple qualities are selected, they appear as "Review Copy (Multiple Resolutions)" with per-quality progress.
+- **Awaiting Transcode…** — The upload task is waiting for client-side transcoding to complete before uploading the raw file.
+
+Each transcode entry also shows:
 
 - **Transcode source** — `Client` or `Server`, indicating where the processing is running.
 - **Encoder** — The hardware/software encoder in use:

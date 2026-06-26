@@ -747,10 +747,6 @@ async function ensureServerDirExists(dir: string) {
 
 async function uploadWatermarkToServer(): Promise<{ ok: boolean; relPath?: string; error?: string }> {
 	if (!watermarkFile.value) return { ok: false, error: 'no watermark file' }
-	const ssh = activeConnection.value?.ssh
-	const host = ssh?.server
-	const user = ssh?.username
-	if (!host || !user) return { ok: false, error: 'missing ssh connection info' }
 
 	// Check if watermark already exists on server
 	const existingRelPath = resolveWatermarkRelPath()
@@ -758,29 +754,18 @@ async function uploadWatermarkToServer(): Promise<{ ok: boolean; relPath?: strin
 		return { ok: true, relPath: existingRelPath }
 	}
 
-	// Upload via rsync
+	// Upload via HTTP
 	const destDir = `/${resolveWatermarkDirRel()}`
 	const ensured = await ensureServerDirExists(destDir)
 	if (!ensured) return { ok: false, error: 'failed to prepare remote watermark directory' }
 
-	const { id: rsyncId, done } = await window.electron.rsyncStart({
-		host,
-		user,
+	const { done } = await window.electron.httpUploadStart({
 		src: watermarkFile.value.path,
-		destDir,
-		port: ssh?.port || 22,
-		noIngest: true,
+		apiBase: meta.value.apiBase || '',
+		apiToken: meta.value.token || '',
+		dest: destDir,
 	})
 	const res = await done
-	// Remove the watermark upload task from Transfer Dock
-	if (rsyncId) {
-		const uploadTasks = transfer.state.tasks.filter(
-			(t: any) => t.kind === 'upload' && t.taskId === rsyncId
-		)
-		for (const task of uploadTasks) {
-			transfer.removeTask(task.taskId)
-		}
-	}
 	if (!res?.ok) return { ok: false, error: res?.error || 'watermark upload failed' }
 	return { ok: true, relPath: resolveWatermarkRelPath() }
 }
@@ -1215,8 +1200,8 @@ const createLinkTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="create-link-media-options"]',
 		message: isPremiumActive.value
-			? 'When sharing video or image files, media options appear here.\n\nFor video: choose review copy qualities (720p, 1080p, full-res) and toggle watermarks.\nFor images: toggle watermark overlays to protect your content.\n\nWatermarks support PNG, JPG, and SVG with full customization — position, size, opacity, and tiling (Pro).'
-			: 'When sharing video or image files, media options appear here.\n\nFor video: choose review copy qualities (720p, 1080p, full-res) and toggle watermarks.\nFor images: toggle watermark overlays to protect your content.\n\nA basic watermark is applied at bottom-right. Upgrade to Pro for full customization of position, size, and opacity.',
+			? 'When sharing video or image files, media options appear here.\n\nFor video: choose review copy qualities (720p, 1080p, full-res) and toggle watermarks. A streaming version (HLS) is also generated for smooth browser playback.\nFor images: toggle watermark overlays to protect your content.\n\nWatermarks support PNG, JPG, and SVG with full customization — position, size, opacity, and tiling (Pro).'
+			: 'When sharing video or image files, media options appear here.\n\nFor video: choose review copy qualities (720p, 1080p, full-res) and toggle watermarks. A streaming version (HLS) is also generated for smooth browser playback.\nFor images: toggle watermark overlays to protect your content.\n\nA basic watermark is applied at bottom-right. Upgrade to Pro for full customization of position, size, and opacity.',
 		beforeShow: () => { opts.shareEnabled.value = true },
 	},
 	{

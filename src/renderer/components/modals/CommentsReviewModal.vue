@@ -344,6 +344,7 @@
                             <ClockIcon class="w-3 h-3" />
                             {{ formatTimecodeRange(comment.start_seconds, comment.end_seconds) }}
                           </span>
+                          <span v-if="comment.version_index != null" class="inline-flex items-center px-2 py-0.5 bg-blue-500/15 text-blue-500 rounded text-xs font-bold" :title="`Version ${comment.version_index}`">V{{ comment.version_index }}</span>
                         </div>
                         <div class="text-xs text-muted mt-1">
                           {{ formatDate(comment.created_at) }}
