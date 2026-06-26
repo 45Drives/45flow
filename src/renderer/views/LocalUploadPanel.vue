@@ -1007,7 +1007,7 @@ async function runClientFullTranscode(opts: {
 		proxyQualities: opts.wantProxy ? proxyQualities.value.slice() : ['720p'],
 		generateHls: true,
 		watermarkPath: opts.localWatermarkPath,
-		watermarkSettings: opts.localWatermarkPath ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
+		watermarkSettings: opts.localWatermarkPath && isPremiumActive.value ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
 		skipWatermarkCleanup: true,
 		apiBase: connectionMeta.value.apiBase || '',
 		apiToken: connectionMeta.value.token || '',
@@ -1193,7 +1193,7 @@ function waitForIngestAndStartTranscode(opts: {
 										params.set('watermarkProxyQualities', proxyQualities.value.join(','));
 									}
 								// Premium: Pass custom watermark settings to server
-								if (watermarkSettings.value) {
+								if (watermarkSettings.value && isPremiumActive.value) {
 									params.set('watermarkSettings', JSON.stringify(watermarkSettings.value));
 								}
 							}
@@ -1555,7 +1555,7 @@ function uploadOneFile(
 				hls: transcodeProxyAfterUpload.value,
 				watermark: enableWatermark,
 				watermarkFile: enableWatermark ? watermarkRelPathForIngest : undefined,
-				watermarkSettings: enableWatermark ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
+				watermarkSettings: enableWatermark && isPremiumActive.value ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
 			},
 		(p: any) => {
 				const pct = typeof p.percent === 'number' ? p.percent : undefined;
@@ -1619,7 +1619,7 @@ function uploadOneFile(
 					proxyQualities: proxyQualities.value.slice(),
 					generateHls: true,
 					watermarkPath: localWatermarkPath || undefined,
-					watermarkSettings: localWatermarkPath ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
+					watermarkSettings: localWatermarkPath && isPremiumActive.value ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
 					skipWatermarkCleanup: true,
 					apiBase: connectionMeta.value.apiBase || '',
 					apiToken: connectionMeta.value.token || '',

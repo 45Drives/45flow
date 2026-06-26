@@ -1239,7 +1239,7 @@ async function startUploadAndShare() {
             proxyQualities: pQualities,
             generateHls: true,
             watermarkPath: localWatermarkPath || undefined,
-            watermarkSettings: localWatermarkPath ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
+            watermarkSettings: localWatermarkPath && isPremiumActive.value ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
             skipWatermarkCleanup: true,
             apiBase: connectionMeta.value.apiBase || '',
             apiToken: connectionMeta.value.token || '',
@@ -1294,7 +1294,7 @@ async function startUploadAndShare() {
           hls: hasVideo.value,
           watermark: enableWatermark,
           watermarkFile: enableWatermark ? resolveWatermarkPathForIngest() : undefined,
-          watermarkSettings: enableWatermark ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
+          watermarkSettings: enableWatermark && isPremiumActive.value ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
         },
         (p: any) => {
           const filePct = typeof p.percent === 'number' ? p.percent : 0
@@ -1420,7 +1420,7 @@ async function startUploadAndShare() {
         body.watermarkProxyQualities = proxyQualities.value.slice()
       }
       // Premium: Pass custom watermark settings to server (deep copy to prevent mutation)
-      if (watermarkSettings.value) {
+      if (watermarkSettings.value && isPremiumActive.value) {
         body.watermarkSettings = JSON.parse(JSON.stringify(watermarkSettings.value))
       }
     }

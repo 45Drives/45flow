@@ -963,8 +963,10 @@ async function generateLink() {
 
 				if (wmFilePath) body.watermarkFile = wmFilePath
 
-				// Premium: Include watermark customization settings
-				body.watermarkSettings = { ...watermarkSettings.value }
+				// Premium: Include watermark customization settings (only when licensed)
+				if (isPremiumActive.value) {
+					body.watermarkSettings = { ...watermarkSettings.value }
+				}
 
 				// If watermark is unchanged from what's already on the files, tell server to keep existing
 				if (watermarkUnchanged.value) {
