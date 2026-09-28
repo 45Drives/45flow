@@ -1138,6 +1138,27 @@
                                                 </div>
                                             </div>
                                         </div>
+
+                                        <!-- Transcoding / Hardware Encoder -->
+                                        <div v-if="server.health?.hardware" class="rounded-lg border border-default bg-default/40 p-3">
+                                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Transcoding (Server)</p>
+                                            <div class="grid grid-cols-2 gap-3 text-sm">
+                                                <div>
+                                                    <span class="text-muted">Encoder:</span>
+                                                    <span class="ml-1 font-mono">{{ server.health.hardware.encoder }}</span>
+                                                </div>
+                                                <div>
+                                                    <span class="text-muted">Mode:</span>
+                                                    <span class="ml-1 font-mono" :class="server.health.hardware.type === 'hw' ? 'text-green-500' : 'text-amber-500'">
+                                                        {{ server.health.hardware.type === 'hw' ? 'GPU' : 'CPU' }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <p v-if="server.health.hardware.autoDisabled" class="text-xs text-amber-500 mt-2">
+                                                GPU encoding was auto-disabled after a runtime failure ({{ server.health.hardware.disabledReason }}). It will retry the GPU again in
+                                                {{ Math.ceil((server.health.hardware.cooldownRemainingMs || 0) / 60000) }} min, sooner if the server restarts.
+                                            </p>
+                                        </div>
                                     </template>
                                     
                                     <!-- Separator between servers -->

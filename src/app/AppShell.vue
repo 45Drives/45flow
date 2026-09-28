@@ -78,6 +78,8 @@ import { useConnections } from '../renderer/composables/useConnections'
 import { useLicenseStatus } from '../renderer/composables/useLicenseStatus'
 import { useActiveProject } from '../renderer/composables/useActiveProject'
 import { useWebSocketManager } from '../renderer/composables/useWebSocketManager'
+import { useApi } from '../renderer/composables/useApi'
+import { useTransferProgress } from '../renderer/composables/useTransferProgress'
 import TransferProgressDock from '../renderer/components/TransferProgressDock.vue'
 import UpdateBanner from '../renderer/components/UpdateBanner.vue'
 import GlobalMenu from '../renderer/components/GlobalMenu.vue'
@@ -99,6 +101,8 @@ const { activeTour, finishTour, cancelTour } = useTourManager()
 const { activeConnection } = useConnections()
 const { isPremiumActive, isUpdateEligible, isFallback, isTrial, isTrialExpired, trialDaysRemaining } = useLicenseStatus()
 const { activeProject } = useActiveProject()
+const { apiFetch } = useApi()
+const transfer = useTransferProgress()
 
 // Initialize WebSocket manager (auto-connects to active connection)
 useWebSocketManager()
@@ -193,6 +197,12 @@ watch(currentDivision, (d) => { divisionCode.value = d as DivisionType }, { imme
 
 let unregisterIpcListener: (() => void) | null = null
 
+// Periodically re-check for newly queued server-side transcodes (e.g. files
+// uploaded by a recipient via an upload link with auto-transcode enabled) so
+// they surface in the Transfer Dock without requiring an app restart.
+const LINK_UPLOAD_TRANSCODE_POLL_MS = 15000
+let linkUploadTranscodePoll: ReturnType<typeof setInterval> | null = null
+
 onMounted(() => {
   setThemeControlsUnlocked(true)
 
@@ -214,6 +224,12 @@ onMounted(() => {
     vueRouter: router,
   })
 
+  linkUploadTranscodePoll = setInterval(() => {
+    if (activeConnection.value?.token) {
+      transfer.restoreActiveTranscodes(apiFetch)
+    }
+  }, LINK_UPLOAD_TRANSCODE_POLL_MS)
+
   onBeforeUnmount(() => {
     window.electron?.ipcRenderer.removeListener('notification', notificationHandler)
   })
@@ -221,6 +237,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   unregisterIpcListener?.()
+  if (linkUploadTranscodePoll) clearInterval(linkUploadTranscodePoll)
 })
 </script>
 

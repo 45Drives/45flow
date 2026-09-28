@@ -20,7 +20,7 @@
 								<span class="inline-block w-7 h-7 border-2 border-default border-t-transparent rounded-full animate-spin"></span>
 								<div>
 									<p class="text-base font-medium">Loading Create Link...</p>
-									<p class="text-sm text-muted">Resolving project and folder context.</p>
+									<p class="text-sm text-default">Resolving project and folder context.</p>
 								</div>
 							</div>
 						</div>
@@ -80,6 +80,7 @@
 										<input type="checkbox" v-model="opts.uploadEnabled.value" class="proxy-quality-checkbox" />
 										<span>Upload Destination</span>
 									</label>
+									<p class="text-xs text-default mb-2">Check this to send a client a link where <strong>they</strong> upload files to you (e.g. footage, assets). You do not need to also check "Files to Share / Review" — turn on <strong>Auto-share uploaded files</strong> in Link Options below if you want them to immediately view/download what they just sent.</p>
 
 									<template v-if="opts.uploadEnabled.value">
 										<FolderPicker
@@ -115,6 +116,7 @@
 										<input type="checkbox" v-model="opts.shareEnabled.value" class="proxy-quality-checkbox" />
 										<span>Files to Share / Review</span>
 									</label>
+									<p class="text-xs text-default mb-2">Check this to send a client a link where <strong>they</strong> view or download files you pick below. Check a folder's box to include everything inside it.</p>
 
 									<template v-if="opts.shareEnabled.value">
 										<FileExplorer
@@ -122,6 +124,7 @@
 											:modelValue="shareFiles"
 											@add="onShareAdd"
 											@remove="onShareRemove"
+											@error="onShareExplorerError"
 											:startDir="fileBrowserBase"
 											:compact="true"
 										/>
@@ -130,7 +133,7 @@
 										<div v-if="shareFiles.length" class="mt-2 border border-default p-0.5 rounded bg-accent min-w-0">
 											<div class="flex flex-wrap items-center justify-between gap-2 px-2 py-1 min-w-0">
 												<div class="text-sm font-semibold">
-													Selected <span class="text-muted">({{ shareFiles.length }})</span>
+													Selected <span class="text-default">({{ shareFiles.length }})</span>
 												</div>
 												<div class="flex flex-wrap items-center gap-2">
 													<button class="btn btn-secondary text-xs px-2 py-1" @click="showSelected = !showSelected">
@@ -141,14 +144,24 @@
 											</div>
 
 											<div v-show="showSelected" class="max-h-40 overflow-auto min-w-0">
-												<div v-for="(f, i) in shareFiles" :key="f"
-													class="grid items-center grid-cols-[minmax(0,1fr)_auto] border-t border-default text-sm min-w-0">
-													<div class="relative px-3 py-2 rounded-md bg-default min-w-0">
-														<span aria-hidden="true"
-															class="pointer-events-none absolute inset-0 rounded-md bg-green-500/50 animate-pulse z-0"></span>
-														<span class="truncate block text-default relative z-10 min-w-0">{{ f }}</span>
+												<div v-for="group in groupedShareFiles" :key="group.dir" class="border-t border-default">
+													<div v-if="group.files.length > 1" class="grid items-center grid-cols-[minmax(0,1fr)_auto] min-w-0 bg-well/30">
+														<div class="px-3 py-1.5 min-w-0 flex items-center gap-1.5" :title="group.dir">
+															<span aria-hidden="true">📁</span>
+															<span class="truncate font-medium text-default min-w-0">{{ group.dir.split('/').pop() || group.dir }}/</span>
+															<span class="text-default shrink-0">({{ group.files.length }} files)</span>
+														</div>
+														<button class="btn btn-danger m-1.5 px-2 py-1" @click="removeShareGroup(group.files)" title="Remove entire folder">✕</button>
 													</div>
-													<button class="btn btn-danger m-2 px-2 py-1" @click="removeShareFile(f)" title="Remove">✕</button>
+													<div v-for="f in group.files" :key="f"
+														class="grid items-center grid-cols-[minmax(0,1fr)_auto] border-t border-default first:border-t-0 text-sm min-w-0">
+														<div class="relative px-3 py-2 rounded-md bg-default min-w-0" :class="{ 'ml-4': group.files.length > 1 }">
+															<span aria-hidden="true"
+																class="pointer-events-none absolute inset-0 rounded-md bg-green-500/50 animate-pulse z-0"></span>
+															<span class="truncate block text-default relative z-10 min-w-0">{{ group.files.length > 1 ? f.split('/').pop() : f }}</span>
+														</div>
+														<button class="btn btn-danger m-2 px-2 py-1" @click="removeShareFile(f)" title="Remove">✕</button>
+													</div>
 												</div>
 											</div>
 										</div>
@@ -197,9 +210,9 @@
 								</template>
 
 								<template #title>
-									<div class="flex flex-col gap-2 min-w-0" :class="{ 'opacity-40 pointer-events-none': !opts.uploadEnabled.value || !opts.shareEnabled.value }">
-										<span class="font-semibold sm:whitespace-nowrap">Upload Automation</span>
-										<template v-if="opts.uploadEnabled.value && opts.shareEnabled.value">
+									<div class="flex flex-col gap-2 min-w-0" :class="{ 'opacity-40 pointer-events-none': !opts.uploadEnabled.value }">
+										<span class="font-semibold sm:whitespace-nowrap">After Upload</span>
+										<template v-if="opts.uploadEnabled.value">
 											<label class="flex items-start gap-2 select-none cursor-pointer min-w-0">
 												<input
 													type="checkbox"
@@ -208,27 +221,64 @@
 												/>
 												<div class="min-w-0">
 													<div class="text-sm font-medium">Auto-share uploaded files</div>
-													<div class="text-xs text-muted">Automatically add new uploads to this link's shared files.</div>
+													<div class="text-xs text-default">
+														<template v-if="opts.shareEnabled.value">Automatically add new uploads to this link's shared files.</template>
+														<template v-else>Let this same link switch to view/download mode for each file right after they upload it — no need to enable "Files to Share / Review" or send a second link.</template>
+													</div>
 												</div>
 											</label>
 											<label class="flex items-start gap-2 select-none cursor-pointer min-w-0">
 												<input
 													type="checkbox"
 													v-model="autoWatermarkUploads"
-													:disabled="!watermarkEnabled"
 													class="proxy-quality-checkbox mt-0.5 shrink-0"
 												/>
 												<div class="min-w-0">
-													<div class="text-sm font-medium" :class="{ 'opacity-50': !watermarkEnabled }">Auto-watermark uploads</div>
-													<div class="text-xs text-muted" :class="{ 'opacity-50': !watermarkEnabled }">
+													<div class="text-sm font-medium">Auto-watermark uploads</div>
+													<div class="text-xs text-default">
 														Apply this link's watermark settings to new uploads.
-														<span v-if="!watermarkEnabled" class="text-amber-500"> Enable watermark below first.</span>
 													</div>
 												</div>
 											</label>
+											<label class="flex items-start gap-2 select-none cursor-pointer min-w-0">
+												<input
+													type="checkbox"
+													v-model="autoTranscodeUploads"
+													class="proxy-quality-checkbox mt-0.5 shrink-0"
+												/>
+												<div class="min-w-0">
+													<div class="text-sm font-medium">Auto-transcode uploads</div>
+													<div class="text-xs text-default">
+														Automatically generate review-copy proxies (server-side) for each video uploaded to this link.
+													</div>
+												</div>
+											</label>
+											<div v-if="autoTranscodeUploads" class="ml-6 flex flex-col gap-1">
+												<span class="text-xs font-medium text-default">Proxy resolution</span>
+												<div class="flex flex-wrap gap-x-3 gap-y-1">
+													<label class="inline-flex items-center gap-2 text-sm">
+														<input type="checkbox" class="proxy-quality-checkbox" value="720p"
+															:checked="autoTranscodeProxyQualities.includes('720p')"
+															@change="toggleAutoTranscodeQuality('720p', ($event.target as HTMLInputElement).checked)" />
+														<span>720p</span>
+													</label>
+													<label class="inline-flex items-center gap-2 text-sm">
+														<input type="checkbox" class="proxy-quality-checkbox" value="1080p"
+															:checked="autoTranscodeProxyQualities.includes('1080p')"
+															@change="toggleAutoTranscodeQuality('1080p', ($event.target as HTMLInputElement).checked)" />
+														<span>1080p</span>
+													</label>
+													<label class="inline-flex items-center gap-2 text-sm">
+														<input type="checkbox" class="proxy-quality-checkbox" value="original"
+															:checked="autoTranscodeProxyQualities.includes('original')"
+															@change="toggleAutoTranscodeQuality('original', ($event.target as HTMLInputElement).checked)" />
+														<span>Full Res</span>
+													</label>
+												</div>
+											</div>
 										</template>
-										<p v-else class="text-xs text-muted italic">
-											Enable both Upload and Share to configure upload automation.
+										<p v-else class="text-xs text-default italic">
+											Enable "Upload Destination" above to configure what happens after a client uploads a file.
 										</p>
 									</div>
 								</template>
@@ -303,7 +353,7 @@
 							/>
 
 							<!-- Transcoding mode hint -->
-							<div v-if="hasVideoSelected" class="text-xs text-muted flex items-center gap-1.5 mt-2">
+							<div v-if="hasVideoSelected" class="text-xs text-default flex items-center gap-1.5 mt-2">
 								<template v-if="clientTranscodeEnabled">
 									<span class="text-green-600 dark:text-green-400">✓</span>
 									<span>Client-side transcoding: <strong class="text-default">Enabled</strong> — files will be streamed from the server and transcoded locally</span>
@@ -320,10 +370,47 @@
 									<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
 								</svg>
 								{{ existingFileWatermarkMessage }}
-								<span v-if="watermarkUnchanged" class="text-muted">(no re-encode needed)</span>
+								<span v-if="watermarkUnchanged" class="text-default">(no re-encode needed)</span>
 							</p>
 
 							<!-- Watermark Customizer (premium) or basic preview (free) -->
+							<div v-if="watermarkEnabled && (watermarkFile || selectedExistingWatermark)" class="mt-3 border-t border-default pt-3">
+								<WatermarkCustomizer v-if="isPremiumActive"
+									v-model="watermarkSettings"
+									:watermarkPreviewUrl="effectiveWatermarkPreviewUrl"
+								/>
+								<WatermarkPreview v-else
+									:previewUrl="effectiveWatermarkPreviewUrl"
+									label="Watermark (bottom-right)"
+								/>
+							</div>
+						</section>
+
+						<!-- ══════ Section: Watermark for Uploads (only when auto-watermark is on and no media is selected) ══════ -->
+						<section v-else-if="opts.uploadEnabled.value && autoWatermarkUploads" class="border-t border-default pt-3" data-tour="create-link-upload-watermark">
+							<h3 class="text-base font-semibold mb-2">Watermark for Uploads</h3>
+							<p class="text-xs text-default mb-2">This watermark will be applied automatically to new uploads.</p>
+							<VideoOptionsPanel
+								v-model:proxyQualities="uploadWatermarkProxyQualitiesDummy"
+								v-model:watermarkEnabled="watermarkEnabled"
+								v-model:selectedExistingWatermark="selectedExistingWatermark"
+								v-model:showDefaultWatermarks="showDefaultWatermarks"
+								:watermarkFile="watermarkFile"
+								:existingWatermarkFiles="existingWatermarkFiles"
+								:defaultWatermarks="validDefaultWatermarks"
+								:effectiveWatermarkPreviewUrl="effectiveWatermarkPreviewUrl"
+								:effectiveWatermarkName="effectiveWatermarkName"
+								:usingExistingWatermark="usingExistingWatermark"
+								:showHeading="false"
+								watermarkLabel="Watermark"
+								:pickButtonLabel="usingExistingWatermark ? 'Replace...' : 'Browse...'"
+								:hideProxyQualities="true"
+								:hideWatermarkToggle="true"
+								@pickWatermark="pickWatermark"
+								@clearWatermark="clearWatermark"
+								@refreshWatermarks="loadExistingWatermarks"
+							/>
+
 							<div v-if="watermarkEnabled && (watermarkFile || selectedExistingWatermark)" class="mt-3 border-t border-default pt-3">
 								<WatermarkCustomizer v-if="isPremiumActive"
 									v-model="watermarkSettings"
@@ -573,6 +660,14 @@ const uploadProjectBase = ref('')
 const uploadPickerKey = ref(0)
 const autoShareUploads = ref(false)
 const autoWatermarkUploads = ref(false)
+const autoTranscodeUploads = ref(false)
+const autoTranscodeProxyQualities = ref<string[]>(['720p'])
+function toggleAutoTranscodeQuality(quality: string, checked: boolean) {
+	const set = new Set(autoTranscodeProxyQualities.value)
+	if (checked) set.add(quality)
+	else set.delete(quality)
+	autoTranscodeProxyQualities.value = Array.from(set)
+}
 
 // ── Share ──
 const shareFiles = ref<string[]>([])
@@ -582,6 +677,7 @@ const showSelected = ref(false)
 
 // ── Video / Watermark ──
 const proxyQualities = ref<string[]>(['original'])
+const uploadWatermarkProxyQualitiesDummy = ref<string[]>([]) // unused; VideoOptionsPanel requires the prop but this panel hides that column
 const watermarkEnabled = ref(false)
 const watermarkFile = ref<{ path: string; name: string; size: number; dataUrl?: string | null } | null>(null)
 const selectedExistingWatermark = ref('')
@@ -703,8 +799,31 @@ function onShareRemove(paths: string[]) {
 	shareFiles.value = shareFiles.value.filter(f => !paths.includes(f))
 }
 
+function onShareExplorerError(message: string) {
+	pushNotification(new Notification('Selection Failed', message, 'error', 8000))
+}
+
 function removeShareFile(f: string) {
 	shareFiles.value = shareFiles.value.filter(x => x !== f)
+}
+
+// Groups shareFiles by parent directory so a fully-selected folder shows as one
+// unit (folder header + its files) instead of a flat list of unrelated paths.
+const groupedShareFiles = computed(() => {
+	const groups = new Map<string, string[]>()
+	for (const f of shareFiles.value) {
+		const idx = f.lastIndexOf('/')
+		const dir = idx > 0 ? f.slice(0, idx) : '/'
+		if (!groups.has(dir)) groups.set(dir, [])
+		groups.get(dir)!.push(f)
+	}
+	return Array.from(groups.entries())
+		.map(([dir, files]) => ({ dir, files }))
+		.sort((a, b) => a.dir.localeCompare(b.dir))
+})
+
+function removeShareGroup(files: string[]) {
+	shareFiles.value = shareFiles.value.filter(f => !files.includes(f))
 }
 
 // ── Watermark ──
@@ -783,6 +902,21 @@ function resolveWatermarkPathForApi(idOrPath: string) {
 	const builtin = DEFAULT_45FLOW_WATERMARKS.find(wm => wm.id === idOrPath)
 	if (builtin) return builtin.path
 	return idOrPath
+}
+
+// Resolves the currently-picked watermark (existing server file, built-in, or a
+// newly-browsed local file) into the path the API expects, uploading it first if needed.
+async function resolveWatermarkFilePathForApi(): Promise<{ ok: boolean; wmFilePath: string; error?: string }> {
+	const selectedServerWatermark = String(selectedExistingWatermark.value || '').trim()
+	if (selectedServerWatermark) {
+		return { ok: true, wmFilePath: resolveWatermarkPathForApi(selectedServerWatermark) }
+	}
+	if (watermarkFile.value) {
+		const up = await uploadWatermarkToServer()
+		if (!up.ok) return { ok: false, wmFilePath: '', error: up.error || 'Watermark upload failed' }
+		return { ok: true, wmFilePath: up.relPath || resolveWatermarkRelPath() || watermarkFile.value.name }
+	}
+	return { ok: true, wmFilePath: '' }
 }
 
 async function serverFileExists(relPath: string) {
@@ -926,6 +1060,13 @@ watch(showDefaultWatermarks, () => {
 	void loadExistingWatermarks()
 })
 
+// The "Watermark for Uploads" panel has no toggle of its own — the checkbox IS
+// the toggle, as long as Media Options isn't already governing watermarkEnabled.
+watch(autoWatermarkUploads, (checked) => {
+	if (opts.shareEnabled.value && hasMediaSelected.value) return
+	watermarkEnabled.value = checked
+})
+
 watch(configuredRoot, () => {
 	void loadExistingWatermarks()
 })
@@ -981,6 +1122,11 @@ async function createProject() {
 }
 
 async function generateLink() {
+	if (opts.uploadEnabled.value && autoTranscodeUploads.value && autoTranscodeProxyQualities.value.length === 0) {
+		error.value = 'Select at least one proxy resolution for auto-transcode.'
+		return
+	}
+
 	loading.value = true
 	error.value = null
 	resultUrl.value = ''
@@ -1001,7 +1147,13 @@ async function generateLink() {
 			body.uploadDir = '/' + uploadDest.value.replace(/^\/+/, '')
 			body.autoShareUploads = autoShareUploads.value
 			body.autoWatermarkUploads = autoWatermarkUploads.value
+			body.autoTranscodeUploads = autoTranscodeUploads.value
+			if (autoTranscodeUploads.value) {
+				body.autoTranscodeProxyQualities = autoTranscodeProxyQualities.value.slice()
+			}
 		}
+
+		let watermarkConfigured = false
 
 		if (opts.shareEnabled.value) {
 			const wantsProxy = hasVideoSelected.value && proxyQualities.value.length > 0
@@ -1014,25 +1166,14 @@ async function generateLink() {
 
 			if (hasMediaSelected.value && watermarkEnabled.value) {
 				body.watermark = true
-				const selectedServerWatermark = String(selectedExistingWatermark.value || '').trim()
 
-				// Determine watermark path for the API
-				let wmFilePath = ''
-				if (selectedServerWatermark) {
-					// User picked an existing server watermark (or builtin) from dropdown
-					wmFilePath = resolveWatermarkPathForApi(selectedServerWatermark)
-				} else if (watermarkFile.value) {
-					// User browsed for a new local file — upload it to the server first
-					const up = await uploadWatermarkToServer()
-					if (!up.ok) {
-						error.value = up.error || 'Watermark upload failed'
-						loading.value = false
-						return
-					}
-					wmFilePath = up.relPath || resolveWatermarkRelPath() || watermarkFile.value.name
+				const resolved = await resolveWatermarkFilePathForApi()
+				if (!resolved.ok) {
+					error.value = resolved.error || 'Watermark upload failed'
+					loading.value = false
+					return
 				}
-
-				if (wmFilePath) body.watermarkFile = wmFilePath
+				if (resolved.wmFilePath) body.watermarkFile = resolved.wmFilePath
 
 				// Premium: Include watermark customization settings (only when licensed)
 				if (isPremiumActive.value) {
@@ -1043,6 +1184,7 @@ async function generateLink() {
 				if (watermarkUnchanged.value) {
 					body.useExistingWatermarkOnly = true
 				}
+				watermarkConfigured = true
 			}
 
 			if (shareFiles.value.length === 1) body.filePath = shareFiles.value[0]
@@ -1052,6 +1194,24 @@ async function generateLink() {
 			// to client-claim the transcode jobs so the server worker doesn't steal them
 			if (clientTranscodeEnabled.value && hasVideoSelected.value) {
 				body.clientTranscode = true
+			}
+		}
+
+		// Auto-watermark uploads: send the watermark config configured in the
+		// "Watermark for Uploads" panel when no media is currently selected to share.
+		if (opts.uploadEnabled.value && autoWatermarkUploads.value && watermarkEnabled.value && !watermarkConfigured) {
+			const resolved = await resolveWatermarkFilePathForApi()
+			if (!resolved.ok) {
+				error.value = resolved.error || 'Watermark upload failed'
+				loading.value = false
+				return
+			}
+			if (resolved.wmFilePath) {
+				body.watermark = true
+				body.watermarkFile = resolved.wmFilePath
+				if (isPremiumActive.value) {
+					body.watermarkSettings = { ...watermarkSettings.value }
+				}
 			}
 		}
 
@@ -1326,6 +1486,8 @@ function resetAll() {
 	uploadProjectBase.value = ''
 	autoShareUploads.value = false
 	autoWatermarkUploads.value = false
+	autoTranscodeUploads.value = false
+	autoTranscodeProxyQualities.value = ['720p']
 	shareFiles.value = []
 	proxyQualities.value = ['original']
 	watermarkEnabled.value = false

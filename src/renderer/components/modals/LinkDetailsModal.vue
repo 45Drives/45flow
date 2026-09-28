@@ -539,6 +539,43 @@
                   </div>
                 </label>
                 </template>
+
+                <label class="flex items-start gap-3 select-none cursor-pointer mt-2 pt-2 border-t border-default">
+                  <input
+                    type="checkbox"
+                    v-model="draftAutoTranscodeUploads"
+                    class="mt-0.5 h-4 w-4 rounded border-default accent-blue-600 cursor-pointer"
+                  />
+                  <div class="min-w-0">
+                    <div class="text-sm font-medium">Auto-transcode uploads</div>
+                    <div class="text-xs text-muted">
+                      Automatically generate review-copy proxies (server-side) for each video uploaded through this link.
+                    </div>
+                  </div>
+                </label>
+                <div v-if="draftAutoTranscodeUploads" class="ml-7 flex flex-col gap-1">
+                  <span class="text-xs font-medium text-muted">Proxy resolution</span>
+                  <div class="flex flex-wrap gap-x-3 gap-y-1">
+                    <label class="inline-flex items-center gap-2 text-sm">
+                      <input type="checkbox" class="h-4 w-4 rounded border-default accent-blue-600" value="720p"
+                        :checked="draftAutoTranscodeProxyQualities.includes('720p')"
+                        @change="toggleDraftAutoTranscodeQuality('720p', ($event.target as HTMLInputElement).checked)" />
+                      <span>720p</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-sm">
+                      <input type="checkbox" class="h-4 w-4 rounded border-default accent-blue-600" value="1080p"
+                        :checked="draftAutoTranscodeProxyQualities.includes('1080p')"
+                        @change="toggleDraftAutoTranscodeQuality('1080p', ($event.target as HTMLInputElement).checked)" />
+                      <span>1080p</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-sm">
+                      <input type="checkbox" class="h-4 w-4 rounded border-default accent-blue-600" value="original"
+                        :checked="draftAutoTranscodeProxyQualities.includes('original')"
+                        @change="toggleDraftAutoTranscodeQuality('original', ($event.target as HTMLInputElement).checked)" />
+                      <span>Full Res</span>
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1172,6 +1209,8 @@ const hasUnsavedChanges = computed(() => {
   if (!!draftShareEnabled.value !== !!props.link.share_enabled) return true
   if (!!draftAutoShareUploads.value !== !!props.link.auto_share_uploads) return true
   if (!!draftAutoWatermarkUploads.value !== !!props.link.auto_watermark_uploads) return true
+  if (!!draftAutoTranscodeUploads.value !== !!props.link.auto_transcode_uploads) return true
+  if (draftAutoTranscodeUploads.value && JSON.stringify([...draftAutoTranscodeProxyQualities.value].sort()) !== JSON.stringify([...(props.link.auto_transcode_proxy_qualities || [])].sort())) return true
   if ((draftProjectId.value ?? null) !== ((props.link as any).project_id ?? null)) return true
   const linkAccessMode = props.link.access_mode || 'open'
   const seedComments = (props.link?.type !== 'upload' && linkAccessMode !== 'restricted')
@@ -1213,6 +1252,14 @@ const draftUploadEnabled = ref(false)
 const draftShareEnabled = ref(true)
 const draftAutoShareUploads = ref(false)
 const draftAutoWatermarkUploads = ref(false)
+const draftAutoTranscodeUploads = ref(false)
+const draftAutoTranscodeProxyQualities = ref<string[]>(['720p'])
+function toggleDraftAutoTranscodeQuality(quality: string, checked: boolean) {
+  const set = new Set(draftAutoTranscodeProxyQualities.value)
+  if (checked) set.add(quality)
+  else set.delete(quality)
+  draftAutoTranscodeProxyQualities.value = Array.from(set)
+}
 const draftProjectId = ref<number | null>(null)
 const availableProjects = ref<{ id: number; name: string }[]>([])
 const draftGenerateReviewProxy = ref(false)
@@ -3687,6 +3734,10 @@ function beginEdit() {
   draftShareEnabled.value = !!props.link.share_enabled
   draftAutoShareUploads.value = !!props.link.auto_share_uploads
   draftAutoWatermarkUploads.value = !!props.link.auto_watermark_uploads
+  draftAutoTranscodeUploads.value = !!props.link.auto_transcode_uploads
+  draftAutoTranscodeProxyQualities.value = props.link.auto_transcode_proxy_qualities?.length
+    ? props.link.auto_transcode_proxy_qualities.slice()
+    : ['720p']
   draftProjectId.value = (props.link as any).project_id ?? null
   if (draftAccessMode.value === 'restricted') draftAllowComments.value = false
   seedDraftMediaSettings()
@@ -3744,6 +3795,10 @@ function cancelEdit() {
   draftShareEnabled.value = !!props.link?.share_enabled
   draftAutoShareUploads.value = !!props.link?.auto_share_uploads
   draftAutoWatermarkUploads.value = !!props.link?.auto_watermark_uploads
+  draftAutoTranscodeUploads.value = !!props.link?.auto_transcode_uploads
+  draftAutoTranscodeProxyQualities.value = props.link?.auto_transcode_proxy_qualities?.length
+    ? props.link.auto_transcode_proxy_qualities.slice()
+    : ['720p']
   if (draftAccessMode.value === 'restricted') draftAllowComments.value = false
   seedDraftMediaSettings()
 
@@ -3949,9 +4004,14 @@ async function saveAll() {
 
     const autoShareChanged = !!draftAutoShareUploads.value !== !!props.link.auto_share_uploads
     const autoWatermarkChanged = !!draftAutoWatermarkUploads.value !== !!props.link.auto_watermark_uploads
+    const autoTranscodeChanged =
+      !!draftAutoTranscodeUploads.value !== !!props.link.auto_transcode_uploads ||
+      (draftAutoTranscodeUploads.value &&
+        JSON.stringify([...draftAutoTranscodeProxyQualities.value].sort()) !==
+          JSON.stringify([...(props.link.auto_transcode_proxy_qualities || [])].sort()))
     const projectChanged = (draftProjectId.value ?? null) !== ((props.link as any).project_id ?? null)
     const shouldUpdateDetailsCore =
-      titleChanged || notesChanged || accessModeChanged || allowCommentsChanged || authModeChanged || passwordChanged || capabilitiesChanged || autoShareChanged || autoWatermarkChanged || projectChanged
+      titleChanged || notesChanged || accessModeChanged || allowCommentsChanged || authModeChanged || passwordChanged || capabilitiesChanged || autoShareChanged || autoWatermarkChanged || autoTranscodeChanged || projectChanged
     const shouldUpdateFiles = draftShareEnabled.value && filesDirty.value
     const shouldPatchMediaSettings = mediaSettingsDirty.value
     const watermarkChanged =
@@ -4006,6 +4066,17 @@ async function saveAll() {
       )
       return
     }
+    if (draftAutoTranscodeUploads.value && draftAutoTranscodeProxyQualities.value.length === 0) {
+      pushNotification(
+        new Notification(
+          'Proxy Resolution Required',
+          'Select at least one proxy resolution for auto-transcode uploads.',
+          'warning',
+          8000
+        )
+      )
+      return
+    }
     if (draftWatermarkEnabled.value && watermarkChanged && !draftWatermarkFile.value.trim()) {
       pushNotification(
         new Notification(
@@ -4043,6 +4114,12 @@ async function saveAll() {
       // Include autoWatermarkUploads if it changed
       if (!!draftAutoWatermarkUploads.value !== !!props.link.auto_watermark_uploads) {
         body.autoWatermarkUploads = !!draftAutoWatermarkUploads.value
+      }
+
+      // Include autoTranscodeUploads/proxy qualities if changed
+      if (autoTranscodeChanged) {
+        body.autoTranscodeUploads = !!draftAutoTranscodeUploads.value
+        body.autoTranscodeProxyQualities = draftAutoTranscodeUploads.value ? draftAutoTranscodeProxyQualities.value.slice() : []
       }
 
       if (accessModeChanged || allowCommentsChanged || authModeChanged) {

@@ -13,6 +13,7 @@ export type TransferContext = {
     groupId?: string          // stable id shared by upload+transcode for same action
     linkUrl?: string
     linkTitle?: string
+    uploaderName?: string     // set when this task originated from a file uploaded via a link (not owner-initiated)
     destDir?: string          // for uploads
     file?: string             // single file for this specific task (preferred for grouping)
     files?: string[]          // optional; avoid using this for per-file grouping
@@ -1650,18 +1651,38 @@ export function useTransferProgress() {
                         : kind === 'proxy_mp4' ? 'Generating review copies'
                         : 'Generating transcodes'
 
+                    // Files uploaded by a recipient through an upload/combined link (vs. the
+                    // owner's own Create Link flow) get distinct "uploaded via link" language.
+                    const uploadSource = item.uploadSource as { linkTitle?: string | null; uploaderName?: string | null } | null
+                    const uploaderName = uploadSource?.uploaderName ? String(uploadSource.uploaderName).trim() : ''
+                    const linkTitle = uploadSource?.linkTitle ? String(uploadSource.linkTitle).trim() : ''
+                    const detail = uploadSource
+                        ? (uploaderName
+                            ? `Uploaded via link by ${uploaderName}`
+                            : 'Uploaded via link')
+                        : filePath
+
                     startAssetVersionTranscodeTask({
                         apiFetch,
                         assetVersionIds: [assetVersionId],
                         title: `${label}: ${filename}`,
-                        detail: filePath,
+                        detail,
                         intervalMs: 1500,
                         jobKind,
-                        context: {
-                            source: 'server' as const,
-                            destDir: relDir,
-                            file: filePath,
-                        },
+                        context: uploadSource
+                            ? {
+                                source: 'link' as const,
+                                linkTitle: linkTitle || undefined,
+                                // Always defined (even if '') to mark this as a link-upload task,
+                                // distinct from the owner's own Create Link flow (uploaderName === undefined there)
+                                uploaderName,
+                                file: filePath,
+                            }
+                            : {
+                                source: 'server' as const,
+                                destDir: relDir,
+                                file: filePath,
+                            },
                     })
                 }
             }

@@ -19,6 +19,15 @@
                     </button>
                 </template>
                 <template v-else>
+                    <span v-if="folderTogglePending"
+                        class="inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"
+                        title="Scanning folder…"></span>
+                    <input v-else type="checkbox" class="proxy-quality-checkbox h-4 w-4 m-0"
+                        :checked="folderFullySelected"
+                        :indeterminate="folderPartiallySelected"
+                        :aria-checked="folderFullySelected"
+                        :title="folderFullySelected ? 'Deselect entire folder' : 'Select entire folder (all files, including subfolders)'"
+                        @click.stop @change="onFolderCheckboxChange" />
                 </template>
             </div>
 
@@ -175,6 +184,22 @@ const folderPartiallySelected = computed(() =>
 )
 function toggleFolder() {
     emit('toggle', { path: props.relPath || '', isDir: true })
+}
+
+// Folder selection resolves asynchronously (expand-paths call, which can take
+// a while for large/deep folders). Show a spinner while it's in flight —
+// swapping to/from a plain checkbox this way also sidesteps a Vue quirk where
+// a native checkbox click flips its DOM state before Vue re-patches it, which
+// would otherwise show "checked" even when nothing was actually selected.
+const folderTogglePending = ref(false)
+async function onFolderCheckboxChange() {
+    folderTogglePending.value = true
+    try {
+        await props.getFilesFor(props.relPath || '')
+        toggleFolder()
+    } finally {
+        folderTogglePending.value = false
+    }
 }
 
 const depth = props.depth ?? 0

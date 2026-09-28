@@ -417,6 +417,14 @@ function outerTitleForBucket(bucketCtx: any, tasks: any[]) {
     if (c.source === 'link') {
         const title = (c.linkTitle && String(c.linkTitle).trim()) || ''
         const url = (c.linkUrl && String(c.linkUrl).trim()) || ''
+        const uploader = (c.uploaderName && String(c.uploaderName).trim()) || ''
+        // Files a recipient uploaded through the link (vs. the owner's own Create Link flow)
+        if (c.uploaderName !== undefined) {
+            return {
+                title: title ? title : 'Link Upload',
+                subtitle: uploader ? `Uploaded via link by ${uploader}` : 'Uploaded via link',
+            }
+        }
         return {
             title: title ? title : 'Link',
             subtitle: title && url ? url : url || undefined,

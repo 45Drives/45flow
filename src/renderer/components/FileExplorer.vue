@@ -95,6 +95,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 const emit = defineEmits<{
     (e: 'add', paths: string[]): void
     (e: 'remove', paths: string[]): void
+    (e: 'error', message: string): void
 }>()
   
   const apiFetch = props.apiFetch
@@ -182,13 +183,21 @@ function isSelected(path: string) {
     try {
       const resp = await apiFetch('/api/expand-paths', {
         method: 'POST',
-        body: JSON.stringify({ paths: [folder] })
+        body: JSON.stringify({ paths: [folder] }),
+        // Recursively expanding a large folder (deep trees, backup shares) can
+        // take a while — the default ~12s API timeout made big folders look
+        // "empty" when they'd simply timed out mid-scan.
+        timeoutMs: 5 * 60 * 1000,
       })
       const files: string[] = resp.files || []
       expandCache.set(folder, files)
       return files
-    } catch {
-      expandCache.set(folder, [])
+    } catch (e: any) {
+      // Don't cache failures — a transient network/auth blip shouldn't
+      // permanently lock this folder out of selection for the session.
+      const message = e?.message || String(e)
+      console.error(`[FileExplorer] expand-paths failed for "${folder}":`, message)
+      emit('error', `Couldn't read "${folder.split('/').pop() || folder}": ${message}`)
       return []
     }
   }
@@ -202,7 +211,10 @@ async function togglePath({ path, isDir }: TogglePayload) {
     return
   }
   const files = await getFilesForFolder(path)
-  if (!files.length) return
+  if (!files.length) {
+    emit('error', `"${path.split('/').pop() || path}" has no files to select (it may be empty, or couldn't be read).`)
+    return
+  }
   const normalizedFiles = Array.from(new Set(files.map(normalizePath)))
   const allSelected = normalizedFiles.every(f => isSelected(f))
   if (allSelected) emit('remove', normalizedFiles)
@@ -256,11 +268,9 @@ async function togglePath({ path, isDir }: TogglePayload) {
   }
 
   function goUpOne() {
-    if (viewMode.value === 'list') {
-      activeDir.value = parentPath(activeDir.value || cwd.value || '/')
-      return
-    }
-    const next = parentPath(cwd.value || '/')
+    // Both view modes must move the actual root (cwd) — otherwise the visible
+    // tree/grid never changes and "Showing:" desyncs from what's on screen.
+    const next = parentPath((viewMode.value === 'list' ? activeDir.value : cwd.value) || cwd.value || '/')
     cwd.value = next
     activeDir.value = next
   }

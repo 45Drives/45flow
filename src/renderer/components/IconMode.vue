@@ -60,8 +60,17 @@
                             :aria-checked="selected.has(ent.path)" @click.stop @change="onFileToggle(ent.path)" />
                     </template>
 
-                    <!-- share mode: no checkbox for folders -->
+                    <!-- share mode: folder checkbox (selects all files recursively) -->
                     <template v-else-if="!modeIsUpload && ent.isDir">
+                        <span v-if="folderTogglePending.has(ent.path)"
+                            class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"
+                            title="Scanning folder…"></span>
+                        <input v-else type="checkbox" class="proxy-quality-checkbox h-4 w-4 m-0"
+                            :checked="isFolderFullySelected(ent.path)"
+                            :indeterminate="isFolderPartiallySelected(ent.path)"
+                            :aria-checked="isFolderFullySelected(ent.path)"
+                            :title="isFolderFullySelected(ent.path) ? 'Deselect entire folder' : 'Select entire folder (all files, including subfolders)'"
+                            @click.stop @change="onFolderCheckboxChange(ent.path)" />
                     </template>
 
                     <!-- upload mode: folder radio -->
@@ -81,7 +90,7 @@
     </div>
 </template>
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, reactive, watch, onMounted, computed } from 'vue'
 import { useTimeFormat } from '../composables/useTimeFormat'
 defineOptions({ name: 'IconBrowserGrid' })
 import { FolderIcon, FileIcon, ImageIcon, VideoIcon, AudioIcon } from "../assets/icons/index"
@@ -169,6 +178,22 @@ function isFolderPartiallySelected(folderPath: string) {
 
 function onFolderToggle(path: string) {
     emit('toggle', { path, isDir: true })
+}
+
+// See TreeNode.vue's onFolderCheckboxChange — folder selection is async (can
+// take a while for large/deep folders), so we show a spinner while pending
+// instead of a checkbox. Swapping between them (rather than leaving the
+// checkbox mounted) also avoids a Vue quirk where a native checkbox click
+// flips its own DOM state before Vue re-patches it.
+const folderTogglePending = reactive(new Set<string>())
+async function onFolderCheckboxChange(path: string) {
+    folderTogglePending.add(path)
+    try {
+        await props.getFilesFor?.(path)
+        onFolderToggle(path)
+    } finally {
+        folderTogglePending.delete(path)
+    }
 }
 
 function onFolderClick(ent: Entry) {

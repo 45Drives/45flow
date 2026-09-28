@@ -41,7 +41,7 @@
 
       <!-- Watermark column -->
       <div :class="[compact ? 'min-w-0' : 'rounded-md p-2.5 min-w-0', hideProxyQualities ? 'col-span-3' : 'col-span-2']">
-        <div class="flex flex-wrap items-center gap-2 mb-2">
+        <div v-if="!hideWatermarkToggle" class="flex flex-wrap items-center gap-2 mb-2">
           <label class="font-semibold whitespace-nowrap" :class="compact ? 'text-sm' : ''">
             {{ watermarkLabel }}:
           </label>
@@ -63,6 +63,9 @@
             {{ watermarkStatusText }}
           </span>
         </div>
+        <label v-else class="font-semibold whitespace-nowrap block mb-2" :class="compact ? 'text-sm' : ''">
+          {{ watermarkLabel }}
+        </label>
 
         <div v-if="watermarkBlockReason" class="text-xs text-amber-700 dark:text-amber-300 mb-2">
           {{ watermarkBlockReason }}
@@ -154,6 +157,8 @@ const props = withDefaults(defineProps<{
   reviewCopyHelpText?: string
   /** Hide proxy/review copy quality section (for image-only uploads) */
   hideProxyQualities?: boolean
+  /** Hide the on/off switch — use when an external checkbox already controls watermarkEnabled */
+  hideWatermarkToggle?: boolean
 }>(), {
   dataTour: '',
   compact: false,
@@ -169,6 +174,7 @@ const props = withDefaults(defineProps<{
   watermarkBlockReason: '',
   reviewCopyHelpText: 'Lightweight MP4s for downloading & offline review. A browser stream is always generated separately. The original file is always preserved.',
   hideProxyQualities: false,
+  hideWatermarkToggle: false,
 })
 
 const emit = defineEmits<{
