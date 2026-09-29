@@ -424,6 +424,8 @@ run_linux_build() {
   cp -f "${linux_artifacts[@]}" "$STAGING_DIR/linux/"
   copy_to_release_builds "${linux_artifacts[@]}"
   shopt -u nullglob
+
+  echo "Linux build finished."
 }
 
 run_windows_flow() {
