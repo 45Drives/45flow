@@ -224,8 +224,7 @@ Download the latest version of 45Flow from the **[Releases page](https://github.
 
 | Chip | File to Download |
 |------|-----------------|
-| Apple Silicon (M1, M2, M3, M4…) | `45Flow-*-mac-arm64.dmg` |
-| Intel | `45Flow-*-mac-x64.dmg` |
+| Apple Silicon (M1, M2, M3, M4…) OR Intel | `45Flow-*-mac-universal.dmg` |
 
 1. Double-click the downloaded `.dmg` file.
 2. In the window that appears, drag the **45Flow** icon into the **Applications** folder.
