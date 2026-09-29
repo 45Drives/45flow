@@ -42,8 +42,7 @@ Download the latest release from the [Releases page](https://github.com/45Drives
 
 | OS | File | Install |
 |----|------|---------|
-| macOS (Apple Silicon) | `*-mac-arm64.dmg` | Drag to Applications |
-| macOS (Intel) | `*-mac-x64.dmg` | Drag to Applications |
+| macOS| `*-mac-universal.dmg` | Drag to Applications |
 | Windows | `*-win-x64.exe` | Run installer |
 | Ubuntu/Debian | `*-linux-amd64.deb` | `sudo apt install ./45flow-*.deb` |
 | Rocky/RHEL | `*-linux-x86_64.rpm` | `sudo dnf install ./45flow-*.rpm` |
