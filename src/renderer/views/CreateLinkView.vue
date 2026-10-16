@@ -272,7 +272,7 @@
 														<input type="checkbox" class="proxy-quality-checkbox" value="original"
 															:checked="autoTranscodeProxyQualities.includes('original')"
 															@change="toggleAutoTranscodeQuality('original', ($event.target as HTMLInputElement).checked)" />
-														<span>Full Res</span>
+														<span>Full Res (MP4)</span>
 													</label>
 												</div>
 											</div>

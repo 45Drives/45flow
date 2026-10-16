@@ -28,7 +28,7 @@
             <input type="checkbox" class="proxy-quality-checkbox" value="original"
               :checked="proxyQualities.includes('original')"
               @change="toggleQuality('original', ($event.target as HTMLInputElement).checked)" />
-            <span>Full Res</span>
+            <span>Full Res (MP4)</span>
           </label>
         </div>
         <p class="text-xs text-slate-400 mt-2" v-if="!compact">
