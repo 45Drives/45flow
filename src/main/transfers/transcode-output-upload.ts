@@ -3,6 +3,8 @@
 // via HTTP.
 import * as fs from 'fs'
 import * as path from 'path'
+import * as http from 'http'
+import * as https from 'https'
 import { ipcMain } from 'electron'
 
 export interface TranscodeOutputUploadOpts {
@@ -32,6 +34,32 @@ function walkDir(dir: string): string[] {
   return files
 }
 
+function streamFileUpload(
+  filePath: string,
+  url: string,
+  headers: Record<string, string>,
+): Promise<{ status: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    const size = fs.statSync(filePath).size
+    const target = new URL(url)
+    const transport = target.protocol === 'https:' ? https : http
+    const req = transport.request(target, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Length': String(size) },
+    }, (res) => {
+      const chunks: Buffer[] = []
+      res.on('data', (c: Buffer) => chunks.push(c))
+      res.on('end', () => resolve({ status: res.statusCode || 0, body: Buffer.concat(chunks).toString('utf8') }))
+      res.on('error', reject)
+    })
+    req.on('error', reject)
+
+    const rs = fs.createReadStream(filePath)
+    rs.on('error', (err) => { req.destroy(err); reject(err) })
+    rs.pipe(req)
+  })
+}
+
 async function runTranscodeOutputUpload(opts: TranscodeOutputUploadOpts): Promise<TranscodeOutputUploadResult> {
   const { outputDir, targetDir, apiBase, apiToken, subDir } = opts
 
@@ -55,24 +83,19 @@ async function runTranscodeOutputUpload(opts: TranscodeOutputUploadOpts): Promis
       ? path.join(subDir, path.relative(baseDir, filePath))
       : path.relative(outputDir, filePath)
 
-    const fileData = fs.readFileSync(filePath)
-
     try {
-      const res = await fetch(`${apiBase}/api/ingest/transcode-upload-file`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/octet-stream',
-          'Content-Length': String(fileData.byteLength),
-          'x-target-dir': targetDir,
-          'x-rel-path': relPath,
-        },
-        body: fileData,
+      // Stream from disk: readFileSync caps at 2 GiB, and proxy MP4s of long masters exceed that.
+      const res = await streamFileUpload(filePath, `${apiBase}/api/ingest/transcode-upload-file`, {
+        'Authorization': `Bearer ${apiToken}`,
+        'Content-Type': 'application/octet-stream',
+        'x-target-dir': targetDir,
+        'x-rel-path': relPath,
       })
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
-        return { ok: false, error: `Failed to upload ${relPath}: ${body.error || res.status}`, filesUploaded: uploaded }
+      if (res.status < 200 || res.status >= 300) {
+        let errMsg: string = `HTTP ${res.status}`
+        try { errMsg = JSON.parse(res.body)?.error || errMsg } catch { /* non-JSON body */ }
+        return { ok: false, error: `Failed to upload ${relPath}: ${errMsg}`, filesUploaded: uploaded }
       }
       uploaded++
     } catch (e: any) {
