@@ -271,7 +271,7 @@ function extractTranscodeError(
 function qualityLabel(q: string) {
     const s = String(q || '').trim().toLowerCase()
     if (!s) return ''
-    if (s === 'original') return 'Full Res'
+    if (s === 'original') return 'Full Res (MP4)'
     return s
 }
 

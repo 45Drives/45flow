@@ -572,7 +572,7 @@
                       <input type="checkbox" class="h-4 w-4 rounded border-default accent-blue-600" value="original"
                         :checked="draftAutoTranscodeProxyQualities.includes('original')"
                         @change="toggleDraftAutoTranscodeQuality('original', ($event.target as HTMLInputElement).checked)" />
-                      <span>Full Res</span>
+                      <span>Full Res (MP4)</span>
                     </label>
                   </div>
                 </div>
