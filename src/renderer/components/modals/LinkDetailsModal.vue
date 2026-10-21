@@ -508,6 +508,9 @@
                   Current: <code>{{ currentUploadDir || '—' }}</code>
                   <span v-if="uploadDirDirty" class="ml-2 text-amber-400">Pending changes</span>
                 </div>
+                <div v-if="uploadDirMissing" class="text-sm text-red-500">
+                  Choose an upload destination subfolder to save — the share root can't be used.
+                </div>
 
                 <template v-if="draftShareEnabled">
                 <label class="flex items-start gap-3 select-none cursor-pointer mt-2 pt-2 border-t border-default">
@@ -1232,10 +1235,14 @@ const capabilitiesSatisfied = computed(() => {
   if (!draftUploadEnabled.value && !draftShareEnabled.value) return false
   // If share is enabled, files must be selected
   if (draftShareEnabled.value && draftFilePaths.value.length === 0) return false
-  // If upload is enabled, destination directory must be set
-  if (draftUploadEnabled.value && !draftUploadDir.value.trim()) return false
+  // If upload is enabled, destination directory must be set (and not the share root)
+  if (uploadDirMissing.value) return false
   return true
 })
+
+const uploadDirMissing = computed(() =>
+  draftUploadEnabled.value && !draftUploadDir.value.replace(/\//g, '').trim()
+)
 
 const saveDisabled = computed(() =>
   saving.value ||
@@ -3966,11 +3973,11 @@ async function saveAll() {
     }
 
     // Validate upload capability has destination directory
-    if (draftUploadEnabled.value && !draftUploadDir.value.trim()) {
+    if (uploadDirMissing.value) {
       pushNotification(
         new Notification(
           'Upload Destination Required',
-          'Specify an upload destination directory.',
+          'Specify an upload destination subfolder (the share root is not allowed).',
           'warning',
           8000
         )
