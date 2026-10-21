@@ -98,8 +98,8 @@
 											:uploadLink="true"
 											:compact="true"
 										/>
-										<p v-if="uploadDestIsShareRoot" class="text-xs text-red-500 mt-1">
-											Choose a subfolder — the share root can't be used as an upload destination.
+										<p v-if="uploadDestIsFilesystemRoot" class="text-xs text-red-500 mt-1">
+											The filesystem root (/) can't be used as an upload destination. Choose a folder.
 										</p>
 									</template>
 									<div v-else class="flex flex-1 items-center justify-center opacity-50 text-sm italic py-8">
@@ -767,13 +767,10 @@ const error = ref<string | null>(null)
 const resultUrl = ref('')
 
 // ── Computed ──
-// The server rejects the share root as an upload destination; uploads must go to a subfolder.
-const uploadDestIsShareRoot = computed(() => {
+// The share root is a valid upload destination; only the filesystem root ("/") is not.
+const uploadDestIsFilesystemRoot = computed(() => {
 	const raw = uploadDest.value.trim()
-	if (!raw) return false
-	const dest = raw.replace(/\/+$/, '')
-	const root = configuredRoot.value.trim().replace(/\/+$/, '')
-	return dest === '' || (!!root && dest === root)
+	return !!raw && raw.replace(/\/+$/, '') === ''
 })
 
 const canGenerate = computed(() => {
@@ -781,7 +778,7 @@ const canGenerate = computed(() => {
 	if (opts.passwordRequired.value) return false
 	if (!opts.accessSatisfied.value) return false
 	if (opts.uploadEnabled.value && !uploadDest.value.trim()) return false
-	if (opts.uploadEnabled.value && uploadDestIsShareRoot.value) return false
+	if (opts.uploadEnabled.value && uploadDestIsFilesystemRoot.value) return false
 	if (opts.shareEnabled.value && shareFiles.value.length === 0) return false
 	return true
 })

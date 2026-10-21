@@ -509,7 +509,7 @@
                   <span v-if="uploadDirDirty" class="ml-2 text-amber-400">Pending changes</span>
                 </div>
                 <div v-if="uploadDirMissing" class="text-sm text-red-500">
-                  Choose an upload destination subfolder to save — the share root can't be used.
+                  Choose an upload destination folder to save.
                 </div>
 
                 <template v-if="draftShareEnabled">
@@ -1235,13 +1235,14 @@ const capabilitiesSatisfied = computed(() => {
   if (!draftUploadEnabled.value && !draftShareEnabled.value) return false
   // If share is enabled, files must be selected
   if (draftShareEnabled.value && draftFilePaths.value.length === 0) return false
-  // If upload is enabled, destination directory must be set (and not the share root)
+  // If upload is enabled, destination directory must be set
   if (uploadDirMissing.value) return false
   return true
 })
 
+// Paths here are share-relative, so "/" is the share root and is a valid destination.
 const uploadDirMissing = computed(() =>
-  draftUploadEnabled.value && !draftUploadDir.value.replace(/\//g, '').trim()
+  draftUploadEnabled.value && !draftUploadDir.value.trim()
 )
 
 const saveDisabled = computed(() =>
@@ -1453,10 +1454,35 @@ const displayFiles = computed(() => (files.value.length ? files.value : fallback
 const usingFallbackFiles = computed(() => !detailsLoading.value && files.value.length === 0 && fallbackLinkFiles.value.length > 0)
 const linkHasVideoFiles = computed(() => displayFiles.value.some(isVideoishFile))
 
+// Absolute share root (e.g. "/tank") so upload destinations display like the create form.
+const shareRootPath = ref('')
+async function loadShareRoot() {
+  try {
+    const s = await props.apiFetch('/api/settings')
+    shareRootPath.value = typeof s?.projectRoot === 'string' ? s.projectRoot.trim().replace(/\/+$/, '') : ''
+  } catch {
+    shareRootPath.value = ''
+  }
+}
+
 const currentUploadDir = computed(() => {
   const it = props.link
   if (!it) return ''
-  return (it.target?.dirRel || (it as any).dirRel || '') as string
+  const raw = it.target?.dirRel ?? (it as any).dirRel
+  // null/undefined means no destination is set; an empty dirRel is the share root.
+  if (typeof raw !== 'string') return ''
+  const rel = raw.trim().replace(/^\/+|\/+$/g, '')
+  const root = shareRootPath.value
+  if (!root) return rel ? `/${rel}` : '/'
+  return rel ? `${root}/${rel}` : `${root}/`
+})
+
+// Re-seed an untouched upload destination once the share root is known.
+watch(currentUploadDir, (next, prev) => {
+  if (draftUploadDir.value === prev && originalUploadDir.value === prev) {
+    draftUploadDir.value = next
+    originalUploadDir.value = next
+  }
 })
 
 const primaryUrl = computed(() => {
@@ -3977,7 +4003,7 @@ async function saveAll() {
       pushNotification(
         new Notification(
           'Upload Destination Required',
-          'Specify an upload destination subfolder (the share root is not allowed).',
+          'Specify an upload destination folder.',
           'warning',
           8000
         )
@@ -4455,6 +4481,7 @@ watch(
       fetchDetailsFor()
       loadAccess()
       loadCategories()
+      loadShareRoot()
     }
   },
   { immediate: false }
@@ -4482,6 +4509,7 @@ watch(
       fetchDetailsFor()
       loadAccess()
       loadCategories()
+      loadShareRoot()
     }
   }
 )
