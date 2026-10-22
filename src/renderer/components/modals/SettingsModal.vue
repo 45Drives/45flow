@@ -668,6 +668,33 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- Renewal: re-activating fetches a certificate with the new expiry -->
+                                <div v-if="!licenseInfo?.perpetual" class="rounded-lg border border-default bg-default/40 p-4">
+                                    <div class="text-sm font-semibold text-default mb-1">Renewed your license?</div>
+                                    <p class="text-sm text-accent leading-relaxed mb-3">
+                                        Enter your license key again to update this server with the new expiry date.
+                                    </p>
+                                    <div class="flex gap-2">
+                                        <input
+                                            v-model="upgradeKey"
+                                            type="text"
+                                            class="input-textlike border border-default px-3 py-2 rounded text-sm flex-1"
+                                            placeholder="STUDIO-XXXX-XXXX-XXXX-XXXX"
+                                            :disabled="upgradeBusy"
+                                            @keydown.enter.prevent="handleUpgradeActivate"
+                                        />
+                                        <button
+                                            class="btn btn-secondary text-sm px-4"
+                                            type="button"
+                                            :disabled="upgradeBusy || !upgradeKey.trim()"
+                                            @click="handleUpgradeActivate"
+                                        >
+                                            {{ upgradeBusy ? 'Updating…' : 'Update License' }}
+                                        </button>
+                                    </div>
+                                    <div v-if="upgradeError" class="text-danger text-sm mt-3">{{ upgradeError }}</div>
+                                </div>
                             </div>
 
                             <!-- Trial active -->
@@ -1878,12 +1905,16 @@ async function handleUpgradeActivate() {
         }
 
         const licenseInfo = result?.license
-        let licenseMsg = 'Pro Edition activated!'
+        let licenseMsg = result?.reused ? 'License details updated.' : 'Pro Edition activated!'
         if (licenseInfo?.perpetual) {
-            licenseMsg = 'Perpetual Pro license activated — never expires.'
+            licenseMsg = result?.reused
+                ? 'License updated — perpetual, never expires.'
+                : 'Perpetual Pro license activated — never expires.'
         } else if (licenseInfo?.expiresAt) {
             const expiryDate = new Date(licenseInfo.expiresAt).toLocaleDateString()
-            licenseMsg = `Pro license activated — valid until ${expiryDate}.`
+            licenseMsg = result?.reused
+                ? `License updated — valid until ${expiryDate}.`
+                : `Pro license activated — valid until ${expiryDate}.`
         }
 
         pushNotification(new Notification('Pro Edition', licenseMsg, 'success', 8000))

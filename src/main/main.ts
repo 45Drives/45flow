@@ -317,10 +317,6 @@ function createLogPolicy() {
 
     if (e.startsWith('ingest.')) {
       if (e === 'ingest.dest.normalize') return sample('ingest.dest.normalize', 5) ? { forceLevel: 'debug' } : { drop: true };
-      if (e === 'ingest.register') {
-        // this can be noisy if you do retries; keep 1/5 at debug
-        return sample('ingest.register', 5) ? { forceLevel: 'debug' } : { drop: true };
-      }
       return {};
     }
 

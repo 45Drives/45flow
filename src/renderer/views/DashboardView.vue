@@ -496,30 +496,39 @@
 
 						<template v-if="projectDeleteLinks && projectDeletePreview.summary.totalFiles > 0">
 							<div class="text-xs text-default space-y-1 ml-5">
-								<p>{{ projectDeletePreview.summary.totalFiles }} file(s) across all links</p>
-								<p v-if="projectDeletePreview.summary.sharedFiles > 0" class="text-amber-600 dark:text-amber-400">
-									{{ projectDeletePreview.summary.sharedFiles }} file(s) shared with links outside this project — will be kept
+								<p v-if="projectNothingToDelete" class="text-amber-600 dark:text-amber-400">
+									All files are used by links outside this project, so they'll be kept.
 								</p>
+								<template v-else>
+									<p>{{ projectDeletePreview.summary.totalFiles }} file(s) across all links</p>
+									<p v-if="projectDeletePreview.summary.sharedFiles > 0" class="text-amber-600 dark:text-amber-400">
+										{{ projectDeletePreview.summary.sharedFiles }} file(s) shared with links outside this project — will be kept
+									</p>
+								</template>
 							</div>
 
-							<label class="flex items-start gap-2 cursor-pointer select-none ml-5">
-								<input type="checkbox" v-model="projectDeleteGenerated" class="styled-checkbox mt-0.5" />
+							<label class="flex items-start gap-2 select-none ml-5"
+								:class="projectNothingToDelete ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'">
+								<input type="checkbox" v-model="projectDeleteGenerated" :disabled="projectNothingToDelete"
+									class="styled-checkbox mt-0.5" />
 								<div>
 									<span class="text-sm">Delete generated files</span>
 									<p class="text-xs text-default">
-										Transcodes, proxy videos, HLS streams, watermarked images
-										({{ formatBytes(projectDeletePreview.summary.totalGeneratedBytes) }})
+										Transcodes, proxy videos, HLS streams, watermarked images<template v-if="!projectNothingToDelete">
+										({{ formatBytes(projectDeletePreview.summary.totalGeneratedBytes) }})</template>
 									</p>
 								</div>
 							</label>
 
-							<label class="flex items-start gap-2 cursor-pointer select-none ml-5">
-								<input type="checkbox" v-model="projectDeleteOriginals" class="styled-checkbox mt-0.5" />
+							<label class="flex items-start gap-2 select-none ml-5"
+								:class="projectNothingToDelete ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'">
+								<input type="checkbox" v-model="projectDeleteOriginals" :disabled="projectNothingToDelete"
+									class="styled-checkbox mt-0.5" />
 								<div>
 									<span class="text-sm text-red-600 dark:text-red-400 font-medium">Delete original source files</span>
 									<p class="text-xs text-red-500 dark:text-red-300/80">
-										The actual media files on disk. Cannot be recovered.
-										({{ formatBytes(projectDeletePreview.summary.totalOriginalBytes) }})
+										The actual media files on disk. Cannot be recovered.<template v-if="!projectNothingToDelete">
+										({{ formatBytes(projectDeletePreview.summary.totalOriginalBytes) }})</template>
 									</p>
 								</div>
 							</label>
@@ -954,6 +963,11 @@ function formatBytes(bytes: number): string {
 	const i = Math.floor(Math.log(bytes) / Math.log(1024))
 	return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`
 }
+
+const projectNothingToDelete = computed(() => {
+	const s = projectDeletePreview.value?.summary
+	return !!s && s.totalFiles > 0 && s.deletableFiles === 0
+})
 
 async function archiveProject() {
 	const target = actionTarget.value

@@ -655,6 +655,14 @@
           </div>
         </section>
 
+        <!-- Processing (review copies / HLS / image watermarks); hides itself when nothing was requested -->
+        <LinkTranscodeStatus
+          v-if="!editMode && link && link.type !== 'upload'"
+          :link-id="link.id"
+          :api-fetch="props.apiFetch"
+          :reload-signal="transcodeStatusReload"
+        />
+
         <!-- Activity -->
         <section v-if="!editMode" class="w-full" data-tour="link-details-activity">
           <div class="flex items-center justify-between mb-2">
@@ -1023,6 +1031,7 @@ import EditLinkFilesModal from './EditLinkFilesModal.vue'
 import CommentsReviewModal from './CommentsReviewModal.vue'
 import CategoryManagementModal from './CategoryManagementModal.vue'
 import PathInput from '../PathInput.vue'
+import LinkTranscodeStatus from '../LinkTranscodeStatus.vue'
 import WatermarkCustomizer from '../WatermarkCustomizer.vue'
 import WatermarkPreview from '../WatermarkPreview.vue'
 import type { LinkItem, LinkType, AccessRow, Status, ExistingUser } from '../../typings/electron'
@@ -1119,6 +1128,7 @@ const connectionMeta = inject(connectionMetaInjectionKey, null)
 
 
 const thumbnailSrc = ref('')
+const transcodeStatusReload = ref(0)
 const thumbnailLoading = ref(false)
 const thumbnailFailed = ref(false)
 watch(() => props.link?.thumbnailUrl, async (url) => {
@@ -3634,6 +3644,7 @@ async function fetchDetailsFor() {
     selectedVersionFileId.value = null
   } finally {
     detailsLoading.value = false
+    transcodeStatusReload.value++
   }
 }
 

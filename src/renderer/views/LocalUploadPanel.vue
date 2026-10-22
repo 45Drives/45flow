@@ -1043,7 +1043,6 @@ function waitForIngestAndStartTranscode(opts: {
 	groupId: string
 	destDir: string
 	destFileAbs: string
-	watermarkRelPath?: string
 	// Client-side full transcode opts
 	clientTranscode?: boolean
 	sourceFilePath?: string
@@ -1190,48 +1189,6 @@ function waitForIngestAndStartTranscode(opts: {
 		const handler = async (_e: any, payload: any) => {
 			try {
 				if (!payload?.ok) {
-					if (payload?.error === 'outputs_exist' || payload?.error === 'hls_exists' || payload?.error === 'watermark_exists') {
-						const msg = 'Transcode outputs already exist for this file. Overwrite them?';
-						const proceed = window.confirm(msg);
-						if (proceed) {
-							const params = new URLSearchParams();
-							if (payload?.destRel) params.set('dest', String(payload.destRel));
-							if (payload?.name) params.set('name', String(payload.name));
-							if (opts.isVideo && opts.wantProxy) {
-								params.set('hls', '1');
-								params.set('proxy', '1');
-								if (proxyQualities.value.length) params.set('proxyQualities', proxyQualities.value.join(','));
-							}
-
-							if (watermarkAfterUpload.value) {
-								const wmRel = String(opts.watermarkRelPath || resolveWatermarkRelPath() || watermarkFile.value?.name || '').trim()
-								if (wmRel) {
-									params.set('watermark', '1');
-									params.set('watermarkFile', wmRel);
-									if (opts.isVideo && proxyQualities.value.length) {
-										params.set('watermarkProxyQualities', proxyQualities.value.join(','));
-									}
-								// Premium: Pass custom watermark settings to server
-								if (watermarkSettings.value && isPremiumActive.value) {
-									params.set('watermarkSettings', JSON.stringify(watermarkSettings.value));
-								}
-							}
-						}
-
-						params.set('overwrite', '1');
-						const data = await apiFetch(`/api/files/reingest?${params}`, { method: 'POST' });
-						startTranscodeFromPayload(data);
-					} else {
-						pushNotification(
-							new Notification(
-								'Overwrite Canceled',
-								'Existing review copy outputs were kept.',
-								'info',
-								6000
-							)
-						);
-					}
-				} else {
 					const requestSuffix = payload?.requestId ? ` (request ${String(payload.requestId)})` : '';
 					pushNotification(
 						new Notification(
@@ -1242,9 +1199,8 @@ function waitForIngestAndStartTranscode(opts: {
 							'ingest-error'
 						)
 					);
+					return;
 				}
-				return;
-			}
 
 			startTranscodeFromPayload(payload);
 		} finally {
@@ -1708,7 +1664,6 @@ function uploadOneFile(
 				groupId,
 				destDir: destDirAbs,
 				destFileAbs,
-				watermarkRelPath: watermarkRelPathForIngest,
 				clientTranscode: false,
 				sourceFilePath: row.path,
 				localWatermarkPath: localWatermarkPath,
