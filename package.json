@@ -27,6 +27,7 @@
     "release:publish-from-builds": "bash scripts/release/publish-from-builds.sh",
     "release:orchestrate": "bash scripts/release/orchestrate-release.sh",
     "test": "vitest run",
+    "test:admin-networks": "bash scripts/test-admin-networks.sh",
     "mac:dir:arm64": "yarn build:common && node scripts/build.js && CSC_IDENTITY_AUTO_DISCOVERY=false SKIP_AFTER_SIGN=1 electron-builder --mac --arm64 --dir",
     "mac:dir:x64": "yarn build:common && node scripts/build.js && CSC_IDENTITY_AUTO_DISCOVERY=false SKIP_AFTER_SIGN=1 electron-builder --mac --x64 --dir",
     "mac:dir:universal": "yarn build:common && node scripts/build.js && CSC_IDENTITY_AUTO_DISCOVERY=false SKIP_AFTER_SIGN=1 electron-builder --mac --universal --dir"

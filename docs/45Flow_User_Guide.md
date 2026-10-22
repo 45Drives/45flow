@@ -595,7 +595,7 @@ The Settings panel is organized into sections via the left-hand navigation sideb
 
 - **Link Sharing** — URLs & Access, Certificate, Public Sharing, Link Options, Project Root
 - **Branding** — White Label (see [Custom Branding](#7-custom-branding-white-label))
-- **Application** — Preferences, Performance, Server Health, Maintenance
+- **Application** — Preferences, Performance, Server Health, Maintenance, Admin Networks (server administrators)
 - **Help** — Guides
 
 ![Settings modal](images/settings-v3.png)
@@ -778,6 +778,66 @@ For administrators to manage server health:
 - Use **"Export JSON"** to save scan results.
 
 ![Maintenance and cleanup scan results](images/settings-maintenance-v3.png)
+
+### Admin Networks
+
+Available to signed-in server administrators using PAM or server-configured environment credentials,
+on both free and Pro servers. A collaborator role named "admin" does not grant this permission.
+Connect through the server's updated **nginx HTTPS listener**, not its backend API port.
+
+This panel restricts access to administrative HTTP routes and WebSockets, not public share links.
+It changes the server immediately, independently of **Save settings**. Keep console or SSH recovery
+access available.
+
+1. Open **Settings → Admin Networks**. The panel shows your connection address as observed by nginx
+   and the range currently permitting it. Behind a proxy, this can be the proxy's address.
+2. Open **What are these networks?** for explanations of the default ranges and CIDR notation.
+   Defaults cover common local/VPN addresses; they do not discover your actual network or prove
+   that devices on it are trustworthy.
+3. Enter one trusted CIDR per line. Prefer narrow ranges. **Allow this device only** adds the
+   observed address as `/32` (IPv4) or `/128` (IPv6), not a guessed LAN subnet.
+4. Click **Check proposed networks**. The server checks whether your current address remains allowed.
+   If excluded, applying requires a separate explicit override and another permitted connection
+   to confirm. `/0` ranges are rejected; an empty list blocks all nginx admin connections.
+5. Acknowledge the lockout warning and click **Apply admin networks**. The server validates and
+   reloads nginx with a temporary policy.
+6. Click **Reconnect and confirm** before the displayed deadline. Confirmation must traverse
+   the reloaded nginx policy, not an existing connection to an old nginx worker. The client retries
+   old-worker rejections while time remains. Only successful confirmation makes the policy permanent.
+   Without confirmation, the server automatically restores the previous policy.
+
+The server, not the open settings panel, owns rollback. If disconnected, do not repeatedly apply:
+wait for rollback, reconnect, and **Reload admin networks** to inspect the effective policy.
+Rollback needs the broadcaster service running; persisted recovery information allows restoration
+when it restarts after an interruption.
+Console/SSH recovery is still necessary if a filesystem or nginx recovery failure is reported.
+Changes are disabled when trusted connection information is unavailable; update the server and its
+nginx configuration before editing. Address checks reduce accidental lockout but cannot guarantee
+future connectivity if DHCP, VPN routing, firewall rules, or proxies change.
+
+Testing this panel does not require port forwarding: use a reachable LAN/VPN HTTPS URL.
+Public reachability and HTTP-01 certificate renewal require separate external validation.
+
+#### Automated Admin Networks checks
+
+With dependencies installed in both this checkout and the sibling `houston-broadcaster` checkout:
+
+```sh
+yarn test:admin-networks
+```
+
+This runs client and server regression coverage, including simulated nginx failures and rollback.
+Set `HOUSTON_BROADCASTER_DIR` if the server checkout is elsewhere. To also run checks against a
+deployed server, append the live runner's options; use `yarn test:admin-networks --help` to see them.
+The same runner supports LAN/VPN or public HTTPS URLs, custom ports, IPs or domains, and custom
+certificate authorities. Live policy changes require explicit opt-in; default checks do not edit
+the policy. Supply credentials only through the documented environment/file mechanism, never
+in command arguments or shared reports.
+
+Regression tests simulate disruptive conditions safely. Live tests cannot prove internet
+reachability from inside a LAN or certify network trust, and unavailable checks must remain
+reported as skipped. See the server's `docs/nginx-admin-cidrs.md` for deployment prerequisites,
+live-runner examples, external-vantage checks, and recovery instructions.
 
 ### Guides
 
