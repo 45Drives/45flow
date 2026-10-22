@@ -25,6 +25,8 @@ type ApiInit = RequestInit & {
     retryDelayMs?: number
     parse?: 'json' | 'text' | 'auto' | 'blob'
     suppressAuthRedirect?: boolean
+    /** Opt in only for admin APIs with explicit, useful operational error messages. */
+    exposeServerMessage?: boolean
 }
 
 const DEFAULT_TIMEOUT = 12_000
@@ -188,7 +190,7 @@ export function useApi(connectionId?: string) {
 
                 // Handle 403 premium_required — show friendly notification instead of raw error
                 if (res.status === 403) {
-                    const body = await res.text().catch(() => '')
+                    const body = await res.clone().text().catch(() => '')
                     let parsed: any = null
                     try { parsed = body ? JSON.parse(body) : null } catch { parsed = null }
 
@@ -229,7 +231,7 @@ export function useApi(connectionId?: string) {
                     const parsedError = parsed && typeof parsed.error === 'string' ? parsed.error : ''
                     const parsedMessage = parsed && typeof parsed.message === 'string' ? parsed.message : ''
                     // Prefer human-readable message over error codes for user-facing errors
-                    const baseMessage = res.status >= 500
+                    const baseMessage = res.status >= 500 && !init.exposeServerMessage
                         ? 'Internal server error'
                         : (parsedMessage || parsedError || detail || `HTTP ${res.status}`)
 
@@ -391,4 +393,3 @@ export async function apiFetchAll<T = any>(
 
     return Promise.all(promises)
 }
-

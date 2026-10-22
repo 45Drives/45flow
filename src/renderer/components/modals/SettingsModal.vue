@@ -32,6 +32,8 @@
 
                     <!-- Content -->
                     <div class="flex-1 overflow-y-auto px-5 py-4 text-left" data-tour="settings-modal-urls">
+                        <AdminNetworksPanel v-if="activeSection === 'adminNetworks' && adminSession && activeConnection"
+                            :key="activeConnection.connectionId" :connection-id="activeConnection.connectionId" />
 
                         <!-- Loading state: show skeleton until settings loaded from server -->
                         <div v-if="!settingsLoaded && (activeSection === 'sharing' || activeSection === 'linkOptions')" class="flex flex-col items-center justify-center h-full gap-3 py-12">
@@ -1602,8 +1604,8 @@
                         <div v-else class="text-xs text-accent">New shares will use these settings automatically.</div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button class="btn btn-secondary" type="button" @click="reload" :disabled="busy">Reload</button>
-                        <button class="btn btn-success" type="button" @click="save" :disabled="busy || !!validationError">
+                        <button v-if="activeSection !== 'adminNetworks'" class="btn btn-secondary" type="button" @click="reload" :disabled="busy">Reload</button>
+                        <button v-if="activeSection !== 'adminNetworks'" class="btn btn-success" type="button" @click="save" :disabled="busy || !!validationError">
                             <span v-if="busy">Saving…</span>
                             <span v-else>Save Settings</span>
                         </button>
@@ -1641,6 +1643,8 @@ const SettingRow = defineComponent({
 import { computed, onMounted, ref, watch } from "vue";
 import { Switch } from "@headlessui/vue";
 import { useApi } from "../../composables/useApi";
+import AdminNetworksPanel from "../AdminNetworksPanel.vue";
+import { isAdminSession } from "../../composables/adminSession";
 import { pushNotification, Notification } from '@45drives/houston-common-ui';
 import PathInput from "../PathInput.vue";
 import { useOnboarding } from "../../composables/useOnboarding";
@@ -1691,7 +1695,8 @@ const { linkListDefault } = useLinkListDefault();
 const { requestTour } = useTourManager();
 const { setCustomThemeColors, setCustomThemeEnabled } = useThemeFromAlias();
 const { toursDisabled } = useTourPreferences();
-const { connections } = useConnections();
+const { connections, activeConnection } = useConnections();
+const adminSession = computed(() => isAdminSession(activeConnection.value?.token));
 const { isPremiumActive, isTrial, isTrialExpired, isFallback, trialDaysRemaining, licenseInfo } = useLicenseStatus();
 
 // Local copies of transcode settings — only committed to the composable on Save
@@ -1740,7 +1745,7 @@ const settingsTourSteps = computed<TourStep[]>(() => [
 ])
 
 // ── Section navigation ──────────────────────────────────────────────────
-type Section = 'sharing' | 'publicSharing' | 'app' | 'performance' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade';
+type Section = 'sharing' | 'publicSharing' | 'app' | 'performance' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade' | 'adminNetworks';
 const activeSection = ref<Section>((props.initialSection as Section) || 'sharing');
 
 const navGroups = computed(() => {
@@ -1768,6 +1773,7 @@ const navGroups = computed(() => {
                 { key: 'performance' as Section, label: 'Performance' },
                 { key: 'health' as Section, label: 'Server Health' },
                 { key: 'maintenance' as Section, label: 'Maintenance' },
+                ...(adminSession.value ? [{ key: 'adminNetworks' as Section, label: 'Admin Networks' }] : []),
             ],
         },
         // Show Go Pro when unlicensed or on trial

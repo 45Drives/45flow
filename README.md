@@ -126,3 +126,7 @@ yarn build
 ## License
 
 See [LICENSE](LICENSE).
+
+## nginx admin access
+
+Public HTTPS exposes the share routes; admin routes require a LAN or VPN connection. Customize trusted networks in /etc/nginx/45flow-admin-allow.conf. See [nginx hardening](docs/nginx-hardening.md) for the defaults and deployment verification steps.
