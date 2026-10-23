@@ -201,7 +201,9 @@
 															Transcode {{ Number.isFinite(u.progress) ? u.progress.toFixed(0) : 0 }}%
 														</template>
 														<template v-else-if="u.status === 'uploading'">
-															Upload {{ Number.isFinite(u.progress) ? u.progress.toFixed(0) : 0 }}%
+															<template v-if="u.phase === 'scanning'">Scanning…</template>
+															<template v-else-if="u.phase === 'finalizing'">Finalizing…</template>
+															<template v-else>Upload {{ Number.isFinite(u.progress) ? u.progress.toFixed(0) : 0 }}%</template>
 														</template>
 														<template v-else>
 															<span v-if="u.alreadyUploaded && u.status === 'done'">
@@ -210,6 +212,8 @@
 															<span v-else>{{ u.status }}</span>
 														</template>
 													</span>
+													<div v-if="u.phaseMessage && u.status !== 'error' && u.status !== 'canceled'"
+														class="text-xs opacity-70 mt-1" role="status">{{ u.phaseMessage }}</div>
 												</td>
 												<td class="px-4 py-2 border border-default">
 													<div class="flex justify-end">
@@ -516,6 +520,8 @@ type UploadRow = {
 	dest: string
 	uploadId?: string | null
 	status: 'queued' | 'transcoding' | 'uploading' | 'done' | 'canceled' | 'error'
+	phase?: 'uploading' | 'scanning' | 'finalizing' | 'complete'
+	phaseMessage?: string
 	error: string | null
 	progress: number
 	speed: string | null
@@ -1532,16 +1538,20 @@ function uploadOneFile(
 				watermarkFile: enableWatermark ? watermarkRelPathForIngest : undefined,
 				watermarkSettings: enableWatermark && isPremiumActive.value ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
 			},
-		(p: any) => {
+		(p) => {
 				const pct = typeof p.percent === 'number' ? p.percent : undefined;
 
-				updateRowProgress(row, pct, p.rate, p.eta);
+				updateRowProgress(row, pct, p.rate ?? '', p.eta ?? '');
+				row.phase = p.phase;
+				row.phaseMessage = p.message;
 
 				transfer.updateUpload(taskId, {
 					status: 'uploading',
 					progress: typeof pct === 'number' ? pct : row.progress,
 					speed: p.rate ?? null,
 					eta: p.eta ?? null,
+					phase: p.phase,
+					phaseMessage: p.message,
 				});
 			}
 		);

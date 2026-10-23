@@ -15,6 +15,12 @@
 - **Share files via secure links** — Generate expiring, access-controlled links for viewing, downloading, and commenting on files
 - **Upload portals** — Create links that let external collaborators upload files directly to your server
 - **Local uploads** — Transfer files from your workstation to the server with optional review copy generation and watermarking
+  - On servers advertising local-upload scanning, the upload panel, Quick Share,
+    and transfer dock show a queued/running malware-check message after transfer.
+    Transfer can read 100% while server checks are pending; success or failure
+    follows the completion response. The dock retains the reported scan result,
+    including scanner-unavailable skips. Older servers show generic finalization,
+    without claiming a scan passed. Available for both free and Pro connections.
 - **Client-side transcoding** — Process videos on your workstation before upload using local CPU/GPU, reducing server load and speeding up review copy availability
 - **Video review with timecoded comments** — Browser-based HLS player with threaded, frame-accurate commenting
 - **Role-based access control** — System and custom roles (View, Comment, Download, Upload) enforced per link

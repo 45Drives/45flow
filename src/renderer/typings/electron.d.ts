@@ -23,6 +23,8 @@ export type HttpUploadOpts = {
 }
 
 export type HttpUploadProgress = {
+  phase?: 'uploading' | 'scanning' | 'finalizing' | 'complete'
+  message?: string
   percent: number
   bytesTransferred: number
   totalBytes: number

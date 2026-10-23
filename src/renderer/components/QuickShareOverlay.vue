@@ -1370,15 +1370,17 @@ async function startUploadAndShare() {
           watermarkFile: enableWatermark ? resolveWatermarkPathForIngest() : undefined,
           watermarkSettings: enableWatermark && isPremiumActive.value ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
         },
-        (p: any) => {
+        (p) => {
           const filePct = typeof p.percent === 'number' ? p.percent : 0
           perFileProgress.value[f.path] = filePct
-          perFileDetail.value[f.path] = p.rate ? `Uploading: ${p.rate}${p.eta ? ' — ETA ' + p.eta : ''}` : 'Uploading…'
+          perFileDetail.value[f.path] = p.message || (p.rate ? `Uploading: ${p.rate}${p.eta ? ' — ETA ' + p.eta : ''}` : 'Uploading…')
           transfer.updateUpload(taskId, {
             status: 'uploading',
             progress: filePct,
             speed: p.rate ?? null,
             eta: p.eta ?? null,
+            phase: p.phase,
+            phaseMessage: p.message,
           })
         }
       )
