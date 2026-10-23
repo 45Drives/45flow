@@ -65,8 +65,9 @@ let authRedirectInFlight = false
 /**
  * Create API client for a specific connection (or active connection if not specified)
  * @param connectionId - Optional connection ID. If not provided, uses active connection.
+ * @param options - Opt into nginx HTTPS for APIs that require verified proxy context.
  */
-export function useApi(connectionId?: string) {
+export function useApi(connectionId?: string, options: { transport?: 'nginx-https' } = {}) {
     const router = useRouter()
     const { activeConnection, getConnection, updateConnection } = useConnections()
 
@@ -78,8 +79,52 @@ export function useApi(connectionId?: string) {
         return activeConnection.value
     })
 
-    const baseUrl = computed(() => connection.value?.baseUrl ?? '')
+    const baseUrl = computed(() => {
+        const conn = connection.value
+        if (!conn?.baseUrl) return ''
+        if (options.transport !== 'nginx-https') return conn.baseUrl
+
+        const url = new URL(conn.baseUrl)
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+            throw new Error('Admin networks require an HTTP or HTTPS server connection.')
+        }
+        if (url.protocol === 'http:') {
+            const port = conn.httpsPort ?? 443
+            if (!Number.isInteger(port) || port < 1 || port > 65535) {
+                throw new Error("Invalid server HTTPS port. Check this server's connection settings.")
+            }
+            url.protocol = 'https:'
+            url.port = String(port)
+        }
+        return url.href.replace(/\/$/, '')
+    })
     const token = computed(() => connection.value?.token ?? '')
+    let certificatePreparation: { key: string; promise: Promise<void> } | undefined
+
+    async function prepareCertificate(conn: Connection, requestBaseUrl: string) {
+        if (options.transport !== 'nginx-https' || !window.electron) return
+        const ssh = conn.ssh
+        if (!ssh) throw new Error('Reconnect to this server to establish SSH access before opening Admin Networks.')
+        const details = {
+            httpsUrl: requestBaseUrl, host: ssh.server, username: ssh.username,
+            port: ssh.port ?? conn.sshPort ?? 22, keyPath: ssh.keyPath,
+        }
+        const key = JSON.stringify(details)
+        if (!certificatePreparation || certificatePreparation.key !== key) {
+            const promise = (async () => {
+                const result = await window.electron.ipcRenderer.invoke('verify-nginx-certificate-over-ssh', details)
+                if (result?.ok !== true) {
+                    throw new Error(result?.error || 'Could not verify the nginx HTTPS certificate through SSH.')
+                }
+            })()
+            certificatePreparation = { key, promise }
+        }
+        const current = certificatePreparation
+        try { await current.promise } catch (error) {
+            if (certificatePreparation === current) certificatePreparation = undefined
+            throw error
+        }
+    }
 
     // Build a ConnectionMeta-compatible object from Connection for compatibility
     const meta = computed<ConnectionMeta>(() => {
@@ -98,7 +143,9 @@ export function useApi(connectionId?: string) {
     async function apiFetch(path: string, init: ApiInit = {}) {
         const conn = connection.value
         if (!conn) throw new Error('No connection selected')
-        if (!baseUrl.value) throw new Error('API base URL is not set')
+        const requestBaseUrl = baseUrl.value
+        if (!requestBaseUrl) throw new Error('API base URL is not set')
+        await prepareCertificate(conn, requestBaseUrl)
 
         const headers = new Headers(init.headers || {})
         if (init.body && !headers.has('Content-Type') && !(init.body instanceof FormData)) {
@@ -109,7 +156,7 @@ export function useApi(connectionId?: string) {
         }
 
         const urlPath = path.startsWith('/') ? path : `/${path}`
-        const url = `${baseUrl.value}${urlPath}`
+        const url = `${requestBaseUrl}${urlPath}`
 
         const method = (init.method || 'GET').toUpperCase()
         const retry = init.retry ?? 1
@@ -143,7 +190,7 @@ export function useApi(connectionId?: string) {
                     // Attempt silent re-auth if we have a saved password
                     if (conn.savedPassword && conn.username && !init._isReauth) {
                         try {
-                            const loginRes = await fetch(`${baseUrl.value}/api/login`, {
+                            const loginRes = await fetch(`${requestBaseUrl}/api/login`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ username: conn.username, password: conn.savedPassword }),

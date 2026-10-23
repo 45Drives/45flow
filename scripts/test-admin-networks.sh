@@ -15,7 +15,7 @@ if [[ "${1:-}" == '--help' || "${1:-}" == '-h' ]]; then
 fi
 
 cd -- "$client_dir"
-yarn test src/renderer/components/AdminNetworksPanel.test.js src/renderer/composables/useApi.test.js
+yarn test src/renderer/components/AdminNetworksPanel.test.js src/renderer/composables/useApi.test.js src/main/sshCertificateTrust.test.js
 
 cd -- "$server_dir"
 yarn test:admin-networks

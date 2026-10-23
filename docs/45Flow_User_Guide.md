@@ -783,7 +783,26 @@ For administrators to manage server health:
 
 Available to signed-in server administrators using PAM or server-configured environment credentials,
 on both free and Pro servers. A collaborator role named "admin" does not grant this permission.
-Connect through the server's updated **nginx HTTPS listener**, not its backend API port.
+The panel automatically sends its requests through the server's **nginx HTTPS listener**, even
+when the desktop's other API requests use the direct backend port. It uses the same server host
+and the HTTPS port saved with the connection (443 by default); an existing HTTPS connection
+keeps its configured URL. Set a non-default HTTPS port under the login screen's connection ports.
+Successfully applying a new HTTPS port in Settings also updates the saved desktop connection.
+It never falls back to direct backend writes.
+
+**LAN-only servers are supported.** No public domain, internet access, or port forwarding is
+required: the server's HTTPS listener must be reachable on its private address.
+
+Before sending Admin Networks requests, the desktop verifies nginx's public certificate through
+an SSH connection using the saved connection's SSH key or agent. It reuses a matching host key
+from your OpenSSH `known_hosts` (including hashed entries), system known hosts on Unix, or its own
+remembered SSH identities. Otherwise it asks **Trust this SSH server?** once; verify the displayed
+SSH host-key fingerprint through the server console or another trusted source before accepting.
+The app remembers that identity and does not require a separate HTTPS certificate popup.
+An unexpected or revoked SSH host key, an expired certificate, or a failed SSH check blocks the
+operation; the app does not fall back to unverified HTTPS or direct backend writes.
+This verified SSH connection is specific to this certificate check; other existing SSH operations
+are unchanged. In a browser, the browser's normal HTTPS certificate validation still applies.
 
 This panel restricts access to administrative HTTP routes and WebSockets, not public share links.
 It changes the server immediately, independently of **Save settings**. Keep console or SSH recovery
@@ -811,8 +830,10 @@ wait for rollback, reconnect, and **Reload admin networks** to inspect the effec
 Rollback needs the broadcaster service running; persisted recovery information allows restoration
 when it restarts after an interruption.
 Console/SSH recovery is still necessary if a filesystem or nginx recovery failure is reported.
-Changes are disabled when trusted connection information is unavailable; update the server and its
-nginx configuration before editing. Address checks reduce accidental lockout but cannot guarantee
+If HTTPS cannot be reached, check the connection's HTTPS port, firewall, current nginx admin network
+policy, and certificate trust. Changes are disabled when trusted connection information is unavailable;
+update the server and regenerate/reload its nginx configuration before editing.
+Address checks reduce accidental lockout but cannot guarantee
 future connectivity if DHCP, VPN routing, firewall rules, or proxies change.
 
 Testing this panel does not require port forwarding: use a reachable LAN/VPN HTTPS URL.
@@ -825,6 +846,9 @@ With dependencies installed in both this checkout and the sibling `houston-broad
 ```sh
 yarn test:admin-networks
 ```
+
+The desktop SSH/certificate regression tests use local SSH and TLS test servers and require
+`ssh-keygen` and `openssl` on the test machine; they do not contact your deployed server.
 
 This runs client and server regression coverage, including simulated nginx failures and rollback.
 Set `HOUSTON_BROADCASTER_DIR` if the server checkout is elsewhere. To also run checks against a

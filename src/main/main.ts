@@ -379,6 +379,7 @@ import { server, unwrap, IPCRouter } from '@45drives/houston-common-lib';
 import { installServerDepsRemotely } from './installServerDeps';
 import { checkSSH } from './setupSsh';
 import { getPin, rememberPin } from './certPins'
+import { getSshVerifiedCertificates, prepareSshCertificate } from './sshCertificateTrust';
 import { NodeSSH } from 'node-ssh';
 import { registerSensitiveToken, scrubSecrets } from './scrubSecrets';
 import { registerHttpUploadHandlers } from './transfers/http-upload';
@@ -781,6 +782,17 @@ ipcMain.handle('probe-health', async (_e, { ip, port }) => {
     jl('warn', 'ipc.probe-health.error', { ip, port, error: err?.message || String(err) });
 
     return { ok: false, error: err?.message || String(err) };
+  }
+});
+
+ipcMain.handle('verify-nginx-certificate-over-ssh', async (_event, options) => {
+  try {
+    await prepareSshCertificate(options);
+    return { ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    jl('warn', 'cert.ssh-verification.failed', { error: message });
+    return { ok: false, error: message };
   }
 });
 
@@ -2064,6 +2076,11 @@ app.whenReady().then(() => {
   };
 
   session.defaultSession.setCertificateVerifyProc((req, cb) => {
+    const sshFingerprints = getSshVerifiedCertificates(req.hostname);
+    if (sshFingerprints) {
+      // An SSH-verified endpoint must never fall back to a manual HTTPS trust override.
+      return cb(sshFingerprints.includes(req.certificate.fingerprint) ? 0 : -2);
+    }
     // Let Chromium handle all non-internal hosts (gvt1.com, GitHub, etc.)
     if (!isInternalHost(req.hostname)) {
       return cb(-3); // “use default verification”

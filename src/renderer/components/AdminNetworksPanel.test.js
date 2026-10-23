@@ -3,11 +3,12 @@ import { createApp, nextTick } from 'vue'
 import AdminNetworksPanel from './AdminNetworksPanel.vue'
 import { isAdminSession } from '../composables/adminSession'
 
-const mocks = vi.hoisted(() => ({ apiFetch: vi.fn(), connectionIds: [] }))
+const mocks = vi.hoisted(() => ({ apiFetch: vi.fn(), connectionIds: [], apiOptions: [] }))
 vi.mock('../composables/useApi', () => ({
-    useApi: id => {
+    useApi: (id, options) => {
         mocks.connectionIds.push(id)
-        return { apiFetch: mocks.apiFetch }
+        mocks.apiOptions.push(options)
+        return { apiFetch: mocks.apiFetch, baseUrl: { value: 'https://192.168.1.50:8443' } }
     },
 }))
 
@@ -46,6 +47,7 @@ afterEach(() => {
     host?.remove()
     mocks.apiFetch.mockReset()
     mocks.connectionIds.length = 0
+    mocks.apiOptions.length = 0
     vi.useRealTimers()
 })
 
@@ -116,8 +118,20 @@ describe('Admin Networks settings UI/API', () => {
         await flush()
         expect(host.querySelector('textarea').value).toBe('10.0.0.0/8\n::1/128')
         expect(mocks.connectionIds).toEqual(['server-one'])
+        expect(mocks.apiOptions).toEqual([{ transport: 'nginx-https' }])
         expect(mocks.apiFetch).toHaveBeenCalledWith('/api/admin/nginx-admin-cidrs', { exposeServerMessage: true })
         expect(button('Apply').disabled).toBe(true)
+    })
+
+    it('keeps the device and preview buttons in a spaced, wrapping row', async () => {
+        mocks.apiFetch.mockResolvedValueOnce(policy())
+        await mount()
+        const deviceButton = button('Allow this device')
+        const previewButton = button('Check proposed')
+        expect(deviceButton.parentElement).toBe(previewButton.parentElement)
+        expect(deviceButton.parentElement.className).toContain('flex')
+        expect(deviceButton.parentElement.className).toContain('flex-wrap')
+        expect(deviceButton.parentElement.className).toContain('gap-2')
     })
 
     it('previews, sends trimmed CIDRs without retries, and only claims success after confirmation', async () => {
@@ -163,6 +177,16 @@ describe('Admin Networks settings UI/API', () => {
         button('Reload admin').click()
         await flush()
         expect(host.querySelector('textarea').value).toBe('')
+    })
+
+    it('explains LAN HTTPS connection failures without exposing an editable policy', async () => {
+        mocks.apiFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+        await mount()
+        expect(host.querySelector('[role=alert]').textContent).toContain('https://192.168.1.50:8443')
+        expect(host.querySelector('[role=alert]').textContent).toContain('certificate trust')
+        expect(host.textContent).toContain('No public domain or port forwarding is required')
+        expect(host.querySelector('textarea')).toBeNull()
+        expect(button('Apply')).toBeUndefined()
     })
 
     it('shows explicit PUT failures and does not claim success or discard edits', async () => {

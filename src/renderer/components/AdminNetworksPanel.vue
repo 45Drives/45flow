@@ -25,6 +25,11 @@
             through the reloaded nginx policy; unconfirmed changes are automatically rolled back.
             An empty list denies all nginx admin access.
         </p>
+        <p class="text-sm">
+            Admin network requests use this server's nginx HTTPS listener, including on LAN-only servers.
+            No public domain or port forwarding is required. The desktop verifies HTTPS through SSH.
+            If prompted, verify the SSH host-key fingerprint before trusting the server.
+        </p>
         <p v-if="loading" role="status">Loading admin networks…</p>
         <p v-if="error" role="alert" class="text-sm text-danger">{{ error }}</p>
         <template v-if="loaded">
@@ -35,21 +40,23 @@
             </p>
             <p v-else role="alert" class="text-sm text-danger">
                 Connection safety is unavailable: {{ safety?.reason || 'update the server and its nginx configuration.' }}
-                Changes are disabled; connect through the updated nginx HTTPS listener.
+                Changes are disabled; update/regenerate the server's nginx configuration and reload this panel.
             </p>
             <label for="admin-cidrs" class="block text-sm font-medium">Trusted CIDRs</label>
             <textarea id="admin-cidrs" v-model="text" rows="10" spellcheck="false"
                 class="input-textlike border border-default rounded p-2 w-full font-mono text-sm"
                 :disabled="saving || loading || !!pending" placeholder="192.168.1.0/24&#10;fc00::/7" />
-            <button type="button" class="btn btn-secondary" :disabled="!canCheck || !safety?.hostCidr"
-                @click="allowDevice">Allow this device only</button>
+            <div class="flex flex-wrap gap-2">
+                <button type="button" class="btn btn-secondary" :disabled="!canCheck || !safety?.hostCidr"
+                    @click="allowDevice">Allow this device only</button>
+                <button type="button" class="btn btn-secondary" :disabled="!canCheck" @click="preview">
+                    Check proposed networks
+                </button>
+            </div>
             <p v-if="hasGlobalRange" role="alert" class="text-sm text-danger">
                 Remove all /0 ranges before applying. They eliminate the admin network restriction
                 for that IP family, and the server will reject them.
             </p>
-            <button type="button" class="btn btn-secondary" :disabled="!canCheck" @click="preview">
-                Check proposed networks
-            </button>
             <p v-if="checked?.allowed" class="text-sm text-success" role="status">
                 The proposed list includes your current nginx-observed address. This does not guarantee
                 future access if your address, VPN, or proxy changes.
@@ -67,7 +74,7 @@
                 I understand this change can block my admin connection.
             </label>
         </template>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
             <button type="button" class="btn btn-secondary" :disabled="saving || loading" @click="load">
                 Reload admin networks
             </button>
@@ -96,7 +103,7 @@ import { useApi } from '../composables/useApi'
 
 const props = defineProps<{ connectionId: string }>()
 // Pin requests to the connection on which this keyed panel was opened.
-const { apiFetch } = useApi(props.connectionId)
+const { apiFetch, baseUrl } = useApi(props.connectionId, { transport: 'nginx-https' })
 const endpoint = '/api/admin/nginx-admin-cidrs'
 const text = ref('')
 const confirmed = ref(false)
@@ -235,7 +242,10 @@ async function load() {
         pending.value = readPending(data.pending)
         loaded.value = true
     } catch (e: unknown) {
-        error.value = status(e) === 404 ? 'This server does not support admin network settings yet.' : message(e)
+        error.value = status(e) === 404 ? 'This server does not support admin network settings yet.'
+            : e instanceof TypeError && status(e) === undefined
+                ? `Cannot reach the nginx HTTPS listener at ${baseUrl.value}. Check the server's HTTPS port, firewall, trusted admin networks, and certificate trust. ${message(e)}`
+                : message(e)
     } finally {
         loading.value = false
         scheduleRefresh()

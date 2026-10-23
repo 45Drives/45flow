@@ -1695,7 +1695,7 @@ const { linkListDefault } = useLinkListDefault();
 const { requestTour } = useTourManager();
 const { setCustomThemeColors, setCustomThemeEnabled } = useThemeFromAlias();
 const { toursDisabled } = useTourPreferences();
-const { connections, activeConnection } = useConnections();
+const { connections, activeConnection, updateConnection } = useConnections();
 const adminSession = computed(() => isAdminSession(activeConnection.value?.token));
 const { isPremiumActive, isTrial, isTrialExpired, isFallback, trialDaysRemaining, licenseInfo } = useLicenseStatus();
 
@@ -3380,7 +3380,21 @@ async function save() {
         const portChanged = externalHttpsPort.value !== savedHttpsPort.value;
         if (portChanged) {
             try {
+                const portConnection = activeConnection.value;
                 const applyResult = await apiFetch("/api/settings/apply-port", { method: "POST" });
+                const appliedPort = applyResult?.newPort ?? applyResult?.port;
+                if (!applyResult?.ok || typeof appliedPort !== "number"
+                    || !Number.isInteger(appliedPort) || appliedPort < 1 || appliedPort > 65535) {
+                    throw new Error("Server did not confirm the applied HTTPS port.");
+                }
+                if (portConnection) {
+                    const url = new URL(portConnection.baseUrl);
+                    if (url.protocol === "https:") url.port = String(appliedPort);
+                    updateConnection(portConnection.connectionId, {
+                        httpsPort: appliedPort,
+                        baseUrl: url.protocol === "https:" ? url.href.replace(/\/$/, "") : portConnection.baseUrl,
+                    });
+                }
                 if (applyResult?.changed) {
                     appLog.info('settings.port_applied', { port: externalHttpsPort.value });
                     pushNotification(
