@@ -1294,7 +1294,7 @@ function createWindow() {
       preload: join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
-      webviewTag: true,
+      webviewTag: false,
       javascript: true,
       backgroundThrottling: true,  // Enable throttling to reduce CPU when minimized
       webSecurity: true,                  // Enforces origin security
@@ -2047,8 +2047,9 @@ function createWindow() {
 }
 
 app.on('web-contents-created', (_event, contents) => {
-  contents.on('will-attach-webview', (_wawevent, webPreferences, _params) => {
-    webPreferences.preload = `${__dirname}/webview-preload.js`;
+  // 45Flow never embeds <webview>; refuse any attempt so injected content cannot get a preload.
+  contents.on('will-attach-webview', (event) => {
+    event.preventDefault();
   });
 });
 

@@ -33,7 +33,7 @@ __metadata:
     electron-builder: "npm:26.0.12"
     electron-log: "npm:^5.4.1"
     electron-osx-sign: "npm:^0.6.0"
-    electron-updater: "npm:6.7.3"
+    electron-updater: "npm:6.8.11"
     esbuild: "npm:^0.25.1"
     eventsource: "npm:^2"
     jsdom: "npm:^26.0.0"
@@ -3838,13 +3838,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"builder-util-runtime@npm:9.5.1":
-  version: 9.5.1
-  resolution: "builder-util-runtime@npm:9.5.1"
+"builder-util-runtime@npm:9.7.0":
+  version: 9.7.0
+  resolution: "builder-util-runtime@npm:9.7.0"
   dependencies:
     debug: "npm:^4.3.4"
     sax: "npm:^1.2.4"
-  checksum: 10c0/b6f95e18d7f6201f95b42658bb7c8e2d29f96d6beeef64c4c9f54ff9d71e6459ca55f325512da9fea23378b9804fcade8fcad88dab81ba3f96958c86492a2ca9
+  checksum: 10c0/4dac3788ce3776d268fd0cbfabe2d5168b8197fba90beda7fd2f729bfa51e689ffe0bf98b9162a1cac7f1191eb5bbcc6ca81bcbc5070df7a469fd7af511a1f31
   languageName: node
   linkType: hard
 
@@ -4814,11 +4814,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"electron-updater@npm:6.7.3":
-  version: 6.7.3
-  resolution: "electron-updater@npm:6.7.3"
+"electron-updater@npm:6.8.11":
+  version: 6.8.11
+  resolution: "electron-updater@npm:6.8.11"
   dependencies:
-    builder-util-runtime: "npm:9.5.1"
+    builder-util-runtime: "npm:9.7.0"
     fs-extra: "npm:^10.1.0"
     js-yaml: "npm:^4.1.0"
     lazy-val: "npm:^1.0.5"
@@ -4826,7 +4826,7 @@ __metadata:
     lodash.isequal: "npm:^4.5.0"
     semver: "npm:~7.7.3"
     tiny-typed-emitter: "npm:^2.1.0"
-  checksum: 10c0/02c4b6ea01783f0ef4f7a44d7642a13968e582b4b46142dd445cee9a1eeff2ceffa0aa9dbcb826611acd0c605d542b2dce5940da9a89aa8a60154a9b4d510031
+  checksum: 10c0/19dfdfe1031198759d06191ee218d3783855176234a035940a520fd99de638a4a0db88430c542e8b8d5b4e4899dde196a2a7b364509b92d77283f85996265f4f
   languageName: node
   linkType: hard
 
