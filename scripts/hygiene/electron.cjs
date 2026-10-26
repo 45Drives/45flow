@@ -1,13 +1,31 @@
 const fs = require('node:fs')
 const path = require('node:path')
-const { app, BrowserWindow, safeStorage, session } = require('electron')
-const { SecureTokenStore, registerSecureTokenHandlers } = require('./store.cjs')
-
 const config = JSON.parse(fs.readFileSync(process.env.HYGIENE_QA_CONFIG, 'utf8'))
 const checks = []
 let resultWritten = false
 let stage = 'Electron startup'
+let app
+let startupError
 
+function recordStage(nextStage) {
+  stage = nextStage
+  fs.writeFileSync(config.startupFile, JSON.stringify({
+    stage, electron: process.versions.electron, architecture: process.arch, error: startupError,
+  }), { mode: 0o600 })
+}
+
+// Record startup before importing bundled production code so bootstrap failures survive.
+recordStage('Electron QA entry point reached')
+process.on('uncaughtException', fail)
+process.on('unhandledRejection', fail)
+
+const electron = require('electron')
+app = electron.app
+const { BrowserWindow, safeStorage, session } = electron
+recordStage('Loading production credential store')
+const { SecureTokenStore, registerSecureTokenHandlers } = require('./store.cjs')
+
+recordStage('Configuring isolated Electron application')
 app.setName('45Flow Hygiene QA')
 app.setPath('userData', config.profile)
 app.commandLine.appendSwitch('disable-http-cache')
@@ -24,21 +42,24 @@ function finish(result) {
   fs.writeFileSync(config.result, JSON.stringify({
     phase: config.phase, ...result, checks: [...checks, ...(result.checks || [])],
   }), { mode: 0o600, flag: 'wx' })
-  app.exit(result.status === 'pass' ? 0 : result.status === 'blocked' ? 2 : 1)
+  const code = result.status === 'pass' ? 0 : result.status === 'blocked' ? 2 : 1
+  if (app) app.exit(code)
+  else process.exit(code)
 }
 
 // Keep synthetic secrets and potential assertion dumps out of child stdout/stderr.
 function fail(error) {
+  // Only synthetic test credentials are used; the parent redacts the canary and paths.
+  startupError = error instanceof Error ? `${error.name}: ${error.message}` : 'Unknown native startup error'
+  recordStage(stage)
   finish({
     status: 'fail', failedCheck: error?.qaCheck || stage,
     detail: 'Native QA assertion/operation failed; see failedCheck and completed check names.',
   })
 }
-process.on('uncaughtException', fail)
-process.on('unhandledRejection', fail)
-
+recordStage('Waiting for Electron app readiness')
 app.whenReady().then(async () => {
-  stage = 'Native secret-store initialization'
+  recordStage('Native secret-store initialization')
   const actualBackend = process.platform === 'linux' ? safeStorage.getSelectedStorageBackend() : process.platform
   const expectedBackend = { basic: 'basic_text', 'gnome-libsecret': 'gnome_libsecret', kwallet5: 'kwallet5', kwallet6: 'kwallet6' }[config.backend]
   const persistent = config.backend !== 'basic'
@@ -65,7 +86,7 @@ app.whenReady().then(async () => {
   })
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   registerSecureTokenHandlers(() => window.webContents)
-  stage = 'Production preload and renderer initialization'
+  recordStage('Production preload and renderer initialization')
   const page = path.join(config.appDirectory, 'renderer', 'index.html')
   await window.loadFile(page)
   const rendererResult = await window.webContents.executeJavaScript(`window.hygieneQa.run(${JSON.stringify({
@@ -75,7 +96,7 @@ app.whenReady().then(async () => {
     throw Object.assign(new Error('Renderer QA failed'), { qaCheck: rendererResult.failedCheck })
   }
   checks.push(...rendererResult.checks)
-  stage = 'Credential file and permission verification'
+  recordStage('Credential file and permission verification')
   await session.defaultSession.flushStorageData()
   if (config.phase !== 'seed') {
     const files = fs.existsSync(directory) ? fs.readdirSync(directory) : []
@@ -112,7 +133,7 @@ app.whenReady().then(async () => {
     // Exercise the production preload and IPC authorization after actual navigation.
     await window.webContents.executeJavaScript('window.electron.secureToken.status()')
     checks.push('Production preload and IPC allow the trusted main frame')
-    stage = 'Untrusted navigation IPC rejection'
+    recordStage('Untrusted navigation IPC rejection')
     await window.loadURL('data:text/html,<title>Untrusted QA document</title>')
     const denied = await window.webContents.executeJavaScript(`Promise.all([
       () => window.electron.secureToken.status(),

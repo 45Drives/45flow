@@ -192,6 +192,29 @@ node scripts/test-security-hygiene.cjs --scope desktop --output ./qa-results/lin
 
 Existing reports are never overwritten.
 
+### Native Electron exits before reporting (including macOS)
+
+Failure reports include `diagnostics`: the exit code, termination signal,
+spawn error code (for example `ENOENT`/`EACCES`), last startup stage, and bounded
+sanitized stdout/stderr. The report also records the host OS release; once the
+JS entry point is reached it records Electron's version and architecture.
+Synthetic credential canaries and the home/test-temporary paths are redacted.
+Review diagnostic text before sharing it, since OS messages can include other
+machine-specific information.
+
+If the stage is `Before the Electron QA entry point`, Electron exited before
+the native test code could run. The output may identify an OS compatibility,
+loader/signature, architecture or startup problem; do not assume it is a
+Keychain failure. No result is treated as a pass and no sandbox/signature bypass
+is applied. Rerun the updated runner on the affected machine:
+
+```sh
+node scripts/test-security-hygiene.cjs --scope desktop
+```
+
+Use the failing phase's `diagnostics` to decide the next fix. A longer timeout
+only helps if the process actually timed out waiting for an OS prompt.
+
 | Exit | Meaning |
 | --- | --- |
 | `0` | All selected automated groups passed |

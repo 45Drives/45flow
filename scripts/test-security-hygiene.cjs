@@ -42,7 +42,7 @@ function parseArgs(args) {
 
 function runProcess(command, args, { cwd = root, env = process.env, timeout = 90000 } = {}) {
   return new Promise(resolve => {
-    let stdout = '', stderr = '', timedOut = false, launchError = false
+    let stdout = '', stderr = '', timedOut = false, launchError = false, launchErrorCode = null
     // A dedicated process group lets a timeout stop only this helper and its children.
     const child = spawn(command, args, {
       cwd, env, windowsHide: true, shell: false, detached: process.platform !== 'win32',
@@ -66,12 +66,42 @@ function runProcess(command, args, { cwd = root, env = process.env, timeout = 90
         }
       }
     }, timeout)
-    child.on('error', () => { launchError = true })
+    child.on('error', error => {
+      launchError = true
+      launchErrorCode = error.code || 'UNKNOWN'
+    })
     child.on('close', (code, signal) => {
       clearTimeout(timer)
-      resolve({ code, signal, stdout, stderr, timedOut, launchError })
+      resolve({ code, signal, stdout, stderr, timedOut, launchError, launchErrorCode })
     })
   })
+}
+
+function sanitizeDiagnostic(value, { secret, temporary, home = os.homedir() } = {}) {
+  let text = String(value || '')
+  // Remove the generated canary before retaining any child output or error text.
+  for (const [needle, replacement] of [
+    [secret, '[REDACTED_QA_SECRET]'], [temporary, '[QA_TEMP]'], [home, '[HOME]'],
+  ]) {
+    if (needle) text = text.split(needle).join(replacement)
+  }
+  return text.replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, '')
+    .replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '').slice(-8192)
+}
+
+function nativeDiagnostics(execution, startup, redactions) {
+  return {
+    exitCode: execution.code,
+    signal: execution.signal,
+    timedOut: execution.timedOut,
+    launchErrorCode: execution.launchErrorCode,
+    lastStage: startup?.stage || 'Before the Electron QA entry point',
+    electron: startup?.electron,
+    electronArchitecture: startup?.architecture,
+    error: startup?.error ? sanitizeDiagnostic(startup.error, redactions) : undefined,
+    stderr: sanitizeDiagnostic(execution.stderr, redactions),
+    stdout: sanitizeDiagnostic(execution.stdout, redactions),
+  }
 }
 
 async function secretServiceProvider() {
@@ -164,17 +194,21 @@ async function nativeBackend(backend, temporary, appDirectory, timeout) {
     console.log(`  ${name}: ${phase} (a keyring permission/unlock prompt may appear)`)
     const configFile = path.join(temporary, `${name}-${phase}-config.json`)
     const result = path.join(temporary, `${name}-${phase}-result.json`)
-    fs.writeFileSync(configFile, JSON.stringify({ profile, backend, phase, result, appDirectory }), { mode: 0o600 })
+    const startupFile = path.join(temporary, `${name}-${phase}-startup.json`)
+    fs.writeFileSync(configFile, JSON.stringify({ profile, backend, phase, result, appDirectory, startupFile }), { mode: 0o600 })
     const env = { ...process.env, NODE_ENV: 'production', HYGIENE_QA_CONFIG: configFile, HYGIENE_QA_SECRET: secret }
     delete env.ELECTRON_RUN_AS_NODE
     delete env.NODE_OPTIONS
     delete env.ELECTRON_USER_DATA_DIR
     const execution = await runProcess(electron, [appDirectory], { env, timeout })
+    const startup = fs.existsSync(startupFile) ? JSON.parse(fs.readFileSync(startupFile, 'utf8')) : null
+    const diagnostics = nativeDiagnostics(execution, startup, { secret, temporary })
     if (!fs.existsSync(result)) {
       results.push({
         phase, status: 'blocked',
         detail: execution.timedOut ? 'Timed out waiting for Electron/keyring. Unlock/authorize the requested service and rerun.'
-          : 'Electron exited before producing a result. Verify a graphical desktop, Electron system libraries and sandbox support. No --no-sandbox bypass is used.',
+          : 'Electron exited before producing a result. See diagnostics for the exit code, signal, startup stage and sanitized child output. No security bypass was applied.',
+        diagnostics,
       })
       break
     }
@@ -189,6 +223,7 @@ async function nativeBackend(backend, temporary, appDirectory, timeout) {
       data.status = 'fail'
       data.detail = 'Electron result and process exit status disagree.'
     }
+    if (data.status !== 'pass') data.diagnostics = diagnostics
     results.push(data)
     if (data.status !== 'pass') break
     if (backend === 'gnome-libsecret' && phase === 'seed') {
@@ -235,7 +270,7 @@ See docs/security-hygiene-qa.md for scope and remaining live/manual checks.`)
   const results = []
   const report = {
     schemaVersion: 1, startedAt: new Date().toISOString(), platform: process.platform,
-    architecture: process.arch, node: process.versions.node, scope: options.scope,
+    architecture: process.arch, osRelease: os.release(), node: process.versions.node, scope: options.scope,
     linuxBackends: process.platform === 'linux' ? options.linuxBackends : undefined,
     results,
     notAutomated: [
@@ -302,6 +337,12 @@ See docs/security-hygiene-qa.md for scope and remaining live/manual checks.`)
     if (result.status !== 'pass') {
       const problem = result.phases?.find(phase => phase.status !== 'pass') || result
       console.log(`        ${problem.failedCheck || problem.detail || 'See JSON report.'}`)
+      if (problem.diagnostics) {
+        const diagnostic = problem.diagnostics
+        console.log(`        exit=${diagnostic.exitCode} signal=${diagnostic.signal || 'none'} launch=${diagnostic.launchErrorCode || 'ok'} stage=${diagnostic.lastStage}`)
+        if (diagnostic.error) console.log(`        ${diagnostic.error}`)
+        if (diagnostic.stderr) console.log(diagnostic.stderr)
+      }
     }
   }
   console.log(`Report: ${options.output}`)
@@ -309,7 +350,7 @@ See docs/security-hygiene-qa.md for scope and remaining live/manual checks.`)
   return report.status === 'pass' ? 0 : report.status === 'blocked' ? 2 : 1
 }
 
-module.exports = { parseArgs, runProcess, summaryStatus, main }
+module.exports = { parseArgs, runProcess, summaryStatus, sanitizeDiagnostic, nativeDiagnostics, main }
 if (require.main === module) {
   main().then(code => { process.exitCode = code }).catch(error => {
     console.error(`Hygiene QA: ${error.message}`)
