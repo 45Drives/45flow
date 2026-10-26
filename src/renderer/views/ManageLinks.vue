@@ -813,7 +813,7 @@
 	
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { useApi, apiFetchAll } from '../composables/useApi'
+import { useApi } from '../composables/useApi'
 import { useConnections } from '../composables/useConnections'
 import { useServerFilter } from '../composables/useServerFilter'
 import { useLinkRefreshSignal } from '../composables/useLinkRefresh'
@@ -880,7 +880,7 @@ const DEMO_LINKS: LinkItem[] = [
 
 const showingDemoData = computed(() => props.tourActive && rows.value.length === 0 && !loading.value)
 
-const { apiFetch, baseUrl, meta } = useApi()
+const { apiFetch, apiFetchAll, baseUrl, meta } = useApi()
 const { activeConnection, connections } = useConnections()
 const { selectedFilter, filteredConnections } = useServerFilter()
 

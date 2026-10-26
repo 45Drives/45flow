@@ -50,6 +50,9 @@
     </header>
 
 
+    <p v-if="credentialStorageNotice" role="status" class="px-4 py-2 text-sm bg-accent text-default">
+      {{ credentialStorageNotice }}
+    </p>
     <main class="flex-1 min-h-0 w-full overflow-hidden">
       <router-view />
     </main>
@@ -98,7 +101,7 @@ const ENABLE_TOUR = true
 const { activeTour, finishTour, cancelTour } = useTourManager()
 
 // Initialize multi-server connection management
-const { activeConnection } = useConnections()
+const { activeConnection, credentialStorageNotice } = useConnections()
 const { isPremiumActive, isUpdateEligible, isFallback, isTrial, isTrialExpired, trialDaysRemaining } = useLicenseStatus()
 const { activeProject } = useActiveProject()
 const { apiFetch } = useApi()
@@ -164,10 +167,7 @@ const { headerTitle } = useHeaderTitle()
 const hideTransfers = computed(() => route.meta.hideTransfers === true)
 const darkMode = useDarkModeState()
 
-const hasToken = computed(() => {
-  if (activeConnection.value?.token) return true
-  try { return !!sessionStorage.getItem('hb_token') } catch { return false }
-})
+const hasToken = computed(() => !!activeConnection.value?.token)
 
 provide(currentServerInjectionKey, currentServer)
 provide(divisionCodeInjectionKey, divisionCode)
@@ -180,7 +180,10 @@ provide(discoveryStateInjectionKey, discoveryState as DiscoveryState)
 // Use a writable ref so Connect2Server can set it during login before activeConnection exists
 const connectionMeta = ref<ConnectionMeta>({ port: 9095 })
 watch(activeConnection, (conn) => {
-  if (!conn) return
+  if (!conn) {
+    connectionMeta.value = { port: 9095 }
+    return
+  }
   connectionMeta.value = {
     token: conn.token,
     port: conn.apiPort,
@@ -188,7 +191,7 @@ watch(activeConnection, (conn) => {
     apiBase: conn.baseUrl,
     ssh: conn.ssh
   }
-}, { immediate: true })
+}, { immediate: true, deep: true })
 provide(connectionMetaInjectionKey, connectionMeta)
 
 const { currentDivision, currentTheme, setThemeControlsUnlocked } = useThemeFromAlias()

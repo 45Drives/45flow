@@ -585,7 +585,7 @@ import LogViewModal from '../components/modals/LogViewModal.vue'
 import CreateProjectModal from '../components/modals/CreateProjectModal.vue'
 import FolderPicker from '../components/FolderPicker.vue'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useApi, apiFetchAll } from '../composables/useApi'
+import { useApi } from '../composables/useApi'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { clearLastSession } from '../composables/useSessionPersistence'
 import { useConnections } from '../composables/useConnections'
@@ -599,7 +599,7 @@ import { useThemeFromAlias } from '../composables/useThemeFromAlias'
 
 useHeader('Dashboard')
 const { to } = useResilientNav()
-const { apiFetch } = useApi()
+const { apiFetch, apiFetchAll } = useApi()
 const transfer = useTransferProgress()
 const { activeConnection, updateConnection, setActive } = useConnections()
 const isRootUser = computed(() => activeConnection.value?.username === 'root')
@@ -1088,9 +1088,11 @@ watch(selectedFilter, () => {
 })
 
 // ── Navigation ──
-const leaveServer = () => {
-	if (activeConnection.value) {
-		updateConnection(activeConnection.value.connectionId, {
+const leaveServer = async () => {
+	const connection = activeConnection.value
+	if (connection) {
+		await useConnections().clearConnectionCredentials(connection.connectionId)
+		updateConnection(connection.connectionId, {
 			status: 'disconnected',
 			lastError: 'User logged out'
 		})

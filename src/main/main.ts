@@ -387,6 +387,7 @@ import { registerTranscodeOutputUploadHandlers } from './transfers/transcode-out
 import { TranscodeManager } from './transcoding/TranscodeManager';
 import { FullTranscodeManager } from './transcoding/FullTranscodeManager';
 import { initAutoUpdates } from './updates';
+import { registerSecureTokenHandlers } from './secureTokens';
 
 // ── Client install ID (must be initialized early for SSH key comments) ──
 const idFile = path.join(app.getPath('userData'), 'client-id.txt');
@@ -2123,6 +2124,8 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle("is-dev", async () => process.env.NODE_ENV === 'development');
+  registerSecureTokenHandlers(() =>
+    mainWindowRef && !mainWindowRef.isDestroyed() ? mainWindowRef.webContents : null);
 
   ipcMain.handle('dialog:openFolder', async () => {
     const parent = (mainWindowRef && !mainWindowRef.isDestroyed()) ? mainWindowRef : undefined;

@@ -2,7 +2,8 @@
 // Persists manual servers and the last successful session so users
 // don't have to re-enter connection details every time they open the app.
 
-import type { Server, ConnectionMeta } from '../types'
+import type { Server } from '../types'
+import { useConnections } from './useConnections'
 
 const MANUAL_SERVERS_KEY = 'hb_saved_manual_servers_v1'
 const LAST_SESSION_KEY  = 'hb_last_session_v1'
@@ -47,7 +48,7 @@ export function removeSavedManualServer(ip: string) {
   try { localStorage.setItem(MANUAL_SERVERS_KEY, JSON.stringify(list)) } catch { /* ignore */ }
 }
 
-// ─── Last-session persistence ────────────────────────────────────
+// ─── In-memory compatibility view of the securely restored session ──
 
 export interface SavedSession {
   serverIp: string
@@ -62,21 +63,19 @@ export interface SavedSession {
 }
 
 export function loadLastSession(): SavedSession | null {
-  try {
-    const raw = localStorage.getItem(LAST_SESSION_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    if (parsed && typeof parsed === 'object' && parsed.serverIp && parsed.token) {
-      return parsed as SavedSession
-    }
-    return null
-  } catch {
-    return null
+  const connection = useConnections().activeConnection.value
+  if (!connection?.token) return null
+  return {
+    serverIp: connection.serverIp,
+    serverName: connection.serverName || connection.name,
+    username: connection.username,
+    token: connection.token,
+    apiPort: connection.apiPort,
+    sshPort: connection.sshPort,
+    httpsPort: connection.httpsPort,
+    apiBase: connection.baseUrl,
+    savedAt: connection.tokenIssuedAt,
   }
-}
-
-export function saveLastSession(session: SavedSession) {
-  try { localStorage.setItem(LAST_SESSION_KEY, JSON.stringify(session)) } catch { /* ignore */ }
 }
 
 export function clearLastSession() {

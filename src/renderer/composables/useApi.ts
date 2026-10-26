@@ -25,6 +25,7 @@ type ApiInit = RequestInit & {
     retryDelayMs?: number
     parse?: 'json' | 'text' | 'auto' | 'blob'
     suppressAuthRedirect?: boolean
+    _isReauth?: boolean
     /** Opt in only for admin APIs with explicit, useful operational error messages. */
     exposeServerMessage?: boolean
 }
@@ -60,7 +61,7 @@ async function parseAuto(res: Response, mode: 'json' | 'text' | 'auto' = 'auto')
     return res.text()
 }
 
-let authRedirectInFlight = false
+const SESSION_EXPIRED_MESSAGE = 'Login token expired or is no longer valid. Please log in again.'
 
 /**
  * Create API client for a specific connection (or active connection if not specified)
@@ -68,7 +69,14 @@ let authRedirectInFlight = false
  * @param options - Opt into nginx HTTPS for APIs that require verified proxy context.
  */
 export function useApi(connectionId?: string, options: { transport?: 'nginx-https' } = {}) {
-    const router = useRouter()
+    return createApiClient(useRouter(), connectionId, options)
+}
+
+function createApiClient(
+    router: ReturnType<typeof useRouter>,
+    connectionId?: string,
+    options: { transport?: 'nginx-https' } = {},
+) {
     const { activeConnection, getConnection, updateConnection } = useConnections()
 
     // Resolve connection: use specified ID or fall back to active
@@ -146,13 +154,14 @@ export function useApi(connectionId?: string, options: { transport?: 'nginx-http
         const requestBaseUrl = baseUrl.value
         if (!requestBaseUrl) throw new Error('API base URL is not set')
         await prepareCertificate(conn, requestBaseUrl)
+        const requestToken = conn.token
 
         const headers = new Headers(init.headers || {})
         if (init.body && !headers.has('Content-Type') && !(init.body instanceof FormData)) {
             headers.set('Content-Type', 'application/json')
         }
-        if (token.value && !headers.has('Authorization')) {
-            headers.set('Authorization', `Bearer ${token.value}`)
+        if (requestToken && !headers.has('Authorization')) {
+            headers.set('Authorization', `Bearer ${requestToken}`)
         }
 
         const urlPath = path.startsWith('/') ? path : `/${path}`
@@ -188,7 +197,7 @@ export function useApi(connectionId?: string, options: { transport?: 'nginx-http
                     }
 
                     // Attempt silent re-auth if we have a saved password
-                    if (conn.savedPassword && conn.username && !init._isReauth) {
+                    if (conn.token === requestToken && conn.savedPassword && conn.username && !init._isReauth) {
                         try {
                             const loginRes = await fetch(`${requestBaseUrl}/api/login`, {
                                 method: 'POST',
@@ -197,41 +206,46 @@ export function useApi(connectionId?: string, options: { transport?: 'nginx-http
                             })
                             if (loginRes.ok) {
                                 const loginData = await loginRes.json()
-                                if (loginData.token) {
+                                if (loginData.token && conn.token === requestToken) {
                                     updateConnection(conn.connectionId, {
                                         token: loginData.token,
+                                        tokenIssuedAt: Date.now(),
                                         status: 'connected',
                                         lastError: undefined,
                                     })
                                     clearTimeout(timer)
                                     // Retry the original request with the new token
-                                    return apiFetch(path, { ...init, _isReauth: true } as any)
+                                    return apiFetch(path, { ...init, _isReauth: true })
                                 }
                             }
                         } catch {
-                            // Re-auth failed, fall through to normal disconnect
+                            window.appLog?.warn('auth.reauthentication-failed', { connectionId: conn.connectionId })
                         }
                     }
 
-                    // Mark this connection as disconnected
-                    updateConnection(conn.connectionId, { 
-                        status: 'disconnected',
-                        lastError: 'Session expired'
-                    })
-
-                    // Clear old session storage (legacy cleanup)
-                    clearLastSession()
-
-                    if (!authRedirectInFlight) {
-                        authRedirectInFlight = true
-                        pushNotification(new Notification('Session expired', `Please log in again to ${conn.name}.`, 'warning', 8000))
-                        router.push({ name: 'server-selection' }).finally(() => {
-                            setTimeout(() => { authRedirectInFlight = false }, 500)
+                    // A late response must not clear a newer login or restore a logged-out session.
+                    if (requestToken && conn.token === requestToken) {
+                        updateConnection(conn.connectionId, {
+                            token: '',
+                            savedPassword: undefined,
+                            status: 'disconnected',
+                            lastError: SESSION_EXPIRED_MESSAGE
                         })
+
+                        pushNotification(new Notification(
+                            'Login token expired',
+                            `${conn.name || conn.serverIp}: ${SESSION_EXPIRED_MESSAGE}`,
+                            'warning',
+                            8000,
+                        ))
+                        if (activeConnection.value?.connectionId === conn.connectionId) {
+                            clearLastSession()
+                            await router.push({ name: 'server-selection' })
+                        }
                     }
 
                     clearTimeout(timer)
-                    const e = Object.assign(new Error('Unauthorized'), { status: 401 })
+                    const e = Object.assign(new Error(SESSION_EXPIRED_MESSAGE), { status: 401 })
                     throw e
                 }
 
@@ -334,7 +348,11 @@ export function useApi(connectionId?: string, options: { transport?: 'nginx-http
         throw lastErr
     }
 
-    return { baseUrl, apiFetch, meta, connection }
+    return {
+        baseUrl, apiFetch, meta, connection,
+        apiFetchAll: <T = any>(connections: Connection[], path: string, init: ApiInit = {}) =>
+            fetchAll<T>(connections, path, init, conn => createApiClient(router, conn.connectionId).apiFetch),
+    }
 }
 
 /**
@@ -345,87 +363,29 @@ export function useApi(connectionId?: string, options: { transport?: 'nginx-http
  * @param init - Fetch options
  * @returns Array of ServerResult objects with success/error status per server
  */
-export async function apiFetchAll<T = any>(
+async function fetchAll<T>(
     connections: Connection[],
     path: string,
-    init: ApiInit = {}
+    init: ApiInit,
+    requestFor: (connection: Connection) => (path: string, init: ApiInit) => Promise<T>,
 ): Promise<ServerResult<T>[]> {
     if (!connections.length) {
         return []
     }
 
-    // Fetch from each connection directly without using useApi() composable
     const promises = connections.map(async (conn): Promise<ServerResult<T>> => {
         try {
             if (!conn.baseUrl || !conn.token) {
                 throw new Error('Invalid connection: missing baseUrl or token')
             }
 
-            const headers = new Headers(init.headers || {})
-            if (init.body && !headers.has('Content-Type') && !(init.body instanceof FormData)) {
-                headers.set('Content-Type', 'application/json')
-            }
-            if (conn.token && !headers.has('Authorization')) {
-                headers.set('Authorization', `Bearer ${conn.token}`)
-            }
-
-            const urlPath = path.startsWith('/') ? path : `/${path}`
-            const url = `${conn.baseUrl}${urlPath}`
-            const method = (init.method || 'GET').toUpperCase()
-            const timeoutMs = init.timeoutMs ?? DEFAULT_TIMEOUT
-
-            const ctrl = new AbortController()
-            const timer = setTimeout(() => ctrl.abort(new DOMException('Timeout', 'AbortError')), timeoutMs)
-
-            try {
-                const res = await fetch(url, { ...init, method, headers, signal: ctrl.signal })
-                clearTimeout(timer)
-
-                if (res.status === 401) {
-                    throw Object.assign(new Error('Unauthorized'), { status: 401 })
-                }
-
-                if (!res.ok) {
-                    const detail = await res.text().catch(() => res.statusText)
-                    let parsed: any = null
-                    try { parsed = detail ? JSON.parse(detail) : null } catch { parsed = null }
-                    
-                    const parsedError = parsed && typeof parsed.error === 'string' ? parsed.error : ''
-                    const parsedMessage = parsed && typeof parsed.message === 'string' ? parsed.message : ''
-                    const baseMessage = parsedError || parsedMessage || detail || `HTTP ${res.status}`
-                    
-                    throw Object.assign(new Error(baseMessage), { status: res.status })
-                }
-
-                const parseMode = init.parse ?? 'auto'
-                let data: any
-
-                if (parseMode === 'text') {
-                    data = await res.text()
-                } else if (parseMode === 'blob') {
-                    data = await res.blob()
-                } else {
-                    const ct = res.headers.get('Content-Type') || ''
-                    if (/json/.test(ct)) {
-                        data = await res.json()
-                    } else if (/text/.test(ct)) {
-                        data = await res.text()
-                    } else if (res.status === 204) {
-                        data = null
-                    } else {
-                        data = await res.text()
-                    }
-                }
-
-                return {
-                    connectionId: conn.connectionId,
-                    serverName: conn.name,
-                    serverIp: conn.serverIp,
-                    success: true,
-                    data
-                }
-            } finally {
-                clearTimeout(timer)
+            const data = await requestFor(conn)(path, init)
+            return {
+                connectionId: conn.connectionId,
+                serverName: conn.name,
+                serverIp: conn.serverIp,
+                success: true,
+                data,
             }
         } catch (err: any) {
             return {

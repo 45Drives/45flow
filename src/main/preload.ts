@@ -1,5 +1,6 @@
 // preload.ts
 import { contextBridge, ipcRenderer, IpcRendererEvent, webUtils } from 'electron'
+import type { SecureTokenApi } from '../shared/secureTokens'
 
 const genId = () => Math.random().toString(36).slice(2)
 
@@ -125,6 +126,7 @@ export type FullTranscodeResult = {
 
 /** Shape exposed on window.electron */
 export type ElectronApi = {
+  secureToken: SecureTokenApi
   ipcRenderer: {
     send: (channel: string, data?: any) => void
     on: (channel: string, listener: (event: IpcRendererEvent, ...args: any[]) => void) => void
@@ -216,6 +218,12 @@ export type ElectronApi = {
 
 /** ===== Implementation ===== */
 const api: ElectronApi = {
+  secureToken: {
+    status: () => ipcRenderer.invoke('secureToken:status'),
+    get: id => ipcRenderer.invoke('secureToken:get', id),
+    set: (id, credentials) => ipcRenderer.invoke('secureToken:set', id, credentials),
+    clear: id => ipcRenderer.invoke('secureToken:clear', id),
+  },
   ipcRenderer: {
     send: (channel, data) => ipcRenderer.send(channel, data),
     on: (channel, listener) => ipcRenderer.on(channel, (_e, ...args) => listener(_e, ...args)),

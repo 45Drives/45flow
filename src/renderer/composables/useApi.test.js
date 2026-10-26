@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive, ref } from 'vue'
 
-const mocks = vi.hoisted(() => ({ connections: [], activeConnection: null, updateConnection: vi.fn() }))
-vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+const mocks = vi.hoisted(() => ({
+    connections: [], activeConnection: null, updateConnection: vi.fn(),
+    push: vi.fn(async () => undefined),
+}))
+vi.mock('vue-router', () => ({ useRouter: () => ({ push: mocks.push }) }))
 vi.mock('@45drives/houston-common-ui', () => ({ pushNotification: vi.fn(), Notification: vi.fn() }))
 vi.mock('./useSessionPersistence', () => ({ clearLastSession: vi.fn() }))
 vi.mock('./useConnections', () => ({
@@ -13,12 +16,18 @@ vi.mock('./useConnections', () => ({
     }),
 }))
 import { useApi } from './useApi'
+import { Notification, pushNotification } from '@45drives/houston-common-ui'
+import { clearLastSession } from './useSessionPersistence'
 
 beforeEach(() => {
+    vi.clearAllMocks()
     mocks.connections = [reactive({
         connectionId: 'test-connection', baseUrl: 'https://test.invalid', token: 'session', apiPort: 9095,
     })]
     mocks.activeConnection = ref(mocks.connections[0])
+    mocks.updateConnection.mockImplementation((id, updates) => {
+        Object.assign(mocks.connections.find(c => c.connectionId === id), updates)
+    })
 })
 afterEach(() => {
     vi.unstubAllGlobals()
@@ -178,6 +187,142 @@ describe('admin API error propagation without changing existing defaults', () =>
         }), { status: 403, headers: { 'Content-Type': 'application/json' } })))
         await expect(useApi().apiFetch('/api/admin/nginx-admin-cidrs'))
             .rejects.toMatchObject({ status: 403, code: 'admin_required', message: 'Admin access required.' })
+    })
+
+    describe('credential lifecycle after authentication failures', () => {
+        it.each(['single', 'multi-server'])('notifies and disconnects an expired active session through %s requests', async mode => {
+            vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 401 })))
+            const { apiFetch, apiFetchAll } = useApi()
+            if (mode === 'single') {
+                await expect(apiFetch('/api/links', { retry: 0 })).rejects.toMatchObject({
+                    status: 401, message: expect.stringContaining('Please log in again'),
+                })
+            } else {
+                await expect(apiFetchAll(mocks.connections, '/api/links', { retry: 0 })).resolves.toEqual([
+                    expect.objectContaining({ success: false, error: expect.stringContaining('Please log in again') }),
+                ])
+            }
+            expect(mocks.connections[0]).toMatchObject({ token: '', savedPassword: undefined, status: 'disconnected' })
+            expect(Notification).toHaveBeenCalledWith(
+                'Login token expired', expect.stringContaining('Please log in again'), 'warning', 8000,
+            )
+            expect(pushNotification).toHaveBeenCalledOnce()
+            expect(mocks.push).toHaveBeenCalledWith({ name: 'server-selection' })
+            expect(clearLastSession).toHaveBeenCalledOnce()
+        })
+
+        it('does not redirect the active server when another server expires in a multi-server list', async () => {
+            mocks.connections.push(reactive({
+                connectionId: 'other-server', name: 'Other server', baseUrl: 'https://other.invalid', token: 'other-token',
+            }))
+            vi.stubGlobal('fetch', vi.fn(async url => url.startsWith('https://other.invalid')
+                ? new Response('{}', { status: 401 })
+                : new Response('{"items":[]}', { headers: { 'Content-Type': 'application/json' } })))
+            const results = await useApi().apiFetchAll(mocks.connections, '/api/links')
+            expect(results[0]).toMatchObject({ success: true, data: { items: [] } })
+            expect(results[1]).toMatchObject({ success: false, error: expect.stringContaining('Please log in again') })
+            expect(mocks.connections[0].token).toBe('session')
+            expect(mocks.connections[1].token).toBe('')
+            expect(pushNotification).toHaveBeenCalledOnce()
+            expect(mocks.push).not.toHaveBeenCalled()
+            expect(clearLastSession).not.toHaveBeenCalled()
+        })
+
+        it('notifies and redirects only once for simultaneous expired requests', async () => {
+            vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 401 })))
+            const { apiFetch } = useApi()
+            await Promise.allSettled([apiFetch('/api/links'), apiFetch('/api/projects')])
+            expect(pushNotification).toHaveBeenCalledOnce()
+            expect(mocks.push).toHaveBeenCalledOnce()
+        })
+
+        it('preserves caller-managed authentication failures', async () => {
+            vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 401 })))
+            await expect(useApi().apiFetch('/api/status', { suppressAuthRedirect: true }))
+                .rejects.toMatchObject({ status: 401 })
+            expect(mocks.updateConnection).not.toHaveBeenCalled()
+            expect(pushNotification).not.toHaveBeenCalled()
+            expect(mocks.push).not.toHaveBeenCalled()
+        })
+
+        it('reauthenticates multi-server link lists with a remembered password', async () => {
+            Object.assign(mocks.connections[0], { username: 'admin', savedPassword: 'remembered-secret' })
+            const fetch = vi.fn()
+                .mockResolvedValueOnce(new Response('{}', { status: 401 }))
+                .mockResolvedValueOnce(new Response(JSON.stringify({ token: 'refreshed-token' })))
+                .mockResolvedValueOnce(new Response('{"items":[]}', { headers: { 'Content-Type': 'application/json' } }))
+            vi.stubGlobal('fetch', fetch)
+            await expect(useApi().apiFetchAll(mocks.connections, '/api/links')).resolves.toEqual([
+                expect.objectContaining({ success: true, data: { items: [] } }),
+            ])
+            expect(mocks.connections[0]).toMatchObject({
+                token: 'refreshed-token', savedPassword: 'remembered-secret', tokenIssuedAt: expect.any(Number),
+            })
+            expect(pushNotification).not.toHaveBeenCalled()
+            expect(mocks.push).not.toHaveBeenCalled()
+        })
+
+        it('updates the token and issue time after remembered-password reauthentication', async () => {
+            Object.assign(mocks.connections[0], { username: 'admin', savedPassword: 'remembered-secret' })
+            mocks.updateConnection.mockImplementation((id, updates) => {
+                Object.assign(mocks.connections.find(c => c.connectionId === id), updates)
+            })
+            const fetch = vi.fn()
+                .mockResolvedValueOnce(new Response('{}', { status: 401 }))
+                .mockResolvedValueOnce(new Response(JSON.stringify({ token: 'refreshed-token' })))
+                .mockResolvedValueOnce(new Response('{"ok":true}', { headers: { 'Content-Type': 'application/json' } }))
+            vi.stubGlobal('fetch', fetch)
+            await expect(useApi('test-connection').apiFetch('/api/settings', { retry: 0 })).resolves.toEqual({ ok: true })
+            expect(mocks.updateConnection).toHaveBeenCalledWith('test-connection', expect.objectContaining({
+                token: 'refreshed-token', tokenIssuedAt: expect.any(Number), status: 'connected',
+            }))
+            expect(new Headers(fetch.mock.calls[2][1].headers).get('Authorization')).toBe('Bearer refreshed-token')
+        })
+
+        it.each(['single', 'multi-server'])('clears both credentials if reauthentication is rejected through %s requests', async mode => {
+            Object.assign(mocks.connections[0], { username: 'admin', savedPassword: 'rejected-secret' })
+            vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 401 })))
+            const { apiFetch, apiFetchAll } = useApi('test-connection')
+            if (mode === 'single') {
+                await expect(apiFetch('/api/settings', { retry: 0 })).rejects.toMatchObject({ status: 401 })
+            } else {
+                await expect(apiFetchAll(mocks.connections, '/api/links', { retry: 0 })).resolves.toEqual([
+                    expect.objectContaining({ success: false, error: expect.stringContaining('Please log in again') }),
+                ])
+            }
+            expect(mocks.updateConnection).toHaveBeenCalledWith('test-connection', expect.objectContaining({
+                token: '', savedPassword: undefined, status: 'disconnected',
+            }))
+            expect(pushNotification).toHaveBeenCalledOnce()
+            expect(mocks.push).toHaveBeenCalledWith({ name: 'server-selection' })
+        })
+
+        it('does not clear a newer login when a request using an old token returns 401', async () => {
+            vi.stubGlobal('fetch', vi.fn(async () => {
+                mocks.connections[0].token = 'newer-login'
+                return new Response('{}', { status: 401 })
+            }))
+            await expect(useApi('test-connection').apiFetch('/api/settings', { retry: 0 }))
+                .rejects.toMatchObject({ status: 401 })
+            expect(mocks.updateConnection).not.toHaveBeenCalled()
+            expect(mocks.connections[0].token).toBe('newer-login')
+            expect(pushNotification).not.toHaveBeenCalled()
+            expect(mocks.push).not.toHaveBeenCalled()
+        })
+
+        it('does not restore credentials when logout occurs during remembered-password login', async () => {
+            Object.assign(mocks.connections[0], { username: 'admin', savedPassword: 'remembered-secret' })
+            vi.stubGlobal('fetch', vi.fn()
+                .mockResolvedValueOnce(new Response('{}', { status: 401 }))
+                .mockImplementationOnce(async () => {
+                    mocks.connections[0].token = ''
+                    mocks.connections[0].savedPassword = undefined
+                    return new Response(JSON.stringify({ token: 'late-login-token' }))
+                }))
+            await expect(useApi('test-connection').apiFetch('/api/settings', { retry: 0 }))
+                .rejects.toMatchObject({ status: 401 })
+            expect(mocks.updateConnection).not.toHaveBeenCalled()
+        })
     })
 
     it('allows explicit admin operational messages but keeps existing generic 500 behavior', async () => {

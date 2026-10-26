@@ -1,6 +1,7 @@
 // src/types/electron.d.ts
 
 import type { IpcRendererEvent } from 'electron'
+import type { SecureTokenApi } from '../../shared/secureTokens'
 
 export type UploadResult = { ok?: boolean; path?: string; error?: string }
 export type ProgressPayload = { percent: number; speed?: string; eta?: string }
@@ -250,6 +251,7 @@ export type FullTranscodeResult = {
 }
 
 export interface ElectronApi {
+  secureToken?: SecureTokenApi
   ipcRenderer: {
     send: (channel: string, data?: any) => void
     on: (
