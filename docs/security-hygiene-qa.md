@@ -226,6 +226,44 @@ desktop-only report is not a server certificate/cookie sign-off.
 
 ## Still required for release/deployment sign-off
 
+### Project phase handoff
+
+This thread is an implementation phase, not a release. The automated reports
+reviewed on 2026-10-26 passed for Linux x64 (KWallet 5, verified GNOME Keyring
+and rejected `basic_text` persistence), Windows x64 (DPAPI), macOS ARM64
+(Keychain), and the isolated Linux server regression suites.
+
+The following checks are deliberately deferred to the project's full
+testing/validation phase. They are not prerequisites for closing this
+implementation thread, and must not be represented as already passed.
+No new signed package or publication is required solely to close this thread.
+
+Full validation should use the final release-candidate builds and server
+deployment, rerun the automated runner, and record PASS / FAIL / NOT EXERCISED
+with build versions and sanitized evidence:
+
+- [ ] On each supported OS/architecture, install the release candidate using
+  the normal signing/package-verification process and test in-place upgrade.
+- [ ] On each OS, verify login persists after full app exit and reboot, and
+  explicit logout remains effective after restart.
+- [ ] On each OS, test copied-profile isolation between disposable OS accounts.
+- [ ] On Linux and macOS, exercise genuinely locked/denied keyring access,
+  visible failure/memory-only behavior and recovery after unlocking.
+- [ ] On the lab deployment, test live token expiry/reauthentication and
+  licensed/unlicensed compatibility.
+- [ ] Through live nginx HTTPS, inspect cookie attributes and test browser
+  session behavior, link expiry/disablement and the independent cookie expiry
+  cap. Browser session restoration may preserve a session cookie.
+- [ ] On the lab server, verify SAN changes and forced self-signed regeneration
+  preserve SPKI, and that a fresh HTTPS connection receives the new certificate.
+- [ ] On a dedicated lab ACME lineage, verify an actual renewal preserves SPKI
+  and the deployment hook serves the renewed certificate; a dry-run alone is
+  insufficient.
+
+Live server checks need not be repeated per desktop OS, except where browser
+coverage or platform-specific behavior warrants it. macOS Intel and any other
+release architectures not covered by the recorded runs remain unverified.
+
 These are explicitly listed as `notAutomated` in every report:
 
 - Installed, signed application identity/Keychain authorization, OS reboot and
