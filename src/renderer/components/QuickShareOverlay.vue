@@ -381,7 +381,7 @@ const { isPremiumActive } = useLicenseStatus()
 const { getDefaultCategories } = useCommentCategories()
 
 // ── Tour ──
-const { requestTour } = useTourManager()
+const { requestTour, cancelTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()
 
 /** Cleanup helper — reset all Quick Share tour state */
@@ -634,6 +634,10 @@ onBeforeUnmount(() => {
   document.removeEventListener('dragover', onDocDragOver)
   document.removeEventListener('dragleave', onDocDragLeave)
   document.removeEventListener('drop', onDocDrop)
+  pendingDropFiles = []
+  cancelTour('quickShare')
+  cleanupQuickShareTour()
+  quickShareOverlayOpen.value = false
 })
 
 // ── Modal state ──

@@ -59,7 +59,7 @@ export function useLicenseStatus() {
 
   const isTrial = computed<boolean>(() => {
     const info = licenseInfo.value
-    if (!info) return false
+    if (!info || !isUpdateEligible.value || isTrialExpired.value) return false
     return info.notes === 'trial' && !info.perpetual && !!info.expiresAt
   })
 

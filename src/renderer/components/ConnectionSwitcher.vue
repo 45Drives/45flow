@@ -201,12 +201,14 @@ function isTrialLicense(conn: any): boolean {
 }
 
 function licenseBadgeLabel(conn: any): string {
+  if (!conn.licensed && conn.licenseFallback) return 'Pro Legacy'
   if (!conn.licensed) return 'Community'
   if (isTrialLicense(conn)) return 'Pro Trial'
   return 'Pro'
 }
 
 function licenseBadgeClass(conn: any): string {
+  if (!conn.licensed && conn.licenseFallback) return 'bg-amber-600'
   if (!conn.licensed) return 'bg-gray-500'
   if (isTrialLicense(conn)) return 'bg-blue-500'
   return 'bg-green-600'

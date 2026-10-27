@@ -627,7 +627,7 @@
                         <!-- ═══ Go Pro / Upgrade ══════════════════════════════ -->
                         <template v-if="activeSection === 'upgrade'">
                             <!-- Full license active (non-trial) -->
-                            <div v-if="isPremiumActive && !isTrial" class="space-y-3">
+                            <div v-if="isPremiumActive && !isFallback && !isTrial" class="space-y-3">
                                 <div class="rounded-lg border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 p-4">
                                     <div class="flex items-center gap-2 mb-2">
                                         <div class="text-sm font-semibold text-green-800 dark:text-green-400">Pro Edition Active</div>
@@ -757,7 +757,7 @@
                                         <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400">Legacy Mode</span>
                                     </div>
                                     <div class="text-sm text-amber-700 dark:text-amber-400 space-y-1">
-                                        <p>Your Pro license has expired. Premium features remain available at your current app version, but app updates are paused until you renew.</p>
+                                        <p>Your Pro license has expired. Premium features remain available at your current version, but app and server updates are paused until you renew.</p>
                                         <p v-if="licenseInfo?.expiresAt" class="text-xs opacity-80">
                                             Expired: {{ new Date(licenseInfo.expiresAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) }}
                                         </p>

@@ -632,7 +632,7 @@ async function checkLicenseStatus(apiBase: string, token: string): Promise<{ lic
     } else if (!licensed && licenseFallback) {
         pushNotification(new Notification(
             'License Expired',
-            'Your license has expired. Premium features remain available at your current version, but app updates are paused until you renew.',
+            'Your license has expired. Premium features remain available at your current version, but app and server updates are paused until you renew.',
             'warning',
             9000
         ))
@@ -1021,7 +1021,7 @@ async function connectToServer() {
             .catch(() => { /* best-effort */ })
 
         // Fire-and-forget: check for broadcaster package updates via API (runs in background)
-        checkBroadcasterUpdateInBackground(apiBase, token, effectiveServer?.name || ip);
+        checkBroadcasterUpdateInBackground(apiBase, token, effectiveServer?.name || ip, !licenseResult.licensed && licenseResult.licenseFallback);
 
         to('dashboard');
     } catch (e: any) {
@@ -1207,7 +1207,7 @@ onMounted(async () => {
         statusLine.value = ''
         isBusy.value = false
 
-        checkBroadcasterUpdateInBackground(saved.apiBase, saved.token, saved.serverName || saved.serverIp)
+        checkBroadcasterUpdateInBackground(saved.apiBase, saved.token, saved.serverName || saved.serverIp, !restoredLicense.licensed && restoredLicense.licenseFallback)
         to('dashboard')
     } catch (err: any) {
         // Network error (server unreachable) — keep saved credentials so user
@@ -1230,7 +1230,7 @@ onUnmounted(() => {
  * Fires after login — never blocks the user. Shows a persistent notification
  * with an "Install Update" action if a newer version is available.
  */
-async function checkBroadcasterUpdateInBackground(apiBase: string, token: string, serverName: string) {
+async function checkBroadcasterUpdateInBackground(apiBase: string, token: string, serverName: string, licenseExpiryNotified: boolean) {
     try {
         const hdrs = { 'Authorization': `Bearer ${token}` };
 
@@ -1246,12 +1246,14 @@ async function checkBroadcasterUpdateInBackground(apiBase: string, token: string
         // Entitlement expired — server won't offer updates
         if (data.entitlementExpired) {
             window.appLog?.info('broadcaster-update-check.entitlement-expired', { expiresAt: data.expiresAt });
-            pushNotification(new Notification(
-                'Update Entitlement Expired',
-                `Your update entitlement expired on ${data.expiresAt ? new Date(data.expiresAt).toLocaleDateString() : 'N/A'}. Renew your license to receive server updates.`,
-                'warning',
-                15000,
-            ));
+            if (!licenseExpiryNotified) {
+                pushNotification(new Notification(
+                    'Update Entitlement Expired',
+                    `Your update entitlement expired on ${data.expiresAt ? new Date(data.expiresAt).toLocaleDateString() : 'N/A'}. Renew your license to receive server updates.`,
+                    'warning',
+                    15000,
+                ));
+            }
             return;
         }
 

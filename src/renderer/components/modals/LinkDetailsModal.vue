@@ -6,7 +6,7 @@
       class="absolute inset-x-0 top-12 mx-auto w-11/12 max-w-5xl bg-accent border border-default rounded-lg shadow-lg z-50 flex flex-col max-h-[calc(100vh-4rem)]">
       <!-- Header -->
       <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-default shrink-0 min-w-0" data-tour="link-details-header">
-        <h3 class="text-lg font-semibold truncate min-w-0">
+        <h3 class="text-lg font-semibold truncate min-w-0" :title="link?.title || (link && fallbackTitle(link))">
           Link Details — {{ link?.title || (link && fallbackTitle(link)) }}
         </h3>
 
@@ -127,14 +127,14 @@
         <section class="space-y-3 rounded-lg border border-default bg-default/10 p-3" data-tour="link-details-config">
           <div class="text-default font-semibold">Link Configuration</div>
           <div class="grid grid-cols-3">
-            <div class="rounded-lg border border-default bg-default/20 p-3 space-y-3">
+            <div class="min-w-0 rounded-lg border border-default bg-default/20 p-3 space-y-3">
               <div>
                 <label class="block text-default mb-1">Title</label>
                 <template v-if="editMode">
                   <input v-model="draftTitle" class="input-textlike bg-default w-full px-3 py-2 rounded" />
                 </template>
                 <template v-else>
-                  <div class="px-3 py-2 rounded border border-default bg-default/30">
+                  <div class="truncate px-3 py-2 rounded border border-default bg-default/30" :title="link?.title || undefined">
                     {{ link?.title || '—' }}
                   </div>
                 </template>
