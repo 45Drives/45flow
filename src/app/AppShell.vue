@@ -57,9 +57,9 @@
       {{ credentialStorageNotice }}
     </p>
     <main class="flex-1 min-h-0 w-full overflow-hidden">
-      <router-view />
+      <router-view v-if="hasActiveSession || route.name === 'server-selection'" />
     </main>
-    <QuickShareOverlay v-if="hasToken && activeConnection?.status === 'connected' && route.name !== 'server-selection'" />
+    <QuickShareOverlay v-if="hasActiveSession && route.name !== 'server-selection'" />
     <GlobalModalConfirm />
     <NotificationView />
     <UpdateBanner />
@@ -170,7 +170,21 @@ const { headerTitle } = useHeaderTitle()
 const hideTransfers = computed(() => route.meta.hideTransfers === true)
 const darkMode = useDarkModeState()
 
-const hasToken = computed(() => !!activeConnection.value?.token)
+const hasActiveSession = computed(() =>
+  !!activeConnection.value?.token && activeConnection.value.status === 'connected'
+)
+
+watch([hasActiveSession, () => activeConnection.value?.connectionId, () => route.name], async () => {
+  if (!route.name || route.name === 'server-selection' || hasActiveSession.value) return
+
+  const connection = activeConnection.value
+  await router.replace({
+    name: 'server-selection',
+    query: connection
+      ? { reconnect: connection.connectionId, serverIp: connection.serverIp, username: connection.username }
+      : { skipAutoLogin: 'true' },
+  })
+}, { immediate: true })
 
 provide(currentServerInjectionKey, currentServer)
 provide(divisionCodeInjectionKey, divisionCode)
