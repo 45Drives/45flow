@@ -32,6 +32,7 @@ async function waitFor(probe, timeout, interval = 250) {
 
 // Navigation and window.open must never launch a real browser during QA.
 shell.openExternal = async url => { openedExternally.push(String(url)) }
+const wasOpenedExternally = url => openedExternally.some(opened => opened === url)
 
 app.on('browser-window-created', (_event, window) => {
   const contents = window.webContents
@@ -151,21 +152,21 @@ async function checkNavigation({ contents, js }) {
   const remote = 'https://qa-navigation.invalid/away'
   await js(`location.href = ${JSON.stringify(remote)}; true`).catch(() => {})
   await sleep(1500)
-  record('remote-navigation-blocked', contents.getURL() === before && openedExternally.includes(remote),
-    `URL now ${truncate(contents.getURL(), 200)}; opened externally: ${openedExternally.includes(remote)}`)
+  record('remote-navigation-blocked', contents.getURL() === before && wasOpenedExternally(remote),
+    `URL now ${truncate(contents.getURL(), 200)}; opened externally: ${wasOpenedExternally(remote)}`)
 
   const otherFile = pathToFileURL(path.join(app.getAppPath(), 'package.json')).href
   await js(`location.href = ${JSON.stringify(otherFile)}; true`).catch(() => {})
   await sleep(1500)
-  record('local-file-navigation-blocked', contents.getURL() === before && !openedExternally.includes(otherFile),
+  record('local-file-navigation-blocked', contents.getURL() === before && !wasOpenedExternally(otherFile),
     `URL now ${truncate(contents.getURL(), 200)}`)
 
   const windows = BrowserWindow.getAllWindows().length
   const popup = 'https://qa-popup.invalid/x'
   await js(`window.open(${JSON.stringify(popup)}); true`).catch(() => {})
   await sleep(1000)
-  record('window-open-goes-to-browser', BrowserWindow.getAllWindows().length === windows && openedExternally.includes(popup),
-    `windows ${windows} -> ${BrowserWindow.getAllWindows().length}; opened externally: ${openedExternally.includes(popup)}`)
+  record('window-open-goes-to-browser', BrowserWindow.getAllWindows().length === windows && wasOpenedExternally(popup),
+    `windows ${windows} -> ${BrowserWindow.getAllWindows().length}; opened externally: ${wasOpenedExternally(popup)}`)
 }
 
 async function checkRoutes({ contents, js, rendererUrl }) {
