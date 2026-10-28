@@ -4,6 +4,84 @@ Run from this client checkout with **Node.js 22+** and the repository's
 dependencies already restored. This is a source/native integration validator,
 not a comprehensive penetration test or a substitute for deployment QA.
 
+## Desktop credential-storage behavior
+
+The desktop uses Electron `safeStorage` in the main process to encrypt saved
+admin tokens and opt-in remembered passwords. Server addresses, usernames and
+ports remain in localStorage; credentials do not. On upgrade, existing plaintext
+connection and legacy-session credentials are removed from browser storage and
+migrated to encrypted storage where available. This does not securely erase
+historical browser database pages, backups or filesystem snapshots.
+
+Tokens resume login until expiry. **Remember password securely** permits
+reauthentication after expiry. If that is unavailable or rejected, the app clears
+the connection's credentials and asks for login again. Expiry on an inactive
+connection does not interrupt the active connection. Logout and connection
+removal clear that connection's saved credentials.
+
+macOS uses Keychain; Windows uses account-bound DPAPI. Linux requires a running,
+available and unlocked Secret Service or KWallet; installing `libsecret` alone
+is insufficient. If protected storage is unavailable, credentials remain in
+memory only and the app warns the user. Electron's Linux `basic_text` fallback
+is rejected; no machine-ID-derived or bundled encryption key is substituted.
+Encryption at rest does not protect a compromised running desktop, OS account,
+or renderer.
+
+This behavior applies to free and Pro connections after updating the desktop,
+without requiring server API changes. Installations without auto-update need
+a manual desktop update.
+
+Focused source regressions:
+
+```sh
+yarn test src/main/secureTokens.test.js src/renderer/composables/useConnections.test.js src/renderer/composables/useApi.test.js
+```
+
+These tests cover migration, memory-only fallback, IPC authorization, token
+replacement, logout and removal using injected encryption providers. Use the
+native runner below and the deployment checks later in this guide for actual
+OS storage, process-restart, reboot and cross-user validation.
+
+## Admin Networks regression and live checks
+
+With dependencies restored in this client checkout and the sibling
+`houston-broadcaster` checkout:
+
+```sh
+yarn test:admin-networks
+```
+
+Set `HOUSTON_BROADCASTER_DIR` if the server checkout is elsewhere. Desktop
+SSH/certificate regressions use local SSH/TLS fixtures and require `ssh-keygen`
+and `openssl`; they do not contact a deployed server. Coverage includes client
+behavior, nginx configuration, simulated failures and rollback.
+
+Append live-runner options to test a deployment; run
+`yarn test:admin-networks --help` for usage. The runner supports LAN/VPN or public
+HTTPS addresses, custom ports and custom certificate authorities. Default live
+checks do not write the policy; disruptive lab writes require explicit opt-in.
+Supply tokens using the documented environment/file mechanism, not command
+arguments or shared reports.
+
+LAN checks do not prove external filtering or ACME reachability. Run external
+checks from a genuinely external source and keep unavailable checks marked
+skipped. See `docs/nginx-admin-cidrs.md` in the server checkout for deployment
+prerequisites, live examples and recovery instructions.
+
+The desktop routes this panel through nginx HTTPS, even if ordinary API traffic
+uses the backend port. It verifies the HTTPS certificate over SSH using the
+saved key or agent and checks OpenSSH known hosts (including hashed entries),
+Unix system known hosts, or its remembered identities. Unknown SSH identities
+need explicit fingerprint approval. This certificate verification is specific
+to the panel; it does not change all existing SSH operations. Browser clients
+still use normal browser certificate validation.
+
+Policy confirmation requires a connection through the reloaded nginx rules;
+the desktop retries old-worker rejections until the deadline. The server owns
+rollback and persists recovery state across interruption. Tests must distinguish
+successful confirmation, automatic restoration and a recovery failure needing
+console/SSH access.
+
 ## Linux: all three backends plus server regressions
 
 Run in your ordinary graphical desktop login, **not through sudo or a bare SSH

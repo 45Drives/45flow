@@ -15,12 +15,8 @@
 - **Share files via secure links** — Generate expiring, access-controlled links for viewing, downloading, and commenting on files
 - **Upload portals** — Create links that let external collaborators upload files directly to your server
 - **Local uploads** — Transfer files from your workstation to the server with optional review copy generation and watermarking
-  - On servers advertising local-upload scanning, the upload panel, Quick Share,
-    and transfer dock show a queued/running malware-check message after transfer.
-    Transfer can read 100% while server checks are pending; success or failure
-    follows the completion response. The dock retains the reported scan result,
-    including scanner-unavailable skips. Older servers show generic finalization,
-    without claiming a scan passed. Available for both free and Pro connections.
+  - Uploads may show 100% while the server finishes malware checks. Wait for the
+    final result before closing the app; an unavailable scanner is not a passed scan.
 - **Client-side transcoding** — Process videos on your workstation before upload using local CPU/GPU, reducing server load and speeding up review copy availability
 - **Video review with timecoded comments** — Browser-based HLS player with threaded, frame-accurate commenting
 - **Role-based access control** — System and custom roles (View, Comment, Download, Upload) enforced per link
@@ -73,62 +69,20 @@ For detailed walkthroughs of every feature, see the [Full User Guide](docs/45Flo
 
 ### Secure login storage
 
-The desktop encrypts saved admin tokens and opt-in remembered passwords using
-Electron `safeStorage` in the main process. Connection metadata (server address,
-username and ports) remains in localStorage; credentials do not. Existing
-plaintext connection and legacy-session credentials are removed from browser
-storage on the first launch of this release and migrated to encrypted storage
-where available. Removing old entries does not securely erase historical
-browser database pages, backups, or filesystem snapshots.
+Saved login credentials use your operating system's protected storage:
+Keychain on macOS, DPAPI on Windows, or an unlocked GNOME Keyring/Secret Service
+or KWallet on Linux.
 
-Tokens resume login until they expire. The optional **Remember password securely**
-setting also permits reauthentication after token expiry. Leave it unchecked
-to avoid retaining your administrator password. Logging out clears both saved
-credentials for that connection; removing a connection clears them too.
+**Remember password securely** is optional; leave it unchecked if you do not
+want the app to retain your password for automatic reauthentication. Logging
+out or removing a connection clears its saved login credentials.
 
-Link and project lists use the same expiry handling as other authenticated
-actions. If remembered-password reauthentication is unavailable or rejected,
-the app clears that connection's credentials and shows a **Login token expired**
-notification. An expired active connection returns to server selection to log
-in again; expiry on another server does not interrupt the active connection.
+If protected storage is unavailable, the app warns you and keeps credentials
+only for the current session. You will need to log in again after closing the
+app. On Linux, enable/unlock a supported keyring to retain your login.
 
-- **macOS:** uses Keychain.
-- **Windows:** uses DPAPI, tied to your Windows account.
-- **Linux:** requires an available, unlocked GNOME Keyring/Secret Service or
-  KWallet. A keyring unlocked by your desktop login permits automatic app login.
-  Installing `libsecret` alone is not sufficient; a running secret service and
-  an unlocked keyring are required.
-
-If secure storage is unavailable, credentials stay in memory for the current
-app session only and the app displays a warning. Enable/unlock a supported
-keyring before restarting to enable persistent login. Electron's Linux
-`basic_text` fallback is deliberately rejected; no machine-ID-derived or
-application-bundled encryption key is substituted. Encryption at rest does not
-protect against a compromised running desktop, account, or renderer.
-
-These fixes apply to free and Pro connections alike, without requiring server
-API changes. They take effect after updating the desktop; installations without
-auto-update must update manually.
-
-Credential regression tests:
-
-```sh
-yarn test src/main/secureTokens.test.js src/renderer/composables/useConnections.test.js src/renderer/composables/useApi.test.js
-```
-
-For real native encryption and process-restart checks on Linux, Windows and
-macOS, run `node scripts/test-security-hygiene.cjs --scope desktop`.
-Linux defaults to KWallet 5, GNOME Libsecret and the rejected `basic_text`
-fallback. See the [automated hygiene QA guide](docs/security-hygiene-qa.md)
-for setup, isolated server checks, JSON reports and remaining deployment tests.
-
-Tests exercise encryption through an injected provider, migration, memory-only
-fallback, IPC authorization, token replacement, logout and connection removal.
-Release QA must additionally verify native keychain behavior on each OS:
-log in, fully quit/relaunch, confirm session resumption, then log out and
-relaunch to confirm credentials are gone. On Linux, repeat without an available
-keyring (and with `--password-store=basic`): a warning must appear, no credential
-file may be written, and login must be required after fully quitting.
+See the [credential-storage and QA guide](docs/security-hygiene-qa.md) for
+implementation details, migration behavior, and verification commands.
 
 ---
 
@@ -168,10 +122,20 @@ file may be written, and login must be required after fully quitting.
 
 ## Security
 
-- All uploads quarantined and malware-scanned before acceptance
+- Updated servers quarantine uploads and perform malware checks; check the
+  reported result because a scan may be skipped if the scanner is unavailable
 - Links support expiration, password protection, and role-restricted access
 - HTTPS required for external access
-- Server validates all API requests with JWT authentication
+- Administrative APIs require authentication; public share actions enforce the
+  link's access rules
+- Public HTTPS allows recipient sharing routes; administrative HTTPS routes
+  are restricted to trusted networks and still require authentication
+
+Most users can leave **Admin Networks** at its defaults. Server administrators
+can adjust which LAN/VPN addresses may reach administrative HTTPS routes under
+**Settings → Admin Networks**. This does not change public share-link access or
+replace firewall rules for the direct backend port.
+See [Admin Networks in the user guide](docs/45Flow_User_Guide.md#admin-networks).
 
 ---
 
@@ -191,7 +155,3 @@ yarn build
 ## License
 
 See [LICENSE](LICENSE).
-
-## nginx admin access
-
-Public HTTPS exposes the share routes; admin routes require a LAN or VPN connection. Customize trusted networks in /etc/nginx/45flow-admin-allow.conf. See [nginx hardening](docs/nginx-hardening.md) for the defaults and deployment verification steps.

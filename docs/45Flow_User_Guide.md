@@ -781,87 +781,76 @@ For administrators to manage server health:
 
 ### Admin Networks
 
-Available to signed-in server administrators using PAM or server-configured environment credentials,
-on both free and Pro servers. A collaborator role named "admin" does not grant this permission.
-The panel automatically sends its requests through the server's **nginx HTTPS listener**, even
-when the desktop's other API requests use the direct backend port. It uses the same server host
-and the HTTPS port saved with the connection (443 by default); an existing HTTPS connection
-keeps its configured URL. Set a non-default HTTPS port under the login screen's connection ports.
-Successfully applying a new HTTPS port in Settings also updates the saved desktop connection.
-It never falls back to direct backend writes.
+**Most users do not need to change this setting.** Use it when your server
+administrator needs to limit which office or VPN networks can reach the server's
+administrative HTTPS interface.
 
-**LAN-only servers are supported.** No public domain, internet access, or port forwarding is
-required: the server's HTTPS listener must be reachable on its private address.
+- **It controls:** access to administrative HTTPS routes, including administrative
+  WebSocket connections. Allowed users still need to log in.
+- **It does not control:** public share links, recipient passwords or permissions,
+  SSH access, or direct connections to the backend port (9095 by default).
+  Keep the backend port private using your firewall/router.
+- **Who can change it:** users signed in with server credentials, on free or Pro
+  servers. Giving a collaborator a role called "admin" does not grant this access.
 
-Before sending Admin Networks requests, the desktop verifies nginx's public certificate through
-an SSH connection using the saved connection's SSH key or agent. It reuses a matching host key
-from your OpenSSH `known_hosts` (including hashed entries), system known hosts on Unix, or its own
-remembered SSH identities. Otherwise it asks **Trust this SSH server?** once; verify the displayed
-SSH host-key fingerprint through the server console or another trusted source before accepting.
-The app remembers that identity and does not require a separate HTTPS certificate popup.
-An unexpected or revoked SSH host key, an expired certificate, or a failed SSH check blocks the
-operation; the app does not fall back to unverified HTTPS or direct backend writes.
-This verified SSH connection is specific to this certificate check; other existing SSH operations
-are unchanged. In a browser, the browser's normal HTTPS certificate validation still applies.
+The defaults cover common LAN and VPN address ranges, not just your own network.
+Being on an allowed network does not make every device trustworthy.
+You do not need a public domain, Let's Encrypt or port forwarding to use this
+panel on a LAN-only server.
 
-This panel restricts access to administrative HTTP routes and WebSockets, not public share links.
-It changes the server immediately, independently of **Save settings**. Keep console or SSH recovery
-access available.
+#### Changing the allowed networks
 
-1. Open **Settings → Admin Networks**. The panel shows your connection address as observed by nginx
-   and the range currently permitting it. Behind a proxy, this can be the proxy's address.
-2. Open **What are these networks?** for explanations of the default ranges and CIDR notation.
-   Defaults cover common local/VPN addresses; they do not discover your actual network or prove
-   that devices on it are trustworthy.
-3. Enter one trusted CIDR per line. Prefer narrow ranges. **Allow this device only** adds the
-   observed address as `/32` (IPv4) or `/128` (IPv6), not a guessed LAN subnet.
-4. Click **Check proposed networks**. The server checks whether your current address remains allowed.
-   If excluded, applying requires a separate explicit override and another permitted connection
-   to confirm. `/0` ranges are rejected; an empty list blocks all nginx admin connections.
-5. Acknowledge the lockout warning and click **Apply admin networks**. The server validates and
-   reloads nginx with a temporary policy.
-6. Click **Reconnect and confirm** before the displayed deadline. Confirmation must traverse
-   the reloaded nginx policy, not an existing connection to an old nginx worker. The client retries
-   old-worker rejections while time remains. Only successful confirmation makes the policy permanent.
-   Without confirmation, the server automatically restores the previous policy.
+Keep a working server console or SSH connection available before making changes.
+An incorrect list can block your administrative HTTPS connection.
 
-The server, not the open settings panel, owns rollback. If disconnected, do not repeatedly apply:
-wait for rollback, reconnect, and **Reload admin networks** to inspect the effective policy.
-Rollback needs the broadcaster service running; persisted recovery information allows restoration
-when it restarts after an interruption.
-Console/SSH recovery is still necessary if a filesystem or nginx recovery failure is reported.
-If HTTPS cannot be reached, check the connection's HTTPS port, firewall, current nginx admin network
-policy, and certificate trust. Changes are disabled when trusted connection information is unavailable;
-update the server and regenerate/reload its nginx configuration before editing.
-Address checks reduce accidental lockout but cannot guarantee
-future connectivity if DHCP, VPN routing, firewall rules, or proxies change.
+1. Open **Settings → Admin Networks**. Note the connection address shown by the
+   server. If you connect through a proxy, this may be the proxy's address.
+2. Enter one trusted network per line. For example, `192.168.1.0/24` allows
+   `192.168.1.0` through `192.168.1.255`; `192.168.1.25/32` allows one IPv4
+   address. These are examples, not values to copy without checking your network.
+   Open **What are these networks?** for more help.
+3. If you only want the current connection address allowed, click
+   **Allow this device only**. It uses the address shown by the server, not your
+   whole LAN. A changing address or proxy can make this unsuitable.
+4. Click **Check proposed networks**. For a normal change, make sure the result
+   says your current connection is included. Do not use the exclusion override
+   unless you deliberately want to block this connection and have another
+   permitted connection available to confirm.
+5. Acknowledge the warning, then click **Apply admin networks**.
+6. Click **Reconnect and confirm** before the displayed deadline. This checks
+   that you can still connect using the new rules and makes the change permanent.
+   Without confirmation, the server automatically restores the previous rules.
 
-Testing this panel does not require port forwarding: use a reachable LAN/VPN HTTPS URL.
-Public reachability and HTTP-01 certificate renewal require separate external validation.
+**Apply admin networks** takes effect separately from **Save settings**.
+An empty list blocks all administrative HTTPS access; `/0` ranges, which would
+allow every address in an IP family, are rejected.
 
-#### Automated Admin Networks checks
+#### If you lose access or see a connection warning
 
-With dependencies installed in both this checkout and the sibling `houston-broadcaster` checkout:
+- **After applying a change:** wait for the displayed rollback deadline, reconnect,
+  then click **Reload admin networks**. Do not repeatedly apply changes.
+  Leave the broadcaster service running so it can restore the old rules.
+  If it was interrupted, recovery runs when it restarts; a reported recovery
+  failure needs console/SSH assistance.
+- **SSH trust prompt:** the desktop uses SSH to verify the server's HTTPS
+  certificate, including self-signed certificates on private servers. If asked
+  **Trust this SSH server?**, verify the fingerprint with your administrator or
+  server console before accepting. A changed/revoked SSH identity, expired
+  certificate or failed verification blocks the operation rather than bypassing
+  the check.
+- **Panel cannot connect:** confirm the server's HTTPS port is reachable
+  (443 by default). For custom ports, check the connection ports on the login
+  screen. This panel needs HTTPS even if other desktop requests use port 9095;
+  it does not fall back to that port.
+- **Connection safety unavailable:** ask your administrator to update the server
+  and regenerate/reload its nginx configuration before retrying.
 
-```sh
-yarn test:admin-networks
-```
+The address check and automatic rollback reduce accidental lockout; they cannot
+guarantee access after your IP address, VPN, proxy or firewall changes.
 
-The desktop SSH/certificate regression tests use local SSH and TLS test servers and require
-`ssh-keygen` and `openssl` on the test machine; they do not contact your deployed server.
-
-This runs client and server regression coverage, including simulated nginx failures and rollback.
-Set `HOUSTON_BROADCASTER_DIR` if the server checkout is elsewhere. To also run checks against a
-deployed server, append the live runner's options; use `yarn test:admin-networks --help` to see them.
-The same runner supports LAN/VPN or public HTTPS URLs, custom ports, IPs or domains, and custom
-certificate authorities. Live policy changes require explicit opt-in; default checks do not edit
-the policy. Supply credentials only through the documented environment/file mechanism, never
-in command arguments or shared reports.
-
-Regression tests simulate disruptive conditions safely. Live tests cannot prove internet
-reachability from inside a LAN or certify network trust, and unavailable checks must remain
-reported as skipped. See the server's `docs/nginx-admin-cidrs.md` for deployment prerequisites,
-live-runner examples, external-vantage checks, and recovery instructions.
+Developer regression and live-test commands are in the
+[Admin Networks QA notes](security-hygiene-qa.md#admin-networks-regression-and-live-checks),
+not required for ordinary use of this panel.
 
 ### Guides
 
