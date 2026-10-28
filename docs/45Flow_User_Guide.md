@@ -848,10 +848,6 @@ allow every address in an IP family, are rejected.
 The address check and automatic rollback reduce accidental lockout; they cannot
 guarantee access after your IP address, VPN, proxy or firewall changes.
 
-Developer regression and live-test commands are in the
-[Admin Networks QA notes](security-hygiene-qa.md#admin-networks-regression-and-live-checks),
-not required for ordinary use of this panel.
-
 ### Guides
 
 The Guides section provides:

@@ -81,9 +81,6 @@ If protected storage is unavailable, the app warns you and keeps credentials
 only for the current session. You will need to log in again after closing the
 app. On Linux, enable/unlock a supported keyring to retain your login.
 
-See the [credential-storage and QA guide](docs/security-hygiene-qa.md) for
-implementation details, migration behavior, and verification commands.
-
 ---
 
 ## Architecture
@@ -151,6 +148,11 @@ yarn dev
 # Build for production
 yarn build
 ```
+
+Desktop packages include the compiled main process, compiled renderer, static
+runtime resources, production dependencies, package metadata and license.
+Documentation, QA results, source files and release/build scripts are not
+bundled. The in-app user guide opens the online documentation.
 
 ## License
 

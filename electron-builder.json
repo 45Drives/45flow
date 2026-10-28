@@ -46,6 +46,8 @@
   },
 
   "files": [
+    "package.json",
+    "LICENSE",
     {
       "from": "build/main",
       "to": "main",
