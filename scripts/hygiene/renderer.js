@@ -28,16 +28,16 @@ function cleanStorage(checks) {
 }
 
 window.hygieneQa = {
-  async run({ phase, secret, persistent }) {
+  async run({ phase, canary, persistent }) {
     try {
-      return await this.runPhase({ phase, secret, persistent })
+      return await this.runPhase({ phase, canary, persistent })
     } catch (error) {
       return { failedCheck: error.qaCheck || 'Renderer credential operation failed' }
     }
   },
-  async runPhase({ phase, secret, persistent }) {
+  async runPhase({ phase, canary, persistent }) {
     const checks = []
-    const original = { token: `qa-token-${secret}`, savedPassword: `qa-password-${secret}` }
+    const original = { token: `qa-token-${canary}`, savedPassword: `qa-password-${canary}` }
     if (phase === 'seed') {
       localStorage.setItem(storageKey, JSON.stringify({
         connections: [{ ...metadata(), ...original }], activeConnectionId: id, _migrated: true,
@@ -71,15 +71,15 @@ window.hygieneQa = {
         persistent ? 'Token survives full Electron process restart' : 'Token does not survive memory-only restart', checks)
       check(connection.savedPassword === (persistent ? original.savedPassword : undefined),
         persistent ? 'Remembered password survives restart' : 'Password does not survive memory-only restart', checks)
-      store.updateConnection(id, { token: `qa-refreshed-${secret}`, savedPassword: undefined })
+      store.updateConnection(id, { token: `qa-refreshed-${canary}`, savedPassword: undefined })
       await flushCredentialWrites()
-      check(connection.token === `qa-refreshed-${secret}` && connection.savedPassword === undefined,
+      check(connection.token === `qa-refreshed-${canary}` && connection.savedPassword === undefined,
         'Token replacement and password opt-out applied', checks)
     } else if (phase === 'logout') {
-      check(connection.token === (persistent ? `qa-refreshed-${secret}` : ''),
+      check(connection.token === (persistent ? `qa-refreshed-${canary}` : ''),
         'Replacement token restored with expected persistence policy', checks)
       check(connection.savedPassword === undefined, 'Password opt-out survives restart', checks)
-      store.addConnection({ ...metadata(otherId), token: `qa-secondary-${secret}` })
+      store.addConnection({ ...metadata(otherId), token: `qa-secondary-${canary}` })
       await flushCredentialWrites()
       await store.clearConnectionCredentials(id)
       checks.push('Explicit logout clears primary credentials')
@@ -87,7 +87,7 @@ window.hygieneQa = {
       check(connection.token === '' && connection.savedPassword === undefined,
         'Logout remains effective after process restart', checks)
       const other = store.getConnection(otherId)
-      check(other?.token === (persistent ? `qa-secondary-${secret}` : ''),
+      check(other?.token === (persistent ? `qa-secondary-${canary}` : ''),
         'Logging out one connection preserves the other according to storage policy', checks)
       store.removeConnection(otherId)
       await nextTick()

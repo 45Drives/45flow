@@ -215,7 +215,7 @@ describe('admin API error propagation without changing existing defaults', () =>
             mocks.connections.push(reactive({
                 connectionId: 'other-server', name: 'Other server', baseUrl: 'https://other.invalid', token: 'other-token',
             }))
-            vi.stubGlobal('fetch', vi.fn(async url => url.startsWith('https://other.invalid')
+            vi.stubGlobal('fetch', vi.fn(async url => new URL(url).origin === 'https://other.invalid'
                 ? new Response('{}', { status: 401 })
                 : new Response('{"items":[]}', { headers: { 'Content-Type': 'application/json' } })))
             const results = await useApi().apiFetchAll(mocks.connections, '/api/links')

@@ -108,9 +108,11 @@ describe('security hygiene runner', () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), '45flow-hygiene-timeout-test-'))
     const marker = path.join(directory, 'orphan-marker')
     try {
-      const childScript = `setTimeout(() => require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'orphan'), 600)`
+      const childScript = "setTimeout(() => require('node:fs').writeFileSync(process.env.HYGIENE_ORPHAN_MARKER, 'orphan'), 600)"
       const parentScript = `require('node:child_process').spawn(process.execPath, ['-e', ${JSON.stringify(childScript)}], {stdio:'ignore'}); setInterval(() => {}, 1000)`
-      const result = await runProcess(process.execPath, ['-e', parentScript], { timeout: 200 })
+      const result = await runProcess(process.execPath, ['-e', parentScript], {
+        timeout: 200, env: { ...process.env, HYGIENE_ORPHAN_MARKER: marker },
+      })
       expect(result.timedOut).toBe(true)
       await new Promise(resolve => setTimeout(resolve, 800))
       expect(fs.existsSync(marker)).toBe(false)

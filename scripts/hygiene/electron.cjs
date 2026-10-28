@@ -90,7 +90,7 @@ app.whenReady().then(async () => {
   const page = path.join(config.appDirectory, 'renderer', 'index.html')
   await window.loadFile(page)
   const rendererResult = await window.webContents.executeJavaScript(`window.hygieneQa.run(${JSON.stringify({
-    phase: config.phase, secret: process.env.HYGIENE_QA_SECRET, persistent,
+    phase: config.phase, canary: process.env.HYGIENE_QA_SECRET, persistent,
   })})`)
   if (rendererResult.failedCheck) {
     throw Object.assign(new Error('Renderer QA failed'), { qaCheck: rendererResult.failedCheck })
