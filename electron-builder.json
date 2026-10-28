@@ -23,6 +23,7 @@
   },
 
   "mac": {
+    "x64ArchFiles": "**/node_modules/{@ffmpeg-installer/darwin-{arm64,x64}/ffmpeg,@ffprobe-installer/darwin-{arm64,x64}/ffprobe}",
     "hardenedRuntime": true,
     "entitlements": "entitlements.mac.plist",
     "entitlementsInherit": "entitlements.mac.inherit.plist",
