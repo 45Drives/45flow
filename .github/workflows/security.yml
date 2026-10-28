@@ -29,7 +29,7 @@ jobs:
       - name: Install dependencies without running build scripts
         run: |
           corepack enable
-          yarn install --immutable --mode=skip-builds
+          yarn install --immutable --mode=skip-build
 
       - name: Fail on high or critical dependency advisories
         run: yarn npm audit --all --recursive --severity high

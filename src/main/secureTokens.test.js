@@ -28,7 +28,7 @@ beforeEach(() => {
       return Buffer.concat([iv, cipher.getAuthTag(), body])
     }),
     decryptString: vi.fn(value => {
-      const decipher = createDecipheriv('aes-256-gcm', key, value.subarray(0, 12))
+      const decipher = createDecipheriv('aes-256-gcm', key, value.subarray(0, 12), { authTagLength: 16 })
       decipher.setAuthTag(value.subarray(12, 28))
       return Buffer.concat([decipher.update(value.subarray(28)), decipher.final()]).toString('utf8')
     }),
