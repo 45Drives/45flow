@@ -66,6 +66,34 @@ describe('preload IPC allowlist', () => {
     expect(payload).toEqual({ message: 'hi' })
   })
 
+  it('every literal channel the renderer uses is allowlisted', async () => {
+    const { isAllowedInvoke, isAllowedSend, isAllowedReceive } = await import('./preload')
+    const allowed = { invoke: isAllowedInvoke, send: isAllowedSend, on: isAllowedReceive, once: isAllowedReceive }
+    // main has never listened on 'action' (useResilientNav), so dropping it changes nothing.
+    const knownUnhandled = new Set(['send:action'])
+    const root = path.join(here, '..', '..')
+    const scanDirs = [path.join(root, 'src', 'renderer'), path.join(root, 'src', 'app'),
+      path.join(root, 'houston-common', 'houston-common-lib', 'lib', 'electronIPC')]
+    const files = dir => !fs.existsSync(dir) ? [] : fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+      const file = path.join(dir, entry.name)
+      if (entry.isDirectory()) return files(file)
+      return /\.(vue|ts|js)$/.test(entry.name) && !/\.test\.|ipc-web-shim/.test(entry.name) ? [file] : []
+    })
+    const used = new Set()
+    for (const file of scanDirs.flatMap(files)) {
+      const source = fs.readFileSync(file, 'utf8')
+      for (const [, method, , channel] of source.matchAll(/\b(?:ipcRenderer|ipc)\??\.(invoke|send|on|once)\s*(?:<[^>(]*>)?\s*\(\s*(['"])([^'"]+)\2/g)) {
+        used.add(`${method}:${channel}`)
+      }
+    }
+    expect(used.size).toBeGreaterThan(20)
+    const blocked = [...used].filter(entry => {
+      const [method, channel] = entry.split(/:(.*)/s)
+      return !knownUnhandled.has(entry) && !allowed[method](channel)
+    })
+    expect(blocked).toEqual([])
+  })
+
   it('every allowed invoke channel has a handler registered in main', () => {
     const preload = fs.readFileSync(path.join(here, 'preload.ts'), 'utf8')
     const block = preload.slice(preload.indexOf('const INVOKE_CHANNELS'), preload.indexOf('const SEND_CHANNELS'))

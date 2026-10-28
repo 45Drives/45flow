@@ -28,6 +28,7 @@
     "release:orchestrate": "bash scripts/release/orchestrate-release.sh",
     "test": "vitest run",
     "test:security-hygiene": "node scripts/test-security-hygiene.cjs",
+    "test:hardening": "yarn build:common && node scripts/build.js && node scripts/test-hardening.cjs",
     "test:admin-networks": "bash scripts/test-admin-networks.sh",
     "mac:dir:arm64": "yarn build:common && node scripts/build.js && CSC_IDENTITY_AUTO_DISCOVERY=false SKIP_AFTER_SIGN=1 electron-builder --mac --arm64 --dir",
     "mac:dir:x64": "yarn build:common && node scripts/build.js && CSC_IDENTITY_AUTO_DISCOVERY=false SKIP_AFTER_SIGN=1 electron-builder --mac --x64 --dir",
