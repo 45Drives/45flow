@@ -26,6 +26,8 @@ IMPLEMENTATION_*.md
 .github/agents/*
 .github/skills/*
 .github/workflows/*
+!.github/workflows/security.yml
+!.github/workflows/semgrep.yml
 
 RELEASE_GUIDE.md
 RELEASE_WORKFLOW.md
