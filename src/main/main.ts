@@ -366,6 +366,7 @@ if (process.env.ELECTRON_USER_DATA_DIR) {
 import { createLogger, format } from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import path, { join } from 'path';
+import { pathToFileURL } from 'url';
 import mdns from 'multicast-dns';
 import os from 'os';
 import fs from 'fs';
@@ -388,6 +389,9 @@ import { TranscodeManager } from './transcoding/TranscodeManager';
 import { FullTranscodeManager } from './transcoding/FullTranscodeManager';
 import { initAutoUpdates } from './updates';
 import { registerSecureTokenHandlers } from './secureTokens';
+import { chromiumChain, hasBlockedKey, installNodeTlsBlocklist } from './blockedCertificates';
+
+installNodeTlsBlocklist();
 
 // ── Client install ID (must be initialized early for SSH key comments) ──
 const idFile = path.join(app.getPath('userData'), 'client-id.txt');
@@ -1290,7 +1294,7 @@ function createWindow() {
     width: 800,
     height: 600,
     webPreferences: {
-      sandbox: false,
+      sandbox: true,
       preload: join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
@@ -2051,7 +2055,36 @@ app.on('web-contents-created', (_event, contents) => {
   contents.on('will-attach-webview', (event) => {
     event.preventDefault();
   });
+  // The preload API must only ever run on the bundled renderer, so app windows never navigate away from it.
+  if (contents.getType() !== 'window') return;
+  contents.on('will-navigate', (event, url) => {
+    if (isRendererUrl(url)) return;
+    event.preventDefault();
+    jl('warn', 'navigation.blocked', { url: String(url).slice(0, 200) });
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+  });
 });
+
+function rendererEntryUrl(): URL {
+  return process.env.NODE_ENV === 'development'
+    ? new URL(`http://localhost:${process.env.ELECTRON_RENDERER_PORT || process.argv[2]}/`)
+    : pathToFileURL(join(app.getAppPath(), 'renderer', 'index.html'));
+}
+
+function isRendererUrl(url: string): boolean {
+  try {
+    const target = new URL(url);
+    const entry = rendererEntryUrl();
+    return target.protocol === entry.protocol && target.host === entry.host && target.pathname === entry.pathname;
+  } catch {
+    return false;
+  }
+}
+
+// Mirrors Electron 42.11.16+'s block of the compromised eMudhra intermediates (GHSA-jr5w-w6x2-84p9).
+function usesBlockedKey(req: Electron.Request): boolean {
+  return hasBlockedKey([...chromiumChain(req.certificate), ...chromiumChain(req.validatedCertificate)]);
+}
 
 
 app.whenReady().then(() => {
@@ -2078,6 +2111,10 @@ app.whenReady().then(() => {
   };
 
   session.defaultSession.setCertificateVerifyProc((req, cb) => {
+    if (usesBlockedKey(req)) {
+      jl('warn', 'cert.verify.blocked-key', { hostname: req.hostname });
+      return cb(-2);
+    }
     const sshFingerprints = getSshVerifiedCertificates(req.hostname);
     if (sshFingerprints) {
       // An SSH-verified endpoint must never fall back to a manual HTTPS trust override.
@@ -2122,6 +2159,15 @@ app.whenReady().then(() => {
       if (response === 1) { rememberPin(req.hostname, presented); cb(0); }
       else cb(-2);
     });
+  });
+
+  // electron-updater downloads through its own session, which the default verifier does not cover.
+  session.fromPartition('electron-updater', { cache: false }).setCertificateVerifyProc((req, cb) => {
+    if (usesBlockedKey(req)) {
+      jl('warn', 'cert.verify.blocked-key', { hostname: req.hostname, session: 'electron-updater' });
+      return cb(-2);
+    }
+    cb(-3);
   });
 
   ipcMain.handle("is-dev", async () => process.env.NODE_ENV === 'development');

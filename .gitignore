@@ -25,7 +25,6 @@ IMPLEMENTATION_*.md
 .github/prompts/plan*
 .github/agents/*
 .github/skills/*
-.github/workflows/*
 !.github/workflows/security.yml
 !.github/workflows/semgrep.yml
 

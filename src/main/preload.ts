@@ -216,6 +216,33 @@ export type ElectronApi = {
   getPathForFile: (file: File) => string
 }
 
+/** ===== IPC allowlist =====
+ * The page only reaches main through these channels. Anything else is dropped so injected
+ * script cannot call arbitrary handlers. Per-job reply channels are matched by prefix. */
+const INVOKE_CHANNELS = new Set([
+  'backup:isFirstRunNeeded', 'dialog:openFolder', 'dialog:pickFiles', 'dialog:pickFolder',
+  'dialog:pickWatermark', 'ensure-ssh-ready', 'get-os', 'is-appimage', 'is-dev', 'logs:read-client',
+  'probe-health', 'remote-check-broadcaster', 'run-remote-bootstrap', 'scan-network-fallback',
+  'transcode-output-upload', 'transcode:cancel', 'transcode:cancel-all-active', 'transcode:cleanup-temp',
+  'transcode:cleanup-watermark', 'transcode:full-cancel', 'transcode:full-start',
+  'transcode:get-capabilities', 'transcode:start', 'update:check', 'update:download', 'update:install',
+  'verify-nginx-certificate-over-ssh', 'watermark:download',
+])
+const SEND_CHANNELS = new Set(['IPCMessage', 'license:update-eligible', 'renderer-ready'])
+const RECEIVE_CHANNELS = new Set([
+  'IPCMessage', 'bootstrap-progress', 'discovered-servers', 'notification', 'update:available',
+  'update:checking', 'update:downloaded', 'update:error', 'update:none', 'update:progress',
+])
+const RECEIVE_PREFIXES = ['upload:ingest:']
+
+export const isAllowedInvoke = (channel: unknown) => typeof channel === 'string' && INVOKE_CHANNELS.has(channel)
+export const isAllowedSend = (channel: unknown) => typeof channel === 'string' && SEND_CHANNELS.has(channel)
+export const isAllowedReceive = (channel: unknown) => typeof channel === 'string' &&
+  (RECEIVE_CHANNELS.has(channel) || RECEIVE_PREFIXES.some(prefix => channel.startsWith(prefix)))
+
+// The real IpcRendererEvent carries `sender` (the unrestricted ipcRenderer), so it must never reach the page.
+const pageEvent = {} as IpcRendererEvent
+
 /** ===== Implementation ===== */
 const api: ElectronApi = {
   secureToken: {
@@ -225,12 +252,24 @@ const api: ElectronApi = {
     clear: id => ipcRenderer.invoke('secureToken:clear', id),
   },
   ipcRenderer: {
-    send: (channel, data) => ipcRenderer.send(channel, data),
-    on: (channel, listener) => ipcRenderer.on(channel, (_e, ...args) => listener(_e, ...args)),
-    invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
-    once: (channel, listener) => ipcRenderer.once(channel, (_e, ...args) => listener(_e, ...args)),
-    removeListener: (channel, listener) => ipcRenderer.removeListener(channel, listener),
-    removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
+    send: (channel, data) => {
+      if (isAllowedSend(channel)) ipcRenderer.send(channel, data)
+    },
+    on: (channel, listener) => {
+      if (isAllowedReceive(channel)) ipcRenderer.on(channel, (_e, ...args) => listener(pageEvent, ...args))
+    },
+    invoke: (channel, ...args) => isAllowedInvoke(channel)
+      ? ipcRenderer.invoke(channel, ...args)
+      : Promise.reject(new Error(`IPC channel not allowed: ${String(channel)}`)),
+    once: (channel, listener) => {
+      if (isAllowedReceive(channel)) ipcRenderer.once(channel, (_e, ...args) => listener(pageEvent, ...args))
+    },
+    removeListener: (channel, listener) => {
+      if (isAllowedReceive(channel)) ipcRenderer.removeListener(channel, listener)
+    },
+    removeAllListeners: (channel) => {
+      if (isAllowedReceive(channel)) ipcRenderer.removeAllListeners(channel)
+    },
   },
 
   // dialogs / misc
