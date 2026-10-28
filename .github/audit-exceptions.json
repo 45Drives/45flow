@@ -1,0 +1,29 @@
+{
+  "exceptions": [
+    {
+      "package": "electron",
+      "reason": "Electron 38 is end-of-life; clearing these requires a major runtime upgrade with cross-platform QA, tracked as a separate task.",
+      "expires": "2027-01-31",
+      "advisories": [
+        { "id": 1116060, "ghsa": "GHSA-532v-xpq5-8h95" },
+        { "id": 1136552, "ghsa": "GHSA-v3j7-r9gq-3gjw" },
+        { "id": 1136567, "ghsa": "GHSA-h7rp-cf8h-j98x" },
+        { "id": 1136607, "ghsa": "GHSA-9f4c-93c8-jc8g" },
+        { "id": 1239973, "ghsa": "GHSA-hq2x-r82h-9wj4" },
+        { "id": 1239977, "ghsa": "GHSA-gr2m-v5gq-v685" },
+        { "id": 1239981, "ghsa": "GHSA-j84w-jfhq-vhvj" },
+        { "id": 1241657, "ghsa": "GHSA-9qh4-3jw8-366w" },
+        { "id": 1243069, "ghsa": "GHSA-jr5w-w6x2-84p9" }
+      ]
+    },
+    {
+      "package": "extract-zip",
+      "reason": "No patched release exists; pulled in only by the electron 38 package installer and removed by the Electron upgrade (42.11.16+ no longer depends on it).",
+      "expires": "2027-01-31",
+      "advisories": [
+        { "id": 1139346, "ghsa": "GHSA-jmr9-qjv8-65gv" },
+        { "id": 1193685, "ghsa": "GHSA-7pqw-9j4j-h8q3" }
+      ]
+    }
+  ]
+}

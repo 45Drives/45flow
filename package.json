@@ -50,7 +50,7 @@
     "chalk": "^4.1.2",
     "chokidar": "^3.5.3",
     "electron": "^38.2.2",
-    "electron-builder": "26.0.12",
+    "electron-builder": "26.18.0",
     "electron-osx-sign": "^0.6.0",
     "esbuild": "^0.25.1",
     "jsdom": "^26.0.0",
@@ -60,7 +60,7 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "vite": "^6.0.11",
-    "vitest": "^3.0.7"
+    "vitest": "^4.1.12"
   },
   "dependencies": {
     "@45drives/houston-common-css": "workspace:*",
@@ -89,5 +89,14 @@
   "optionalDependencies": {
     "dmg-license": "^1.0.11"
   },
-  "packageManager": "yarn@4.6.0+sha512.5383cc12567a95f1d668fbe762dfe0075c595b4bfff433be478dbbe24e05251a8e8c3eb992a986667c1d53b6c3a9c85b8398c35a960587fbd9fa3a0915406728"
+  "packageManager": "yarn@4.6.0+sha512.5383cc12567a95f1d668fbe762dfe0075c595b4bfff433be478dbbe24e05251a8e8c3eb992a986667c1d53b6c3a9c85b8398c35a960587fbd9fa3a0915406728",
+  "resolutions": {
+    "@types/electron/electron": "^38.2.2",
+    "@45drives/houston-common-lib/vitest": "^4.1.12",
+    "@45drives/houston-common-ui/vitest": "^4.1.12",
+    "@45drives/houston-common-ui/zod": "^4.6.7",
+    "@45drives/houston-common-ui/zod-validation-error": "^4.0.2",
+    "@microsoft/api-extractor/lodash": "^4.18.1",
+    "@microsoft/api-extractor/minimatch": "^3.1.5"
+  }
 }

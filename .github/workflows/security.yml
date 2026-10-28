@@ -32,7 +32,7 @@ jobs:
           yarn install --immutable --mode=skip-build
 
       - name: Fail on high or critical dependency advisories
-        run: yarn npm audit --all --recursive --severity high
+        run: node .github/scripts/audit.mjs
 
   secret-scan:
     name: Secret scan
