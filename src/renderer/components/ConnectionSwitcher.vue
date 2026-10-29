@@ -76,6 +76,9 @@
                   'bg-yellow-500': conn.status === 'checking'
                 }" />
                 <span class="flex-1 text-sm truncate" :class="!isAllServers && conn.isActive ? 'text-white' : 'text-default'">{{ conn.name }}</span>
+                <span v-if="!conn.token || conn.status !== 'connected'" class="text-[10px] whitespace-nowrap" :class="!isAllServers && conn.isActive ? 'text-white' : 'text-muted'">
+                  {{ !conn.token ? 'Logged out' : 'Reconnect required' }}
+                </span>
                 <span class="text-[10px] font-medium px-1.5 py-0.5 rounded text-white" :class="licenseBadgeClass(conn)">{{ licenseBadgeLabel(conn) }}</span>
                 <span v-if="conn.isFavorite" class="text-yellow-500">★</span>
               </button>
@@ -201,12 +204,14 @@ function isTrialLicense(conn: any): boolean {
 }
 
 function licenseBadgeLabel(conn: any): string {
+  if (!conn.licensed && conn.licenseFallback) return 'Pro Legacy'
   if (!conn.licensed) return 'Community'
   if (isTrialLicense(conn)) return 'Pro Trial'
   return 'Pro'
 }
 
 function licenseBadgeClass(conn: any): string {
+  if (!conn.licensed && conn.licenseFallback) return 'bg-amber-600'
   if (!conn.licensed) return 'bg-gray-500'
   if (isTrialLicense(conn)) return 'bg-blue-500'
   return 'bg-green-600'

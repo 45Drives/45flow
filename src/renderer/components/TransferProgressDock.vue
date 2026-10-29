@@ -113,6 +113,10 @@
                                 <progress class="w-full h-1 rounded-lg overflow-hidden mt-0.5"
                                     :class="t.status === 'done' ? 'progress-done' : 'progress-active'"
                                     :value="t.progress || 0" max="100" />
+                                <div v-if="t.kind === 'upload' && t.phaseMessage && t.status !== 'error' && t.status !== 'canceled'"
+                                    class="text-[11px] opacity-70 mt-1" role="status">
+                                    {{ t.phaseMessage }}
+                                </div>
                             </div>
                         </div>
 
@@ -258,7 +262,11 @@ function statusPriority(t: any): number {
 /** Human-readable status labels */
 function statusLabel(t: any): string {
     const s = String(t?.status || '').toLowerCase()
-    if (s === 'uploading') return 'Uploading'
+    if (s === 'uploading') {
+        if (t.phase === 'scanning') return 'Scanning'
+        if (t.phase === 'finalizing') return 'Finalizing'
+        return 'Uploading'
+    }
     if (s === 'transcoding') return 'Waiting'
     if (s === 'running') return 'Running'
     if (s === 'queued') return 'Queued'

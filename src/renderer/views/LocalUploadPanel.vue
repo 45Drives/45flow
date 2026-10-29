@@ -201,7 +201,9 @@
 															Transcode {{ Number.isFinite(u.progress) ? u.progress.toFixed(0) : 0 }}%
 														</template>
 														<template v-else-if="u.status === 'uploading'">
-															Upload {{ Number.isFinite(u.progress) ? u.progress.toFixed(0) : 0 }}%
+															<template v-if="u.phase === 'scanning'">Scanning…</template>
+															<template v-else-if="u.phase === 'finalizing'">Finalizing…</template>
+															<template v-else>Upload {{ Number.isFinite(u.progress) ? u.progress.toFixed(0) : 0 }}%</template>
 														</template>
 														<template v-else>
 															<span v-if="u.alreadyUploaded && u.status === 'done'">
@@ -210,6 +212,8 @@
 															<span v-else>{{ u.status }}</span>
 														</template>
 													</span>
+													<div v-if="u.phaseMessage && u.status !== 'error' && u.status !== 'canceled'"
+														class="text-xs opacity-70 mt-1" role="status">{{ u.phaseMessage }}</div>
 												</td>
 												<td class="px-4 py-2 border border-default">
 													<div class="flex justify-end">
@@ -516,6 +520,8 @@ type UploadRow = {
 	dest: string
 	uploadId?: string | null
 	status: 'queued' | 'transcoding' | 'uploading' | 'done' | 'canceled' | 'error'
+	phase?: 'uploading' | 'scanning' | 'finalizing' | 'complete'
+	phaseMessage?: string
 	error: string | null
 	progress: number
 	speed: string | null
@@ -1043,7 +1049,6 @@ function waitForIngestAndStartTranscode(opts: {
 	groupId: string
 	destDir: string
 	destFileAbs: string
-	watermarkRelPath?: string
 	// Client-side full transcode opts
 	clientTranscode?: boolean
 	sourceFilePath?: string
@@ -1190,48 +1195,6 @@ function waitForIngestAndStartTranscode(opts: {
 		const handler = async (_e: any, payload: any) => {
 			try {
 				if (!payload?.ok) {
-					if (payload?.error === 'outputs_exist' || payload?.error === 'hls_exists' || payload?.error === 'watermark_exists') {
-						const msg = 'Transcode outputs already exist for this file. Overwrite them?';
-						const proceed = window.confirm(msg);
-						if (proceed) {
-							const params = new URLSearchParams();
-							if (payload?.destRel) params.set('dest', String(payload.destRel));
-							if (payload?.name) params.set('name', String(payload.name));
-							if (opts.isVideo && opts.wantProxy) {
-								params.set('hls', '1');
-								params.set('proxy', '1');
-								if (proxyQualities.value.length) params.set('proxyQualities', proxyQualities.value.join(','));
-							}
-
-							if (watermarkAfterUpload.value) {
-								const wmRel = String(opts.watermarkRelPath || resolveWatermarkRelPath() || watermarkFile.value?.name || '').trim()
-								if (wmRel) {
-									params.set('watermark', '1');
-									params.set('watermarkFile', wmRel);
-									if (opts.isVideo && proxyQualities.value.length) {
-										params.set('watermarkProxyQualities', proxyQualities.value.join(','));
-									}
-								// Premium: Pass custom watermark settings to server
-								if (watermarkSettings.value && isPremiumActive.value) {
-									params.set('watermarkSettings', JSON.stringify(watermarkSettings.value));
-								}
-							}
-						}
-
-						params.set('overwrite', '1');
-						const data = await apiFetch(`/api/files/reingest?${params}`, { method: 'POST' });
-						startTranscodeFromPayload(data);
-					} else {
-						pushNotification(
-							new Notification(
-								'Overwrite Canceled',
-								'Existing review copy outputs were kept.',
-								'info',
-								6000
-							)
-						);
-					}
-				} else {
 					const requestSuffix = payload?.requestId ? ` (request ${String(payload.requestId)})` : '';
 					pushNotification(
 						new Notification(
@@ -1242,9 +1205,8 @@ function waitForIngestAndStartTranscode(opts: {
 							'ingest-error'
 						)
 					);
+					return;
 				}
-				return;
-			}
 
 			startTranscodeFromPayload(payload);
 		} finally {
@@ -1576,16 +1538,20 @@ function uploadOneFile(
 				watermarkFile: enableWatermark ? watermarkRelPathForIngest : undefined,
 				watermarkSettings: enableWatermark && isPremiumActive.value ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
 			},
-		(p: any) => {
+		(p) => {
 				const pct = typeof p.percent === 'number' ? p.percent : undefined;
 
-				updateRowProgress(row, pct, p.rate, p.eta);
+				updateRowProgress(row, pct, p.rate ?? '', p.eta ?? '');
+				row.phase = p.phase;
+				row.phaseMessage = p.message;
 
 				transfer.updateUpload(taskId, {
 					status: 'uploading',
 					progress: typeof pct === 'number' ? pct : row.progress,
 					speed: p.rate ?? null,
 					eta: p.eta ?? null,
+					phase: p.phase,
+					phaseMessage: p.message,
 				});
 			}
 		);
@@ -1708,7 +1674,6 @@ function uploadOneFile(
 				groupId,
 				destDir: destDirAbs,
 				destFileAbs,
-				watermarkRelPath: watermarkRelPathForIngest,
 				clientTranscode: false,
 				sourceFilePath: row.path,
 				localWatermarkPath: localWatermarkPath,

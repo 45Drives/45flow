@@ -6,7 +6,7 @@
       class="absolute inset-x-0 top-12 mx-auto w-11/12 max-w-5xl bg-accent border border-default rounded-lg shadow-lg z-50 flex flex-col max-h-[calc(100vh-4rem)]">
       <!-- Header -->
       <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-default shrink-0 min-w-0" data-tour="link-details-header">
-        <h3 class="text-lg font-semibold truncate min-w-0">
+        <h3 class="text-lg font-semibold truncate min-w-0" :title="link?.title || (link && fallbackTitle(link))">
           Link Details — {{ link?.title || (link && fallbackTitle(link)) }}
         </h3>
 
@@ -127,14 +127,14 @@
         <section class="space-y-3 rounded-lg border border-default bg-default/10 p-3" data-tour="link-details-config">
           <div class="text-default font-semibold">Link Configuration</div>
           <div class="grid grid-cols-3">
-            <div class="rounded-lg border border-default bg-default/20 p-3 space-y-3">
+            <div class="min-w-0 rounded-lg border border-default bg-default/20 p-3 space-y-3">
               <div>
                 <label class="block text-default mb-1">Title</label>
                 <template v-if="editMode">
                   <input v-model="draftTitle" class="input-textlike bg-default w-full px-3 py-2 rounded" />
                 </template>
                 <template v-else>
-                  <div class="px-3 py-2 rounded border border-default bg-default/30">
+                  <div class="truncate px-3 py-2 rounded border border-default bg-default/30" :title="link?.title || undefined">
                     {{ link?.title || '—' }}
                   </div>
                 </template>
@@ -655,6 +655,14 @@
           </div>
         </section>
 
+        <!-- Processing (review copies / HLS / image watermarks); hides itself when nothing was requested -->
+        <LinkTranscodeStatus
+          v-if="!editMode && link && link.type !== 'upload'"
+          :link-id="link.id"
+          :api-fetch="props.apiFetch"
+          :reload-signal="transcodeStatusReload"
+        />
+
         <!-- Activity -->
         <section v-if="!editMode" class="w-full" data-tour="link-details-activity">
           <div class="flex items-center justify-between mb-2">
@@ -1023,6 +1031,7 @@ import EditLinkFilesModal from './EditLinkFilesModal.vue'
 import CommentsReviewModal from './CommentsReviewModal.vue'
 import CategoryManagementModal from './CategoryManagementModal.vue'
 import PathInput from '../PathInput.vue'
+import LinkTranscodeStatus from '../LinkTranscodeStatus.vue'
 import WatermarkCustomizer from '../WatermarkCustomizer.vue'
 import WatermarkPreview from '../WatermarkPreview.vue'
 import type { LinkItem, LinkType, AccessRow, Status, ExistingUser } from '../../typings/electron'
@@ -1119,6 +1128,7 @@ const connectionMeta = inject(connectionMetaInjectionKey, null)
 
 
 const thumbnailSrc = ref('')
+const transcodeStatusReload = ref(0)
 const thumbnailLoading = ref(false)
 const thumbnailFailed = ref(false)
 watch(() => props.link?.thumbnailUrl, async (url) => {
@@ -3634,6 +3644,7 @@ async function fetchDetailsFor() {
     selectedVersionFileId.value = null
   } finally {
     detailsLoading.value = false
+    transcodeStatusReload.value++
   }
 }
 

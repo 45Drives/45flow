@@ -31,6 +31,7 @@ import "./style.css";
 import AppShell from '../app/AppShell.vue';
 import { router } from '../app/routes';
 import { enterNextDirective } from '@45drives/houston-common-ui';
+import { initializeConnections } from './composables/useConnections';
 
 document.title = `45Flow v${__APP_VERSION__}`;
 
@@ -39,9 +40,15 @@ const pinia = createPinia();
 app.use(router)
 app.directive('enter-next', enterNextDirective);
 app.use(pinia);
-app.mount('#app');
+initializeConnections().then(() => {
+    app.mount('#app');
+    window.electron?.ipcRenderer.send('renderer-ready');
+}).catch(() => {
+    console.error('[connections] initialization failed');
+    const root = document.getElementById('app');
+    if (root) root.textContent = 'Unable to initialize secure login storage. Please restart 45Flow and check the client logs.';
+});
 document.documentElement.classList.add('theme-studio-grad-logo-flow');
-window.electron?.ipcRenderer.send('renderer-ready');
 
 const IGNORE = [
     'setup() return property "_" should not start with "$" or "_"',

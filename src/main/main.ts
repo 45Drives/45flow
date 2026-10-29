@@ -317,10 +317,6 @@ function createLogPolicy() {
 
     if (e.startsWith('ingest.')) {
       if (e === 'ingest.dest.normalize') return sample('ingest.dest.normalize', 5) ? { forceLevel: 'debug' } : { drop: true };
-      if (e === 'ingest.register') {
-        // this can be noisy if you do retries; keep 1/5 at debug
-        return sample('ingest.register', 5) ? { forceLevel: 'debug' } : { drop: true };
-      }
       return {};
     }
 
@@ -370,6 +366,7 @@ if (process.env.ELECTRON_USER_DATA_DIR) {
 import { createLogger, format } from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import path, { join } from 'path';
+import { pathToFileURL } from 'url';
 import mdns from 'multicast-dns';
 import os from 'os';
 import fs from 'fs';
@@ -383,6 +380,7 @@ import { server, unwrap, IPCRouter } from '@45drives/houston-common-lib';
 import { installServerDepsRemotely } from './installServerDeps';
 import { checkSSH } from './setupSsh';
 import { getPin, rememberPin } from './certPins'
+import { getSshVerifiedCertificates, prepareSshCertificate } from './sshCertificateTrust';
 import { NodeSSH } from 'node-ssh';
 import { registerSensitiveToken, scrubSecrets } from './scrubSecrets';
 import { registerHttpUploadHandlers } from './transfers/http-upload';
@@ -390,6 +388,10 @@ import { registerTranscodeOutputUploadHandlers } from './transfers/transcode-out
 import { TranscodeManager } from './transcoding/TranscodeManager';
 import { FullTranscodeManager } from './transcoding/FullTranscodeManager';
 import { initAutoUpdates } from './updates';
+import { registerSecureTokenHandlers } from './secureTokens';
+import { chromiumChain, hasBlockedKey, installNodeTlsBlocklist } from './blockedCertificates';
+
+installNodeTlsBlocklist();
 
 // ── Client install ID (must be initialized early for SSH key comments) ──
 const idFile = path.join(app.getPath('userData'), 'client-id.txt');
@@ -785,6 +787,17 @@ ipcMain.handle('probe-health', async (_e, { ip, port }) => {
     jl('warn', 'ipc.probe-health.error', { ip, port, error: err?.message || String(err) });
 
     return { ok: false, error: err?.message || String(err) };
+  }
+});
+
+ipcMain.handle('verify-nginx-certificate-over-ssh', async (_event, options) => {
+  try {
+    await prepareSshCertificate(options);
+    return { ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    jl('warn', 'cert.ssh-verification.failed', { error: message });
+    return { ok: false, error: message };
   }
 });
 
@@ -1281,11 +1294,11 @@ function createWindow() {
     width: 800,
     height: 600,
     webPreferences: {
-      sandbox: false,
+      sandbox: true,
       preload: join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
-      webviewTag: true,
+      webviewTag: false,
       javascript: true,
       backgroundThrottling: true,  // Enable throttling to reduce CPU when minimized
       webSecurity: true,                  // Enforces origin security
@@ -2038,10 +2051,40 @@ function createWindow() {
 }
 
 app.on('web-contents-created', (_event, contents) => {
-  contents.on('will-attach-webview', (_wawevent, webPreferences, _params) => {
-    webPreferences.preload = `${__dirname}/webview-preload.js`;
+  // 45Flow never embeds <webview>; refuse any attempt so injected content cannot get a preload.
+  contents.on('will-attach-webview', (event) => {
+    event.preventDefault();
+  });
+  // The preload API must only ever run on the bundled renderer, so app windows never navigate away from it.
+  if (contents.getType() !== 'window') return;
+  contents.on('will-navigate', (event, url) => {
+    if (isRendererUrl(url)) return;
+    event.preventDefault();
+    jl('warn', 'navigation.blocked', { url: String(url).slice(0, 200) });
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url);
   });
 });
+
+function rendererEntryUrl(): URL {
+  return process.env.NODE_ENV === 'development'
+    ? new URL(`http://localhost:${process.env.ELECTRON_RENDERER_PORT || process.argv[2]}/`)
+    : pathToFileURL(join(app.getAppPath(), 'renderer', 'index.html'));
+}
+
+function isRendererUrl(url: string): boolean {
+  try {
+    const target = new URL(url);
+    const entry = rendererEntryUrl();
+    return target.protocol === entry.protocol && target.host === entry.host && target.pathname === entry.pathname;
+  } catch {
+    return false;
+  }
+}
+
+// Mirrors Electron 42.11.16+'s block of the compromised eMudhra intermediates (GHSA-jr5w-w6x2-84p9).
+function usesBlockedKey(req: Electron.Request): boolean {
+  return hasBlockedKey([...chromiumChain(req.certificate), ...chromiumChain(req.validatedCertificate)]);
+}
 
 
 app.whenReady().then(() => {
@@ -2068,6 +2111,15 @@ app.whenReady().then(() => {
   };
 
   session.defaultSession.setCertificateVerifyProc((req, cb) => {
+    if (usesBlockedKey(req)) {
+      jl('warn', 'cert.verify.blocked-key', { hostname: req.hostname });
+      return cb(-2);
+    }
+    const sshFingerprints = getSshVerifiedCertificates(req.hostname);
+    if (sshFingerprints) {
+      // An SSH-verified endpoint must never fall back to a manual HTTPS trust override.
+      return cb(sshFingerprints.includes(req.certificate.fingerprint) ? 0 : -2);
+    }
     // Let Chromium handle all non-internal hosts (gvt1.com, GitHub, etc.)
     if (!isInternalHost(req.hostname)) {
       return cb(-3); // “use default verification”
@@ -2109,7 +2161,18 @@ app.whenReady().then(() => {
     });
   });
 
+  // electron-updater downloads through its own session, which the default verifier does not cover.
+  session.fromPartition('electron-updater', { cache: false }).setCertificateVerifyProc((req, cb) => {
+    if (usesBlockedKey(req)) {
+      jl('warn', 'cert.verify.blocked-key', { hostname: req.hostname, session: 'electron-updater' });
+      return cb(-2);
+    }
+    cb(-3);
+  });
+
   ipcMain.handle("is-dev", async () => process.env.NODE_ENV === 'development');
+  registerSecureTokenHandlers(() =>
+    mainWindowRef && !mainWindowRef.isDestroyed() ? mainWindowRef.webContents : null);
 
   ipcMain.handle('dialog:openFolder', async () => {
     const parent = (mainWindowRef && !mainWindowRef.isDestroyed()) ? mainWindowRef : undefined;

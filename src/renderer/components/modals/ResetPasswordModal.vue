@@ -1,5 +1,5 @@
 <template>
-    <div v-if="modelValue" class="fixed inset-0 z-[60] flex items-center justify-center">
+    <div v-if="modelValue" class="fixed inset-0 z-[3000] flex items-center justify-center">
       <div class="absolute inset-0 bg-black/50" @click="close"></div>
   
       <div class="relative w-full max-w-md bg-accent rounded-lg shadow-xl p-4">

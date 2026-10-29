@@ -30,7 +30,10 @@
           <ConnectionSwitcher v-if="route.name !== 'server-selection' && isPremiumActive" />
           <BasicServerBadge v-else-if="route.name !== 'server-selection'" />
         </div>
-        <span v-if="isTrial && trialDaysRemaining !== null && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 font-medium whitespace-nowrap">
+        <span v-if="isFallback && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 font-medium whitespace-nowrap" title="Pro legacy mode: premium features remain available at your current version. Renew your license to restore app and server updates.">
+          License Expired
+        </span>
+        <span v-else-if="isTrial && trialDaysRemaining !== null && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 font-medium whitespace-nowrap">
           Pro Trial — {{ trialDaysRemaining }} {{ trialDaysRemaining === 1 ? 'day' : 'days' }} left
         </span>
         <span v-else-if="isTrialExpired && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-800 dark:text-red-300 font-medium whitespace-nowrap">
@@ -50,10 +53,13 @@
     </header>
 
 
+    <p v-if="credentialStorageNotice" role="status" class="px-4 py-2 text-sm bg-accent text-default">
+      {{ credentialStorageNotice }}
+    </p>
     <main class="flex-1 min-h-0 w-full overflow-hidden">
-      <router-view />
+      <router-view v-if="hasActiveSession || route.name === 'server-selection'" />
     </main>
-    <QuickShareOverlay />
+    <QuickShareOverlay v-if="hasActiveSession && route.name !== 'server-selection'" />
     <GlobalModalConfirm />
     <NotificationView />
     <UpdateBanner />
@@ -98,7 +104,7 @@ const ENABLE_TOUR = true
 const { activeTour, finishTour, cancelTour } = useTourManager()
 
 // Initialize multi-server connection management
-const { activeConnection } = useConnections()
+const { activeConnection, credentialStorageNotice } = useConnections()
 const { isPremiumActive, isUpdateEligible, isFallback, isTrial, isTrialExpired, trialDaysRemaining } = useLicenseStatus()
 const { activeProject } = useActiveProject()
 const { apiFetch } = useApi()
@@ -164,10 +170,21 @@ const { headerTitle } = useHeaderTitle()
 const hideTransfers = computed(() => route.meta.hideTransfers === true)
 const darkMode = useDarkModeState()
 
-const hasToken = computed(() => {
-  if (activeConnection.value?.token) return true
-  try { return !!sessionStorage.getItem('hb_token') } catch { return false }
-})
+const hasActiveSession = computed(() =>
+  !!activeConnection.value?.token && activeConnection.value.status === 'connected'
+)
+
+watch([hasActiveSession, () => activeConnection.value?.connectionId, () => route.name], async () => {
+  if (!route.name || route.name === 'server-selection' || hasActiveSession.value) return
+
+  const connection = activeConnection.value
+  await router.replace({
+    name: 'server-selection',
+    query: connection
+      ? { reconnect: connection.connectionId, serverIp: connection.serverIp, username: connection.username }
+      : { skipAutoLogin: 'true' },
+  })
+}, { immediate: true })
 
 provide(currentServerInjectionKey, currentServer)
 provide(divisionCodeInjectionKey, divisionCode)
@@ -180,7 +197,10 @@ provide(discoveryStateInjectionKey, discoveryState as DiscoveryState)
 // Use a writable ref so Connect2Server can set it during login before activeConnection exists
 const connectionMeta = ref<ConnectionMeta>({ port: 9095 })
 watch(activeConnection, (conn) => {
-  if (!conn) return
+  if (!conn) {
+    connectionMeta.value = { port: 9095 }
+    return
+  }
   connectionMeta.value = {
     token: conn.token,
     port: conn.apiPort,
@@ -188,7 +208,7 @@ watch(activeConnection, (conn) => {
     apiBase: conn.baseUrl,
     ssh: conn.ssh
   }
-}, { immediate: true })
+}, { immediate: true, deep: true })
 provide(connectionMetaInjectionKey, connectionMeta)
 
 const { currentDivision, currentTheme, setThemeControlsUnlocked } = useThemeFromAlias()

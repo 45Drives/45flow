@@ -26,6 +26,8 @@ export type TransferTask =
         title: string
         detail?: string
         status: UploadStatus
+        phase?: 'uploading' | 'scanning' | 'finalizing' | 'complete'
+        phaseMessage?: string
         progress: number
         speed?: string | null
         eta?: string | null
