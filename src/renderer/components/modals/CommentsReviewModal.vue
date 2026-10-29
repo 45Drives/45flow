@@ -446,6 +446,15 @@
                         <CheckIcon class="w-3 h-3" />
                         Resolved {{ formatDate(comment.resolved_at) }}
                       </span>
+                      <button
+                        @click.stop="deleteComment(comment)"
+                        :disabled="deletingIds.has(comment.id)"
+                        class="ml-auto flex items-center gap-1 px-2 py-1 rounded text-red-500 hover:bg-red-500/15 transition-colors font-semibold disabled:opacity-50"
+                        :title="comment.draw_data ? 'Delete this comment and its annotation' : 'Delete this comment'"
+                      >
+                        <TrashIcon class="w-3 h-3" />
+                        {{ deletingIds.has(comment.id) ? 'Deleting…' : 'Delete' }}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -489,7 +498,8 @@ import {
   ClockIcon,
   CheckIcon,
   PencilIcon,
-  ArrowDownTrayIcon
+  ArrowDownTrayIcon,
+  TrashIcon
 } from '@heroicons/vue/24/outline'
 import AnnotationViewerModal from './AnnotationViewerModal.vue'
 import CategoryManagementModal from './CategoryManagementModal.vue'
@@ -532,6 +542,7 @@ const bulkCategoryId = ref('')
 
 // Bulk selection
 const selectedCommentIds = ref<Set<number>>(new Set())
+const deletingIds = ref<Set<number>>(new Set())
 const statusFilter = ref<'all' | 'resolved' | 'unresolved'>('all')
 const versionFilter = ref('')
 const categoryFilter = ref('')
@@ -1065,6 +1076,67 @@ async function bulkResolve(resolved: boolean) {
 function openInBrowser() {
   if (!props.link?.url) return
   window.open(props.link.url, '_blank', 'noopener,noreferrer')
+}
+
+async function deleteComment(comment: CommentExport) {
+  const linkId = props.link?.id
+  if (!linkId || deletingIds.value.has(comment.id)) return
+
+  const replyCount = repliesByParent.value.get(comment.id)?.length ?? 0
+  const lines = [
+    `Delete this comment by ${comment.author_name || comment.user_name || 'Anonymous'}?`,
+    comment.draw_data ? 'Its annotation will also be removed.' : '',
+    replyCount ? `${replyCount} repl${replyCount === 1 ? 'y' : 'ies'} will also be deleted.` : '',
+    'This cannot be undone.',
+  ].filter(Boolean)
+  if (!confirm(lines.join('\n'))) return
+
+  deletingIds.value = new Set(deletingIds.value).add(comment.id)
+  try {
+    const response = await apiFetch(`/api/links/${linkId}/comments/${comment.id}`, { method: 'DELETE' })
+    if (!response?.ok) throw new Error(response?.error || 'Failed to delete comment')
+
+    const removed = new Set<number>((response.deletedIds as number[] | undefined) ?? [comment.id])
+    comments.value = comments.value.filter(c => !removed.has(c.id))
+    selectedCommentIds.value = new Set([...selectedCommentIds.value].filter(id => !removed.has(id)))
+    if (selectedAnnotationComment.value && removed.has(Number(selectedAnnotationComment.value.id))) {
+      showAnnotationViewer.value = false
+    }
+    void refreshStats()
+
+    pushNotification(new Notification(
+      'Comment Deleted',
+      removed.size > 1 ? `Deleted the comment and ${removed.size - 1} repl${removed.size === 2 ? 'y' : 'ies'}` : 'The comment was deleted.',
+      'success',
+      3000
+    ))
+  } catch (err: any) {
+    console.error('[CommentsReview] Delete error:', err)
+    // premium_required already shows its own notification from apiFetch
+    if (err?.code !== 'premium_required') {
+      pushNotification(new Notification(
+        'Delete Failed',
+        err?.message || 'Could not delete the comment',
+        'error',
+        5000
+      ))
+    }
+  } finally {
+    const next = new Set(deletingIds.value)
+    next.delete(comment.id)
+    deletingIds.value = next
+  }
+}
+
+// Re-fetch counts from the server so totals (replies, annotations) stay accurate after a delete
+async function refreshStats() {
+  if (!props.link?.id) return
+  try {
+    const response = await apiFetch(`/api/links/${props.link.id}/comments`)
+    if (response?.ok && response.stats) stats.value = response.stats
+  } catch (err) {
+    console.warn('[CommentsReview] Stats refresh failed:', err)
+  }
 }
 
 async function toggleResolved(comment: CommentExport) {
