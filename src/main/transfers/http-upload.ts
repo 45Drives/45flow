@@ -347,6 +347,11 @@ function guessMimeFromExt(filename: string): string {
     gif: 'image/gif', webp: 'image/webp', tiff: 'image/tiff', tif: 'image/tiff',
     mp3: 'audio/mpeg', wav: 'audio/wav', flac: 'audio/flac',
     pdf: 'application/pdf', zip: 'application/zip',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    xls: 'application/vnd.ms-excel',
+    ods: 'application/vnd.oasis.opendocument.spreadsheet',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    doc: 'application/msword',
   }
   return map[ext] || 'application/octet-stream'
 }

@@ -263,7 +263,12 @@
 
       <!-- ===== STEP 3: Upload & Share Progress ===== -->
       <section v-show="wizardStep === 3" data-tour="qs-step-upload">
-        <div v-if="uploadPhase === 'uploading'" class="flex flex-col gap-3">
+        <div v-if="uploadPhase === 'validating'" class="flex items-center gap-3 text-sm">
+          <span class="inline-block w-4 h-4 border-2 border-default border-t-transparent rounded-full animate-spin"></span>
+          Checking all files before uploading…
+        </div>
+
+        <div v-else-if="uploadPhase === 'uploading'" class="flex flex-col gap-3">
           <div class="text-sm font-semibold">{{ currentPhaseLabel }}</div>
           <div v-for="f in droppedFiles" :key="f.path" class="flex flex-col gap-1">
             <div class="flex items-center justify-between text-sm">
@@ -300,7 +305,7 @@
 
         <div v-else-if="uploadPhase === 'error'" class="flex flex-col gap-2">
           <div class="text-sm font-semibold text-red-500">Error</div>
-          <p class="text-sm text-red-400">{{ errorMsg }}</p>
+          <p class="text-sm text-red-400 whitespace-pre-wrap break-words">{{ errorMsg }}</p>
         </div>
       </section>
 
@@ -334,6 +339,7 @@ import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { appLog } from '../composables/useLog'
 import { connectionMetaInjectionKey, currentServerInjectionKey } from '../keys/injection-keys'
 import { useApi } from '../composables/useApi'
+import { validateUploadBatch } from '../utils/uploadPreflight'
 import { useConnections } from '../composables/useConnections'
 import { useActiveProject } from '../composables/useActiveProject'
 import { useProjectMode } from '../composables/useProjectMode'
@@ -530,7 +536,7 @@ function isConnected() {
 // balanced regardless of child-element boundary crossings.
 
 function onDocDragEnter(e: DragEvent) {
-  if (!isConnected()) return
+  if (!isConnected() || busy.value) return
   if (!e.dataTransfer?.types.includes('Files')) return
   e.preventDefault()
   dragCounter++
@@ -559,7 +565,7 @@ function onDocDrop(e: DragEvent) {
   dragging.value = false
   dragCounter = 0
 
-  if (!isConnected()) return
+  if (!isConnected() || busy.value) return
   if (!e.dataTransfer?.files?.length) return
 
   // Reject folders — Quick Share only accepts files
@@ -736,7 +742,7 @@ const effectiveWatermarkName = computed(() => {
 })
 
 // Step 3: Progress
-type UploadPhase = 'idle' | 'uploading' | 'generating' | 'done' | 'error'
+type UploadPhase = 'idle' | 'validating' | 'uploading' | 'generating' | 'done' | 'error'
 const uploadPhase = ref<UploadPhase>('idle')
 const perFileProgress = ref<Record<string, number>>({})
 const perFileStatus = ref<Record<string, 'waiting' | 'transcoding' | 'uploading' | 'done' | 'error'>>({})
@@ -761,6 +767,7 @@ const minimizedStatusText = computed(() => {
   if (uploadPhase.value === 'done') return 'Done — click to view link'
   if (uploadPhase.value === 'error') return 'Error — click to view'
   if (uploadPhase.value === 'generating') return 'Generating link…'
+  if (uploadPhase.value === 'validating') return 'Checking files…'
   if (uploadPhase.value === 'uploading') {
     const statuses = Object.values(perFileStatus.value)
     const anyTranscoding = statuses.includes('transcoding')
@@ -872,7 +879,7 @@ function resetWizard() {
 
 function cancel() {
   if (isTourMode.value) return // don't close during guided tour
-  if (busy.value && uploadPhase.value === 'uploading') return // don't close during upload
+  if (busy.value && (uploadPhase.value === 'validating' || uploadPhase.value === 'uploading')) return
   showModal.value = false
   minimized.value = false
   droppedFiles.value = []
@@ -1187,10 +1194,10 @@ function parseEtaToSeconds(eta: string): number | null {
 
 // ── Upload & Share ──
 async function startUploadAndShare() {
-  if (!canProceed.value) return
+  if (busy.value || !canProceed.value) return
   busy.value = true
   wizardStep.value = 3
-  uploadPhase.value = 'uploading'
+  uploadPhase.value = 'validating'
   minimized.value = true
   perFileProgress.value = Object.fromEntries(droppedFiles.value.map(f => [f.path, 0]))
   perFileStatus.value = Object.fromEntries(droppedFiles.value.map(f => [f.path, 'waiting']))
@@ -1199,6 +1206,9 @@ async function startUploadAndShare() {
   const destDir = `/${(destFolder.value || '').replace(/^\/+/, '')}` || '/'
 
   try {
+    await validateUploadBatch(apiFetch, droppedFiles.value, destDir)
+    uploadPhase.value = 'uploading'
+
     // Suppress transfer dock auto-open for quick share uploads
     transfer.state.suppressAutoOpen = true
 

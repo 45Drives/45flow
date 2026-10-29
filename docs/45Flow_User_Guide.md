@@ -1017,6 +1017,12 @@ The **QuickShare** feature provides the fastest way to create a share link. Drag
 3. **Configure Options:** For video files, choose review copy qualities and watermark settings. Set link expiry, title, and access controls.
 4. **Generate Link:** Click **"Share"** to upload, transcode, and generate a shareable link.
 
+Documents and spreadsheets: Share Excel, OpenDocument, CSV, TSV, and Word files. Spreadsheets have a read-only grid preview; DOCX has a text preview. Legacy DOC files require downloading.
+
+Previews support files up to 10 MB and may show only part of larger documents or worksheets. Download the original for complete content and formatting, when permitted.
+
+QuickShare checks all selected files before uploading. If any are unsupported or exceed upload limits, nothing uploads and the rejected files are listed.
+
 **Video Processing:** When client-side transcoding is enabled (Settings → Performance), video files are transcoded on your machine before upload — this generates both a **Stream** (HLS for browser playback) and **Review Copies** (downloadable MP4s). With server-side mode, files upload first and the server handles processing.
 
 ### QuickShare Options
