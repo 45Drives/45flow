@@ -9,7 +9,7 @@
 
 				<div class="dashboard-utility button-group-row">
 					<button @click="goToManageUsers" data-tour="manage-users" class="btn btn-secondary px-5 py-2.5">Manage Access</button>
-					<button @click="goToLogs" data-tour="view-logs" class="btn btn-secondary px-5 py-2.5">View Logs</button>
+					<button v-if="!isWeb" @click="goToLogs" data-tour="view-logs" class="btn btn-secondary px-5 py-2.5">View Logs</button>
 					<button @click="goToSettings" data-tour="settings" class="btn btn-secondary px-5 py-2.5">Settings</button>
 					<button @click="leaveServer" class="btn btn-danger px-5 py-2.5">Log Out</button>
 				</div>
@@ -596,6 +596,7 @@ import { useActiveProject } from '../composables/useActiveProject'
 import { useProjectMode } from '../composables/useProjectMode'
 import { useLicenseStatus } from '../composables/useLicenseStatus'
 import { useThemeFromAlias } from '../composables/useThemeFromAlias'
+const isWeb = window.electron?.isWeb === true
 
 useHeader('Dashboard')
 const { to } = useResilientNav()

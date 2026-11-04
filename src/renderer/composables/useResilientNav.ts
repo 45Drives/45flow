@@ -8,7 +8,9 @@ export function useResilientNav() {
         try {
             const r = await router.push({ name, params })
             if (isNavigationFailure(r) || router.currentRoute.value.name !== name) {
-                window.electron?.ipcRenderer?.send('action', 'show_dashboard') // your existing IPC path
+                if (!window.electron?.isWeb) {
+                    window.electron?.ipcRenderer?.send('action', 'show_dashboard')
+                }
                 setTimeout(() => {
                     if (router.currentRoute.value.name !== name) {
                         // Adjust if you’re not using hash mode:
@@ -17,7 +19,9 @@ export function useResilientNav() {
                 }, 250)
             }
         } catch {
-            window.electron?.ipcRenderer?.send('action', 'show_dashboard')
+            if (!window.electron?.isWeb) {
+                window.electron?.ipcRenderer?.send('action', 'show_dashboard')
+            }
             setTimeout(() => { window.location.hash = `#/${name}` }, 250)
         }
     }

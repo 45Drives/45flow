@@ -1,105 +1,186 @@
-type Listener = (event: any, payload: any) => void;
+import type { ConnectionCredentials } from '../shared/secureTokens'
+import { createWebUploadApi } from './web-upload'
 
-(function installWebIPCShim() {
-    if (typeof window === 'undefined') return;
-    if ((window as any).electron) return; // Electron present → do nothing
+type Listener = (event: { type: string }, payload: unknown) => void
 
-    // Centralizes your API base here. If UI & API are on the same origin,
-    // leave as '' so fetch('/api/...') is same-origin (no CORS headaches).
-    const API_BASE = (window as any).__API_BASE__ || '';
+const WEB_API_BASE = ''
 
-    async function readHttpError(res: Response): Promise<string> {
-        const requestId = String(res.headers.get('x-request-id') || '').trim();
-        const raw = await res.text().catch(() => '');
-        let parsed: any = null;
-        try { parsed = raw ? JSON.parse(raw) : null; } catch { parsed = null; }
-        const base =
-            (parsed && typeof parsed.error === 'string' && parsed.error) ||
-            (parsed && typeof parsed.message === 'string' && parsed.message) ||
-            raw ||
-            `HTTP ${res.status}`;
-        const bodyReqId = parsed && typeof parsed.requestId === 'string' ? parsed.requestId : '';
-        const rid = bodyReqId || requestId;
-        return rid && !String(base).includes(rid) ? `${base} (request ${rid})` : String(base);
-    }
+function installWebIPCShim() {
+    if (typeof window === 'undefined' || window.electron) return
 
-    // Minimal EventEmitter
-    const listeners = new Map<string, Set<Listener>>();
-    function emit(channel: string, payload: any) {
-        const set = listeners.get(channel);
-        if (!set) return;
-        for (const cb of set) cb({ type: channel }, payload);
-    }
+    const listeners = new Map<string, Set<Listener>>()
+    const credentials = new Map<string, ConnectionCredentials>()
+    let discoveryStream: EventSource | undefined
 
-    // Server-Sent Events for discovery/live updates
-    let sse: EventSource | null = null;
-    function ensureSSE() {
-        if (sse) return;
+    async function readHttpError(response: Response) {
+        const requestId = response.headers.get('x-request-id') || ''
+        const raw = await response.text()
+        let body: { error?: unknown; message?: unknown; requestId?: unknown } | null = null
         try {
-            sse = new EventSource(`${API_BASE}/api/discovery/stream`, { withCredentials: false });
-            sse.addEventListener('message', (e: MessageEvent) => {
-                // Generic messages (we send typed payloads below)
-                try {
-                    const data = JSON.parse(e.data);
-                    if (data?.type) emit(data.type, data.payload);
-                } catch { }
-            });
-            // Specific typed events (optional – you can also stick to 'message')
-            sse.addEventListener('hello', () => { /* ignore */ });
+            body = raw ? JSON.parse(raw) : null
+        } catch {
+            body = null
+        }
+        const message = (typeof body?.message === 'string' && body.message)
+            || (typeof body?.error === 'string' && body.error)
+            || raw
+            || `HTTP ${response.status}`
+        const id = typeof body?.requestId === 'string' ? body.requestId : requestId
+        return id && !message.includes(id) ? `${message} (request ${id})` : message
+    }
 
-            // If server uses `ssePush({type:'discovered-servers', payload:[...]})`
-            sse.addEventListener('discovered-servers', (e: MessageEvent) => {
-                try { emit('discovered-servers', JSON.parse((e as any).data)); } catch { }
-            });
+    async function requestJson(path: string, init?: RequestInit) {
+        const response = await fetch(`${WEB_API_BASE}${path}`, init)
+        if (!response.ok) throw new Error(await readHttpError(response))
+        return response.status === 204 ? undefined : response.json()
+    }
 
-            // Heartbeat handling is server-side; if it closes, we auto-reconnect
-            sse.onerror = () => { /* EventSource auto-reconnects */ };
-        } catch (err) {
-            console.error('SSE init failed:', err);
+    function notifyUnsupported(capability: string): never {
+        throw new Error(`${capability} is not available in the browser. Open 45Flow Desktop to use this feature.`)
+    }
+
+    function emit(channel: string, payload: unknown) {
+        for (const listener of listeners.get(channel) ?? []) {
+            listener({ type: channel }, payload)
         }
     }
 
-    const ipcRenderer = {
-        on(channel: string, cb: Listener) {
-            if (!listeners.has(channel)) listeners.set(channel, new Set());
-            listeners.get(channel)!.add(cb);
-            if (channel === 'discovered-servers') ensureSSE();
-        },
-        removeListener(channel: string, cb: Listener) {
-            listeners.get(channel)?.delete(cb);
-        },
-
-        async invoke(channel: string, ...args: any[]) {
-            switch (channel) {
-                case 'scan-network-fallback': {
-                    // Kick off the server scan, then fetch current list
-                    const scanResp = await fetch(`${API_BASE}/api/discovery/scan`, { method: 'POST' });
-                    if (!scanResp.ok) throw new Error(await readHttpError(scanResp));
-                    const r = await fetch(`${API_BASE}/api/discovery`);
-                    if (!r.ok) throw new Error(await readHttpError(r));
-                    const json = await r.json();
-                    return json.servers || [];
-                }
-                default:
-                    const r = await fetch(`${API_BASE}/ipc/${encodeURIComponent(channel)}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ args }),
-                    });
-                    if (!r.ok) throw new Error(`IPC invoke failed: ${channel}: ${await readHttpError(r)}`);
-                    return r.json();
+    function ensureDiscoveryStream() {
+        if (discoveryStream) return
+        discoveryStream = new EventSource(`${WEB_API_BASE}/api/discovery/stream`)
+        discoveryStream.addEventListener('message', (event) => {
+            try {
+                const message = JSON.parse((event as MessageEvent).data)
+                if (typeof message?.type === 'string') emit(message.type, message.payload)
+            } catch (error) {
+                console.error('[browser discovery] invalid event payload', error)
             }
-        },
+        })
+        discoveryStream.addEventListener('discovered-servers', (event) => {
+            try {
+                emit('discovered-servers', JSON.parse((event as MessageEvent).data))
+            } catch (error) {
+                console.error('[browser discovery] invalid server list', error)
+            }
+        })
+        discoveryStream.onerror = (error) => {
+            console.error('[browser discovery] event stream failed; browser will retry', error)
+        }
+    }
 
-        send(channel: string, payload?: any) {
-            if (channel === 'renderer-ready') return;
-            fetch(`${API_BASE}/ipc/${encodeURIComponent(channel)}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ payload }),
-            }).catch(() => { });
-        },
-    };
+    const upload = createWebUploadApi(emit)
 
-    (window as any).electron = { ipcRenderer };
-})();
+    const electron = {
+        isWeb: true,
+        secureToken: {
+            status: async () => ({ persistent: false }),
+            get: async (id: string) => credentials.get(id) ?? null,
+            set: async (id: string, value: ConnectionCredentials) => {
+                credentials.set(id, { token: value.token })
+                return { persistent: false }
+            },
+            clear: async (id: string) => { credentials.delete(id) },
+        },
+        ipcRenderer: {
+            on(channel: string, listener: Listener) {
+                if (!listeners.has(channel)) listeners.set(channel, new Set())
+                listeners.get(channel)!.add(listener)
+                if (channel === 'discovered-servers') ensureDiscoveryStream()
+            },
+            once(channel: string, listener: Listener) {
+                const wrapped: Listener = (event, payload) => {
+                    electron.ipcRenderer.removeListener(channel, wrapped)
+                    listener(event, payload)
+                }
+                electron.ipcRenderer.on(channel, wrapped)
+            },
+            removeListener(channel: string, listener: Listener) {
+                listeners.get(channel)?.delete(listener)
+            },
+            removeAllListeners(channel: string) {
+                listeners.delete(channel)
+            },
+            async invoke(channel: string, ...args: unknown[]) {
+                switch (channel) {
+                    case 'scan-network-fallback': {
+                        await requestJson('/api/discovery/scan', { method: 'POST' })
+                        const result = await requestJson('/api/discovery')
+                        return Array.isArray(result?.servers) ? result.servers : []
+                    }
+                    case 'get-os':
+                        return 'browser'
+                    case 'is-appimage':
+                    case 'is-dev':
+                        return false
+                    case 'ensure-ssh-ready':
+                    case 'remote-check-broadcaster':
+                    case 'run-remote-bootstrap':
+                        return notifyUnsupported('SSH setup and server bootstrap')
+                    case 'probe-health':
+                    case 'verify-nginx-certificate-over-ssh':
+                        return notifyUnsupported('Desktop network and SSH verification')
+                    case 'logs:read-client':
+                        return notifyUnsupported('Desktop client logs')
+                    case 'transcode:get-capabilities':
+                    case 'transcode:start':
+                    case 'transcode:cancel':
+                    case 'transcode:cancel-all-active':
+                    case 'transcode:full-start':
+                    case 'transcode:full-cancel':
+                    case 'transcode-output-upload':
+                    case 'transcode:cleanup-temp':
+                    case 'transcode:cleanup-watermark':
+                        return notifyUnsupported('Local video transcoding')
+                    case 'watermark:download':
+                        return notifyUnsupported('Watermark file operations')
+                    case 'dialog:openFolder':
+                    case 'dialog:pickFiles':
+                    case 'dialog:pickFolder':
+                    case 'dialog:pickWatermark':
+                        return notifyUnsupported('Desktop file picker')
+                    case 'backup:isFirstRunNeeded':
+                    case 'update:check':
+                    case 'update:download':
+                    case 'update:install':
+                        return notifyUnsupported('Desktop-only operation')
+                    default:
+                        throw new Error(`Unsupported browser IPC channel: ${channel}`)
+                }
+            },
+            send(channel: string, payload?: unknown) {
+                if (channel === 'renderer-ready' || channel === 'license:update-eligible') return
+                if (channel === 'IPCMessage') return notifyUnsupported('Desktop message routing')
+                throw new Error(`Unsupported browser IPC channel: ${channel}`)
+            },
+        },
+        selectFolder: async () => notifyUnsupported('Desktop folder selection'),
+        getOS: async () => 'browser',
+        isFirstRunNeeded: async () => notifyUnsupported('Desktop backup setup'),
+        ensureSshReady: async () => notifyUnsupported('SSH setup'),
+        pickFiles: upload.pickFiles,
+        pickFolder: upload.pickFolder,
+        pickWatermark: upload.pickWatermark,
+        httpUploadStart: upload.httpUploadStart,
+        httpUploadCancel: upload.httpUploadCancel,
+        transcodeStart: async () => notifyUnsupported('Local video transcoding'),
+        transcodeCancel: () => notifyUnsupported('Local video transcoding'),
+        transcodeCancelAllActive: async () => notifyUnsupported('Local video transcoding'),
+        fullTranscodeStart: async () => notifyUnsupported('Local video transcoding'),
+        fullTranscodeCancel: () => notifyUnsupported('Local video transcoding'),
+        uploadTranscodeOutput: async () => notifyUnsupported('Local video transcoding'),
+        cleanupTranscodeTemp: async () => notifyUnsupported('Local video transcoding'),
+        cleanupWatermarkTemp: async () => notifyUnsupported('Local video transcoding'),
+        downloadWatermark: async () => notifyUnsupported('Watermark file operations'),
+        getTranscodeCapabilities: async () => notifyUnsupported('Local video transcoding'),
+        getPathForFile: upload.getPathForFile,
+    }
+
+    window.electron = electron as typeof window.electron
+    window.appLog = {
+        info: (event, data) => console.info(`[45Flow] ${event}`, data ?? ''),
+        warn: (event, data) => console.warn(`[45Flow] ${event}`, data ?? ''),
+        error: (event, data) => console.error(`[45Flow] ${event}`, data ?? ''),
+    }
+}
+
+installWebIPCShim()

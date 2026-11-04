@@ -88,6 +88,8 @@ function storageFailure() {
 }
 
 function memoryOnlyNotice() {
+  // Browser sessions are always memory-only; the sign-in page already says so.
+  if (window.electron?.isWeb) return
   credentialStorageNotice.value = 'Secure credential storage is unavailable. Login lasts only for this app session. On Linux, enable and unlock GNOME Keyring or KWallet to stay signed in across launches.'
   console.warn('[connections] secure storage unavailable; credentials remain in memory only')
 }
@@ -165,8 +167,8 @@ function load() {
       // Ensure licensed field defaults to false for connections persisted before the field was required
       _state.connections = data.connections.map((c: any) => ({
         ...c,
-        token: typeof c.token === 'string' ? c.token : '',
-        savedPassword: typeof c.savedPassword === 'string' ? c.savedPassword : undefined,
+        token: !window.electron?.isWeb && typeof c.token === 'string' ? c.token : '',
+        savedPassword: !window.electron?.isWeb && typeof c.savedPassword === 'string' ? c.savedPassword : undefined,
         status: 'disconnected',
         licensed: typeof c.licensed === 'boolean' ? c.licensed : false,
         licenseFallback: typeof c.licenseFallback === 'boolean' ? c.licenseFallback : false,
@@ -190,6 +192,19 @@ function load() {
  * Connect2Server auto-login will validate and remove if token is expired.
  */
 function migrateExistingSession() {
+  if (window.electron?.isWeb) {
+    _state._migrated = true
+    try {
+      localStorage.removeItem('hb_last_session_v1')
+      sessionStorage.removeItem('hb_token')
+    } catch {
+      credentialStorageNotice.value = "Legacy browser credentials could not be cleared. Clear this site's storage before continuing."
+      console.error('[connections] browser legacy credential cleanup failed')
+    }
+    persist()
+    return
+  }
+
   try {
     const oldSessionRaw = localStorage.getItem('hb_last_session_v1')
     // Later releases kept writing this legacy copy even after migration.

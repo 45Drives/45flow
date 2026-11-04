@@ -503,7 +503,10 @@
                         </template>
 
                         <!-- ═══ Performance ═══════════════════════════════════ -->
-                        <template v-if="activeSection === 'performance'">
+                        <template v-if="activeSection === 'performance' && isWeb">
+                            <p class="text-sm text-muted">Client-side transcoding and hardware detection require 45Flow Desktop. Browser mode does not access your workstation's filesystem or GPU.</p>
+                        </template>
+                        <template v-else-if="activeSection === 'performance'">
                             <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Client-Side Transcoding</p>
                             <p class="text-xs text-muted mb-3">When enabled, video processing (review copies and browser streams) happens on this computer using your CPU or GPU before uploading. When disabled, the server handles all transcoding after files are uploaded.</p>
                             <div class="divide-y divide-default">
@@ -1697,6 +1700,7 @@ const { setCustomThemeColors, setCustomThemeEnabled } = useThemeFromAlias();
 const { toursDisabled } = useTourPreferences();
 const { connections, activeConnection, updateConnection } = useConnections();
 const adminSession = computed(() => isAdminSession(activeConnection.value?.token));
+const isWeb = window.electron?.isWeb === true
 const { isPremiumActive, isTrial, isTrialExpired, isFallback, trialDaysRemaining, licenseInfo } = useLicenseStatus();
 
 // Local copies of transcode settings — only committed to the composable on Save
@@ -1707,6 +1711,7 @@ const hwAccelEnabled = ref(_tcHwAccel.value);
 const hardwareCapabilities = ref<any>(null);
 
 onMounted(async () => {
+    if (isWeb) return
 	try {
 		hardwareCapabilities.value = await window.electron.getTranscodeCapabilities();
 		// If no hardware acceleration available, force the toggle off
@@ -1773,7 +1778,7 @@ const navGroups = computed(() => {
                 { key: 'performance' as Section, label: 'Performance' },
                 { key: 'health' as Section, label: 'Server Health' },
                 { key: 'maintenance' as Section, label: 'Maintenance' },
-                ...(adminSession.value ? [{ key: 'adminNetworks' as Section, label: 'Admin Networks' }] : []),
+                ...(adminSession.value && !isWeb ? [{ key: 'adminNetworks' as Section, label: 'Admin Networks' }] : []),
             ],
         },
         // Show Go Pro when unlicensed or on trial

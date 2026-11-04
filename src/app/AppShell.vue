@@ -62,9 +62,9 @@
     <QuickShareOverlay v-if="hasActiveSession && route.name !== 'server-selection'" />
     <GlobalModalConfirm />
     <NotificationView />
-    <UpdateBanner />
+    <UpdateBanner v-if="!isWeb" />
     <TransferProgressDock v-if="!hideTransfers" />
-    <GuidedTour v-if="ENABLE_TOUR && activeTour" :steps="activeTour.steps" :active="true" @done="finishTour" @skip="finishTour" />
+    <GuidedTour v-if="ENABLE_TOUR && activeTour" :steps="activeTour.steps" :active="true" @done="finishTour" @skip="skipTour" />
   </div>
 </template>
 
@@ -101,10 +101,11 @@ import flowLogo from '../../assets/logos/45Flow-w.png'
 /** Flip to true to re-enable the guided tour */
 const ENABLE_TOUR = true
 
-const { activeTour, finishTour, cancelTour } = useTourManager()
+const { activeTour, finishTour, skipTour, cancelTour } = useTourManager()
 
 // Initialize multi-server connection management
 const { activeConnection, credentialStorageNotice } = useConnections()
+const isWeb = window.electron?.isWeb === true
 const { isPremiumActive, isUpdateEligible, isFallback, isTrial, isTrialExpired, trialDaysRemaining } = useLicenseStatus()
 const { activeProject } = useActiveProject()
 const { apiFetch } = useApi()

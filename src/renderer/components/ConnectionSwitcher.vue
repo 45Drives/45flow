@@ -109,6 +109,7 @@
                 Settings
               </button>
               <button
+                v-if="!isWeb"
                 class="flex-1 btn btn-sm btn-secondary"
                 @click="openLogs"
               >
@@ -144,6 +145,7 @@ import LogViewModal from './modals/LogViewModal.vue'
 
 const router = useRouter()
 const { sortedConnections, activeConnection, setActive } = useConnections()
+const isWeb = window.electron?.isWeb === true
 const { selectedFilter, setFilter, allConnectedServers } = useServerFilter()
 
 const isAllServers = computed(() => selectedFilter.value === 'all' && allConnectedServers.value.length > 1)

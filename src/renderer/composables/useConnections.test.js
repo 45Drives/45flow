@@ -85,6 +85,32 @@ describe('connection credential migration and persistence', () => {
     expectNoBrowserCredentials()
   })
 
+  it('does not restore credentials from browser storage or legacy sessions', async () => {
+    seed()
+    localStorage.setItem('hb_last_session_v1', JSON.stringify({
+      serverIp: 'server.local', username: 'admin', token: credentials.token, savedAt: Date.now(),
+    }))
+    sessionStorage.setItem('hb_token', credentials.token)
+    vi.stubGlobal('electron', {
+      isWeb: true,
+      secureToken: {
+        status: vi.fn(async () => ({ persistent: false })),
+        get: vi.fn(async () => null),
+        set: vi.fn(async () => ({ persistent: false })),
+        clear: vi.fn(async () => {}),
+      },
+    })
+    const module = await import('./useConnections')
+    await module.initializeConnections()
+
+    expect(module.useConnections().connections).toHaveLength(1)
+    expect(module.useConnections().connections[0]).toMatchObject({ token: '', savedPassword: undefined })
+    expect(localStorage.getItem('hb_last_session_v1')).toBeNull()
+    expect(sessionStorage.getItem('hb_token')).toBeNull()
+    expect(localStorage.getItem(STORAGE_KEY)).not.toContain(credentials.token)
+    expect(localStorage.getItem(STORAGE_KEY)).not.toContain(credentials.savedPassword)
+  })
+
   it.each(['not-json', JSON.stringify({ token: 'stale', savedAt: 1 }), JSON.stringify({
     serverIp: 'server.local', token: 'stale', savedAt: 1,
   })])('removes unusable legacy storage: %s', async raw => {

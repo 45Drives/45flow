@@ -3,15 +3,19 @@
         <div class="connect-shell ss-page-frame">
             <section data-tour="connect-hero" class="connect-hero ss-surface">
                 <h1>Share files through secure review links</h1>
-                <p>Connect this client to your server, then create and manage links from the dashboard.</p>
-                <p class="connect-note">
+                <p v-if="!isWeb">Connect this client to your server, then create and manage links from the dashboard.</p>
+                <p v-else>Sign in to the server hosting this browser app, then manage links from the dashboard.</p>
+                <p v-if="!isWeb" class="connect-note">
                     Servers appear automatically when <b class="text-primary">houston-broadcaster</b> is running. If not, use manual IP connection.
+                </p>
+                <p v-else class="connect-note">
+                    Browser mode: desktop transcoding, SSH setup, and desktop updates are only available in the 45Flow desktop app. Videos you upload are transcoded by the server.
                 </p>
             </section>
 
             <CardContainer class="connect-main-card rounded-md shadow-xl text-black" :style="{ background: connectMainCardBackground }">
-                <div class="connect-main-grid">
-                    <section data-tour="connect-server-selection" class="connect-panel">
+                <div class="connect-main-grid" :class="{ 'connect-main-grid--single': isWeb }">
+                    <section v-if="!isWeb" data-tour="connect-server-selection" class="connect-panel">
                         <div class="connect-section-title">Server Selection</div>
 
                         <div class="flex flex-col text-left">
@@ -89,6 +93,9 @@
 
                     <section data-tour="connect-auth" class="connect-panel connect-panel-auth">
                         <div class="connect-section-title">Authentication</div>
+                        <p v-if="isWeb" class="connect-note">
+                            Connecting to {{ browserHost }}. Your session is kept in memory and will end when this tab reloads or closes.
+                        </p>
                         <label class="connect-auth-row flex flex-col">
                             <span class="connect-label">Username</span>
                             <input v-model="username" type="text" placeholder="root" :disabled="anyBusy"
@@ -111,11 +118,11 @@
                                 </button>
                             </div>
                         </label>
-                        <label class="inline-flex items-center gap-2 select-none cursor-pointer text-sm mt-2 text-left">
+                        <label v-if="!isWeb" class="inline-flex items-center gap-2 select-none cursor-pointer text-sm mt-2 text-left">
                             <input type="checkbox" v-model="rememberPassword" class="proxy-quality-checkbox" :disabled="anyBusy" tabindex="-1" />
                             <span>Remember password securely (re-login when session expires)</span>
                         </label>
-                        <p class="text-xs opacity-70 mt-2 text-left">
+                        <p v-if="!isWeb" class="text-xs opacity-70 mt-2 text-left">
                             First-time setup requires a user with <b>sudo</b> or <b>root</b> privileges to install server dependencies.
                         </p>
                     </section>
@@ -173,6 +180,8 @@ import { useOnboarding } from '../composables/useOnboarding'
 useHeader('Welcome to 45Flow!');
 
 const route = useRoute()
+const isWeb = window.electron?.isWeb === true
+const browserHost = window.location.host
 const { to } = useResilientNav()
 const { addConnection, setActive, removeConnection, connections } = useConnections()
 const discoveryState = inject<DiscoveryState>(discoveryStateInjectionKey)!;
@@ -413,6 +422,8 @@ type PortKey = 'ssh' | 'api' | 'https';
 function ensurePortConstraints(changed: PortKey) {
     portError.value = '';
     portWarning.value = '';
+    // Browser mode talks only to the page origin, so the port fields are unused.
+    if (isWeb) return;
 
     const values: Record<PortKey, number | null> = {
         ssh: normalizePort(sshPort.value),
@@ -676,7 +687,7 @@ function translateSshError(errorMsg: string): string {
 }
 
 async function connectToServer() {
-    if (!selectedServer.value && !manualIp.value) {
+    if (!isWeb && !selectedServer.value && !manualIp.value) {
         pushNotification(new Notification('Error', `Please select or enter a server before connecting.`, 'error', 8000));
         return;
     }
@@ -690,7 +701,7 @@ async function connectToServer() {
     }
 
     // Re-run port constraints on submit to be extra safe
-    ensurePortConstraints('ssh');
+    if (!isWeb) ensurePortConstraints('ssh');
 
     if (portError.value) {
         pushNotification(new Notification('Error', portError.value, 'error', 8000));
@@ -698,7 +709,7 @@ async function connectToServer() {
     }
 
     // Normalize manual IP (strip any :port / -p flags the user typed)
-    if (!selectedServer.value && manualIp.value.trim()) {
+    if (!isWeb && !selectedServer.value && manualIp.value.trim()) {
         const norm = normalizeHost(manualIp.value);
         if (!looksLikeIpv4(norm.host)) {
             pushNotification(new Notification('Error', `Please enter a valid IPv4 address (e.g. 192.168.1.10).`, 'error', 8000));
@@ -715,31 +726,34 @@ async function connectToServer() {
     statusLine.value = '';
 
     try {
-        const rawIpInput = (selectedServer.value?.ip || manualIp.value).trim();
+        const rawIpInput = isWeb ? window.location.hostname : (selectedServer.value?.ip || manualIp.value).trim();
         const normalized = normalizeHost(rawIpInput);
         const rawIp = normalized.host;
 
         // If the manual IP is already discovered, prefer that discovered record.
         const discovered = findServerByIp(rawIp);
-        const effectiveServer = discovered ?? selectedServer.value;
+        const effectiveServer = discovered ?? selectedServer.value ?? (isWeb ? {
+            ip: rawIp, name: browserHost, lastSeen: Date.now(), status: 'complete',
+        } as Server : undefined);
         const ip = effectiveServer?.ip || rawIp;
-        
-        const apiPortToUse =
+        const apiPortToUse = isWeb
+            ? (window.location.port ? Number(window.location.port) : window.location.protocol === 'https:' ? 443 : 80)
+            :
             broadcasterPort.value && broadcasterPort.value > 0 && broadcasterPort.value < 65536
                 ? broadcasterPort.value
                 : DEFAULT_API_PORT;
 
-        const apiBase = `http://${ip}:${apiPortToUse}`;
+        const apiBase = isWeb ? window.location.origin : `http://${ip}:${apiPortToUse}`;
 
         // Decide which SSH port to use for this session
-        const sshPortToUse = (sshPort.value && sshPort.value > 0 && sshPort.value < 65536)
+        const sshPortToUse = !isWeb && sshPort.value && sshPort.value > 0 && sshPort.value < 65536
             ? sshPort.value
             : undefined; // undefined → “let main detect / default 22”
 
         // Ensure SSH is ready early so any later SSH operations can use keys reliably
-        statusLine.value = 'Preparing SSH…';
         let verifiedKeyPath: string | undefined;
-        try {
+        if (!isWeb) try {
+            statusLine.value = 'Preparing SSH…';
             const r = await window.electron?.ipcRenderer.invoke('ensure-ssh-ready', {
                 host: ip,
                 username: username.value,
@@ -775,7 +789,7 @@ async function connectToServer() {
             port: apiPortToUse,
             apiBase,
             httpsHost: undefined,
-            ssh: {
+            ssh: isWeb ? undefined : {
                 server: ip,
                 username: username.value,
                 port: sshPortToUse,
@@ -787,6 +801,7 @@ async function connectToServer() {
         window.appLog?.info('login.request', { url: `${apiBase}/api/login`, ip });
 
         const probe = async () => {
+            if (isWeb) return true
             const r = await window.electron?.ipcRenderer.invoke('probe-health', { ip, port: apiPortToUse });
             return !!r?.ok;
         };
@@ -807,7 +822,7 @@ async function connectToServer() {
          * manually-typed IPs also get the package check and bootstrap if needed.
          */
         let mustBootstrap = false;
-        try {
+        if (!isWeb) try {
             const preflight = await window.electron?.ipcRenderer.invoke(
                 'remote-check-broadcaster',
                 {
@@ -833,7 +848,7 @@ async function connectToServer() {
         // Decide whether to bootstrap:
         // - If preflight forced it (legacy/no pkg) → bootstrap
         // - Else only bootstrap when API isn’t healthy
-        if (mustBootstrap || !healthy) {
+        if (!isWeb && (mustBootstrap || !healthy)) {
             const id = crypto.randomUUID();
             unlistenProgress?.();
             unlistenProgress = listenBootstrap(id);
@@ -909,7 +924,7 @@ async function connectToServer() {
         connectionMeta.value = {
             ...connectionMeta.value,
             token,
-            ssh: {
+            ssh: isWeb ? undefined : {
                 server: ip,
                 username: username.value,
                 port: sshPortToUse,
@@ -924,7 +939,7 @@ async function connectToServer() {
         const licenseResult = await checkLicenseStatus(apiBase, token)
 
         // Seed initial settings only if not already configured
-        try {
+        if (!isWeb) try {
             const hdrs = {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
@@ -966,14 +981,14 @@ async function connectToServer() {
             window.appLog?.warn('settings.seed.failed', { message: e?.message });
         }
 
-        rememberPortsForHost(ip, {
+        if (!isWeb) rememberPortsForHost(ip, {
             sshPort: sshPortToUse,
             apiPort: apiPortToUse,
             httpsPort: httpsPort.value ?? 443,
         });
 
         // Persist manual server so it appears in the dropdown on next launch
-        if (!discovered) {
+        if (!isWeb && !discovered) {
             saveManualServer({ ip, name: effectiveServer?.name || ip });
         }
 
@@ -987,11 +1002,11 @@ async function connectToServer() {
             username: username.value.trim(),
             token,
             tokenIssuedAt: Date.now(),
-            savedPassword: rememberPassword.value ? password.value : undefined,
+            savedPassword: !isWeb && rememberPassword.value ? password.value : undefined,
             apiPort: apiPortToUse,
             sshPort: sshPortToUse,
             httpsPort: httpsPort.value ?? 443,
-            ssh: {
+            ssh: isWeb ? undefined : {
                 server: ip,
                 username: username.value.trim(),
                 port: sshPortToUse,
@@ -1021,7 +1036,9 @@ async function connectToServer() {
             .catch(() => { /* best-effort */ })
 
         // Fire-and-forget: check for broadcaster package updates via API (runs in background)
-        checkBroadcasterUpdateInBackground(apiBase, token, effectiveServer?.name || ip, !licenseResult.licensed && licenseResult.licenseFallback);
+        if (!isWeb) {
+            checkBroadcasterUpdateInBackground(apiBase, token, effectiveServer?.name || ip, !licenseResult.licensed && licenseResult.licenseFallback);
+        }
 
         to('dashboard');
     } catch (e: any) {
@@ -1035,8 +1052,8 @@ async function connectToServer() {
 
 // ─── Auto-login from saved session on mount ─────────────────────
 onMounted(async () => {
-    // Start guided tour for first-time users
-    if (!onboarding.value.connectTourDone) {
+    // The setup tour describes SSH and desktop bootstrap flows unavailable in browser mode.
+    if (!isWeb && !onboarding.value.connectTourDone) {
         setTimeout(() => {
             requestTour('connect', connectTourSteps, () => markDone('connectTourDone'))
         }, 500)
@@ -1069,8 +1086,8 @@ onMounted(async () => {
         const conn = connections.find(c => c.connectionId === route.query.reconnect)
         if (conn) {
             if (conn.sshPort) sshPort.value = conn.sshPort
-            if (conn.apiPort && conn.apiPort !== DEFAULT_API_PORT) broadcasterPort.value = conn.apiPort
-            if (conn.httpsPort && conn.httpsPort !== DEFAULT_HTTPS_PORT) httpsPort.value = conn.httpsPort
+            if (!isWeb && conn.apiPort && conn.apiPort !== DEFAULT_API_PORT) broadcasterPort.value = conn.apiPort
+            if (!isWeb && conn.httpsPort && conn.httpsPort !== DEFAULT_HTTPS_PORT) httpsPort.value = conn.httpsPort
             
             // Auto-login if password was saved
             if (conn.savedPassword) {
@@ -1096,8 +1113,8 @@ onMounted(async () => {
     }
     username.value = saved.username
     if (saved.sshPort) sshPort.value = saved.sshPort
-    if (saved.apiPort && saved.apiPort !== DEFAULT_API_PORT) broadcasterPort.value = saved.apiPort
-    if (saved.httpsPort && saved.httpsPort !== DEFAULT_HTTPS_PORT) httpsPort.value = saved.httpsPort
+    if (!isWeb && saved.apiPort && saved.apiPort !== DEFAULT_API_PORT) broadcasterPort.value = saved.apiPort
+    if (!isWeb && saved.httpsPort && saved.httpsPort !== DEFAULT_HTTPS_PORT) httpsPort.value = saved.httpsPort
 
     // Validate the saved token with a quick API call
     isBusy.value = true
@@ -1434,6 +1451,11 @@ async function checkBroadcasterUpdateInBackground(apiBase: string, token: string
     /* grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr); */
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.65rem;
+}
+
+.connect-main-grid--single {
+    grid-template-columns: minmax(0, 30rem);
+    justify-content: center;
 }
 
 .connect-panel {
