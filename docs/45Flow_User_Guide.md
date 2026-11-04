@@ -595,7 +595,7 @@ The Settings panel is organized into sections via the left-hand navigation sideb
 
 - **Link Sharing** — URLs & Access, Certificate, Public Sharing, Link Options, Project Root
 - **Branding** — White Label (see [Custom Branding](#7-custom-branding-white-label))
-- **Application** — Preferences, Performance, Server Health, Maintenance
+- **Application** — Preferences, Performance, Server Health, Maintenance, Admin Networks (server administrators)
 - **Help** — Guides
 
 ![Settings modal](images/settings-v3.png)
@@ -779,6 +779,75 @@ For administrators to manage server health:
 
 ![Maintenance and cleanup scan results](images/settings-maintenance-v3.png)
 
+### Admin Networks
+
+**Most users do not need to change this setting.** Use it when your server
+administrator needs to limit which office or VPN networks can reach the server's
+administrative HTTPS interface.
+
+- **It controls:** access to administrative HTTPS routes, including administrative
+  WebSocket connections. Allowed users still need to log in.
+- **It does not control:** public share links, recipient passwords or permissions,
+  SSH access, or direct connections to the backend port (9095 by default).
+  Keep the backend port private using your firewall/router.
+- **Who can change it:** users signed in with server credentials, on free or Pro
+  servers. Giving a collaborator a role called "admin" does not grant this access.
+
+The defaults cover common LAN and VPN address ranges, not just your own network.
+Being on an allowed network does not make every device trustworthy.
+You do not need a public domain, Let's Encrypt or port forwarding to use this
+panel on a LAN-only server.
+
+#### Changing the allowed networks
+
+Keep a working server console or SSH connection available before making changes.
+An incorrect list can block your administrative HTTPS connection.
+
+1. Open **Settings → Admin Networks**. Note the connection address shown by the
+   server. If you connect through a proxy, this may be the proxy's address.
+2. Enter one trusted network per line. For example, `192.168.1.0/24` allows
+   `192.168.1.0` through `192.168.1.255`; `192.168.1.25/32` allows one IPv4
+   address. These are examples, not values to copy without checking your network.
+   Open **What are these networks?** for more help.
+3. If you only want the current connection address allowed, click
+   **Allow this device only**. It uses the address shown by the server, not your
+   whole LAN. A changing address or proxy can make this unsuitable.
+4. Click **Check proposed networks**. For a normal change, make sure the result
+   says your current connection is included. Do not use the exclusion override
+   unless you deliberately want to block this connection and have another
+   permitted connection available to confirm.
+5. Acknowledge the warning, then click **Apply admin networks**.
+6. Click **Reconnect and confirm** before the displayed deadline. This checks
+   that you can still connect using the new rules and makes the change permanent.
+   Without confirmation, the server automatically restores the previous rules.
+
+**Apply admin networks** takes effect separately from **Save settings**.
+An empty list blocks all administrative HTTPS access; `/0` ranges, which would
+allow every address in an IP family, are rejected.
+
+#### If you lose access or see a connection warning
+
+- **After applying a change:** wait for the displayed rollback deadline, reconnect,
+  then click **Reload admin networks**. Do not repeatedly apply changes.
+  Leave the broadcaster service running so it can restore the old rules.
+  If it was interrupted, recovery runs when it restarts; a reported recovery
+  failure needs console/SSH assistance.
+- **SSH trust prompt:** the desktop uses SSH to verify the server's HTTPS
+  certificate, including self-signed certificates on private servers. If asked
+  **Trust this SSH server?**, verify the fingerprint with your administrator or
+  server console before accepting. A changed/revoked SSH identity, expired
+  certificate or failed verification blocks the operation rather than bypassing
+  the check.
+- **Panel cannot connect:** confirm the server's HTTPS port is reachable
+  (443 by default). For custom ports, check the connection ports on the login
+  screen. This panel needs HTTPS even if other desktop requests use port 9095;
+  it does not fall back to that port.
+- **Connection safety unavailable:** ask your administrator to update the server
+  and regenerate/reload its nginx configuration before retrying.
+
+The address check and automatic rollback reduce accidental lockout; they cannot
+guarantee access after your IP address, VPN, proxy or firewall changes.
+
 ### Guides
 
 The Guides section provides:
@@ -947,6 +1016,12 @@ The **QuickShare** feature provides the fastest way to create a share link. Drag
 2. **Choose Destination:** Select the folder on the server where your files will be stored.
 3. **Configure Options:** For video files, choose review copy qualities and watermark settings. Set link expiry, title, and access controls.
 4. **Generate Link:** Click **"Share"** to upload, transcode, and generate a shareable link.
+
+Documents and spreadsheets: Share Excel, OpenDocument, CSV, TSV, and Word files. Spreadsheets have a read-only grid preview; DOCX has a text preview. Legacy DOC files require downloading.
+
+Previews support files up to 10 MB and may show only part of larger documents or worksheets. Download the original for complete content and formatting, when permitted.
+
+QuickShare checks all selected files before uploading. If any are unsupported or exceed upload limits, nothing uploads and the rejected files are listed.
 
 **Video Processing:** When client-side transcoding is enabled (Settings → Performance), video files are transcoded on your machine before upload — this generates both a **Stream** (HLS for browser playback) and **Review Copies** (downloadable MP4s). With server-side mode, files upload first and the server handles processing.
 

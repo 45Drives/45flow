@@ -15,6 +15,8 @@
 - **Share files via secure links** — Generate expiring, access-controlled links for viewing, downloading, and commenting on files
 - **Upload portals** — Create links that let external collaborators upload files directly to your server
 - **Local uploads** — Transfer files from your workstation to the server with optional review copy generation and watermarking
+  - Uploads may show 100% while the server finishes malware checks. Wait for the
+    final result before closing the app; an unavailable scanner is not a passed scan.
 - **Client-side transcoding** — Process videos on your workstation before upload using local CPU/GPU, reducing server load and speeding up review copy availability
 - **Video review with timecoded comments** — Browser-based HLS player with threaded, frame-accurate commenting
 - **Role-based access control** — System and custom roles (View, Comment, Download, Upload) enforced per link
@@ -65,6 +67,20 @@ From the Dashboard, use the three main actions:
 
 For detailed walkthroughs of every feature, see the [Full User Guide](docs/45Flow_User_Guide.md).
 
+### Secure login storage
+
+Saved login credentials use your operating system's protected storage:
+Keychain on macOS, DPAPI on Windows, or an unlocked GNOME Keyring/Secret Service
+or KWallet on Linux.
+
+**Remember password securely** is optional; leave it unchecked if you do not
+want the app to retain your password for automatic reauthentication. Logging
+out or removing a connection clears its saved login credentials.
+
+If protected storage is unavailable, the app warns you and keeps credentials
+only for the current session. You will need to log in again after closing the
+app. On Linux, enable/unlock a supported keyring to retain your login.
+
 ---
 
 ## Architecture
@@ -103,10 +119,20 @@ For detailed walkthroughs of every feature, see the [Full User Guide](docs/45Flo
 
 ## Security
 
-- All uploads quarantined and malware-scanned before acceptance
+- Updated servers quarantine uploads and perform malware checks; check the
+  reported result because a scan may be skipped if the scanner is unavailable
 - Links support expiration, password protection, and role-restricted access
 - HTTPS required for external access
-- Server validates all API requests with JWT authentication
+- Administrative APIs require authentication; public share actions enforce the
+  link's access rules
+- Public HTTPS allows recipient sharing routes; administrative HTTPS routes
+  are restricted to trusted networks and still require authentication
+
+Most users can leave **Admin Networks** at its defaults. Server administrators
+can adjust which LAN/VPN addresses may reach administrative HTTPS routes under
+**Settings → Admin Networks**. This does not change public share-link access or
+replace firewall rules for the direct backend port.
+See [Admin Networks in the user guide](docs/45Flow_User_Guide.md#admin-networks).
 
 ---
 
@@ -122,6 +148,11 @@ yarn dev
 # Build for production
 yarn build
 ```
+
+Desktop packages include the compiled main process, compiled renderer, static
+runtime resources, production dependencies, package metadata and license.
+Documentation, QA results, source files and release/build scripts are not
+bundled. The in-app user guide opens the online documentation.
 
 ## License
 

@@ -5,6 +5,7 @@ import path from "path";
 import { NodeSSH } from "node-ssh";
 import { scrubSecrets } from './scrubSecrets';
 import { getKeyDir } from "./crossPlatformSsh";
+import { RUN_ROOT_PRELUDE, execWithSudo } from "./remoteSudo";
 
 /** Quick TCP probe for an SSH port (default 22) */
 export function checkSSH(host: string, timeout = 3000, port = 22): Promise<boolean> {
@@ -156,18 +157,10 @@ export async function ensureBroadcasterInstalled(
   ssh: NodeSSH,
   opts: { password?: string }
 ) {
-  const q = (s: string) => `'${s.replace(/'/g, `'\"'\"'`)}'`;
-  const PW = opts.password ?? "";
-
   const script = `
 set -euo pipefail
 
-PW=${q(PW)}
-
-have_sudo() { sudo -n true 2>/dev/null; }
-run_root() {
-  if have_sudo; then sudo "$@"; else printf '%s\\n' "$PW" | sudo -S -p '' "$@"; fi
-}
+${RUN_ROOT_PRELUDE}
 
 # Check if already installed — if so, upgrade to latest rather than fresh install
 already_installed=false
@@ -217,7 +210,7 @@ else
 fi
 `.trim();
 
-  const res = await ssh.execCommand(`bash -lc ${q(script)}`);
+  const res = await execWithSudo(ssh, script, opts.password);
   if ((res.code ?? 1) !== 0) {
     throw new Error(`install failed: ${res.stderr || res.stdout}`);
   }
@@ -228,7 +221,6 @@ export async function ensure45DrivesCommunityRepoViaScript(
   opts: { password?: string }
 ) {
   const q = (s: string) => `'${s.replace(/'/g, `'\"'\"'`)}'`;
-  const PW = opts.password ?? "";
 
   // 1) Preflight: can we reach repo.45drives.com at all?
   const pingRepoScript = `
@@ -266,12 +258,7 @@ curl -fsS --max-time 10 https://repo.45drives.com/key/gpg.asc >/dev/null || {
   const script = `
 set -euo pipefail
 
-PW=${q(PW)}
-
-have_sudo() { sudo -n true 2>/dev/null; }
-run_root() {
-  if have_sudo; then sudo "$@"; else printf '%s\\n' "$PW" | sudo -S -p '' "$@"; fi
-}
+${RUN_ROOT_PRELUDE}
 
 # --- Detect existing 45Drives repos ---
 REPO_EXISTS="false"
@@ -325,7 +312,9 @@ fi
 
 echo "Installing 45Drives $REPO_TYPE repo..."
 
-tmp_script="/tmp/45drives-repo-setup.sh"
+# mktemp gives an unpredictable, user-owned 0600 file, so nothing can be planted at the path root runs.
+tmp_script="$(mktemp /tmp/45drives-repo-setup.XXXXXXXXXX)"
+trap 'rm -f "$tmp_script"' EXIT
 
 cat >"$tmp_script" << 'EOF'
 #!/bin/bash
@@ -546,14 +535,13 @@ echo -e "\\nThis command has been run on a distribution that is not supported by
 exit 1
 EOF
 
-run_root chmod +x "$tmp_script"
-# Inject REPO_TYPE directly into the script (sudo strips environment variables)
-run_root sed -i "s/^REPO_TYPE=.*$/REPO_TYPE=\"$REPO_TYPE\"/" "$tmp_script"
+# Inject REPO_TYPE directly into the script (sudo strips environment variables).
+# Edit as the owning user so the file never becomes root-owned in /tmp.
+sed -i "s/^REPO_TYPE=.*$/REPO_TYPE=\"$REPO_TYPE\"/" "$tmp_script"
 run_root bash "$tmp_script"
-run_root rm -f "$tmp_script"
 `.trim();
 
-  const res = await ssh.execCommand(`bash -lc ${q(script)}`);
+  const res = await execWithSudo(ssh, script, opts.password);
   if ((res.code ?? 1) !== 0) {
     const msg = res.stderr || res.stdout || "unknown error";
     throw new Error(

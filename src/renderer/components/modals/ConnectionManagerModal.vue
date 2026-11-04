@@ -65,6 +65,11 @@
                 <div class="text-sm text-muted space-y-0.5">
                   <div>IP: {{ conn.serverIp }}</div>
                   <div>User: {{ conn.username }}</div>
+                  <div>
+                    Status: <span :class="conn.token && conn.status === 'connected' ? 'text-green-500' : 'text-yellow-500'">
+                      {{ !conn.token ? 'Logged out' : conn.status === 'connected' ? 'Connected' : 'Reconnect required' }}
+                    </span>
+                  </div>
                   <div v-if="conn.licensed !== undefined">
                     License: <span :class="conn.licensed ? 'text-green-500' : 'text-yellow-500'">
                       {{ conn.licensed ? 'Licensed' : 'Unlicensed' }}

@@ -26,6 +26,8 @@ export interface HttpUploadOpts {
 }
 
 export interface HttpUploadProgress {
+  phase?: 'uploading' | 'scanning' | 'finalizing' | 'complete'
+  message?: string
   percent: number
   bytesTransferred: number
   totalBytes: number
@@ -92,6 +94,7 @@ async function runHttpUpload(opts: HttpUploadOpts, sender: Electron.WebContents)
   let sessionId: string
   let serverChunkSize: number
   let totalChunks: number
+  let scansOnComplete = false
 
   try {
     const initRes = await fetch(`${apiBase}/api/local-upload/init`, {
@@ -113,6 +116,7 @@ async function runHttpUpload(opts: HttpUploadOpts, sender: Electron.WebContents)
     sessionId = initBody.sessionId
     serverChunkSize = initBody.chunkSize
     totalChunks = initBody.totalChunks
+    scansOnComplete = initBody.malwareScan === true
   } catch (e: any) {
     return { ok: false, error: `Failed to initialize upload: ${e?.message || String(e)}` }
   }
@@ -200,6 +204,7 @@ async function runHttpUpload(opts: HttpUploadOpts, sender: Electron.WebContents)
       const etaSec = rate > 0 ? remaining / rate : 0
 
       const progress: HttpUploadProgress = {
+        phase: 'uploading',
         percent: Math.round((bytesTransferred / fileSize) * 100),
         bytesTransferred,
         totalBytes: fileSize,
@@ -219,7 +224,17 @@ async function runHttpUpload(opts: HttpUploadOpts, sender: Electron.WebContents)
     return { ok: false, error: 'canceled' }
   }
 
-  // 3) Complete / finalize — align ownership, queue server transcodes if needed
+  // The completion request includes queueing/scanning, then server finalization.
+  sender.send(progressChannel, {
+    phase: scansOnComplete ? 'scanning' : 'finalizing',
+    message: scansOnComplete ? 'Scanning for malware (queued or running)…' : 'Finalizing upload…',
+    percent: 100,
+    bytesTransferred,
+    totalBytes: fileSize,
+    chunksCompleted: totalChunks,
+    totalChunks,
+  } satisfies HttpUploadProgress)
+
   try {
     const completeRes = await fetch(`${apiBase}/api/local-upload/${sessionId}/complete`, {
       method: 'POST',
@@ -254,6 +269,20 @@ async function runHttpUpload(opts: HttpUploadOpts, sender: Electron.WebContents)
       }
       return { ok: false, error: 'canceled' }
     }
+
+    const security = completeBody.security
+    const scanMessage = security?.scannerSkipped === true
+      ? 'Malware scan skipped: scanner unavailable'
+      : security?.scanner ? 'Malware scan passed' : 'Upload finalized'
+    sender.send(progressChannel, {
+      phase: 'complete',
+      message: scanMessage,
+      percent: 100,
+      bytesTransferred,
+      totalBytes: fileSize,
+      chunksCompleted: totalChunks,
+      totalChunks,
+    } satisfies HttpUploadProgress)
 
     // Emit ingest event so the renderer's waitForIngestAndStartTranscode picks it up
     const fileId = completeBody.fileId || opts.fileId
@@ -318,6 +347,11 @@ function guessMimeFromExt(filename: string): string {
     gif: 'image/gif', webp: 'image/webp', tiff: 'image/tiff', tif: 'image/tiff',
     mp3: 'audio/mpeg', wav: 'audio/wav', flac: 'audio/flac',
     pdf: 'application/pdf', zip: 'application/zip',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    xls: 'application/vnd.ms-excel',
+    ods: 'application/vnd.oasis.opendocument.spreadsheet',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    doc: 'application/msword',
   }
   return map[ext] || 'application/octet-stream'
 }

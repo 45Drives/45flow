@@ -2,10 +2,10 @@
 // Multi-server connection management
 // Replaces singleton currentServer/connectionMeta with a collection of connections
 
-import { reactive, computed, readonly, watch } from 'vue'
-import type { Server } from '../../shared/types'
+import { reactive, computed, readonly, watch, ref } from 'vue'
+import type { ConnectionCredentials } from '../../shared/secureTokens'
 
-const { randomUUID } = window.crypto || { randomUUID: () => Date.now().toString(36) + Math.random().toString(36).slice(2) }
+const randomUUID = () => window.crypto.randomUUID()
 
 export interface Connection {
   // ── Identity ──
@@ -21,7 +21,7 @@ export interface Connection {
   username: string                  // Logged-in user
   token: string                     // JWT token (sensitive — encrypted at rest)
   tokenIssuedAt: number             // Timestamp for token refresh logic
-  savedPassword?: string            // Optionally stored for auto-login (user opt-in)
+  savedPassword?: string            // User opt-in; encrypted at rest, like the token
   
   // ── Ports & SSH ──
   apiPort: number                   // Default 9095
@@ -76,6 +76,53 @@ interface ConnectionsState {
 }
 
 const STORAGE_KEY = '45flow_connections_v1'
+const credentialStorageNotice = ref('')
+const credentialSnapshots = new Map<string, string>()
+let credentialWrites: Promise<void> = Promise.resolve()
+let initialized = false
+let initialization: Promise<void> | undefined
+
+function storageFailure() {
+  credentialStorageNotice.value = 'Credentials could not be saved or restored securely. You may need to log in again. Check the client logs and your OS keyring.'
+  console.error('[connections] secure credential storage operation failed')
+}
+
+function memoryOnlyNotice() {
+  credentialStorageNotice.value = 'Secure credential storage is unavailable. Login lasts only for this app session. On Linux, enable and unlock GNOME Keyring or KWallet to stay signed in across launches.'
+  console.warn('[connections] secure storage unavailable; credentials remain in memory only')
+}
+
+function credentialsFor(connection: Connection): ConnectionCredentials {
+  return { token: connection.token, savedPassword: connection.savedPassword }
+}
+
+function persistCredentials() {
+  const api = window.electron?.secureToken
+  if (!api) return
+  const currentIds = new Set(_state.connections.map(c => c.connectionId))
+  const enqueue = (operation: () => Promise<unknown>) => {
+    credentialWrites = credentialWrites.then(operation).then(() => undefined).catch(storageFailure)
+  }
+  for (const id of credentialSnapshots.keys()) {
+    if (!currentIds.has(id)) {
+      credentialSnapshots.delete(id)
+      enqueue(() => api.clear(id))
+    }
+  }
+  for (const connection of _state.connections) {
+    const credentials = credentialsFor(connection)
+    const snapshot = JSON.stringify(credentials)
+    if (credentialSnapshots.get(connection.connectionId) === snapshot) continue
+    credentialSnapshots.set(connection.connectionId, snapshot)
+    enqueue(async () => {
+      if (!credentials.token && !credentials.savedPassword) {
+        await api.clear(connection.connectionId)
+      } else if (!(await api.set(connection.connectionId, credentials)).persistent) {
+        memoryOnlyNotice()
+      }
+    })
+  }
+}
 
 // Global reactive state
 const _state = reactive<ConnectionsState>({
@@ -86,19 +133,21 @@ const _state = reactive<ConnectionsState>({
 
 /**
  * Serialize connections to localStorage
- * Note: Tokens stored in plain text for now; will add encryption in future phase
+ * Only non-secret connection metadata belongs in browser storage.
  */
 function persist() {
   try {
     const data = {
-      connections: _state.connections,
+      connections: _state.connections.map(({ token, savedPassword, ...metadata }) => metadata),
       activeConnectionId: _state.activeConnectionId,
       _migrated: _state._migrated
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-  } catch (err) {
-    console.warn('[connections] persist failed:', err)
+  } catch {
+    console.error('[connections] metadata persistence failed')
+    credentialStorageNotice.value = 'Connection metadata could not be saved. Close the app and check that its storage is writable.'
   }
+  if (initialized) persistCredentials()
 }
 
 /**
@@ -116,6 +165,9 @@ function load() {
       // Ensure licensed field defaults to false for connections persisted before the field was required
       _state.connections = data.connections.map((c: any) => ({
         ...c,
+        token: typeof c.token === 'string' ? c.token : '',
+        savedPassword: typeof c.savedPassword === 'string' ? c.savedPassword : undefined,
+        status: 'disconnected',
         licensed: typeof c.licensed === 'boolean' ? c.licensed : false,
         licenseFallback: typeof c.licenseFallback === 'boolean' ? c.licenseFallback : false,
       }))
@@ -126,8 +178,9 @@ function load() {
     if (typeof data._migrated === 'boolean') {
       _state._migrated = data._migrated
     }
-  } catch (err) {
-    console.warn('[connections] load failed:', err)
+  } catch {
+    console.error('[connections] metadata loading failed')
+    credentialStorageNotice.value = 'Saved connection metadata could not be loaded. Please log in again.'
   }
 }
 
@@ -137,10 +190,10 @@ function load() {
  * Connect2Server auto-login will validate and remove if token is expired.
  */
 function migrateExistingSession() {
-  if (_state._migrated) return // Already migrated
-  
   try {
     const oldSessionRaw = localStorage.getItem('hb_last_session_v1')
+    // Later releases kept writing this legacy copy even after migration.
+    if (_state._migrated || _state.connections.length > 0) return
     if (!oldSessionRaw) {
       _state._migrated = true
       persist()
@@ -194,25 +247,64 @@ function migrateExistingSession() {
     
     persist()
     
-    // Clear old storage
-    localStorage.removeItem('hb_last_session_v1')
-    sessionStorage.removeItem('hb_token')
-    
     console.log('[connections] migrated existing session to multi-connection model')
-  } catch (err) {
-    console.warn('[connections] migration failed:', err)
+  } catch {
+    console.error('[connections] legacy migration failed')
+    credentialStorageNotice.value = 'Legacy login migration failed. Please log in again.'
     _state._migrated = true
     persist()
+  } finally {
+    try {
+      localStorage.removeItem('hb_last_session_v1')
+      sessionStorage.removeItem('hb_token')
+    } catch {
+      credentialStorageNotice.value = 'Legacy credential cleanup failed. Close the app and check that its storage is writable.'
+      console.error('[connections] legacy credential cleanup failed')
+    }
   }
 }
 
-// Initialize on module load
-load()
-migrateExistingSession()
+export function initializeConnections(): Promise<void> {
+  if (initialization) return initialization
+  initialization = (async () => {
+    load()
+    migrateExistingSession()
+    // Scrub both legacy storage surfaces before any asynchronous keyring operation.
+    persist()
+    const api = window.electron?.secureToken
+    if (!api) {
+      memoryOnlyNotice()
+    } else {
+      try {
+        if (!(await api.status()).persistent) memoryOnlyNotice()
+      } catch {
+        storageFailure()
+      }
+      for (const connection of _state.connections) {
+        try {
+          if (connection.token || connection.savedPassword) {
+            if (!(await api.set(connection.connectionId, credentialsFor(connection))).persistent) memoryOnlyNotice()
+          } else {
+            const credentials = await api.get(connection.connectionId)
+            if (credentials) Object.assign(connection, credentials)
+          }
+        } catch {
+          storageFailure()
+        }
+        credentialSnapshots.set(connection.connectionId, JSON.stringify(credentialsFor(connection)))
+      }
+    }
+    initialized = true
+    watch(() => _state.connections, persist, { deep: true })
+    watch(() => _state.activeConnectionId, persist)
+  })()
+  return initialization
+}
 
-// Auto-persist on changes
-watch(() => _state.connections, persist, { deep: true })
-watch(() => _state.activeConnectionId, persist)
+export async function flushCredentialWrites() {
+  persist()
+  await credentialWrites
+}
 
 export function useConnections() {
   const activeConnection = computed<Connection | null>(() => {
@@ -319,6 +411,12 @@ export function useConnections() {
     }
     
     Object.assign(conn, updates)
+    persist()
+  }
+
+  async function clearConnectionCredentials(connectionId: string) {
+    updateConnection(connectionId, { token: '', savedPassword: undefined, status: 'disconnected' })
+    await flushCredentialWrites()
   }
   
   function getConnection(connectionId: string): Connection | null {
@@ -330,10 +428,12 @@ export function useConnections() {
     sortedConnections,
     activeConnectionId: readonly(computed(() => _state.activeConnectionId)),
     activeConnection,
+    credentialStorageNotice: readonly(credentialStorageNotice),
     addConnection,
     removeConnection,
     setActive,
     updateConnection,
+    clearConnectionCredentials,
     getConnection
   }
 }

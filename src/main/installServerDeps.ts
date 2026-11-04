@@ -3,6 +3,7 @@ import path from "path";
 import { NodeSSH } from "node-ssh";
 import { checkSSH, setupSshKey, ensureBroadcasterInstalled, connectWithKey, ensure45DrivesCommunityRepoViaScript } from "./setupSsh";
 import { getAgentSocket, getKeyDir, ensureKeyPair, regeneratePemKeyPair } from "./crossPlatformSsh";
+import { RUN_ROOT_PRELUDE, execWithSudo, shellQuote } from "./remoteSudo";
 
 type ProgressFn = (p: { step: string; label: string }) => void;
 
@@ -12,7 +13,7 @@ export async function installServerDepsRemotely(opts: {
     const { host, username, password, sshPort, bcastPort, httpsPort, sshKeyComment, onProgress } = opts;
     const apiPort = bcastPort ?? 9095;
     const send = (step: string, label: string) => onProgress?.({ step, label });
-    const shQ = (s: string) => `'${s.replace(/'/g, `'\"'\"'`)}'`;
+    const shQ = shellQuote;
     try {
         let port = sshPort ?? 22;
 
@@ -122,16 +123,10 @@ export async function installServerDepsRemotely(opts: {
 
                 const payload = envLines.join("\n");
 
-                const pw = password ?? "";
                 const script = `
 set -euo pipefail
 
-PW=${shQ(pw)}
-
-have_sudo() { sudo -n true 2>/dev/null; }
-run_root() {
-  if have_sudo; then sudo "$@"; else printf '%s\\n' "$PW" | sudo -S -p '' "$@"; fi
-}
+${RUN_ROOT_PRELUDE}
 
 # 1) Write env files with new ports
 payload=${shQ(payload)}
@@ -191,7 +186,7 @@ fi
 `.trim();
 
                 send("config", "Configuring broadcaster ports, firewall, and nginx…");
-                const res = await ssh.execCommand(`bash -lc ${shQ(script)}`);
+                const res = await execWithSudo(ssh, script, password);
                 if ((res.code ?? 0) !== 0) {
                     throw new Error(
                         res.stderr ||
@@ -297,8 +292,7 @@ async function writeAppConfigRemotely(
   ssh: NodeSSH,
   opts: { password?: string; app: string; bcastPort?: number; httpsPort?: number }
 ): Promise<{ appAdded: boolean; alreadyInstalled: boolean }> {
-  const q = (s: string) => `'${s.replace(/'/g, `'\"'\"'`)}'`;
-  const PW = opts.password ?? "";
+  const q = shellQuote;
   const app = opts.app;
   const bcastPort = opts.bcastPort ?? 9095;
   const httpsPort = opts.httpsPort ?? 443;
@@ -306,15 +300,10 @@ async function writeAppConfigRemotely(
   const script = `
 set -euo pipefail
 
-PW=${q(PW)}
+${RUN_ROOT_PRELUDE}
 APP=${q(app)}
 BCAST_PORT=${bcastPort}
 HTTPS_PORT=${httpsPort}
-
-have_sudo() { sudo -n true 2>/dev/null; }
-run_root() {
-  if have_sudo; then sudo "\$@"; else printf '%s\\n' "\$PW" | sudo -S -p '' "\$@"; fi
-}
 
 CONFIG="/etc/45drives/houston-apps.json"
 APP_ADDED="false"
@@ -390,7 +379,7 @@ echo "APP_ADDED=\$APP_ADDED"
 echo "ALREADY_INSTALLED=\$ALREADY_INSTALLED"
 `.trim();
 
-  const res = await ssh.execCommand(`bash -lc ${q(script)}`);
+  const res = await execWithSudo(ssh, script, opts.password);
   const output = res.stdout || '';
 
   const appAdded = output.includes('APP_ADDED=true');
@@ -407,24 +396,16 @@ async function forceRebootstrap(
   ssh: NodeSSH,
   opts: { password?: string }
 ): Promise<void> {
-  const q = (s: string) => `'${s.replace(/'/g, `'\"'\"'`)}'`;
-  const PW = opts.password ?? "";
-
   const script = `
 set -euo pipefail
 
-PW=${q(PW)}
-
-have_sudo() { sudo -n true 2>/dev/null; }
-run_root() {
-  if have_sudo; then sudo "\$@"; else printf '%s\\n' "\$PW" | sudo -S -p '' "\$@"; fi
-}
+${RUN_ROOT_PRELUDE}
 
 # Force re-run bootstrap with the updated config
 run_root env FORCE_BOOTSTRAP=1 /opt/45drives/houston-broadcaster/scripts/bootstrap-studio-share.sh
 `.trim();
 
-  const res = await ssh.execCommand(`bash -lc ${q(script)}`);
+  const res = await execWithSudo(ssh, script, opts.password);
   if (res.stdout) console.log('[forceRebootstrap] stdout:', res.stdout);
   if (res.stderr) console.log('[forceRebootstrap] stderr:', res.stderr);
   if ((res.code ?? 1) !== 0) {

@@ -32,6 +32,8 @@
 
                     <!-- Content -->
                     <div class="flex-1 overflow-y-auto px-5 py-4 text-left" data-tour="settings-modal-urls">
+                        <AdminNetworksPanel v-if="activeSection === 'adminNetworks' && adminSession && activeConnection"
+                            :key="activeConnection.connectionId" :connection-id="activeConnection.connectionId" />
 
                         <!-- Loading state: show skeleton until settings loaded from server -->
                         <div v-if="!settingsLoaded && (activeSection === 'sharing' || activeSection === 'linkOptions')" class="flex flex-col items-center justify-center h-full gap-3 py-12">
@@ -625,7 +627,7 @@
                         <!-- ═══ Go Pro / Upgrade ══════════════════════════════ -->
                         <template v-if="activeSection === 'upgrade'">
                             <!-- Full license active (non-trial) -->
-                            <div v-if="isPremiumActive && !isTrial" class="space-y-3">
+                            <div v-if="isPremiumActive && !isFallback && !isTrial" class="space-y-3">
                                 <div class="rounded-lg border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 p-4">
                                     <div class="flex items-center gap-2 mb-2">
                                         <div class="text-sm font-semibold text-green-800 dark:text-green-400">Pro Edition Active</div>
@@ -667,6 +669,33 @@
                                             <span class="ml-1 text-green-600 dark:text-green-400">Never</span>
                                         </div>
                                     </div>
+                                </div>
+
+                                <!-- Renewal: re-activating fetches a certificate with the new expiry -->
+                                <div v-if="!licenseInfo?.perpetual" class="rounded-lg border border-default bg-default/40 p-4">
+                                    <div class="text-sm font-semibold text-default mb-1">Renewed your license?</div>
+                                    <p class="text-sm text-accent leading-relaxed mb-3">
+                                        Enter your license key again to update this server with the new expiry date.
+                                    </p>
+                                    <div class="flex gap-2">
+                                        <input
+                                            v-model="upgradeKey"
+                                            type="text"
+                                            class="input-textlike border border-default px-3 py-2 rounded text-sm flex-1"
+                                            placeholder="STUDIO-XXXX-XXXX-XXXX-XXXX"
+                                            :disabled="upgradeBusy"
+                                            @keydown.enter.prevent="handleUpgradeActivate"
+                                        />
+                                        <button
+                                            class="btn btn-secondary text-sm px-4"
+                                            type="button"
+                                            :disabled="upgradeBusy || !upgradeKey.trim()"
+                                            @click="handleUpgradeActivate"
+                                        >
+                                            {{ upgradeBusy ? 'Updating…' : 'Update License' }}
+                                        </button>
+                                    </div>
+                                    <div v-if="upgradeError" class="text-danger text-sm mt-3">{{ upgradeError }}</div>
                                 </div>
                             </div>
 
@@ -728,7 +757,7 @@
                                         <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400">Legacy Mode</span>
                                     </div>
                                     <div class="text-sm text-amber-700 dark:text-amber-400 space-y-1">
-                                        <p>Your Pro license has expired. Premium features remain available at your current app version, but app updates are paused until you renew.</p>
+                                        <p>Your Pro license has expired. Premium features remain available at your current version, but app and server updates are paused until you renew.</p>
                                         <p v-if="licenseInfo?.expiresAt" class="text-xs opacity-80">
                                             Expired: {{ new Date(licenseInfo.expiresAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) }}
                                         </p>
@@ -1575,8 +1604,8 @@
                         <div v-else class="text-xs text-accent">New shares will use these settings automatically.</div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button class="btn btn-secondary" type="button" @click="reload" :disabled="busy">Reload</button>
-                        <button class="btn btn-success" type="button" @click="save" :disabled="busy || !!validationError">
+                        <button v-if="activeSection !== 'adminNetworks'" class="btn btn-secondary" type="button" @click="reload" :disabled="busy">Reload</button>
+                        <button v-if="activeSection !== 'adminNetworks'" class="btn btn-success" type="button" @click="save" :disabled="busy || !!validationError">
                             <span v-if="busy">Saving…</span>
                             <span v-else>Save Settings</span>
                         </button>
@@ -1614,6 +1643,8 @@ const SettingRow = defineComponent({
 import { computed, onMounted, ref, watch } from "vue";
 import { Switch } from "@headlessui/vue";
 import { useApi } from "../../composables/useApi";
+import AdminNetworksPanel from "../AdminNetworksPanel.vue";
+import { isAdminSession } from "../../composables/adminSession";
 import { pushNotification, Notification } from '@45drives/houston-common-ui';
 import PathInput from "../PathInput.vue";
 import { useOnboarding } from "../../composables/useOnboarding";
@@ -1664,7 +1695,8 @@ const { linkListDefault } = useLinkListDefault();
 const { requestTour } = useTourManager();
 const { setCustomThemeColors, setCustomThemeEnabled } = useThemeFromAlias();
 const { toursDisabled } = useTourPreferences();
-const { connections } = useConnections();
+const { connections, activeConnection, updateConnection } = useConnections();
+const adminSession = computed(() => isAdminSession(activeConnection.value?.token));
 const { isPremiumActive, isTrial, isTrialExpired, isFallback, trialDaysRemaining, licenseInfo } = useLicenseStatus();
 
 // Local copies of transcode settings — only committed to the composable on Save
@@ -1713,7 +1745,7 @@ const settingsTourSteps = computed<TourStep[]>(() => [
 ])
 
 // ── Section navigation ──────────────────────────────────────────────────
-type Section = 'sharing' | 'publicSharing' | 'app' | 'performance' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade';
+type Section = 'sharing' | 'publicSharing' | 'app' | 'performance' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade' | 'adminNetworks';
 const activeSection = ref<Section>((props.initialSection as Section) || 'sharing');
 
 const navGroups = computed(() => {
@@ -1741,6 +1773,7 @@ const navGroups = computed(() => {
                 { key: 'performance' as Section, label: 'Performance' },
                 { key: 'health' as Section, label: 'Server Health' },
                 { key: 'maintenance' as Section, label: 'Maintenance' },
+                ...(adminSession.value ? [{ key: 'adminNetworks' as Section, label: 'Admin Networks' }] : []),
             ],
         },
         // Show Go Pro when unlicensed or on trial
@@ -1878,12 +1911,16 @@ async function handleUpgradeActivate() {
         }
 
         const licenseInfo = result?.license
-        let licenseMsg = 'Pro Edition activated!'
+        let licenseMsg = result?.reused ? 'License details updated.' : 'Pro Edition activated!'
         if (licenseInfo?.perpetual) {
-            licenseMsg = 'Perpetual Pro license activated — never expires.'
+            licenseMsg = result?.reused
+                ? 'License updated — perpetual, never expires.'
+                : 'Perpetual Pro license activated — never expires.'
         } else if (licenseInfo?.expiresAt) {
             const expiryDate = new Date(licenseInfo.expiresAt).toLocaleDateString()
-            licenseMsg = `Pro license activated — valid until ${expiryDate}.`
+            licenseMsg = result?.reused
+                ? `License updated — valid until ${expiryDate}.`
+                : `Pro license activated — valid until ${expiryDate}.`
         }
 
         pushNotification(new Notification('Pro Edition', licenseMsg, 'success', 8000))
@@ -3343,7 +3380,21 @@ async function save() {
         const portChanged = externalHttpsPort.value !== savedHttpsPort.value;
         if (portChanged) {
             try {
+                const portConnection = activeConnection.value;
                 const applyResult = await apiFetch("/api/settings/apply-port", { method: "POST" });
+                const appliedPort = applyResult?.newPort ?? applyResult?.port;
+                if (!applyResult?.ok || typeof appliedPort !== "number"
+                    || !Number.isInteger(appliedPort) || appliedPort < 1 || appliedPort > 65535) {
+                    throw new Error("Server did not confirm the applied HTTPS port.");
+                }
+                if (portConnection) {
+                    const url = new URL(portConnection.baseUrl);
+                    if (url.protocol === "https:") url.port = String(appliedPort);
+                    updateConnection(portConnection.connectionId, {
+                        httpsPort: appliedPort,
+                        baseUrl: url.protocol === "https:" ? url.href.replace(/\/$/, "") : portConnection.baseUrl,
+                    });
+                }
                 if (applyResult?.changed) {
                     appLog.info('settings.port_applied', { port: externalHttpsPort.value });
                     pushNotification(

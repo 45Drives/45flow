@@ -518,7 +518,7 @@
 				</div>
 
 				<p class="text-sm text-default mb-3">
-					Deleting <strong>{{ linkToDelete?.title || 'Untitled' }}</strong>
+					Deleting <strong>{{ linkToDelete?.title || 'Untitled link' }}</strong>
 				</p>
 
 				<div class="border border-default rounded-lg p-3 mb-4 space-y-3">
@@ -531,34 +531,54 @@
 					</div>
 
 					<template v-if="deletePreview && !deletePreviewLoading">
-						<div class="text-xs text-default space-y-1">
-							<p>{{ deletePreview.summary.totalFiles }} file(s) associated with this link</p>
-							<p v-if="deletePreview.summary.sharedFiles > 0" class="text-amber-600 dark:text-amber-400">
-								{{ deletePreview.summary.sharedFiles }} file(s) shared with other links and will be kept
-							</p>
-						</div>
+						<p v-if="deletePreview.summary.totalFiles === 0" class="text-xs text-default">
+							No files in this link.
+						</p>
+						<p v-else-if="nothingToDelete" class="text-xs text-amber-600 dark:text-amber-400">
+							All files are used by other links, so they'll be kept.
+						</p>
+						<p v-else class="text-xs text-default">
+							{{ deletePreview.summary.totalFiles }} file(s)<template v-if="deletePreview.summary.sharedFiles > 0">
+								· <span class="text-amber-600 dark:text-amber-400">{{ deletePreview.summary.sharedFiles }} used by other links will be kept</span>
+							</template>
+						</p>
 
-						<label class="flex items-start gap-2 cursor-pointer select-none">
-							<input type="checkbox" v-model="deleteGeneratedFiles" class="styled-checkbox mt-0.5" />
+						<details v-if="deletePreview.files.length" class="text-xs text-default">
+							<summary class="cursor-pointer select-none">Show files</summary>
+							<ul class="mt-1 max-h-32 overflow-y-auto space-y-1">
+								<li v-for="f in deletePreview.files" :key="f.id" class="flex items-baseline gap-2 min-w-0">
+									<span class="truncate" :title="f.relPath">{{ f.filename }}</span>
+									<span class="shrink-0 opacity-70">{{ formatBytes(f.originalBytes) }}</span>
+									<span v-if="f.sharedWithOtherLinks" class="ml-auto shrink-0 truncate max-w-[50%] text-amber-600 dark:text-amber-400"
+										:title="otherLinkNames(f)">
+										Also in {{ otherLinkNames(f) }}
+									</span>
+								</li>
+							</ul>
+						</details>
+
+						<label class="flex items-start gap-2 select-none"
+							:class="nothingToDelete ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'">
+							<input type="checkbox" v-model="deleteGeneratedFiles" :disabled="nothingToDelete"
+								class="styled-checkbox mt-0.5" />
 							<div>
 								<span class="text-sm">Delete generated files</span>
 								<p class="text-xs text-default">
-									Transcodes, proxy videos, HLS streams, watermarked images
-									({{ formatBytes(deletePreview.summary.totalGeneratedBytes) }})
-								</p>
-								<p v-if="deletePreview.summary.totalGeneratedBytes > 0" class="text-xs text-green-600 dark:text-green-400">
-									Frees up {{ formatBytes(deletePreview.summary.totalGeneratedBytes) }} of disk space
+									Transcodes, proxy videos, HLS streams, watermarked images<template v-if="!nothingToDelete">
+									({{ sizeOfTotal(deletePreview.summary.totalGeneratedBytes, deletePreview.summary.allGeneratedBytes) }})</template>
 								</p>
 							</div>
 						</label>
 
-						<label class="flex items-start gap-2 cursor-pointer select-none">
-							<input type="checkbox" v-model="deleteOriginalFiles" class="styled-checkbox mt-0.5" />
+						<label class="flex items-start gap-2 select-none"
+							:class="nothingToDelete ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'">
+							<input type="checkbox" v-model="deleteOriginalFiles" :disabled="nothingToDelete"
+								class="styled-checkbox mt-0.5" />
 							<div>
 								<span class="text-sm text-red-600 dark:text-red-400 font-medium">Delete original source files</span>
 								<p class="text-xs text-red-500 dark:text-red-300/80">
-									The actual media files on disk. Cannot be recovered.
-									({{ formatBytes(deletePreview.summary.totalOriginalBytes) }})
+									The actual media files on disk. Cannot be recovered.<template v-if="!nothingToDelete">
+									({{ sizeOfTotal(deletePreview.summary.totalOriginalBytes, deletePreview.summary.allOriginalBytes) }})</template>
 								</p>
 							</div>
 						</label>
@@ -758,7 +778,7 @@
 						<li>You can unarchive the link at any time to restore it</li>
 					</ul>
 				</div>
-				<p class="text-sm text-default mb-4">Archive <strong>{{ linkToArchive?.title || 'Untitled' }}</strong>?</p>
+				<p class="text-sm text-default mb-4">Archive <strong>{{ linkToArchive?.title || 'Untitled link' }}</strong>?</p>
 				<div class="flex items-center justify-end gap-2">
 					<button class="btn btn-secondary px-4 py-2" @click="linkToArchive = null">Cancel</button>
 					<button class="btn btn-warning px-4 py-2" @click="executeArchiveLink">Archive</button>
@@ -793,7 +813,7 @@
 	
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { useApi, apiFetchAll } from '../composables/useApi'
+import { useApi } from '../composables/useApi'
 import { useConnections } from '../composables/useConnections'
 import { useServerFilter } from '../composables/useServerFilter'
 import { useLinkRefreshSignal } from '../composables/useLinkRefresh'
@@ -860,7 +880,7 @@ const DEMO_LINKS: LinkItem[] = [
 
 const showingDemoData = computed(() => props.tourActive && rows.value.length === 0 && !loading.value)
 
-const { apiFetch, baseUrl, meta } = useApi()
+const { apiFetch, apiFetchAll, baseUrl, meta } = useApi()
 const { activeConnection, connections } = useConnections()
 const { selectedFilter, filteredConnections } = useServerFilter()
 
@@ -1610,10 +1630,27 @@ async function loadDeletePreview(it: LinkItem) {
 }
 
 function formatBytes(bytes: number): string {
-	if (bytes === 0) return '0 B'
+	if (!bytes) return '0 B'
 	const units = ['B', 'KB', 'MB', 'GB', 'TB']
 	const i = Math.floor(Math.log(bytes) / Math.log(1024))
 	return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`
+}
+
+// Shared files are never deleted, so there's nothing to clean up when every file is shared.
+const nothingToDelete = computed(() => {
+	const s = deletePreview.value?.summary
+	return !!s && (s.totalFiles === 0 || s.deletableFiles === 0)
+})
+
+function sizeOfTotal(deletable: number, all?: number): string {
+	if (all == null || all === deletable) return formatBytes(deletable)
+	return `${formatBytes(deletable)} of ${formatBytes(all)}`
+}
+
+function otherLinkNames(f: { otherLinks?: { title?: string | null }[]; otherLinkCount?: number }): string {
+	const names = (f.otherLinks || []).map((l) => l.title || 'Untitled link')
+	if (!names.length) return `${f.otherLinkCount || 0} other link(s)`
+	return names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2} more` : names.join(', ')
 }
 
 async function deleteLink() {

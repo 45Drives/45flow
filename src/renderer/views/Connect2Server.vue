@@ -113,7 +113,7 @@
                         </label>
                         <label class="inline-flex items-center gap-2 select-none cursor-pointer text-sm mt-2 text-left">
                             <input type="checkbox" v-model="rememberPassword" class="proxy-quality-checkbox" :disabled="anyBusy" tabindex="-1" />
-                            <span>Remember password (auto-login next time)</span>
+                            <span>Remember password securely (re-login when session expires)</span>
                         </label>
                         <p class="text-xs opacity-70 mt-2 text-left">
                             First-time setup requires a user with <b>sudo</b> or <b>root</b> privileges to install server dependencies.
@@ -165,7 +165,7 @@ import type { DiscoveryState, Server } from '../types'
 import { pushNotification, Notification, CardContainer, useDarkModeState } from '@45drives/houston-common-ui'
 import PortForwardingModal from '../components/modals/PortForwardingModal.vue' 
 import { useResilientNav } from '../composables/useResilientNav';
-import { loadLastSession, saveLastSession, clearLastSession, saveManualServer, saveRegistryLicenseId } from '../composables/useSessionPersistence';
+import { loadLastSession, clearLastSession, saveManualServer, saveRegistryLicenseId } from '../composables/useSessionPersistence';
 import { useConnections } from '../composables/useConnections'
 import type { Connection } from '../composables/useConnections'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
@@ -632,7 +632,7 @@ async function checkLicenseStatus(apiBase: string, token: string): Promise<{ lic
     } else if (!licensed && licenseFallback) {
         pushNotification(new Notification(
             'License Expired',
-            'Your license has expired. Premium features remain available at your current version, but app updates are paused until you renew.',
+            'Your license has expired. Premium features remain available at your current version, but app and server updates are paused until you renew.',
             'warning',
             9000
         ))
@@ -919,7 +919,6 @@ async function connectToServer() {
 
         statusLine.value = '';
         
-        try { sessionStorage.setItem('hb_token', token); } catch { /* ignore */ }
 
         // Check license status (non-blocking — sets licensed flag, doesn't prevent login)
         const licenseResult = await checkLicenseStatus(apiBase, token)
@@ -1013,19 +1012,6 @@ async function connectToServer() {
         const actualConnectionId = addConnection(newConnection)
         setActive(actualConnectionId)
 
-        // Legacy persistence for backwards compatibility (will be removed in Phase 3)
-        saveLastSession({
-            serverIp: ip,
-            serverName: effectiveServer?.name || ip,
-            username: username.value,
-            token,
-            apiPort: apiPortToUse,
-            sshPort: sshPortToUse,
-            httpsPort: httpsPort.value ?? 443,
-            apiBase,
-            savedAt: Date.now(),
-        });
-
         window.appLog?.info('login.success', { ip, connectionId: newConnection.connectionId });
 
         // Fire-and-forget: cache licenseId for VPS registry discovery
@@ -1035,7 +1021,7 @@ async function connectToServer() {
             .catch(() => { /* best-effort */ })
 
         // Fire-and-forget: check for broadcaster package updates via API (runs in background)
-        checkBroadcasterUpdateInBackground(apiBase, token, effectiveServer?.name || ip);
+        checkBroadcasterUpdateInBackground(apiBase, token, effectiveServer?.name || ip, !licenseResult.licensed && licenseResult.licenseFallback);
 
         to('dashboard');
     } catch (e: any) {
@@ -1164,8 +1150,7 @@ onMounted(async () => {
         }
 
         if (!res.ok) {
-            // Server error but not auth — clear and proceed to manual login
-            clearLastSession()
+            // Preserve secure credentials when the server is temporarily failing.
             statusLine.value = ''
             isBusy.value = false
             return
@@ -1184,6 +1169,8 @@ onMounted(async () => {
 
         // NOTE: Migration should have already converted saved session to connection
         // This path should rarely execute, but we handle it for safety
+        const previousConnection = connections.find(c =>
+            c.serverIp === saved.serverIp && c.username === saved.username)
         const restoredConnection: Connection = {
             connectionId: crypto.randomUUID(),
             name: saved.serverName || saved.serverIp,
@@ -1192,6 +1179,7 @@ onMounted(async () => {
             baseUrl: saved.apiBase,
             username: saved.username.trim(),
             token: saved.token,
+            savedPassword: previousConnection?.savedPassword,
             tokenIssuedAt: saved.savedAt || Date.now(),
             apiPort: saved.apiPort,
             sshPort: saved.sshPort,
@@ -1214,15 +1202,12 @@ onMounted(async () => {
         const actualConnectionId = addConnection(restoredConnection)
         setActive(actualConnectionId)
 
-        // Legacy compatibility - AppShell will update connectionMeta from activeConnection
-        try { sessionStorage.setItem('hb_token', saved.token) } catch { /* ignore */ }
-
         window.appLog?.info('auto-login.restored', { ip: saved.serverIp, connectionId: actualConnectionId })
 
         statusLine.value = ''
         isBusy.value = false
 
-        checkBroadcasterUpdateInBackground(saved.apiBase, saved.token, saved.serverName || saved.serverIp)
+        checkBroadcasterUpdateInBackground(saved.apiBase, saved.token, saved.serverName || saved.serverIp, !restoredLicense.licensed && restoredLicense.licenseFallback)
         to('dashboard')
     } catch (err: any) {
         // Network error (server unreachable) — keep saved credentials so user
@@ -1245,7 +1230,7 @@ onUnmounted(() => {
  * Fires after login — never blocks the user. Shows a persistent notification
  * with an "Install Update" action if a newer version is available.
  */
-async function checkBroadcasterUpdateInBackground(apiBase: string, token: string, serverName: string) {
+async function checkBroadcasterUpdateInBackground(apiBase: string, token: string, serverName: string, licenseExpiryNotified: boolean) {
     try {
         const hdrs = { 'Authorization': `Bearer ${token}` };
 
@@ -1261,12 +1246,14 @@ async function checkBroadcasterUpdateInBackground(apiBase: string, token: string
         // Entitlement expired — server won't offer updates
         if (data.entitlementExpired) {
             window.appLog?.info('broadcaster-update-check.entitlement-expired', { expiresAt: data.expiresAt });
-            pushNotification(new Notification(
-                'Update Entitlement Expired',
-                `Your update entitlement expired on ${data.expiresAt ? new Date(data.expiresAt).toLocaleDateString() : 'N/A'}. Renew your license to receive server updates.`,
-                'warning',
-                15000,
-            ));
+            if (!licenseExpiryNotified) {
+                pushNotification(new Notification(
+                    'Update Entitlement Expired',
+                    `Your update entitlement expired on ${data.expiresAt ? new Date(data.expiresAt).toLocaleDateString() : 'N/A'}. Renew your license to receive server updates.`,
+                    'warning',
+                    15000,
+                ));
+            }
             return;
         }
 
@@ -1296,6 +1283,11 @@ async function checkBroadcasterUpdateInBackground(apiBase: string, token: string
             }
 
             // 2. Clear auth and navigate back to the connection screen
+            const updatingConnection = connections.find(c =>
+                c.baseUrl === apiBase && c.token === token)
+            if (updatingConnection) {
+                await useConnections().clearConnectionCredentials(updatingConnection.connectionId)
+            }
             clearLastSession()
             to('server-selection');
 

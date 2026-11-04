@@ -1,0 +1,69 @@
+name: Semgrep CE
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - build
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    name: Semgrep CE (report-only)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Check out repository and submodules
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+
+      - name: Install pinned Semgrep CE
+        run: |
+          python3 -m venv "$RUNNER_TEMP/semgrep-venv"
+          "$RUNNER_TEMP/semgrep-venv/bin/python" -m pip install --disable-pip-version-check semgrep==1.182.0
+
+      - name: Fetch pinned Semgrep Express rules
+        run: |
+          git init "$RUNNER_TEMP/semgrep-rules"
+          git -C "$RUNNER_TEMP/semgrep-rules" remote add origin https://github.com/semgrep/semgrep-rules.git
+          git -C "$RUNNER_TEMP/semgrep-rules" sparse-checkout init --cone
+          git -C "$RUNNER_TEMP/semgrep-rules" sparse-checkout set javascript/express/security
+          git -C "$RUNNER_TEMP/semgrep-rules" fetch --depth 1 --filter=blob:none origin 16b9e6d45f10649f6a531ec4838ed9924372c3bc
+          git -C "$RUNNER_TEMP/semgrep-rules" checkout --detach FETCH_HEAD
+
+      - name: Scan JavaScript, TypeScript, Node.js, and Express code
+        run: |
+          "$RUNNER_TEMP/semgrep-venv/bin/semgrep" scan \
+            --config p/javascript \
+            --config p/typescript \
+            --config p/nodejs \
+            --config "$RUNNER_TEMP/semgrep-rules/javascript/express/security" \
+            --sarif \
+            --output semgrep.sarif \
+            --exclude node_modules \
+            --exclude dist \
+            --exclude build \
+            --exclude coverage \
+            .
+
+      - name: Upload SARIF to GitHub code scanning
+        if: success() && (github.repository == '45Drives/45flow' || vars.SEMGREP_SARIF_UPLOAD == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@3599b3baa15b485a2e49ef411a7a4bb2452e7f93 # v3.30.5
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep-ce
+
+      - name: Retain SARIF report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: semgrep-sarif-${{ github.run_id }}
+          path: semgrep.sarif
+          if-no-files-found: warn

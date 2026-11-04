@@ -17,7 +17,7 @@ async function fileExists(p: string, mode = fs.constants.R_OK | fs.constants.W_O
     }
 }
 
-async function resolveSshKeygen(): Promise<string> {
+export async function resolveSshKeygen(): Promise<string> {
     const isWin = getOS() === "win";
     if (isWin) {
         const exe = await getAsset("static/bin", "ssh-keygen.exe");

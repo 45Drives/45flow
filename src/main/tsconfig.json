@@ -11,5 +11,5 @@
     "allowJs": true,
     "noImplicitAny": false,
   },
-  "exclude": ["static"]
+  "exclude": ["static", "**/*.test.js"]
 }
