@@ -26,6 +26,8 @@
     "release:gen-yml": "node scripts/release/generate-update-yml.mjs",
     "release:publish-from-builds": "bash scripts/release/publish-from-builds.sh",
     "release:orchestrate": "bash scripts/release/orchestrate-release.sh",
+    "build:web": "node scripts/web/build.mjs",
+    "package:web": "node scripts/web/package.mjs",
     "test": "vitest run",
     "test:security-hygiene": "node scripts/test-security-hygiene.cjs",
     "test:hardening": "yarn build:common && node scripts/build.js && node scripts/test-hardening.cjs",

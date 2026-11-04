@@ -94,7 +94,7 @@
                     <section data-tour="connect-auth" class="connect-panel connect-panel-auth">
                         <div class="connect-section-title">Authentication</div>
                         <p v-if="isWeb" class="connect-note">
-                            Connecting to {{ browserHost }}. Your session is kept in memory and will end when this tab reloads or closes.
+                            Signing in to {{ browserHost }}. You stay signed in across reloads until you sign out or are inactive for a while.
                         </p>
                         <label class="connect-auth-row flex flex-col">
                             <span class="connect-label">Username</span>
@@ -172,6 +172,7 @@ import type { DiscoveryState, Server } from '../types'
 import { pushNotification, Notification, CardContainer, useDarkModeState } from '@45drives/houston-common-ui'
 import PortForwardingModal from '../components/modals/PortForwardingModal.vue' 
 import { useResilientNav } from '../composables/useResilientNav';
+import { signInWithSession, restoreSession, WEB_SESSION_TOKEN, type WebSessionInfo } from '../web-session';
 import { loadLastSession, clearLastSession, saveManualServer, saveRegistryLicenseId } from '../composables/useSessionPersistence';
 import { useConnections } from '../composables/useConnections'
 import type { Connection } from '../composables/useConnections'
@@ -686,6 +687,59 @@ function translateSshError(errorMsg: string): string {
     return errorMsg;
 }
 
+/** Browser mode: sign in with the server's session cookie (no SSH, bootstrap or stored token). */
+async function signInBrowser() {
+    isBusy.value = true;
+    try {
+        const session = await signInWithSession(
+            username.value.trim(),
+            password.value,
+            typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : undefined,
+        );
+        password.value = '';
+        await openBrowserConnection(session);
+    } catch (e: any) {
+        window.appLog?.error('login.error', { error: e?.message });
+        pushNotification(new Notification('Error', e?.message || 'Login failed', 'error', 8000));
+    } finally {
+        isBusy.value = false;
+    }
+}
+
+/** Register the signed-in browser session as the active connection and open the dashboard. */
+async function openBrowserConnection(session: WebSessionInfo) {
+    const apiBase = window.location.origin;
+    const port = window.location.port ? Number(window.location.port) : window.location.protocol === 'https:' ? 443 : 80;
+    const license = await checkLicenseStatus(apiBase, WEB_SESSION_TOKEN);
+    const connectionId = addConnection({
+        connectionId: crypto.randomUUID(),
+        name: browserHost,
+        serverIp: window.location.hostname,
+        serverName: browserHost,
+        baseUrl: apiBase,
+        username: session.user.name,
+        token: WEB_SESSION_TOKEN,
+        tokenIssuedAt: Date.now(),
+        apiPort: port,
+        httpsPort: port,
+        licensed: license.licensed,
+        licenseFallback: license.licenseFallback,
+        licenseReason: license.licenseReason,
+        licenseCheckedAt: Date.now(),
+        licenseInfo: license.licenseInfo,
+        status: 'connected',
+        lastConnectedAt: Date.now(),
+        isActive: true,
+    });
+    setActive(connectionId);
+    window.appLog?.info('login.success', { host: browserHost, connectionId });
+    // Same server-update check the desktop runs; the API is administrator-only.
+    if (session.user.admin) {
+        checkBroadcasterUpdateInBackground(apiBase, WEB_SESSION_TOKEN, browserHost, !license.licensed && license.licenseFallback);
+    }
+    to('dashboard');
+}
+
 async function connectToServer() {
     if (!isWeb && !selectedServer.value && !manualIp.value) {
         pushNotification(new Notification('Error', `Please select or enter a server before connecting.`, 'error', 8000));
@@ -700,8 +754,10 @@ async function connectToServer() {
         return;
     }
 
+    if (isWeb) return signInBrowser();
+
     // Re-run port constraints on submit to be extra safe
-    if (!isWeb) ensurePortConstraints('ssh');
+    ensurePortConstraints('ssh');
 
     if (portError.value) {
         pushNotification(new Notification('Error', portError.value, 'error', 8000));
@@ -1059,6 +1115,22 @@ onMounted(async () => {
         }, 500)
     }
 
+    // Browser mode: the cookie outlives a reload, so resume instead of asking again.
+    if (isWeb) {
+        isBusy.value = true;
+        statusLine.value = 'Checking your session…';
+        try {
+            const session = await restoreSession();
+            if (session) await openBrowserConnection(session);
+        } catch (e: any) {
+            window.appLog?.warn('session.restore-failed', { error: e?.message });
+        } finally {
+            isBusy.value = false;
+            statusLine.value = '';
+        }
+        return;
+    }
+
     // Skip auto-login if user explicitly clicked "Add Connection"
     if (route.query.skipAutoLogin === 'true') {
         window.appLog?.info('auto-login.skipped', { reason: 'user adding new connection' })
@@ -1381,6 +1453,11 @@ async function checkBroadcasterUpdateInBackground(apiBase: string, token: string
                     didUpdate ? 'success' : 'info',
                     12000,
                 ));
+                // The session survives the restart, so resume without asking for the password again.
+                if (isWeb) {
+                    const resumed = await restoreSession().catch(() => null);
+                    if (resumed) await openBrowserConnection(resumed);
+                }
             } else {
                 pushNotification(new Notification(
                     'Update Status Unknown',

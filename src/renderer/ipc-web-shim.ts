@@ -1,39 +1,20 @@
 import type { ConnectionCredentials } from '../shared/secureTokens'
 import { createWebUploadApi } from './web-upload'
+import { createSessionFetch } from './web-session'
+import { captureGlobalErrors, createWebLog } from './web-log'
 
 type Listener = (event: { type: string }, payload: unknown) => void
-
-const WEB_API_BASE = ''
 
 function installWebIPCShim() {
     if (typeof window === 'undefined' || window.electron) return
 
+    const webLog = createWebLog()
+    captureGlobalErrors(webLog)
+    window.fetch = createSessionFetch(window.fetch.bind(window), window.location.origin, (failure) =>
+        (failure.status && failure.status < 500 ? webLog.warn : webLog.error)('http.error', failure))
+
     const listeners = new Map<string, Set<Listener>>()
     const credentials = new Map<string, ConnectionCredentials>()
-    let discoveryStream: EventSource | undefined
-
-    async function readHttpError(response: Response) {
-        const requestId = response.headers.get('x-request-id') || ''
-        const raw = await response.text()
-        let body: { error?: unknown; message?: unknown; requestId?: unknown } | null = null
-        try {
-            body = raw ? JSON.parse(raw) : null
-        } catch {
-            body = null
-        }
-        const message = (typeof body?.message === 'string' && body.message)
-            || (typeof body?.error === 'string' && body.error)
-            || raw
-            || `HTTP ${response.status}`
-        const id = typeof body?.requestId === 'string' ? body.requestId : requestId
-        return id && !message.includes(id) ? `${message} (request ${id})` : message
-    }
-
-    async function requestJson(path: string, init?: RequestInit) {
-        const response = await fetch(`${WEB_API_BASE}${path}`, init)
-        if (!response.ok) throw new Error(await readHttpError(response))
-        return response.status === 204 ? undefined : response.json()
-    }
 
     function notifyUnsupported(capability: string): never {
         throw new Error(`${capability} is not available in the browser. Open 45Flow Desktop to use this feature.`)
@@ -42,29 +23,6 @@ function installWebIPCShim() {
     function emit(channel: string, payload: unknown) {
         for (const listener of listeners.get(channel) ?? []) {
             listener({ type: channel }, payload)
-        }
-    }
-
-    function ensureDiscoveryStream() {
-        if (discoveryStream) return
-        discoveryStream = new EventSource(`${WEB_API_BASE}/api/discovery/stream`)
-        discoveryStream.addEventListener('message', (event) => {
-            try {
-                const message = JSON.parse((event as MessageEvent).data)
-                if (typeof message?.type === 'string') emit(message.type, message.payload)
-            } catch (error) {
-                console.error('[browser discovery] invalid event payload', error)
-            }
-        })
-        discoveryStream.addEventListener('discovered-servers', (event) => {
-            try {
-                emit('discovered-servers', JSON.parse((event as MessageEvent).data))
-            } catch (error) {
-                console.error('[browser discovery] invalid server list', error)
-            }
-        })
-        discoveryStream.onerror = (error) => {
-            console.error('[browser discovery] event stream failed; browser will retry', error)
         }
     }
 
@@ -85,7 +43,6 @@ function installWebIPCShim() {
             on(channel: string, listener: Listener) {
                 if (!listeners.has(channel)) listeners.set(channel, new Set())
                 listeners.get(channel)!.add(listener)
-                if (channel === 'discovered-servers') ensureDiscoveryStream()
             },
             once(channel: string, listener: Listener) {
                 const wrapped: Listener = (event, payload) => {
@@ -102,11 +59,9 @@ function installWebIPCShim() {
             },
             async invoke(channel: string, ...args: unknown[]) {
                 switch (channel) {
-                    case 'scan-network-fallback': {
-                        await requestJson('/api/discovery/scan', { method: 'POST' })
-                        const result = await requestJson('/api/discovery')
-                        return Array.isArray(result?.servers) ? result.servers : []
-                    }
+                    // The browser only ever talks to the server that hosts it, so there is nothing to discover.
+                    case 'scan-network-fallback':
+                        return []
                     case 'get-os':
                         return 'browser'
                     case 'is-appimage':
@@ -120,7 +75,7 @@ function installWebIPCShim() {
                     case 'verify-nginx-certificate-over-ssh':
                         return notifyUnsupported('Desktop network and SSH verification')
                     case 'logs:read-client':
-                        return notifyUnsupported('Desktop client logs')
+                        return webLog.read(Number((args[0] as { limit?: number } | undefined)?.limit) || undefined)
                     case 'transcode:get-capabilities':
                     case 'transcode:start':
                     case 'transcode:cancel':
@@ -154,6 +109,7 @@ function installWebIPCShim() {
             },
         },
         selectFolder: async () => notifyUnsupported('Desktop folder selection'),
+        exportClientLogs: () => webLog.exportText(),
         getOS: async () => 'browser',
         isFirstRunNeeded: async () => notifyUnsupported('Desktop backup setup'),
         ensureSshReady: async () => notifyUnsupported('SSH setup'),
@@ -177,9 +133,9 @@ function installWebIPCShim() {
 
     window.electron = electron as typeof window.electron
     window.appLog = {
-        info: (event, data) => console.info(`[45Flow] ${event}`, data ?? ''),
-        warn: (event, data) => console.warn(`[45Flow] ${event}`, data ?? ''),
-        error: (event, data) => console.error(`[45Flow] ${event}`, data ?? ''),
+        info: (event, data) => { console.info(`[45Flow] ${event}`, data ?? ''); webLog.info(event, data) },
+        warn: (event, data) => { console.warn(`[45Flow] ${event}`, data ?? ''); webLog.warn(event, data) },
+        error: (event, data) => { console.error(`[45Flow] ${event}`, data ?? ''); webLog.error(event, data) },
     }
 }
 

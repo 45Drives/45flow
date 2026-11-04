@@ -6,42 +6,54 @@ describe('browser Electron compatibility shim', () => {
     delete window.electron
     delete window.appLog
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+    sessionStorage.clear()
   })
 
-  it('maps discovery scanning to the explicit server API endpoints', async () => {
+  it('has nothing to discover: the browser only talks to the server that hosts it', async () => {
     const fetch = vi.fn()
-      .mockResolvedValueOnce({ ok: true, status: 204 })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({ servers: [{ ip: '192.168.1.20' }] }),
-      })
+    const EventSource = vi.fn()
     vi.stubGlobal('fetch', fetch)
+    vi.stubGlobal('EventSource', EventSource)
     await import('./ipc-web-shim')
 
-    await expect(window.electron.ipcRenderer.invoke('scan-network-fallback'))
-      .resolves.toEqual([{ ip: '192.168.1.20' }])
-    expect(fetch.mock.calls.map(([url, init]) => [url, init?.method])).toEqual([
-      ['/api/discovery/scan', 'POST'],
-      ['/api/discovery', undefined],
-    ])
+    window.electron.ipcRenderer.on('discovered-servers', vi.fn())
+    await expect(window.electron.ipcRenderer.invoke('scan-network-fallback')).resolves.toEqual([])
+
+    expect(fetch).not.toHaveBeenCalled()
+    expect(EventSource).not.toHaveBeenCalled()
   })
 
-  it('forwards only discovery events from the server event stream', async () => {
-    const handlers = new Map()
-    class MockEventSource {
-      addEventListener(name, callback) { handlers.set(name, callback) }
-    }
-    vi.stubGlobal('EventSource', MockEventSource)
+  it('serves the Log Viewer from a redacted in-tab log', async () => {
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     await import('./ipc-web-shim')
-    const listener = vi.fn()
-    window.electron.ipcRenderer.on('discovered-servers', listener)
-    handlers.get('discovered-servers')({ data: JSON.stringify([{ ip: '192.168.1.20' }]) })
 
-    expect(listener).toHaveBeenCalledWith(
-      { type: 'discovered-servers' },
-      [{ ip: '192.168.1.20' }],
-    )
+    window.appLog.info('login.success', { host: 'nas', password: 'hunter2', token: 'abc' })
+    window.appLog.error('upload.failed', { error: 'disk full' })
+    const log = await window.electron.ipcRenderer.invoke('logs:read-client', { limit: 10 })
+
+    expect(log.ok).toBe(true)
+    expect(log.entries.map((e) => e.event)).toEqual(['upload.failed', 'login.success'])
+    expect(log.entries[0]).toMatchObject({ level: 'error', summary: 'disk full' })
+    expect(window.electron.exportClientLogs()).not.toMatch(/hunter2|abc/)
+    expect(window.electron.exportClientLogs()).toContain('[redacted]')
+  })
+
+  it('records failed API calls without query strings, but not the signed-out probe', async () => {
+    const native = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 500, headers: new Headers({ 'x-request-id': 'req-9' }) })
+      .mockResolvedValueOnce({ ok: false, status: 401, headers: new Headers() })
+    vi.stubGlobal('fetch', native)
+    await import('./ipc-web-shim')
+
+    await window.fetch('/api/links?token=secret-link-token')
+    await window.fetch('/api/session')
+
+    const entries = (await window.electron.ipcRenderer.invoke('logs:read-client')).entries
+    expect(entries).toHaveLength(1)
+    expect(entries[0]).toMatchObject({ event: 'http.error', data: { path: '/api/links', status: 500, requestId: 'req-9' } })
+    expect(JSON.stringify(entries)).not.toContain('secret-link-token')
   })
 
   it('rejects unknown IPC instead of forwarding arbitrary channels to the server', async () => {

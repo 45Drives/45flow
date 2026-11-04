@@ -9,7 +9,7 @@
 
 				<div class="dashboard-utility button-group-row">
 					<button @click="goToManageUsers" data-tour="manage-users" class="btn btn-secondary px-5 py-2.5">Manage Access</button>
-					<button v-if="!isWeb" @click="goToLogs" data-tour="view-logs" class="btn btn-secondary px-5 py-2.5">View Logs</button>
+					<button @click="goToLogs" data-tour="view-logs" class="btn btn-secondary px-5 py-2.5">View Logs</button>
 					<button @click="goToSettings" data-tour="settings" class="btn btn-secondary px-5 py-2.5">Settings</button>
 					<button @click="leaveServer" class="btn btn-danger px-5 py-2.5">Log Out</button>
 				</div>
@@ -596,6 +596,8 @@ import { useActiveProject } from '../composables/useActiveProject'
 import { useProjectMode } from '../composables/useProjectMode'
 import { useLicenseStatus } from '../composables/useLicenseStatus'
 import { useThemeFromAlias } from '../composables/useThemeFromAlias'
+import { signOutSession } from '../web-session'
+import { revokeDesktopSession } from '../desktop-session'
 const isWeb = window.electron?.isWeb === true
 
 useHeader('Dashboard')
@@ -1090,7 +1092,10 @@ watch(selectedFilter, () => {
 
 // ── Navigation ──
 const leaveServer = async () => {
+	if (isWeb) await signOutSession()
 	const connection = activeConnection.value
+	// Revoke on the server so the token stops working immediately, not just on this machine.
+	if (!isWeb && connection) await revokeDesktopSession(connection.baseUrl, connection.token)
 	if (connection) {
 		await useConnections().clearConnectionCredentials(connection.connectionId)
 		updateConnection(connection.connectionId, {

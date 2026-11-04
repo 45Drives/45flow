@@ -470,6 +470,16 @@
                                         <option value="active">Active Only</option>
                                     </select>
                                 </SettingRow>
+                                <SettingRow v-if="isWeb" label="Notify when uploads finish" :description="notifyDescription">
+                                    <button
+                                        class="btn btn-secondary text-sm px-3 py-1"
+                                        type="button"
+                                        :disabled="notifyPermission === 'unsupported' || notifyPermission === 'denied'"
+                                        @click="toggleBrowserNotifications"
+                                    >
+                                        {{ notifyOn ? 'Turn off' : 'Turn on' }}
+                                    </button>
+                                </SettingRow>
                             </div>
 
                             <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Path Defaults</p>
@@ -1648,6 +1658,7 @@ import { Switch } from "@headlessui/vue";
 import { useApi } from "../../composables/useApi";
 import AdminNetworksPanel from "../AdminNetworksPanel.vue";
 import { isAdminSession } from "../../composables/adminSession";
+import { disableNotifications, enableNotifications, notificationPermission, notificationsEnabled } from "../../web-notify";
 import { pushNotification, Notification } from '@45drives/houston-common-ui';
 import PathInput from "../PathInput.vue";
 import { useOnboarding } from "../../composables/useOnboarding";
@@ -1698,6 +1709,20 @@ const { linkListDefault } = useLinkListDefault();
 const { requestTour } = useTourManager();
 const { setCustomThemeColors, setCustomThemeEnabled } = useThemeFromAlias();
 const { toursDisabled } = useTourPreferences();
+const notifyPermission = ref(notificationPermission());
+const notifyOn = ref(notificationsEnabled());
+const notifyDescription = computed(() =>
+    notifyPermission.value === 'unsupported' ? 'This browser does not support notifications.'
+    : notifyPermission.value === 'denied' ? 'Notifications are blocked for this site. Allow them in your browser settings to turn this on.'
+    : 'Show a browser notification when an upload finishes or fails while this tab is in the background.');
+async function toggleBrowserNotifications() {
+    if (notifyOn.value) {
+        disableNotifications();
+    } else {
+        notifyPermission.value = await enableNotifications();
+    }
+    notifyOn.value = notificationsEnabled();
+}
 const { connections, activeConnection, updateConnection } = useConnections();
 const adminSession = computed(() => isAdminSession(activeConnection.value?.token));
 const isWeb = window.electron?.isWeb === true
@@ -1778,7 +1803,7 @@ const navGroups = computed(() => {
                 { key: 'performance' as Section, label: 'Performance' },
                 { key: 'health' as Section, label: 'Server Health' },
                 { key: 'maintenance' as Section, label: 'Maintenance' },
-                ...(adminSession.value && !isWeb ? [{ key: 'adminNetworks' as Section, label: 'Admin Networks' }] : []),
+                ...(adminSession.value ? [{ key: 'adminNetworks' as Section, label: 'Admin Networks' }] : []),
             ],
         },
         // Show Go Pro when unlicensed or on trial

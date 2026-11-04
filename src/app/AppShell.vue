@@ -27,7 +27,7 @@
       <!-- Right (menu) -->
       <div class="justify-self-end text-right flex items-center gap-2">
         <div data-tour="connection-switcher">
-          <ConnectionSwitcher v-if="route.name !== 'server-selection' && isPremiumActive" />
+          <ConnectionSwitcher v-if="route.name !== 'server-selection' && isPremiumActive && !isWeb" />
           <BasicServerBadge v-else-if="route.name !== 'server-selection'" />
         </div>
         <span v-if="isFallback && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 font-medium whitespace-nowrap" title="Pro legacy mode: premium features remain available at your current version. Renew your license to restore app and server updates.">
@@ -62,6 +62,7 @@
     <QuickShareOverlay v-if="hasActiveSession && route.name !== 'server-selection'" />
     <GlobalModalConfirm />
     <NotificationView />
+    <SessionIdlePrompt v-if="isWeb" />
     <UpdateBanner v-if="!isWeb" />
     <TransferProgressDock v-if="!hideTransfers" />
     <GuidedTour v-if="ENABLE_TOUR && activeTour" :steps="activeTour.steps" :active="true" @done="finishTour" @skip="skipTour" />
@@ -93,6 +94,9 @@ import ConnectionSwitcher from '../renderer/components/ConnectionSwitcher.vue'
 import BasicServerBadge from '../renderer/components/BasicServerBadge.vue'
 import GuidedTour from '../renderer/components/GuidedTour.vue'
 import QuickShareOverlay from '../renderer/components/QuickShareOverlay.vue'
+import SessionIdlePrompt from '../renderer/components/SessionIdlePrompt.vue'
+import { useSessionIdle } from '../renderer/composables/useSessionIdle'
+import { useDesktopSession } from '../renderer/composables/useDesktopSession'
 import NotificationBell from '../renderer/components/NotificationBell.vue'
 import { initNotificationCenter } from '../renderer/composables/useNotificationCenter'
 import { useTourManager } from '../renderer/composables/useTourManager'
@@ -174,6 +178,14 @@ const darkMode = useDarkModeState()
 const hasActiveSession = computed(() =>
   !!activeConnection.value?.token && activeConnection.value.status === 'connected'
 )
+
+// Browser sessions end after a period of inactivity; keep them alive while the user is active.
+const sessionIdle = useSessionIdle()
+watch(() => isWeb && hasActiveSession.value, (active) => (active ? sessionIdle.start() : sessionIdle.stop()), { immediate: true })
+
+// Desktop sessions also end after a period of inactivity; keep them alive while the user is active.
+const desktopSession = useDesktopSession()
+watch(() => !isWeb && hasActiveSession.value, (active) => (active ? desktopSession.start() : desktopSession.stop()), { immediate: true })
 
 watch([hasActiveSession, () => activeConnection.value?.connectionId, () => route.name], async () => {
   if (!route.name || route.name === 'server-selection' || hasActiveSession.value) return

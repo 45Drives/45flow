@@ -61,7 +61,9 @@ async function parseAuto(res: Response, mode: 'json' | 'text' | 'auto' = 'auto')
     return res.text()
 }
 
-const SESSION_EXPIRED_MESSAGE = 'Login token expired or is no longer valid. Please log in again.'
+const SESSION_EXPIRED_MESSAGE = window.electron?.isWeb
+    ? 'Your session ended. Please sign in again.'
+    : 'Login token expired or is no longer valid. Please log in again.'
 
 /**
  * Create API client for a specific connection (or active connection if not specified)
@@ -110,7 +112,7 @@ function createApiClient(
     let certificatePreparation: { key: string; promise: Promise<void> } | undefined
 
     async function prepareCertificate(conn: Connection, requestBaseUrl: string) {
-        if (options.transport !== 'nginx-https' || !window.electron) return
+        if (options.transport !== 'nginx-https' || !window.electron || window.electron.isWeb) return
         const ssh = conn.ssh
         if (!ssh) throw new Error('Reconnect to this server to establish SSH access before opening Admin Networks.')
         const details = {

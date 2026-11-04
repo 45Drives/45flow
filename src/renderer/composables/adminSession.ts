@@ -1,5 +1,8 @@
+import { WEB_SESSION_TOKEN, isWebSessionAdmin } from '../web-session'
+
 /** UX hint only. The server must independently verify the token and admin claims. */
 export function isAdminSession(token?: string): boolean {
+    if (token === WEB_SESSION_TOKEN) return isWebSessionAdmin()
     try {
         const encoded = (token || '').split('.')[1]
         if (!encoded) return false

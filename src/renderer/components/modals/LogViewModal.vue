@@ -10,10 +10,13 @@
               <div>
                 <div class="text-xl font-semibold text-default text-left">Log Viewer</div>
                 <div class="text-xs text-muted mt-1">
-                  {{ source === 'client' ? 'Showing parsed entries from the local app log file.' : 'Showing audit log entries from the connected server.' }}
+                  {{ source === 'client' ? (isWeb ? 'Showing events and errors recorded by this browser tab.' : 'Showing parsed entries from the local app log file.') : 'Showing audit log entries from the connected server.' }}
                 </div>
               </div>
               <div class="flex items-center gap-2">
+                <button v-if="isWeb && source === 'client'" class="btn btn-secondary" type="button" @click="downloadBrowserLog">
+                  Download
+                </button>
                 <button class="btn btn-secondary" type="button" @click="refresh" :disabled="loading">
                   {{ loading ? 'Refreshing…' : 'Refresh' }}
                 </button>
@@ -33,7 +36,7 @@
                 :class="source === 'client' ? 'border-blue-500 text-blue-400' : 'border-transparent text-muted hover:text-default'"
                 @click="switchSource('client')"
               >
-                Client Logs
+                {{ isWeb ? 'Browser Logs' : 'Client Logs' }}
               </button>
               <button
                 type="button"
@@ -64,11 +67,11 @@
             <!-- Client log metadata -->
             <div v-if="source === 'client'" class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
               <div class="rounded-md border border-default p-3 bg-default">
-                <div class="text-xs text-muted">Log file</div>
+                <div class="text-xs text-muted">{{ isWeb ? 'Source' : 'Log file' }}</div>
                 <div class="text-sm font-mono break-all">{{ meta.file || 'n/a' }}</div>
               </div>
               <div class="rounded-md border border-default p-3 bg-default">
-                <div class="text-xs text-muted">Directory</div>
+                <div class="text-xs text-muted">{{ isWeb ? 'Retention' : 'Directory' }}</div>
                 <div class="text-sm font-mono break-all">{{ meta.logDir || 'n/a' }}</div>
               </div>
               <div class="rounded-md border border-default p-3 bg-default">
@@ -537,6 +540,21 @@ function formatTs(ts: string) {
   const d = new Date(ts);
   if (Number.isNaN(d.getTime())) return ts;
   return d.toLocaleString(undefined, { hour12: hour12.value });
+}
+
+const isWeb = window.electron?.isWeb === true;
+
+// The browser has no log file, so hand the tab's log to the user as a download.
+function downloadBrowserLog() {
+  const text = window.electron?.exportClientLogs?.() ?? "";
+  const url = URL.createObjectURL(new Blob([text], { type: "application/x-ndjson" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `45flow-browser-log-${new Date().toISOString().replace(/[:.]/g, "-")}.jsonl`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function switchSource(newSource: LogSource) {

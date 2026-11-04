@@ -1,4 +1,6 @@
 // src/renderer/composables/useTransferProgress.ts
+import { notifyIfHidden } from '../web-notify'
+import { BACKGROUND_REQUEST } from '../background-request'
 import { computed, reactive, watch } from 'vue'
 import type { ProgressItem, VersionProgressItem } from './transcodeProgress'
 import { startProgressPolling } from './transcodeProgress'
@@ -703,8 +705,10 @@ export function useTransferProgress() {
 
         if (ok) {
             updateUpload(taskId, { status: 'done', progress: 100, completedAt: now(), error: null })
+            notifyIfHidden('Upload complete', t.title.replace(/^(Uploading|Queued):\s*/, ''), taskId)
         } else {
             updateUpload(taskId, { status: 'error', completedAt: now(), error: err || 'upload failed' })
+            notifyIfHidden('Upload failed', `${t.title.replace(/^(Uploading|Queued):\s*/, '')}: ${err || 'upload failed'}`, taskId)
         }
     }
 
@@ -1597,6 +1601,7 @@ export function useTransferProgress() {
             const json = await apiFetch('/api/progress/active', {
                 parse: 'json',
                 suppressAuthRedirect: true,
+                headers: BACKGROUND_REQUEST,
             })
             if (!json?.ok || !Array.isArray(json.items)) return
 

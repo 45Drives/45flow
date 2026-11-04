@@ -164,7 +164,16 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
     - [Server Logs (Audit Log)](#server-logs-audit-log)
     - [Multi-Server Log Viewer](#multi-server-log-viewer)
     - [Searching & Filtering Logs](#searching--filtering-logs)
-23. [Frequently Asked Questions](#23-frequently-asked-questions)
+23. [Using 45Flow in a Browser](#23-using-45flow-in-a-browser)
+    - [Opening the Web App](#opening-the-web-app)
+    - [Signing In and Out](#signing-in-and-out)
+    - [Staying Signed In](#staying-signed-in)
+    - [What Works in the Browser](#what-works-in-the-browser)
+    - [What Needs the Desktop App](#what-needs-the-desktop-app)
+    - [Browser Logs](#browser-logs)
+    - [For Administrators: Hosting the Web App](#for-administrators-hosting-the-web-app)
+    - [Troubleshooting the Web App](#troubleshooting-the-web-app)
+24. [Frequently Asked Questions](#24-frequently-asked-questions)
 
 ---
 
@@ -1839,6 +1848,8 @@ The Log Viewer lets you inspect application activity, identify errors, and troub
 
 The Log Viewer has two tabs: **Client Logs** and **Server Logs**.
 
+> **In a browser**, the first tab is **Browser Logs** and it has a **Download** button. See [Browser Logs](#browser-logs).
+
 ![Log Viewer with tabs](images/log-viewer-tabs-v3.png)
 
 ### Client Logs
@@ -1904,7 +1915,100 @@ When connected to multiple servers, a **server selector dropdown** appears in th
 
 ---
 
-## 23. Frequently Asked Questions
+## 23. Using 45Flow in a Browser
+
+You can use 45Flow from a web browser on any computer that is on the same network (or VPN) as your server, with nothing to install. The web app is the same 45Flow you know from the desktop app: sign in, create links, upload files and share them.
+
+> **The web app is a Pro feature.** On a server without a Pro license, opening the web address shows a short page explaining this. Everything keeps working in the desktop app.
+
+### Opening the Web App
+
+Open this address in your browser, using your server's name or IP address:
+
+```
+https://<your-server>/app/
+```
+
+- Your server uses a **self-signed certificate** unless you have set up a domain with Let's Encrypt, so your browser will show a warning the first time ("Your connection is not private"). Check that the address is your own server, then choose to continue. See [SSL Certificate Management](#ssl-certificate-management) to remove the warning.
+- The web app is only available from **your local network or VPN**. From the internet, the address is blocked. If you are away from the office, connect to your VPN first.
+
+### Signing In and Out
+
+1. Enter your server **Username** and **Password**, then click **"Connect to Server"**. There is no server to choose: the web app always connects to the server it was opened from.
+2. To leave, click **"Log Out"** on the Dashboard. This ends your session on the server straight away.
+
+Your password is never stored in the browser, and there is no "remember password" option.
+
+### Staying Signed In
+
+- **Reloading the page keeps you signed in.** You do not need to enter your password again.
+- **You are signed out after 15 minutes without activity**, and after 12 hours in any case. Moving the mouse, typing or scrolling counts as activity, so you stay signed in while you work.
+- **About two minutes before you would be signed out**, a message appears with a countdown and a **"Stay signed in"** button. Click it to continue, or ignore it to be signed out.
+- Uploads keep running while you are signed in. If you leave a long upload running and walk away, it continues, but you may be signed out when it finishes.
+- Several tabs share one session. Using any of them keeps all of them signed in.
+- Your server administrator can change these times.
+
+### What Works in the Browser
+
+| Feature | In the browser |
+|---|---|
+| Creating, editing and managing links, projects, users and roles | Works the same as the desktop app |
+| **Upload Files** | Choose files or a folder from your computer with the normal file dialog |
+| **Drag-and-drop QuickShare** | Drag files anywhere on the Dashboard, as in the desktop app |
+| Watermark images | Choose an image from your computer |
+| Transfer Dock | Works. Uploads continue while you use other pages, but **closing or leaving the tab cancels them** (your browser asks you to confirm) |
+| Admin Networks | Works for administrators |
+| Server updates | Administrators are offered updates, as in the desktop app |
+| Copy link buttons | Work. If your browser does not allow copying, the app uses a fallback |
+
+**Notifications.** When a tab is in the background you will not see on-screen messages. To be told when an upload finishes or fails, open **Settings → Preferences** and turn on **"Notify when uploads finish"**. Your browser will ask for permission once.
+
+### What Needs the Desktop App
+
+These are not available in the browser, and the app explains this where it matters:
+
+- **Client-side video processing.** In the desktop app you can create review copies on your own computer before uploading. In the browser the **server** prepares them after the upload instead, which can take longer for large videos. *Settings → Performance* explains this.
+- **First-time server setup** (installing houston-broadcaster over SSH) and **desktop app updates**.
+- **Connecting to more than one server.** The web app talks only to the server it was opened from.
+- **Resuming an interrupted upload.** If a page is closed or reloaded during an upload, start it again.
+
+### Browser Logs
+
+**View Logs** is available in the browser. The first tab is **Browser Logs** instead of Client Logs. It shows errors and events recorded by this browser tab, such as a failed upload or a request the server refused. It is kept for the current tab only and is cleared when you close it. Passwords and tokens are never recorded.
+
+Click **"Download"** to save the log as a file you can send to support. **Server Logs** works the same as in the desktop app.
+
+### For Administrators: Hosting the Web App
+
+The web app is served by the same nginx that serves your share links, from `/app/`, and only to the networks listed in `/etc/nginx/45flow-admin-allow.conf` (your LAN and VPN ranges by default). To allow another trusted network, add an `allow <network>;` line **before** `deny all;`, then run `sudo nginx -t && sudo systemctl reload nginx`. Never allow public ranges.
+
+| Setting (in `/etc/default/houston-broadcaster` or `/etc/sysconfig/houston-broadcaster`) | Default | Meaning |
+|---|---|---|
+| `WEB_APP_LICENSE_GATE` | on | Serve the web app only to licensed (Pro) servers. Set to `off` to serve it to every server. |
+| `SESSION_IDLE_MINUTES` | 15 | Sign out after this long without activity. |
+| `SESSION_ABSOLUTE_HOURS` | 12 | Sign out after this long, however active. |
+| `SESSION_ROTATE_MINUTES` | 60 | How often session credentials are replaced. |
+
+Restart the service after changing a setting: `sudo systemctl restart houston-broadcaster`.
+
+- **Installing and updating.** The web app is a separate package, **45flow-web**, whose version matches the desktop app. It installs to `/opt/45drives/45flow-web`. To see which version is running, open `https://<your-server>/app/version.json`.
+- **Seeing who is signed in.** Administrators can list and end sessions through the server API (`/api/admin/sessions`); see the session contract in the houston-broadcaster documentation.
+- **After an update.** Restarting or updating houston-broadcaster does **not** sign browsers out.
+
+### Troubleshooting the Web App
+
+| What you see | What it means |
+|---|---|
+| Browser warning about the connection | The self-signed certificate. Check the address, then continue. |
+| "The 45Flow web app is a Pro feature" | The server has no Pro license, or a trial has ended. Activate a license in the desktop app, or ask your administrator. |
+| A blocked or "403 Forbidden" page | You are not on the local network or VPN, or your network is not in the allowed list. |
+| "404 Not Found" at `/app/` | The web app package is not installed on the server, or the server's nginx has not been updated. |
+| Sign-in fails with an error | Check the username and password. A server that has not been updated to the version with web sign-in will not accept browser sign-ins. |
+| "You were signed out after a period of inactivity" | Normal. Sign in again. |
+
+---
+
+## 24. Frequently Asked Questions
 
 **Q: What's the difference between Community and Pro editions?**  
 A: There is only ONE 45Flow app. It works as Community Edition (free) by default, and automatically upgrades to Pro when connected to a licensed server. You don't download separate apps — Pro features simply unlock when the server has a valid license. Community includes all core file sharing, watermarking (video and image), uploads, review features, and commenting. Pro adds custom branding, advanced watermark customization (position, scale, opacity, rotation, presets), client-side comment review/export workflows, annotations, and priority support.

@@ -207,6 +207,8 @@ export type FullTranscodeResult = {
 
 export interface ElectronApi {
   isWeb?: boolean
+  /** Browser only: the tab's log as JSON lines, for support. */
+  exportClientLogs?: () => string
   secureToken?: SecureTokenApi
   ipcRenderer: {
     send: (channel: string, data?: any) => void
