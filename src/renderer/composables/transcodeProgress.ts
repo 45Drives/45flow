@@ -1,4 +1,6 @@
 // src/renderer/composables/transcodeProgress.ts
+import { BACKGROUND_REQUEST } from '../background-request'
+
 export type ProgressJob = {
     id: number
     kind: string
@@ -49,6 +51,7 @@ export async function fetchProgressForVersion(apiFetch: ApiFetch, assetVersionId
         method: 'GET',
         parse: 'json',
         suppressAuthRedirect: true,
+        headers: BACKGROUND_REQUEST,
     })
     if (!json?.ok) throw new Error(json?.error || 'version progress failed')
 
@@ -94,6 +97,7 @@ export async function fetchProgressBatch(apiFetch: ApiFetch, fileIds: number[]):
         method: 'POST',
         body: JSON.stringify({ fileIds }),
         parse: 'json',
+        headers: BACKGROUND_REQUEST,
     })
     if (!json?.ok) throw new Error(json?.error || 'progress batch failed')
     return (json.items || []) as ProgressItem[]

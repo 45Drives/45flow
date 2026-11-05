@@ -2,57 +2,12 @@
 
 import type { IpcRendererEvent } from 'electron'
 import type { SecureTokenApi } from '../../shared/secureTokens'
+import type { HttpUploadOpts, HttpUploadProgress, HttpUploadResult } from '../../shared/chunkedUpload'
 
 export type UploadResult = { ok?: boolean; path?: string; error?: string }
 export type ProgressPayload = { percent: number; speed?: string; eta?: string }
 
-export type HttpUploadOpts = {
-  src: string
-  apiBase: string
-  apiToken: string
-  dest: string
-  chunkSize?: number
-  fileId?: number
-  assetVersionId?: number
-  clientTranscode?: boolean
-  proxy?: boolean
-  proxyQualities?: string[]
-  hls?: boolean
-  watermark?: boolean
-  watermarkFile?: string
-  watermarkSettings?: any
-}
-
-export type HttpUploadProgress = {
-  phase?: 'uploading' | 'scanning' | 'finalizing' | 'complete'
-  message?: string
-  percent: number
-  bytesTransferred: number
-  totalBytes: number
-  rate?: string
-  eta?: string
-  chunksCompleted: number
-  totalChunks: number
-}
-
-export type HttpUploadResult = {
-  ok: boolean
-  error?: string
-  file?: {
-    id: number
-    assetId: number
-    assetVersionId: number
-    savedAs: string
-    name: string
-    size: number
-    mime: string
-    relDir: string
-  }
-  transcodes?: {
-    queued: string[]
-    skipped: string[]
-  }
-}
+export type { HttpUploadOpts, HttpUploadProgress, HttpUploadResult }
 
 export type LinkType = 'upload' | 'download' | 'collection' | 'combined'
 export type Status = 'active' | 'expired' | 'disabled' | 'archived'
@@ -251,6 +206,9 @@ export type FullTranscodeResult = {
 }
 
 export interface ElectronApi {
+  isWeb?: boolean
+  /** Browser only: the tab's log as JSON lines, for support. */
+  exportClientLogs?: () => string
   secureToken?: SecureTokenApi
   ipcRenderer: {
     send: (channel: string, data?: any) => void

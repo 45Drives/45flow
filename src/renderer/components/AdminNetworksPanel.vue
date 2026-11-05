@@ -27,8 +27,10 @@
         </p>
         <p class="text-sm">
             Admin network requests use this server's nginx HTTPS listener, including on LAN-only servers.
-            No public domain or port forwarding is required. The desktop verifies HTTPS through SSH.
-            If prompted, verify the SSH host-key fingerprint before trusting the server.
+            No public domain or port forwarding is required.
+            <template v-if="isWeb">Your browser verifies this page's HTTPS certificate; accept the warning only if you trust this server.</template>
+            <template v-else>The desktop verifies HTTPS through SSH.
+            If prompted, verify the SSH host-key fingerprint before trusting the server.</template>
         </p>
         <p v-if="loading" role="status">Loading admin networks…</p>
         <p v-if="error" role="alert" class="text-sm text-danger">{{ error }}</p>
@@ -102,6 +104,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useApi } from '../composables/useApi'
 
 const props = defineProps<{ connectionId: string }>()
+const isWeb = window.electron?.isWeb === true
 // Pin requests to the connection on which this keyed panel was opened.
 const { apiFetch, baseUrl } = useApi(props.connectionId, { transport: 'nginx-https' })
 const endpoint = '/api/admin/nginx-admin-cidrs'

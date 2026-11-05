@@ -120,6 +120,15 @@ describe('window hardening', () => {
     expect(main).toContain('nodeIntegration: false')
   })
 
+  it('keeps web security on outside development', () => {
+    expect(main).toContain("webSecurity: process.env.NODE_ENV !== 'development'")
+    expect(main).not.toMatch(/webSecurity:\s*false/)
+  })
+
+  it('checks registered servers over SSH before any other certificate rule', () => {
+    expect(main).toMatch(/if \(usesBlockedKey\(req\)\) \{[\s\S]*?return cb\(-2\);\s*\}\s*\/\/[^\n]*\n\s*const viaSsh = verifyWithSshTrust\(req, sshTrustDeps\);/)
+  })
+
   it('blocks navigation away from the bundled renderer', () => {
     expect(main).toMatch(/contents\.on\('will-navigate'/)
     expect(main).toMatch(/if \(isRendererUrl\(url\)\) return;\s*event\.preventDefault\(\);/)

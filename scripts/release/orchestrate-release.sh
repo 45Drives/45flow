@@ -98,6 +98,7 @@ RUNTIME_OVERRIDE_KEYS=(
   GH_TAG_MESSAGE
   GH_NOTES
   PARALLEL_BUILDS
+  WEB_WORKFLOW_REF
 )
 declare -A RUNTIME_OVERRIDES=()
 for _k in "${RUNTIME_OVERRIDE_KEYS[@]}"; do
@@ -171,6 +172,7 @@ require_cmd yarn
 
 PACKAGE_VERSION="$(node -p "require('./package.json').version")"
 VERSION="$PACKAGE_VERSION"
+RELEASE_SOURCE_SHA="$(git rev-parse HEAD)"
 if [[ -n "${RELEASE_VERSION:-}" && "${RELEASE_VERSION}" != "$PACKAGE_VERSION" ]]; then
   echo "RELEASE_VERSION (${RELEASE_VERSION}) does not match package.json (${PACKAGE_VERSION}); using package.json version." >&2
 fi
@@ -193,6 +195,19 @@ fi
 
 mkdir -p "$STAGING_DIR"/{linux,windows,mac}
 mkdir -p "$RELEASE_BUILDS_DIR"
+SOURCE_RECORD="$STAGING_DIR/source-commit"
+if [[ -f "$SOURCE_RECORD" ]] && [[ "$(cat "$SOURCE_RECORD")" != "$RELEASE_SOURCE_SHA" ]]; then
+  echo "Staged desktop artifacts belong to a different source commit. Rebuild all targets in a new staging directory." >&2
+  exit 1
+fi
+if truthy "${RUN_WINDOWS_BUILD:-1}" && [[ "${WIN_PHASE:-stage}" == "finalize" ]] && [[ ! -f "$SOURCE_RECORD" ]]; then
+  echo "Windows finalize requires a source-commit record from a successful stage run. Restage from the intended release commit." >&2
+  exit 1
+fi
+if truthy "${RUN_MAC_BUILD:-1}" && [[ "${MAC_PHASE:-full}" == "sign" ]] && [[ ! -f "$SOURCE_RECORD" ]]; then
+  echo "macOS sign-only requires a source-commit record from a successful build run. Rebuild from the intended release commit." >&2
+  exit 1
+fi
 
 SSH_STRICT_OPTS=(
   -o StrictHostKeyChecking=no
@@ -375,6 +390,24 @@ conditional_yarn_install() {
 # Build functions (can be run in parallel)
 # ---------------------------------------------------------------------------
 
+verify_local_release_source() {
+  if [[ "$(git rev-parse HEAD)" != "$RELEASE_SOURCE_SHA" ]] || [[ -n "$(git status --porcelain)" ]]; then
+    echo "Desktop release source changed or is dirty. Commit/stash changes and rerun from the intended release commit." >&2
+    exit 1
+  fi
+}
+
+verify_windows_release_source() {
+  local remote_sha
+  remote_sha="$(ssh_run "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" \
+    "cd \"${WIN_BUILD_REMOTE_DIR}\" && git diff --quiet HEAD -- && git rev-parse HEAD")"
+  remote_sha="${remote_sha//$'\r'/}"
+  if [[ "$remote_sha" != "$RELEASE_SOURCE_SHA" ]]; then
+    echo "Windows source commit differs from the release commit; update the build host before retrying." >&2
+    exit 1
+  fi
+}
+
 run_linux_build() {
   if ! truthy "${RUN_LINUX_BUILD:-1}"; then
     return 0
@@ -393,6 +426,7 @@ run_linux_build() {
 
   LINUX_GIT_PULL_CMD="${LINUX_GIT_PULL_CMD:-git pull --ff-only}"
   bash -lc "$LINUX_GIT_PULL_CMD"
+  verify_local_release_source
   conditional_yarn_install
   LINUX_BUILD_CMD="${LINUX_BUILD_CMD:-yarn build:linux}"
   bash -lc "$LINUX_BUILD_CMD"
@@ -479,6 +513,7 @@ run_windows_flow() {
 
       # SSH: git pull
       ssh_run "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" "$WIN_BUILD_GIT_PULL_CMD"
+      verify_windows_release_source
 
       # SSH: clean old exe files from dist
       WIN_CLEAN_OUTPUTS="${WIN_CLEAN_OUTPUTS:-1}"
@@ -578,6 +613,9 @@ run_windows_flow() {
 
   if [[ "$WIN_PHASE" != "finalize" ]]; then
     ssh_run "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" "$WIN_BUILD_GIT_PULL_CMD"
+    if [[ "$WIN_BUILD_MODE" != "rsync" ]]; then
+      verify_windows_release_source
+    fi
 
     # Clean old Windows exe files from dist directory before building
     WIN_CLEAN_OUTPUTS="${WIN_CLEAN_OUTPUTS:-1}"
@@ -593,6 +631,7 @@ run_windows_flow() {
       fi
       RSYNC_EXCLUDES="--exclude=.git --exclude=dist --exclude=builds --exclude=node_modules --exclude=.env*"
       RSYNC_DELETE=1
+      verify_local_release_source
       rsync_to "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" "${ROOT_DIR}/" "${WIN_BUILD_REMOTE_DIR}/"
       RSYNC_DELETE=0
     fi
@@ -732,6 +771,13 @@ run_mac_build() {
 
   if [[ "$MAC_PHASE" != "sign" ]]; then
     ssh_run "$MAC_ARM_HOST" "$MAC_ARM_USER" "${MAC_ARM_PASSWORD:-}" "$MAC_ARM_PORT" "$MAC_ARM_GIT_PULL_CMD"
+    MAC_SOURCE_SHA="$(ssh_run "$MAC_ARM_HOST" "$MAC_ARM_USER" "${MAC_ARM_PASSWORD:-}" "$MAC_ARM_PORT" \
+      "cd '${MAC_ARM_REPO_DIR}' && git diff --quiet HEAD -- && git rev-parse HEAD")"
+    MAC_SOURCE_SHA="${MAC_SOURCE_SHA//$'\r'/}"
+    if [[ "$MAC_SOURCE_SHA" != "$RELEASE_SOURCE_SHA" ]]; then
+      echo "macOS source commit differs from the release commit; update the build host before retrying." >&2
+      exit 1
+    fi
   else
     echo "MAC_PHASE=sign; skipping git pull on ARM Mac."
   fi
@@ -937,6 +983,8 @@ if truthy "$PARALLEL_BUILDS"; then
 
   echo ""
   echo "All parallel builds completed successfully."
+  verify_local_release_source
+  printf '%s\n' "$RELEASE_SOURCE_SHA" > "$SOURCE_RECORD"
 
   # If Windows was stage-only, print resume instructions and exit
   if truthy "${RUN_WINDOWS_BUILD:-0}" && [[ "${WIN_PHASE:-}" == "stage" ]]; then
@@ -951,12 +999,19 @@ else
   run_linux_build
   run_mac_build
   run_windows_flow
+  verify_local_release_source
+  printf '%s\n' "$RELEASE_SOURCE_SHA" > "$SOURCE_RECORD"
 
   # If Windows was stage-only, exit
   if truthy "${RUN_WINDOWS_BUILD:-0}" && [[ "${WIN_PHASE:-}" == "stage" ]]; then
     exit 0
   fi
 fi
+
+# Windows stage-only runs exit above; finalization must wait for signed web
+# packages and repository sync before this process can publish the release.
+require_cmd gh
+node "$ROOT_DIR/scripts/release/web-workflow.mjs" "$VERSION" "$RELEASE_SOURCE_SHA"
 
 generate_update_metadata
 

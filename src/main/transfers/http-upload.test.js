@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({ handlers: new Map() }))
 vi.mock('electron', () => ({
   ipcMain: { on: (channel, handler) => mocks.handlers.set(channel, handler) },
   BrowserWindow: {},
+  // The desktop uploads through Electron's network stack; the tests stub the global fetch behind it.
+  net: { fetch: (...args) => globalThis.fetch(...args) },
 }))
 vi.mock('fs', () => ({
   statSync: () => ({ isFile: () => true, size: 4 }),

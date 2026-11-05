@@ -18,6 +18,8 @@ export interface TourRegistration {
   id: string
   steps: TourStep[]
   onDone: () => void | Promise<void>
+  /** Called instead of onDone when the user skips; use when a tour is split into several parts */
+  onSkip?: () => void | Promise<void>
 }
 
 const _activeTour = ref<TourRegistration | null>(null)
@@ -26,13 +28,13 @@ const _queue: TourRegistration[] = []
 export function useTourManager() {
   const { toursDisabled } = useTourPreferences()
 
-  function requestTour(id: string, steps: TourStep[], onDone: () => void | Promise<void>): boolean {
+  function requestTour(id: string, steps: TourStep[], onDone: () => void | Promise<void>, onSkip?: () => void | Promise<void>): boolean {
     // Don't show tours if globally disabled
     if (toursDisabled.value) return false
     
     if (_activeTour.value?.id === id || _queue.some(t => t.id === id)) return false
 
-    const registration: TourRegistration = { id, steps, onDone }
+    const registration: TourRegistration = { id, steps, onDone, onSkip }
     if (!_activeTour.value) {
       _activeTour.value = registration
     } else {
@@ -58,6 +60,14 @@ export function useTourManager() {
     advanceQueue()
   }
 
+  async function skipTour() {
+    if (_activeTour.value) {
+      await (_activeTour.value.onSkip ?? _activeTour.value.onDone)()
+      _activeTour.value = null
+    }
+    advanceQueue()
+  }
+
   function advanceQueue() {
     if (_queue.length > 0 && !_activeTour.value) {
       _activeTour.value = _queue.shift()!
@@ -69,5 +79,6 @@ export function useTourManager() {
     requestTour,
     cancelTour,
     finishTour,
+    skipTour,
   }
 }

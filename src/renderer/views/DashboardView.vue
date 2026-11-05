@@ -596,6 +596,9 @@ import { useActiveProject } from '../composables/useActiveProject'
 import { useProjectMode } from '../composables/useProjectMode'
 import { useLicenseStatus } from '../composables/useLicenseStatus'
 import { useThemeFromAlias } from '../composables/useThemeFromAlias'
+import { signOutSession } from '../web-session'
+import { revokeDesktopSession } from '../desktop-session'
+const isWeb = window.electron?.isWeb === true
 
 useHeader('Dashboard')
 const { to } = useResilientNav()
@@ -1089,7 +1092,10 @@ watch(selectedFilter, () => {
 
 // ── Navigation ──
 const leaveServer = async () => {
+	if (isWeb) await signOutSession()
 	const connection = activeConnection.value
+	// Revoke on the server so the token stops working immediately, not just on this machine.
+	if (!isWeb && connection) await revokeDesktopSession(connection.baseUrl, connection.token)
 	if (connection) {
 		await useConnections().clearConnectionCredentials(connection.connectionId)
 		updateConnection(connection.connectionId, {

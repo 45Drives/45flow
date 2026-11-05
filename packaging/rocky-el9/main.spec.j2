@@ -1,0 +1,31 @@
+%global debug_package %{nil}
+Name:           {{ name }}
+Version:        {{ version }}
+Release:        {{ build_number }}%{?dist}
+Summary:        {{ description }}
+License:        {{ license }}
+URL:            {{ git_url }}
+Source0:        %{name}-%{version}.tar.gz
+BuildArch:      {{ architecture.rocky }}
+AutoReqProv:    no
+Recommends:     houston-broadcaster
+
+%description
+{{ description }}
+
+%prep
+%setup -q
+
+%build
+sh packaging/build.sh
+./node_modules/.bin/vitest run scripts/web/lib.test.js scripts/web/packaging.test.js
+
+%install
+make web-install DESTDIR=%{buildroot}
+
+%files
+%defattr(0644,root,root,0755)
+/opt/45drives/45flow-web
+%license LICENSE
+
+%changelog

@@ -1021,6 +1021,7 @@
 </template>
 
 <script setup lang="ts">
+import { writeClipboard } from '../../clipboard'
 import { computed, inject, nextTick, ref, watch, toRaw } from 'vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { useTimeFormat } from '../../composables/useTimeFormat'
@@ -2160,7 +2161,7 @@ function fallbackTitle(it: LinkItem) {
 }
 async function copy(txt?: string | null) {
   if (!txt) return
-  await navigator.clipboard.writeText(txt)
+  await writeClipboard(txt)
 }
 
 function fmtBytes(n?: number) {
@@ -2240,7 +2241,7 @@ async function copyExtraPath(label: string, p: string) {
   const value = String(p || '').trim()
   if (!value) return
   try {
-    await navigator.clipboard.writeText(value)
+    await writeClipboard(value)
     pushNotification(new Notification('Path Copied', `${label} copied.`, 'success', 2500))
   } catch (e: any) {
     const msg = e?.message || e?.error || String(e)
@@ -2253,7 +2254,7 @@ async function copyAllExtraPaths(v: any) {
   if (!rows.length) return
   const text = rows.map((row) => `${row.label}: ${row.value}`).join('\n')
   try {
-    await navigator.clipboard.writeText(text)
+    await writeClipboard(text)
     pushNotification(new Notification('Paths Copied', `Copied ${rows.length} path(s).`, 'success', 3000))
   } catch (e: any) {
     const msg = e?.message || e?.error || String(e)

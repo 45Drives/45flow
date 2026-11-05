@@ -5,6 +5,7 @@
 import { ref, watch } from 'vue'
 import { useConnections } from './useConnections'
 import type { Connection } from './useConnections'
+import { WEB_SESSION_TOKEN } from '../web-session'
 
 interface WebSocketConnection {
   connectionId: string
@@ -124,10 +125,10 @@ function connect(connection: Connection) {
       authFailedConnections.delete(connectionId)  // Clear blacklist - server clearly supports WS
       
       // Authenticate
-      ws.send(JSON.stringify({ 
-        type: 'auth', 
-        token 
-      }))
+      // Browser sessions have no token; the server reads the session cookie from the upgrade request.
+      ws.send(JSON.stringify(token === WEB_SESSION_TOKEN
+        ? { type: 'auth', session: true }
+        : { type: 'auth', token }))
       
       console.log('[ws] connected to', connection.name, connection.serverIp)
     }

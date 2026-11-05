@@ -574,6 +574,7 @@
 </style>
 
 <script setup lang="ts">
+import { writeClipboard } from '../clipboard'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { CardContainer } from '@45drives/houston-common-ui'
@@ -1472,7 +1473,7 @@ async function generateLink() {
 
 function copyResult() {
 	if (resultUrl.value) {
-		navigator.clipboard.writeText(resultUrl.value)
+		writeClipboard(resultUrl.value)
 		pushNotification(new Notification('Copied!', 'Link copied to clipboard.', 'success', 4000))
 	}
 }

@@ -3,15 +3,19 @@
         <div class="connect-shell ss-page-frame">
             <section data-tour="connect-hero" class="connect-hero ss-surface">
                 <h1>Share files through secure review links</h1>
-                <p>Connect this client to your server, then create and manage links from the dashboard.</p>
-                <p class="connect-note">
+                <p v-if="!isWeb">Connect this client to your server, then create and manage links from the dashboard.</p>
+                <p v-else>Sign in to the server hosting this browser app, then manage links from the dashboard.</p>
+                <p v-if="!isWeb" class="connect-note">
                     Servers appear automatically when <b class="text-primary">houston-broadcaster</b> is running. If not, use manual IP connection.
+                </p>
+                <p v-else class="connect-note">
+                    Browser mode: desktop transcoding, SSH setup, and desktop updates are only available in the 45Flow desktop app. Videos you upload are transcoded by the server.
                 </p>
             </section>
 
             <CardContainer class="connect-main-card rounded-md shadow-xl text-black" :style="{ background: connectMainCardBackground }">
-                <div class="connect-main-grid">
-                    <section data-tour="connect-server-selection" class="connect-panel">
+                <div class="connect-main-grid" :class="{ 'connect-main-grid--single': isWeb }">
+                    <section v-if="!isWeb" data-tour="connect-server-selection" class="connect-panel">
                         <div class="connect-section-title">Server Selection</div>
 
                         <div class="flex flex-col text-left">
@@ -76,6 +80,7 @@
 
                             <p class="mt-2 text-xs opacity-75">
                                 Leave blank to use defaults: SSH 22, API 9095, HTTPS 443. Ports must be different.
+                                The app connects over HTTPS; the API port is only used for setup.
                             </p>
 
                             <p v-if="portError" class="mt-1 text-xs text-danger">
@@ -89,6 +94,9 @@
 
                     <section data-tour="connect-auth" class="connect-panel connect-panel-auth">
                         <div class="connect-section-title">Authentication</div>
+                        <p v-if="isWeb" class="connect-note">
+                            Signing in to {{ browserHost }}. You stay signed in across reloads until you sign out or are inactive for a while.
+                        </p>
                         <label class="connect-auth-row flex flex-col">
                             <span class="connect-label">Username</span>
                             <input v-model="username" type="text" placeholder="root" :disabled="anyBusy"
@@ -111,11 +119,11 @@
                                 </button>
                             </div>
                         </label>
-                        <label class="inline-flex items-center gap-2 select-none cursor-pointer text-sm mt-2 text-left">
+                        <label v-if="!isWeb" class="inline-flex items-center gap-2 select-none cursor-pointer text-sm mt-2 text-left">
                             <input type="checkbox" v-model="rememberPassword" class="proxy-quality-checkbox" :disabled="anyBusy" tabindex="-1" />
                             <span>Remember password securely (re-login when session expires)</span>
                         </label>
-                        <p class="text-xs opacity-70 mt-2 text-left">
+                        <p v-if="!isWeb" class="text-xs opacity-70 mt-2 text-left">
                             First-time setup requires a user with <b>sudo</b> or <b>root</b> privileges to install server dependencies.
                         </p>
                     </section>
@@ -165,14 +173,18 @@ import type { DiscoveryState, Server } from '../types'
 import { pushNotification, Notification, CardContainer, useDarkModeState } from '@45drives/houston-common-ui'
 import PortForwardingModal from '../components/modals/PortForwardingModal.vue' 
 import { useResilientNav } from '../composables/useResilientNav';
+import { signInWithSession, restoreSession, WEB_SESSION_TOKEN, type WebSessionInfo } from '../web-session';
 import { loadLastSession, clearLastSession, saveManualServer, saveRegistryLicenseId } from '../composables/useSessionPersistence';
 import { useConnections } from '../composables/useConnections'
 import type { Connection } from '../composables/useConnections'
+import { httpsBaseFor, registerServerTrust, verifyServerCertificate, fetchOverHttps, upgradedBaseUrl, trustFor } from '../server-trust'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
 useHeader('Welcome to 45Flow!');
 
 const route = useRoute()
+const isWeb = window.electron?.isWeb === true
+const browserHost = window.location.host
 const { to } = useResilientNav()
 const { addConnection, setActive, removeConnection, connections } = useConnections()
 const discoveryState = inject<DiscoveryState>(discoveryStateInjectionKey)!;
@@ -214,7 +226,7 @@ const connectTourSteps: TourStep[] = [
 	},
 	{
 		target: '[data-tour="connect-ports"]',
-		message: 'You can customise the connection ports here.\n\n• SSH (default 22) — used for secure file operations and server setup.\n• API / houston-broadcaster (default 9095) — the backend service that powers 45Flow.\n• HTTPS (default 443) — used for external link access.\n\nLeave these blank to use the defaults. Only change them if your server uses non-standard ports.',
+		message: 'You can customise the connection ports here.\n\n• SSH (default 22) — used for secure file operations and server setup.\n• API / houston-broadcaster (default 9095) — used to find and set up the server.\n• HTTPS (default 443) — the encrypted connection the app uses, and the address share links use.\n\nLeave these blank to use the defaults. Only change them if your server uses non-standard ports.',
 		beforeShow: () => {
 			tourPortsOpen.value = true
 			if (portsDetailsRef.value) portsDetailsRef.value.open = true
@@ -413,6 +425,8 @@ type PortKey = 'ssh' | 'api' | 'https';
 function ensurePortConstraints(changed: PortKey) {
     portError.value = '';
     portWarning.value = '';
+    // Browser mode talks only to the page origin, so the port fields are unused.
+    if (isWeb) return;
 
     const values: Record<PortKey, number | null> = {
         ssh: normalizePort(sshPort.value),
@@ -675,8 +689,61 @@ function translateSshError(errorMsg: string): string {
     return errorMsg;
 }
 
+/** Browser mode: sign in with the server's session cookie (no SSH, bootstrap or stored token). */
+async function signInBrowser() {
+    isBusy.value = true;
+    try {
+        const session = await signInWithSession(
+            username.value.trim(),
+            password.value,
+            typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : undefined,
+        );
+        password.value = '';
+        await openBrowserConnection(session);
+    } catch (e: any) {
+        window.appLog?.error('login.error', { error: e?.message });
+        pushNotification(new Notification('Error', e?.message || 'Login failed', 'error', 8000));
+    } finally {
+        isBusy.value = false;
+    }
+}
+
+/** Register the signed-in browser session as the active connection and open the dashboard. */
+async function openBrowserConnection(session: WebSessionInfo) {
+    const apiBase = window.location.origin;
+    const port = window.location.port ? Number(window.location.port) : window.location.protocol === 'https:' ? 443 : 80;
+    const license = await checkLicenseStatus(apiBase, WEB_SESSION_TOKEN);
+    const connectionId = addConnection({
+        connectionId: crypto.randomUUID(),
+        name: browserHost,
+        serverIp: window.location.hostname,
+        serverName: browserHost,
+        baseUrl: apiBase,
+        username: session.user.name,
+        token: WEB_SESSION_TOKEN,
+        tokenIssuedAt: Date.now(),
+        apiPort: port,
+        httpsPort: port,
+        licensed: license.licensed,
+        licenseFallback: license.licenseFallback,
+        licenseReason: license.licenseReason,
+        licenseCheckedAt: Date.now(),
+        licenseInfo: license.licenseInfo,
+        status: 'connected',
+        lastConnectedAt: Date.now(),
+        isActive: true,
+    });
+    setActive(connectionId);
+    window.appLog?.info('login.success', { host: browserHost, connectionId });
+    // Same server-update check the desktop runs; the API is administrator-only.
+    if (session.user.admin) {
+        checkBroadcasterUpdateInBackground(apiBase, WEB_SESSION_TOKEN, browserHost, !license.licensed && license.licenseFallback);
+    }
+    to('dashboard');
+}
+
 async function connectToServer() {
-    if (!selectedServer.value && !manualIp.value) {
+    if (!isWeb && !selectedServer.value && !manualIp.value) {
         pushNotification(new Notification('Error', `Please select or enter a server before connecting.`, 'error', 8000));
         return;
     }
@@ -689,6 +756,8 @@ async function connectToServer() {
         return;
     }
 
+    if (isWeb) return signInBrowser();
+
     // Re-run port constraints on submit to be extra safe
     ensurePortConstraints('ssh');
 
@@ -698,7 +767,7 @@ async function connectToServer() {
     }
 
     // Normalize manual IP (strip any :port / -p flags the user typed)
-    if (!selectedServer.value && manualIp.value.trim()) {
+    if (!isWeb && !selectedServer.value && manualIp.value.trim()) {
         const norm = normalizeHost(manualIp.value);
         if (!looksLikeIpv4(norm.host)) {
             pushNotification(new Notification('Error', `Please enter a valid IPv4 address (e.g. 192.168.1.10).`, 'error', 8000));
@@ -715,31 +784,36 @@ async function connectToServer() {
     statusLine.value = '';
 
     try {
-        const rawIpInput = (selectedServer.value?.ip || manualIp.value).trim();
+        const rawIpInput = isWeb ? window.location.hostname : (selectedServer.value?.ip || manualIp.value).trim();
         const normalized = normalizeHost(rawIpInput);
         const rawIp = normalized.host;
 
         // If the manual IP is already discovered, prefer that discovered record.
         const discovered = findServerByIp(rawIp);
-        const effectiveServer = discovered ?? selectedServer.value;
+        const effectiveServer = discovered ?? selectedServer.value ?? (isWeb ? {
+            ip: rawIp, name: browserHost, lastSeen: Date.now(), status: 'complete',
+        } as Server : undefined);
         const ip = effectiveServer?.ip || rawIp;
-        
-        const apiPortToUse =
+        const apiPortToUse = isWeb
+            ? (window.location.port ? Number(window.location.port) : window.location.protocol === 'https:' ? 443 : 80)
+            :
             broadcasterPort.value && broadcasterPort.value > 0 && broadcasterPort.value < 65536
                 ? broadcasterPort.value
                 : DEFAULT_API_PORT;
 
-        const apiBase = `http://${ip}:${apiPortToUse}`;
+        // The desktop app talks to the server over HTTPS through nginx; the API port is only for setup and health.
+        const httpsPortToUse = httpsPort.value && httpsPort.value > 0 && httpsPort.value < 65536 ? httpsPort.value : 443;
+        const apiBase = isWeb ? window.location.origin : httpsBaseFor(ip, httpsPortToUse);
 
         // Decide which SSH port to use for this session
-        const sshPortToUse = (sshPort.value && sshPort.value > 0 && sshPort.value < 65536)
+        const sshPortToUse = !isWeb && sshPort.value && sshPort.value > 0 && sshPort.value < 65536
             ? sshPort.value
             : undefined; // undefined → “let main detect / default 22”
 
         // Ensure SSH is ready early so any later SSH operations can use keys reliably
-        statusLine.value = 'Preparing SSH…';
         let verifiedKeyPath: string | undefined;
-        try {
+        if (!isWeb) try {
+            statusLine.value = 'Preparing SSH…';
             const r = await window.electron?.ipcRenderer.invoke('ensure-ssh-ready', {
                 host: ip,
                 username: username.value,
@@ -775,7 +849,7 @@ async function connectToServer() {
             port: apiPortToUse,
             apiBase,
             httpsHost: undefined,
-            ssh: {
+            ssh: isWeb ? undefined : {
                 server: ip,
                 username: username.value,
                 port: sshPortToUse,
@@ -787,6 +861,7 @@ async function connectToServer() {
         window.appLog?.info('login.request', { url: `${apiBase}/api/login`, ip });
 
         const probe = async () => {
+            if (isWeb) return true
             const r = await window.electron?.ipcRenderer.invoke('probe-health', { ip, port: apiPortToUse });
             return !!r?.ok;
         };
@@ -807,7 +882,7 @@ async function connectToServer() {
          * manually-typed IPs also get the package check and bootstrap if needed.
          */
         let mustBootstrap = false;
-        try {
+        if (!isWeb) try {
             const preflight = await window.electron?.ipcRenderer.invoke(
                 'remote-check-broadcaster',
                 {
@@ -833,7 +908,7 @@ async function connectToServer() {
         // Decide whether to bootstrap:
         // - If preflight forced it (legacy/no pkg) → bootstrap
         // - Else only bootstrap when API isn’t healthy
-        if (mustBootstrap || !healthy) {
+        if (!isWeb && (mustBootstrap || !healthy)) {
             const id = crypto.randomUUID();
             unlistenProgress?.();
             unlistenProgress = listenBootstrap(id);
@@ -877,7 +952,18 @@ async function connectToServer() {
             unlistenProgress = null;
         }
 
-        const res = await fetch(`${apiBase}/api/login`, {
+        if (!isWeb) {
+            statusLine.value = 'Verifying the server certificate…';
+            const trust = {
+                host: ip, httpsPort: httpsPortToUse, sshPort: sshPortToUse ?? 22,
+                username: username.value, keyPath: verifiedKeyPath,
+            };
+            await registerServerTrust(trust);
+            await verifyServerCertificate(trust);
+            statusLine.value = '';
+        }
+
+        const res = await fetchOverHttps(`${apiBase}/api/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -885,7 +971,7 @@ async function connectToServer() {
                 password: password.value,
                 clientBuildDate: typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : undefined,
             }),
-        });
+        }, httpsPortToUse);
 
         // Handle entitlement expiry specifically
         if (!res.ok) {
@@ -909,7 +995,7 @@ async function connectToServer() {
         connectionMeta.value = {
             ...connectionMeta.value,
             token,
-            ssh: {
+            ssh: isWeb ? undefined : {
                 server: ip,
                 username: username.value,
                 port: sshPortToUse,
@@ -924,7 +1010,7 @@ async function connectToServer() {
         const licenseResult = await checkLicenseStatus(apiBase, token)
 
         // Seed initial settings only if not already configured
-        try {
+        if (!isWeb) try {
             const hdrs = {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
@@ -966,14 +1052,14 @@ async function connectToServer() {
             window.appLog?.warn('settings.seed.failed', { message: e?.message });
         }
 
-        rememberPortsForHost(ip, {
+        if (!isWeb) rememberPortsForHost(ip, {
             sshPort: sshPortToUse,
             apiPort: apiPortToUse,
             httpsPort: httpsPort.value ?? 443,
         });
 
         // Persist manual server so it appears in the dropdown on next launch
-        if (!discovered) {
+        if (!isWeb && !discovered) {
             saveManualServer({ ip, name: effectiveServer?.name || ip });
         }
 
@@ -987,11 +1073,11 @@ async function connectToServer() {
             username: username.value.trim(),
             token,
             tokenIssuedAt: Date.now(),
-            savedPassword: rememberPassword.value ? password.value : undefined,
+            savedPassword: !isWeb && rememberPassword.value ? password.value : undefined,
             apiPort: apiPortToUse,
             sshPort: sshPortToUse,
-            httpsPort: httpsPort.value ?? 443,
-            ssh: {
+            httpsPort: httpsPortToUse,
+            ssh: isWeb ? undefined : {
                 server: ip,
                 username: username.value.trim(),
                 port: sshPortToUse,
@@ -1021,7 +1107,9 @@ async function connectToServer() {
             .catch(() => { /* best-effort */ })
 
         // Fire-and-forget: check for broadcaster package updates via API (runs in background)
-        checkBroadcasterUpdateInBackground(apiBase, token, effectiveServer?.name || ip, !licenseResult.licensed && licenseResult.licenseFallback);
+        if (!isWeb) {
+            checkBroadcasterUpdateInBackground(apiBase, token, effectiveServer?.name || ip, !licenseResult.licensed && licenseResult.licenseFallback);
+        }
 
         to('dashboard');
     } catch (e: any) {
@@ -1035,11 +1123,27 @@ async function connectToServer() {
 
 // ─── Auto-login from saved session on mount ─────────────────────
 onMounted(async () => {
-    // Start guided tour for first-time users
-    if (!onboarding.value.connectTourDone) {
+    // The setup tour describes SSH and desktop bootstrap flows unavailable in browser mode.
+    if (!isWeb && !onboarding.value.connectTourDone) {
         setTimeout(() => {
             requestTour('connect', connectTourSteps, () => markDone('connectTourDone'))
         }, 500)
+    }
+
+    // Browser mode: the cookie outlives a reload, so resume instead of asking again.
+    if (isWeb) {
+        isBusy.value = true;
+        statusLine.value = 'Checking your session…';
+        try {
+            const session = await restoreSession();
+            if (session) await openBrowserConnection(session);
+        } catch (e: any) {
+            window.appLog?.warn('session.restore-failed', { error: e?.message });
+        } finally {
+            isBusy.value = false;
+            statusLine.value = '';
+        }
+        return;
     }
 
     // Skip auto-login if user explicitly clicked "Add Connection"
@@ -1069,8 +1173,8 @@ onMounted(async () => {
         const conn = connections.find(c => c.connectionId === route.query.reconnect)
         if (conn) {
             if (conn.sshPort) sshPort.value = conn.sshPort
-            if (conn.apiPort && conn.apiPort !== DEFAULT_API_PORT) broadcasterPort.value = conn.apiPort
-            if (conn.httpsPort && conn.httpsPort !== DEFAULT_HTTPS_PORT) httpsPort.value = conn.httpsPort
+            if (!isWeb && conn.apiPort && conn.apiPort !== DEFAULT_API_PORT) broadcasterPort.value = conn.apiPort
+            if (!isWeb && conn.httpsPort && conn.httpsPort !== DEFAULT_HTTPS_PORT) httpsPort.value = conn.httpsPort
             
             // Auto-login if password was saved
             if (conn.savedPassword) {
@@ -1096,16 +1200,23 @@ onMounted(async () => {
     }
     username.value = saved.username
     if (saved.sshPort) sshPort.value = saved.sshPort
-    if (saved.apiPort && saved.apiPort !== DEFAULT_API_PORT) broadcasterPort.value = saved.apiPort
-    if (saved.httpsPort && saved.httpsPort !== DEFAULT_HTTPS_PORT) httpsPort.value = saved.httpsPort
+    if (!isWeb && saved.apiPort && saved.apiPort !== DEFAULT_API_PORT) broadcasterPort.value = saved.apiPort
+    if (!isWeb && saved.httpsPort && saved.httpsPort !== DEFAULT_HTTPS_PORT) httpsPort.value = saved.httpsPort
 
     // Validate the saved token with a quick API call
     isBusy.value = true
     statusLine.value = 'Resuming previous session…'
+    const savedConnection = {
+        serverIp: saved.serverIp, baseUrl: saved.apiBase, httpsPort: saved.httpsPort, username: saved.username,
+        ssh: { server: saved.serverIp, username: saved.username, port: saved.sshPort || 22 },
+    }
+    const savedBase = upgradedBaseUrl(savedConnection) ?? saved.apiBase
     try {
+        const savedTrust = !isWeb ? trustFor(savedConnection) : null
+        if (savedTrust) await registerServerTrust(savedTrust)
         const ctrl = new AbortController()
         const timer = setTimeout(() => ctrl.abort(), 8000)
-        const res = await fetch(`${saved.apiBase}/api/links`, {
+        const res = await fetch(`${savedBase}/api/links`, {
             headers: { 'Authorization': `Bearer ${saved.token}` },
             signal: ctrl.signal,
         })
@@ -1157,7 +1268,7 @@ onMounted(async () => {
         }
 
         // Token is valid — restore the full session and navigate
-        const restoredLicense = await checkLicenseStatus(saved.apiBase, saved.token)
+        const restoredLicense = await checkLicenseStatus(savedBase, saved.token)
 
         const serverObj: Server = existingServer ?? {
             ip: saved.serverIp,
@@ -1176,7 +1287,7 @@ onMounted(async () => {
             name: saved.serverName || saved.serverIp,
             serverIp: saved.serverIp.trim(),
             serverName: saved.serverName,
-            baseUrl: saved.apiBase,
+            baseUrl: savedBase,
             username: saved.username.trim(),
             token: saved.token,
             savedPassword: previousConnection?.savedPassword,
@@ -1207,7 +1318,7 @@ onMounted(async () => {
         statusLine.value = ''
         isBusy.value = false
 
-        checkBroadcasterUpdateInBackground(saved.apiBase, saved.token, saved.serverName || saved.serverIp, !restoredLicense.licensed && restoredLicense.licenseFallback)
+        checkBroadcasterUpdateInBackground(savedBase, saved.token, saved.serverName || saved.serverIp, !restoredLicense.licensed && restoredLicense.licenseFallback)
         to('dashboard')
     } catch (err: any) {
         // Network error (server unreachable) — keep saved credentials so user
@@ -1364,6 +1475,11 @@ async function checkBroadcasterUpdateInBackground(apiBase: string, token: string
                     didUpdate ? 'success' : 'info',
                     12000,
                 ));
+                // The session survives the restart, so resume without asking for the password again.
+                if (isWeb) {
+                    const resumed = await restoreSession().catch(() => null);
+                    if (resumed) await openBrowserConnection(resumed);
+                }
             } else {
                 pushNotification(new Notification(
                     'Update Status Unknown',
@@ -1434,6 +1550,11 @@ async function checkBroadcasterUpdateInBackground(apiBase: string, token: string
     /* grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr); */
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.65rem;
+}
+
+.connect-main-grid--single {
+    grid-template-columns: minmax(0, 30rem);
+    justify-content: center;
 }
 
 .connect-panel {

@@ -398,13 +398,16 @@ const localUploadTourSteps = computed<TourStep[]>(() => [
 	},
 ])
 
+/** The wizard tour is shown in parts, so skipping any part must end the whole tour. */
+const skipWizardTour = () => markDone('localUploadTourDone')
+
 /** Request specific tour steps based on the current wizard step */
 function requestStepTour() {
 	if (onboarding.value.localUploadTourDone) return
 
 	if (step.value === 1 && !_tourStep1Shown) {
 		_tourStep1Shown = true
-		requestTour('local-upload', localUploadTourSteps.value.slice(0, 2), () => {})
+		requestTour('local-upload', localUploadTourSteps.value.slice(0, 2), () => {}, skipWizardTour)
 	}
 }
 
@@ -413,7 +416,7 @@ function requestNextHintForStep1() {
 	if (onboarding.value.localUploadTourDone || !_tourStep1Shown) return
 	if (_tourNextHint1Shown) return
 	_tourNextHint1Shown = true
-	requestTour('local-upload-next1', [localUploadTourSteps.value[2]], () => {})
+	requestTour('local-upload-next1', [localUploadTourSteps.value[2]], () => {}, skipWizardTour)
 }
 
 /** Show step 2 tour after navigating there */
@@ -421,7 +424,7 @@ function requestStep2Tour() {
 	if (onboarding.value.localUploadTourDone) return
 	if (_tourStep2Shown) return
 	_tourStep2Shown = true
-	requestTour('local-upload-step2', [localUploadTourSteps.value[3]], () => {})
+	requestTour('local-upload-step2', [localUploadTourSteps.value[3]], () => {}, skipWizardTour)
 }
 
 /** Show "click Next" for step 2→3 after user picks a folder */
@@ -429,7 +432,7 @@ function requestNextHintForStep2() {
 	if (onboarding.value.localUploadTourDone || !_tourStep2Shown) return
 	if (_tourNextHint2Shown) return
 	_tourNextHint2Shown = true
-	requestTour('local-upload-next2', [localUploadTourSteps.value[4]], () => {})
+	requestTour('local-upload-next2', [localUploadTourSteps.value[4]], () => {}, skipWizardTour)
 }
 
 /** Show step 3 tour after navigating there */
@@ -437,7 +440,7 @@ function requestStep3Tour() {
 	if (onboarding.value.localUploadTourDone) return
 	if (_tourStep3Shown) return
 	_tourStep3Shown = true
-	requestTour('local-upload-step3', localUploadTourSteps.value.slice(5, 7), () => markDone('localUploadTourDone'))
+	requestTour('local-upload-step3', localUploadTourSteps.value.slice(5, 7), () => markDone('localUploadTourDone'), skipWizardTour)
 }
 
 let _tourStep1Shown = false

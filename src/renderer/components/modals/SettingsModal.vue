@@ -470,6 +470,16 @@
                                         <option value="active">Active Only</option>
                                     </select>
                                 </SettingRow>
+                                <SettingRow v-if="isWeb" label="Notify when uploads finish" :description="notifyDescription">
+                                    <button
+                                        class="btn btn-secondary text-sm px-3 py-1"
+                                        type="button"
+                                        :disabled="notifyPermission === 'unsupported' || notifyPermission === 'denied'"
+                                        @click="toggleBrowserNotifications"
+                                    >
+                                        {{ notifyOn ? 'Turn off' : 'Turn on' }}
+                                    </button>
+                                </SettingRow>
                             </div>
 
                             <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Path Defaults</p>
@@ -503,7 +513,10 @@
                         </template>
 
                         <!-- ═══ Performance ═══════════════════════════════════ -->
-                        <template v-if="activeSection === 'performance'">
+                        <template v-if="activeSection === 'performance' && isWeb">
+                            <p class="text-sm text-muted">Client-side transcoding and hardware detection require 45Flow Desktop. Browser mode does not access your workstation's filesystem or GPU.</p>
+                        </template>
+                        <template v-else-if="activeSection === 'performance'">
                             <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Client-Side Transcoding</p>
                             <p class="text-xs text-muted mb-3">When enabled, video processing (review copies and browser streams) happens on this computer using your CPU or GPU before uploading. When disabled, the server handles all transcoding after files are uploaded.</p>
                             <div class="divide-y divide-default">
@@ -1645,6 +1658,7 @@ import { Switch } from "@headlessui/vue";
 import { useApi } from "../../composables/useApi";
 import AdminNetworksPanel from "../AdminNetworksPanel.vue";
 import { isAdminSession } from "../../composables/adminSession";
+import { disableNotifications, enableNotifications, notificationPermission, notificationsEnabled } from "../../web-notify";
 import { pushNotification, Notification } from '@45drives/houston-common-ui';
 import PathInput from "../PathInput.vue";
 import { useOnboarding } from "../../composables/useOnboarding";
@@ -1695,8 +1709,23 @@ const { linkListDefault } = useLinkListDefault();
 const { requestTour } = useTourManager();
 const { setCustomThemeColors, setCustomThemeEnabled } = useThemeFromAlias();
 const { toursDisabled } = useTourPreferences();
+const notifyPermission = ref(notificationPermission());
+const notifyOn = ref(notificationsEnabled());
+const notifyDescription = computed(() =>
+    notifyPermission.value === 'unsupported' ? 'This browser does not support notifications.'
+    : notifyPermission.value === 'denied' ? 'Notifications are blocked for this site. Allow them in your browser settings to turn this on.'
+    : 'Show a browser notification when an upload finishes or fails while this tab is in the background.');
+async function toggleBrowserNotifications() {
+    if (notifyOn.value) {
+        disableNotifications();
+    } else {
+        notifyPermission.value = await enableNotifications();
+    }
+    notifyOn.value = notificationsEnabled();
+}
 const { connections, activeConnection, updateConnection } = useConnections();
 const adminSession = computed(() => isAdminSession(activeConnection.value?.token));
+const isWeb = window.electron?.isWeb === true
 const { isPremiumActive, isTrial, isTrialExpired, isFallback, trialDaysRemaining, licenseInfo } = useLicenseStatus();
 
 // Local copies of transcode settings — only committed to the composable on Save
@@ -1707,6 +1736,7 @@ const hwAccelEnabled = ref(_tcHwAccel.value);
 const hardwareCapabilities = ref<any>(null);
 
 onMounted(async () => {
+    if (isWeb) return
 	try {
 		hardwareCapabilities.value = await window.electron.getTranscodeCapabilities();
 		// If no hardware acceleration available, force the toggle off
@@ -1816,9 +1846,13 @@ function openUserGuide() {
     window.open('https://github.com/45Drives/45flow/blob/main/docs/45Flow_User_Guide.md', '_blank', 'noopener,noreferrer');
 }
 
-function openApiDocs() {
-    const base = baseUrl.value || 'http://localhost:9095';
-    window.open(`${base}/api-docs`, '_blank', 'noopener,noreferrer');
+async function openApiDocs() {
+    try {
+        await window.electron?.ipcRenderer.invoke('api-docs:open', { baseUrl: baseUrl.value, token: meta.value?.token || '' });
+    } catch (e: any) {
+        const message = String(e?.message || e || '').replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+        pushNotification(new Notification('API Docs', message || 'Could not open the API docs.', 'error', 8000));
+    }
 }
 
 // ── Go Pro / Upgrade ────────────────────────────────────────────────────

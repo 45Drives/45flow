@@ -331,6 +331,7 @@
 </template>
 
 <script setup lang="ts">
+import { writeClipboard } from '../clipboard'
 import { ref, computed, inject, watch, onMounted, onBeforeUnmount, toRaw } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowUpTrayIcon, ChevronDownIcon, MinusIcon } from '@heroicons/vue/24/outline'
@@ -1798,7 +1799,7 @@ function extractLinkToken(data: any): string {
 
 function copyLink() {
   if (!viewUrl.value) return
-  navigator.clipboard.writeText(viewUrl.value).then(() => {
+  writeClipboard(viewUrl.value).then(() => {
     pushNotification(new Notification('Link Copied', 'Share link copied to clipboard.', 'success', 3000))
   })
 }

@@ -1,16 +1,14 @@
 // src/main/transfers/transcode-output-upload.ts
-// Upload client-side transcode outputs (HLS segments, proxy MP4s) to the server
-// via HTTP.
+// Upload client-side transcode outputs (HLS segments, proxy MP4s) to the server.
+// Uses Electron's network stack so the server's HTTPS certificate is checked like every other request.
 import * as fs from 'fs'
 import * as path from 'path'
-import * as http from 'http'
-import * as https from 'https'
-import { ipcMain } from 'electron'
+import { ipcMain, net } from 'electron'
 
 export interface TranscodeOutputUploadOpts {
   outputDir: string      // local temp directory with transcode outputs
   targetDir: string      // relative path on server (from transcode-plan, e.g. .45flow/transcodes/31--name)
-  apiBase: string        // e.g. http://192.168.123.5:9095
+  apiBase: string        // e.g. https://192.168.123.5
   apiToken: string       // JWT bearer token
   subDir?: string        // optional subdirectory within outputDir to upload (e.g. 'hls')
 }
@@ -40,13 +38,11 @@ function streamFileUpload(
   headers: Record<string, string>,
 ): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
-    const size = fs.statSync(filePath).size
-    const target = new URL(url)
-    const transport = target.protocol === 'https:' ? https : http
-    const req = transport.request(target, {
-      method: 'POST',
-      headers: { ...headers, 'Content-Length': String(size) },
-    }, (res) => {
+    const req = net.request({ method: 'POST', url })
+    for (const [name, value] of Object.entries(headers)) req.setHeader(name, value)
+    // Electron sets Content-Length itself and would hold the whole file in memory; stream instead.
+    req.chunkedEncoding = true
+    req.on('response', (res) => {
       const chunks: Buffer[] = []
       res.on('data', (c: Buffer) => chunks.push(c))
       res.on('end', () => resolve({ status: res.statusCode || 0, body: Buffer.concat(chunks).toString('utf8') }))
@@ -55,8 +51,9 @@ function streamFileUpload(
     req.on('error', reject)
 
     const rs = fs.createReadStream(filePath)
-    rs.on('error', (err) => { req.destroy(err); reject(err) })
-    rs.pipe(req)
+    rs.on('error', (err) => { req.abort(); reject(err) })
+    // Electron's ClientRequest is a Writable at runtime; its typings do not say so.
+    rs.pipe(req as unknown as NodeJS.WritableStream)
   })
 }
 

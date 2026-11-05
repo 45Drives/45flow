@@ -1,6 +1,7 @@
 // preload.ts
 import { contextBridge, ipcRenderer, IpcRendererEvent, webUtils } from 'electron'
 import type { SecureTokenApi } from '../shared/secureTokens'
+import type { HttpUploadOpts, HttpUploadProgress, HttpUploadResult } from '../shared/chunkedUpload'
 
 const genId = () => Math.random().toString(36).slice(2)
 
@@ -8,53 +9,7 @@ const genId = () => Math.random().toString(36).slice(2)
 export type UploadResult = { ok?: boolean; path?: string; error?: string }
 export type ProgressPayload = { percent: number; speed?: string; eta?: string }
 
-export type HttpUploadOpts = {
-  src: string
-  apiBase: string
-  apiToken: string
-  dest: string
-  chunkSize?: number
-  fileId?: number
-  assetVersionId?: number
-  clientTranscode?: boolean
-  proxy?: boolean
-  proxyQualities?: string[]
-  hls?: boolean
-  watermark?: boolean
-  watermarkFile?: string
-  watermarkSettings?: WatermarkSettings
-}
-
-export type HttpUploadProgress = {
-  phase?: 'uploading' | 'scanning' | 'finalizing' | 'complete'
-  message?: string
-  percent: number
-  bytesTransferred: number
-  totalBytes: number
-  rate?: string
-  eta?: string
-  chunksCompleted: number
-  totalChunks: number
-}
-
-export type HttpUploadResult = {
-  ok: boolean
-  error?: string
-  file?: {
-    id: number
-    assetId: number
-    assetVersionId: number
-    savedAs: string
-    name: string
-    size: number
-    mime: string
-    relDir: string
-  }
-  transcodes?: {
-    queued: string[]
-    skipped: string[]
-  }
-}
+export type { HttpUploadOpts, HttpUploadProgress, HttpUploadResult }
 
 export type WatermarkSettings = {
   position: {
@@ -226,7 +181,7 @@ const INVOKE_CHANNELS = new Set([
   'transcode-output-upload', 'transcode:cancel', 'transcode:cancel-all-active', 'transcode:cleanup-temp',
   'transcode:cleanup-watermark', 'transcode:full-cancel', 'transcode:full-start',
   'transcode:get-capabilities', 'transcode:start', 'update:check', 'update:download', 'update:install',
-  'verify-nginx-certificate-over-ssh', 'watermark:download',
+  'verify-nginx-certificate-over-ssh', 'watermark:download', 'api-docs:open', 'server-trust:register',
 ])
 const SEND_CHANNELS = new Set(['IPCMessage', 'license:update-eligible', 'renderer-ready'])
 const RECEIVE_CHANNELS = new Set([

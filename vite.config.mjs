@@ -16,6 +16,9 @@ export default defineConfig(({ command, mode }) => {
   const PORT = Number(env.VITE_PORT || (isDev ? 8081 : 8080));
   const HOST = env.VITE_HOST || (isDev ? '127.0.0.1' : '0.0.0.0');
   const BASE = env.VITE_BASE || './'; // keep relative for Caddy/Electron
+  // SOURCE_DATE_EPOCH (seconds) makes the web bundle reproducible; otherwise the build time is used.
+  const epoch = Number(process.env.SOURCE_DATE_EPOCH);
+  const BUILD_DATE = new Date(Number.isFinite(epoch) && epoch > 0 ? epoch * 1000 : Date.now()).toISOString();
 
   return {
     root: r('src', 'renderer'),
@@ -23,7 +26,7 @@ export default defineConfig(({ command, mode }) => {
     base: BASE,
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),
-      __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
+      __BUILD_DATE__: JSON.stringify(BUILD_DATE),
     },
     server: {
       port: PORT,

@@ -812,6 +812,7 @@
 </template>
 	
 <script setup lang="ts">
+import { writeClipboard } from '../clipboard'
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useApi } from '../composables/useApi'
 import { useConnections } from '../composables/useConnections'
@@ -1483,7 +1484,7 @@ function expiresClass(it: LinkItem) {
 
 async function copy(txt?: string | null) {
 	if (!txt) return
-	await navigator.clipboard.writeText(txt)
+	await writeClipboard(txt)
 	appLog.info('link.copied')
 	pushNotification(new Notification('Copied!', 'Link copied to clipboard', 'success', 8000, 'clipboard-copy'))
 }
