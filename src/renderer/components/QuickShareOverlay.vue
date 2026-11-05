@@ -216,6 +216,10 @@
                 <span class="text-green-600 dark:text-green-400">✓</span>
                 <span>Client-side transcoding: <strong class="text-default">Enabled</strong>{{ _clientHwAccelOn ? ' (GPU)' : ' (CPU)' }}</span>
               </template>
+              <template v-else-if="_isWebView">
+                <span class="text-blue-500 dark:text-blue-400">ⓘ</span>
+                <span>Client-side transcoding: <strong>Unavailable in the web view</strong> — the server will handle transcoding. Use 45Flow Desktop for local processing.</span>
+              </template>
               <template v-else>
                 <span class="text-amber-500">ⓘ</span>
                 <span>Client-side transcoding: <strong>Off</strong> — enable in Settings → Performance for faster processing</span>
@@ -370,6 +374,10 @@ const electron = window.electron as any
 
 // Client-side transcode status (reactive, for inline hint in template)
 const { enabled: _clientTranscodeOn, hwAccel: _clientHwAccelOn } = useClientTranscode()
+const _isWebView = window.electron?.isWeb === true
+const clientTranscodeTourTip = _isWebView
+  ? ''
+  : '\n\nWith client-side transcoding enabled (Settings → Performance), video processing happens on your machine before upload — using your local CPU or GPU.'
 
 type DroppedFile = { path: string; name: string; size: number }
 
@@ -499,8 +507,8 @@ const quickShareTourSteps = computed<TourStep[]>(() => [
   {
     target: '[data-tour="qs-video-options"]',
     message: isPremiumActive.value
-      ? 'When sharing video or image files, media processing options appear here.\n\nFor video:\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Review copies (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nFor images and video:\n• Watermarks can be overlaid with full customization — position, size, opacity, and tiling (Pro).\n\nWith client-side transcoding enabled (Settings → Performance), video processing happens on your machine before upload — using your local CPU or GPU.'
-      : 'When sharing video or image files, media processing options appear here.\n\nFor video:\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Review copies (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nFor images and video:\n• A basic watermark can be applied (bottom-right). Upgrade to Pro for full customization of position, size, and opacity.\n\nWith client-side transcoding enabled (Settings → Performance), video processing happens on your machine before upload — using your local CPU or GPU.',
+      ? 'When sharing video or image files, media processing options appear here.\n\nFor video:\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Review copies (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nFor images and video:\n• Watermarks can be overlaid with full customization — position, size, opacity, and tiling (Pro).' + clientTranscodeTourTip
+      : 'When sharing video or image files, media processing options appear here.\n\nFor video:\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Review copies (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nFor images and video:\n• A basic watermark can be applied (bottom-right). Upgrade to Pro for full customization of position, size, and opacity.' + clientTranscodeTourTip,
     beforeShow: async () => {
       tourQuickShareOpen.value = true
       tourQuickShareStep.value = 2

@@ -277,6 +277,10 @@
 										<span class="text-green-600 dark:text-green-400">✓</span>
 										<span>Client-side transcoding: <strong class="text-default">Enabled</strong>{{ _clientHwAccelOn ? ' (GPU)' : ' (CPU)' }}</span>
 									</template>
+									<template v-else-if="_isWebView">
+										<span class="text-blue-500 dark:text-blue-400">ⓘ</span>
+										<span>Client-side transcoding: <strong>Unavailable in the web view</strong> — the server will handle transcoding. Use 45Flow Desktop for local processing.</span>
+									</template>
 									<template v-else>
 										<span class="text-amber-500">ⓘ</span>
 										<span>Client-side transcoding: <strong>Off</strong> — enable in Settings → Performance for faster processing</span>
@@ -357,6 +361,7 @@ const { projectModeEnabled } = useProjectMode()
 
 // Client-side transcode status (reactive, for inline hint in template)
 const { enabled: _clientTranscodeOn, hwAccel: _clientHwAccelOn } = useClientTranscode()
+const _isWebView = window.electron?.isWeb === true
 const activeProject = computed(() => projectModeEnabled.value ? rawActiveProject.value : null)
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()
