@@ -6,6 +6,8 @@ C1's partial public-address/No-IP core and C3's SMTP/durable-retry core are loca
 
 All whole-thread acceptance remains open: production A/B integration, C4 performance and human/lab checks are not complete. C5 G1/G2 are GREEN, G3-G7 human RED; C1/C2/C3/C6 actual gates remain RED. Only the existing linked C4 PRs are open. C5 is left on its pushed feature branch; other new source/evidence commits remain local. No new PR, merge or deployment. See [the execution record](15210-track-c-execution.md) for branch/revision evidence and decisions 41-48. Set task statuses from evidence without asking the user to select them.
 
+**Development preview:** the real browser client is running at `http://127.0.0.1:18081/#/` in an isolated client worktree and is open in the preview panel. It currently shows the server connection screen, not an integrated backend demonstration. The startup CSS-alias failure was corrected and the app was confirmed mounted. C1's actual hostname/TLS link guards are being implemented, and a rootless backend runtime is being prepared under decision 49; no new task is claimed Complete yet.
+
 ## Outcome and boundaries
 
 Clients review and approve shared media from any device. Charter v6 is the requirements baseline. Track C owns its client screens, feature APIs, recipient app, tests and guides. Track A owns the shared shell/design system/browser platform; Track B owns shared server security, credentials, sessions and permission contracts. Security-alert emails remain B4.
