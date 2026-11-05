@@ -1,0 +1,107 @@
+name: Build Web Packages
+run-name: '45flow-web:${{ inputs.request_id }}'
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact pushed desktop release commit
+        required: true
+        type: string
+      expected_version:
+        description: App version used by the desktop orchestrator
+        required: true
+        type: string
+      request_id:
+        description: Unique orchestrator dispatch identifier
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  prebuild:
+    runs-on: buildinator-5
+    outputs:
+      manifest: ${{ steps.prebuild.outputs.manifest }}
+      matrix: ${{ steps.prebuild.outputs.matrix }}
+      uuid: ${{ steps.prebuild.outputs.uuid }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_sha }}
+          submodules: recursive
+      - name: Verify release source and version
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          EXPECTED_VERSION: ${{ inputs.expected_version }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          node -e "if(require('./package.json').version!==process.env.EXPECTED_VERSION) throw Error('Desktop/web version mismatch')"
+      - name: Version web package from package.json
+        run: node scripts/web/sync-manifest.mjs
+      - id: prebuild
+        uses: 45drives/actions/prebuild-flow@main
+        with:
+          directory: ${{ github.workspace }}
+      - name: Snapshot workspace for this run
+        run: |
+          RUN_DIR="${{ runner.workspace }}/run-${{ steps.prebuild.outputs.uuid }}"
+          mkdir -p "$RUN_DIR"
+          rsync -a --delete --exclude .git --exclude node_modules --exclude build "${{ github.workspace }}/" "$RUN_DIR/"
+
+  build:
+    needs: prebuild
+    runs-on: buildinator-group
+    strategy:
+      matrix:
+        build: ${{ fromJSON(needs.prebuild.outputs.matrix).include }}
+    steps:
+      - uses: 45drives/actions/build-package@main
+        with:
+          manifest: ${{ needs.prebuild.outputs.manifest }}
+          build: ${{ toJSON(matrix.build) }}
+          uuid: ${{ needs.prebuild.outputs.uuid }}
+
+  sign:
+    needs: [prebuild, build]
+    runs-on: buildinator-5
+    steps:
+      - name: Verify all distro builds
+        run: |
+          for OS in ubuntu-focal ubuntu-jammy debian-bookworm debian-trixie rocky-el8 rocky-el9; do
+            test -f "/mnt/ci_artifacts/${{ needs.prebuild.outputs.uuid }}/output/$OS/build_info.json"
+          done
+      - uses: 45drives/actions/ansible-playbook@main
+        with:
+          playbook: /root/git/auto-packaging/actions/ansible/sign.yml
+          directory: ${{ runner.workspace }}/run-${{ needs.prebuild.outputs.uuid }}/packaging
+          group_vars_directory: ${{ runner.workspace }}/run-${{ needs.prebuild.outputs.uuid }}/packaging/group_vars/
+          inventory: |
+            [ci]
+            localhost
+          become: true
+          host_key_checking: true
+          extra_vars: sign_key_name=prod uuid=${{ needs.prebuild.outputs.uuid }}
+      - name: Verify signed web packages before repository publication
+        env:
+          SIGNED_DIR: /mnt/ci_artifacts/${{ needs.prebuild.outputs.uuid }}/sign
+        run: |
+          test "$(find "$SIGNED_DIR" -type f -name '45flow-web*_all.deb' | wc -l)" -eq 4
+          test "$(find "$SIGNED_DIR" -type f -name '45flow-web*.noarch.rpm' | wc -l)" -eq 2
+
+  update_repositories:
+    needs: [prebuild, build, sign]
+    runs-on: buildinator-5
+    steps:
+      - uses: 45drives/actions/update-repo@main
+        with:
+          directory: ${{ runner.workspace }}/run-${{ needs.prebuild.outputs.uuid }}
+
+  sync_repositories:
+    needs: [prebuild, build, sign, update_repositories]
+    runs-on: buildinator-5
+    steps:
+      - uses: 45drives/actions/sync-repo@main
+        with:
+          directory: ${{ runner.workspace }}/run-${{ needs.prebuild.outputs.uuid }}
