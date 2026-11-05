@@ -1846,9 +1846,13 @@ function openUserGuide() {
     window.open('https://github.com/45Drives/45flow/blob/main/docs/45Flow_User_Guide.md', '_blank', 'noopener,noreferrer');
 }
 
-function openApiDocs() {
-    const base = baseUrl.value || 'http://localhost:9095';
-    window.open(`${base}/api-docs`, '_blank', 'noopener,noreferrer');
+async function openApiDocs() {
+    try {
+        await window.electron?.ipcRenderer.invoke('api-docs:open', { baseUrl: baseUrl.value, token: meta.value?.token || '' });
+    } catch (e: any) {
+        const message = String(e?.message || e || '').replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+        pushNotification(new Notification('API Docs', message || 'Could not open the API docs.', 'error', 8000));
+    }
 }
 
 // ── Go Pro / Upgrade ────────────────────────────────────────────────────

@@ -389,6 +389,7 @@ import { TranscodeManager } from './transcoding/TranscodeManager';
 import { FullTranscodeManager } from './transcoding/FullTranscodeManager';
 import { initAutoUpdates } from './updates';
 import { registerSecureTokenHandlers } from './secureTokens';
+import { openApiDocsWindow } from './apiDocsWindow';
 import { chromiumChain, hasBlockedKey, installNodeTlsBlocklist } from './blockedCertificates';
 
 installNodeTlsBlocklist();
@@ -2173,6 +2174,17 @@ app.whenReady().then(() => {
   ipcMain.handle("is-dev", async () => process.env.NODE_ENV === 'development');
   registerSecureTokenHandlers(() =>
     mainWindowRef && !mainWindowRef.isDestroyed() ? mainWindowRef.webContents : null);
+
+  ipcMain.handle('api-docs:open', async (event, opts: { baseUrl?: unknown; token?: unknown } = {}) => {
+    const main = mainWindowRef && !mainWindowRef.isDestroyed() ? mainWindowRef.webContents : null;
+    if (!main || event.sender !== main || event.senderFrame !== main.mainFrame || !isRendererUrl(event.senderFrame.url)) {
+      throw new Error('API docs request denied');
+    }
+    await openApiDocsWindow(opts?.baseUrl, opts?.token, {
+      isBlocked: usesBlockedKey, getPin, getSshVerifiedCertificates,
+    });
+    return true;
+  });
 
   ipcMain.handle('dialog:openFolder', async () => {
     const parent = (mainWindowRef && !mainWindowRef.isDestroyed()) ? mainWindowRef : undefined;

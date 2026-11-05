@@ -66,6 +66,15 @@ describe('browser Electron compatibility shim', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
+  it('opens the API docs on this server in a new tab, signed in by the page cookie, never with a token', async () => {
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    await import('./ipc-web-shim')
+
+    await expect(window.electron.ipcRenderer.invoke('api-docs:open', { baseUrl: 'http://evil.example', token: 'abc' }))
+      .resolves.toBe(true)
+    expect(open).toHaveBeenCalledWith(`${window.location.origin}/api-docs/`, '_blank', 'noopener,noreferrer')
+  })
+
   it('keeps browser credentials in memory and drops saved passwords', async () => {
     await import('./ipc-web-shim')
 
