@@ -1040,6 +1040,7 @@ import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../..
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { Switch } from '@headlessui/vue'
 import { useTransferProgress } from '../../composables/useTransferProgress'
+import { useExternalAddressReadiness, describeExternalAddressNotReady } from '../../composables/useExternalAddressReadiness'
 import { useConnections } from '../../composables/useConnections'
 import { useLicenseStatus } from '../../composables/useLicenseStatus'
 import { useRemoteTranscode } from '../../composables/useRemoteTranscode'
@@ -1123,6 +1124,7 @@ watch(() => props.modelValue, (open) => {
 })
 
 const transfer = useTransferProgress()
+const { checkExternalAddressReady } = useExternalAddressReadiness()
 const { activeConnection, connections } = useConnections()
 const connectionMeta = inject(connectionMetaInjectionKey, null)
 
@@ -2160,6 +2162,13 @@ function fallbackTitle(it: LinkItem) {
 }
 async function copy(txt?: string | null) {
   if (!txt) return
+  if (txt === primaryUrl.value && (props.link as any)?.externalLink) {
+    const { ready, reason } = await checkExternalAddressReady()
+    if (!ready) {
+      pushNotification(new Notification('External Address Not Ready', describeExternalAddressNotReady(reason), 'error', 8000))
+      return
+    }
+  }
   await navigator.clipboard.writeText(txt)
 }
 

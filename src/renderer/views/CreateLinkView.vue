@@ -581,6 +581,7 @@ import { Notification } from '@45drives/houston-common-ui'
 import { useApi } from '../composables/useApi'
 import { useResilientNav } from '../composables/useResilientNav'
 import { useLinkOptions } from '../composables/useLinkOptions'
+import { useExternalAddressReadiness, describeExternalAddressNotReady } from '../composables/useExternalAddressReadiness'
 import { useHeader } from '../composables/useHeader'
 import { pushNotification } from '../composables/useNotificationQueue'
 import { signalLinkCreated } from '../composables/useLinkRefresh'
@@ -619,6 +620,7 @@ const transfer = useTransferProgress()
 const { runRemoteTranscode } = useRemoteTranscode()
 const { enabled: clientTranscodeEnabled } = useClientTranscode()
 const opts = useLinkOptions()
+const { checkExternalAddressReady } = useExternalAddressReadiness()
 
 const { isPremiumActive } = useLicenseStatus()
 const { getDefaultCategories } = useCommentCategories()
@@ -1470,11 +1472,17 @@ async function generateLink() {
 	}
 }
 
-function copyResult() {
-	if (resultUrl.value) {
-		navigator.clipboard.writeText(resultUrl.value)
-		pushNotification(new Notification('Copied!', 'Link copied to clipboard.', 'success', 4000))
+async function copyResult() {
+	if (!resultUrl.value) return
+	if (opts.usePublicBase.value) {
+		const { ready, reason } = await checkExternalAddressReady()
+		if (!ready) {
+			pushNotification(new Notification('External Address Not Ready', describeExternalAddressNotReady(reason), 'error', 8000))
+			return
+		}
 	}
+	navigator.clipboard.writeText(resultUrl.value)
+	pushNotification(new Notification('Copied!', 'Link copied to clipboard.', 'success', 4000))
 }
 
 function extractLinkToken(data: any): string {

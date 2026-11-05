@@ -339,6 +339,7 @@ import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { appLog } from '../composables/useLog'
 import { connectionMetaInjectionKey, currentServerInjectionKey } from '../keys/injection-keys'
 import { useApi } from '../composables/useApi'
+import { useExternalAddressReadiness, describeExternalAddressNotReady } from '../composables/useExternalAddressReadiness'
 import { validateUploadBatch } from '../utils/uploadPreflight'
 import { useConnections } from '../composables/useConnections'
 import { useActiveProject } from '../composables/useActiveProject'
@@ -374,6 +375,7 @@ type DroppedFile = { path: string; name: string; size: number }
 
 const route = useRoute()
 const { apiFetch } = useApi()
+const { checkExternalAddressReady } = useExternalAddressReadiness()
 const { activeConnection } = useConnections()
 const isRootUser = computed(() => activeConnection.value?.username === 'root')
 const { activeProject: rawActiveProject } = useActiveProject()
@@ -1796,8 +1798,15 @@ function extractLinkToken(data: any): string {
   return parts[parts.length - 1] || ''
 }
 
-function copyLink() {
+async function copyLink() {
   if (!viewUrl.value) return
+  if (usePublicBase.value) {
+    const { ready, reason } = await checkExternalAddressReady()
+    if (!ready) {
+      pushNotification(new Notification('External Address Not Ready', describeExternalAddressNotReady(reason), 'error', 8000))
+      return
+    }
+  }
   navigator.clipboard.writeText(viewUrl.value).then(() => {
     pushNotification(new Notification('Link Copied', 'Share link copied to clipboard.', 'success', 3000))
   })

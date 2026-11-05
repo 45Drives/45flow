@@ -355,7 +355,7 @@
 									</a>
 
 									<button class="text-blue-500 hover:underline text-xs shrink-0"
-										@click="copy(it.url)">
+										@click="copy(it.url, it)">
 										Copy
 									</button>
 								</div>
@@ -814,6 +814,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useApi } from '../composables/useApi'
+import { useExternalAddressReadiness, describeExternalAddressNotReady } from '../composables/useExternalAddressReadiness'
 import { useConnections } from '../composables/useConnections'
 import { useServerFilter } from '../composables/useServerFilter'
 import { useLinkRefreshSignal } from '../composables/useLinkRefresh'
@@ -881,6 +882,7 @@ const DEMO_LINKS: LinkItem[] = [
 const showingDemoData = computed(() => props.tourActive && rows.value.length === 0 && !loading.value)
 
 const { apiFetch, apiFetchAll, baseUrl, meta } = useApi()
+const { checkExternalAddressReady } = useExternalAddressReadiness()
 const { activeConnection, connections } = useConnections()
 const { selectedFilter, filteredConnections } = useServerFilter()
 
@@ -1481,8 +1483,15 @@ function expiresClass(it: LinkItem) {
 	return ms <= 86400000 ? 'text-red-400 font-semibold' : ''
 }
 
-async function copy(txt?: string | null) {
+async function copy(txt?: string | null, it?: LinkItem) {
 	if (!txt) return
+	if (it?.externalLink) {
+		const { ready, reason } = await checkExternalAddressReady()
+		if (!ready) {
+			pushNotification(new Notification('External Address Not Ready', describeExternalAddressNotReady(reason), 'error', 8000))
+			return
+		}
+	}
 	await navigator.clipboard.writeText(txt)
 	appLog.info('link.copied')
 	pushNotification(new Notification('Copied!', 'Link copied to clipboard', 'success', 8000, 'clipboard-copy'))
