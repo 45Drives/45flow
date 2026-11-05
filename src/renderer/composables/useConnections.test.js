@@ -171,7 +171,10 @@ describe('connection credential migration and persistence', () => {
     await module.initializeConnections()
     module.useConnections().updateConnection('connection-one', { token: 'new' })
     await module.flushCredentialWrites()
-    expect(window.electron.ipcRenderer.invoke).not.toHaveBeenCalled()
+    // The only IPC is certificate-trust registration, which carries no token or password.
+    const calls = window.electron.ipcRenderer.invoke.mock.calls
+    expect(calls.map(([channel]) => channel)).toEqual(['server-trust:register'])
+    expect(Object.keys(calls[0][1]).sort()).toEqual(['host', 'httpsPort', 'keyPath', 'sshPort', 'username'])
     expectNoBrowserCredentials()
   })
 })

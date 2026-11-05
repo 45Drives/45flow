@@ -80,6 +80,7 @@
 
                             <p class="mt-2 text-xs opacity-75">
                                 Leave blank to use defaults: SSH 22, API 9095, HTTPS 443. Ports must be different.
+                                The app connects over HTTPS; the API port is only used for setup.
                             </p>
 
                             <p v-if="portError" class="mt-1 text-xs text-danger">
@@ -176,6 +177,7 @@ import { signInWithSession, restoreSession, WEB_SESSION_TOKEN, type WebSessionIn
 import { loadLastSession, clearLastSession, saveManualServer, saveRegistryLicenseId } from '../composables/useSessionPersistence';
 import { useConnections } from '../composables/useConnections'
 import type { Connection } from '../composables/useConnections'
+import { httpsBaseFor, registerServerTrust, verifyServerCertificate, fetchOverHttps, upgradedBaseUrl, trustFor } from '../server-trust'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
 useHeader('Welcome to 45Flow!');
@@ -224,7 +226,7 @@ const connectTourSteps: TourStep[] = [
 	},
 	{
 		target: '[data-tour="connect-ports"]',
-		message: 'You can customise the connection ports here.\n\n• SSH (default 22) — used for secure file operations and server setup.\n• API / houston-broadcaster (default 9095) — the backend service that powers 45Flow.\n• HTTPS (default 443) — used for external link access.\n\nLeave these blank to use the defaults. Only change them if your server uses non-standard ports.',
+		message: 'You can customise the connection ports here.\n\n• SSH (default 22) — used for secure file operations and server setup.\n• API / houston-broadcaster (default 9095) — used to find and set up the server.\n• HTTPS (default 443) — the encrypted connection the app uses, and the address share links use.\n\nLeave these blank to use the defaults. Only change them if your server uses non-standard ports.',
 		beforeShow: () => {
 			tourPortsOpen.value = true
 			if (portsDetailsRef.value) portsDetailsRef.value.open = true
@@ -799,7 +801,9 @@ async function connectToServer() {
                 ? broadcasterPort.value
                 : DEFAULT_API_PORT;
 
-        const apiBase = isWeb ? window.location.origin : `http://${ip}:${apiPortToUse}`;
+        // The desktop app talks to the server over HTTPS through nginx; the API port is only for setup and health.
+        const httpsPortToUse = httpsPort.value && httpsPort.value > 0 && httpsPort.value < 65536 ? httpsPort.value : 443;
+        const apiBase = isWeb ? window.location.origin : httpsBaseFor(ip, httpsPortToUse);
 
         // Decide which SSH port to use for this session
         const sshPortToUse = !isWeb && sshPort.value && sshPort.value > 0 && sshPort.value < 65536
@@ -948,7 +952,18 @@ async function connectToServer() {
             unlistenProgress = null;
         }
 
-        const res = await fetch(`${apiBase}/api/login`, {
+        if (!isWeb) {
+            statusLine.value = 'Verifying the server certificate…';
+            const trust = {
+                host: ip, httpsPort: httpsPortToUse, sshPort: sshPortToUse ?? 22,
+                username: username.value, keyPath: verifiedKeyPath,
+            };
+            await registerServerTrust(trust);
+            await verifyServerCertificate(trust);
+            statusLine.value = '';
+        }
+
+        const res = await fetchOverHttps(`${apiBase}/api/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -956,7 +971,7 @@ async function connectToServer() {
                 password: password.value,
                 clientBuildDate: typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : undefined,
             }),
-        });
+        }, httpsPortToUse);
 
         // Handle entitlement expiry specifically
         if (!res.ok) {
@@ -1061,7 +1076,7 @@ async function connectToServer() {
             savedPassword: !isWeb && rememberPassword.value ? password.value : undefined,
             apiPort: apiPortToUse,
             sshPort: sshPortToUse,
-            httpsPort: httpsPort.value ?? 443,
+            httpsPort: httpsPortToUse,
             ssh: isWeb ? undefined : {
                 server: ip,
                 username: username.value.trim(),
@@ -1191,10 +1206,17 @@ onMounted(async () => {
     // Validate the saved token with a quick API call
     isBusy.value = true
     statusLine.value = 'Resuming previous session…'
+    const savedConnection = {
+        serverIp: saved.serverIp, baseUrl: saved.apiBase, httpsPort: saved.httpsPort, username: saved.username,
+        ssh: { server: saved.serverIp, username: saved.username, port: saved.sshPort || 22 },
+    }
+    const savedBase = upgradedBaseUrl(savedConnection) ?? saved.apiBase
     try {
+        const savedTrust = !isWeb ? trustFor(savedConnection) : null
+        if (savedTrust) await registerServerTrust(savedTrust)
         const ctrl = new AbortController()
         const timer = setTimeout(() => ctrl.abort(), 8000)
-        const res = await fetch(`${saved.apiBase}/api/links`, {
+        const res = await fetch(`${savedBase}/api/links`, {
             headers: { 'Authorization': `Bearer ${saved.token}` },
             signal: ctrl.signal,
         })
@@ -1246,7 +1268,7 @@ onMounted(async () => {
         }
 
         // Token is valid — restore the full session and navigate
-        const restoredLicense = await checkLicenseStatus(saved.apiBase, saved.token)
+        const restoredLicense = await checkLicenseStatus(savedBase, saved.token)
 
         const serverObj: Server = existingServer ?? {
             ip: saved.serverIp,
@@ -1265,7 +1287,7 @@ onMounted(async () => {
             name: saved.serverName || saved.serverIp,
             serverIp: saved.serverIp.trim(),
             serverName: saved.serverName,
-            baseUrl: saved.apiBase,
+            baseUrl: savedBase,
             username: saved.username.trim(),
             token: saved.token,
             savedPassword: previousConnection?.savedPassword,
@@ -1296,7 +1318,7 @@ onMounted(async () => {
         statusLine.value = ''
         isBusy.value = false
 
-        checkBroadcasterUpdateInBackground(saved.apiBase, saved.token, saved.serverName || saved.serverIp, !restoredLicense.licensed && restoredLicense.licenseFallback)
+        checkBroadcasterUpdateInBackground(savedBase, saved.token, saved.serverName || saved.serverIp, !restoredLicense.licensed && restoredLicense.licenseFallback)
         to('dashboard')
     } catch (err: any) {
         // Network error (server unreachable) — keep saved credentials so user

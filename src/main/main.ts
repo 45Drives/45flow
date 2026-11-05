@@ -357,7 +357,7 @@ function createLogPolicy() {
 }
 
 
-import { app, BrowserWindow, ipcMain, dialog, shell, session } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell, session, net as electronNet } from 'electron';
 
 if (process.env.ELECTRON_USER_DATA_DIR) {
   app.setPath('userData', process.env.ELECTRON_USER_DATA_DIR);
@@ -390,6 +390,7 @@ import { FullTranscodeManager } from './transcoding/FullTranscodeManager';
 import { initAutoUpdates } from './updates';
 import { registerSecureTokenHandlers } from './secureTokens';
 import { openApiDocsWindow } from './apiDocsWindow';
+import { registerSshTrust, verifyWithSshTrust } from './serverTrust';
 import { chromiumChain, hasBlockedKey, installNodeTlsBlocklist } from './blockedCertificates';
 
 installNodeTlsBlocklist();
@@ -1302,7 +1303,10 @@ function createWindow() {
       webviewTag: false,
       javascript: true,
       backgroundThrottling: true,  // Enable throttling to reduce CPU when minimized
-      webSecurity: true,                  // Enforces origin security
+      // Production loads the renderer from file://, where Chromium applies no CORS to server calls.
+      // The dev renderer on http://localhost would be cross-origin, and nginx refuses CORS preflights
+      // on public share paths (/api/token/...), so dev turns web security off to match production.
+      webSecurity: process.env.NODE_ENV !== 'development',
       // Allow HTTP connections to local servers in development (e.g., houston-broadcaster at 192.168.x.x)
       allowRunningInsecureContent: process.env.NODE_ENV === 'development',
     }
@@ -2082,6 +2086,10 @@ function isRendererUrl(url: string): boolean {
   }
 }
 
+const sshTrustDeps = {
+  getSshVerifiedCertificates, prepareSshCertificate, getPin, rememberPin, keyDir: getKeyDir,
+};
+
 // Mirrors Electron 42.11.16+'s block of the compromised eMudhra intermediates (GHSA-jr5w-w6x2-84p9).
 function usesBlockedKey(req: Electron.Request): boolean {
   return hasBlockedKey([...chromiumChain(req.certificate), ...chromiumChain(req.validatedCertificate)]);
@@ -2115,6 +2123,15 @@ app.whenReady().then(() => {
     if (usesBlockedKey(req)) {
       jl('warn', 'cert.verify.blocked-key', { hostname: req.hostname });
       return cb(-2);
+    }
+    // Servers the app reaches over SSH: trust only the certificate nginx presents through SSH.
+    const viaSsh = verifyWithSshTrust(req, sshTrustDeps);
+    if (viaSsh) {
+      viaSsh.then(verdict => {
+        if (verdict !== 0) jl('warn', 'cert.verify.ssh-mismatch', { hostname: req.hostname });
+        cb(verdict);
+      }, () => cb(-2));
+      return;
     }
     const sshFingerprints = getSshVerifiedCertificates(req.hostname);
     if (sshFingerprints) {
@@ -2175,9 +2192,20 @@ app.whenReady().then(() => {
   registerSecureTokenHandlers(() =>
     mainWindowRef && !mainWindowRef.isDestroyed() ? mainWindowRef.webContents : null);
 
-  ipcMain.handle('api-docs:open', async (event, opts: { baseUrl?: unknown; token?: unknown } = {}) => {
+  const fromMainRenderer = (event: Electron.IpcMainInvokeEvent) => {
     const main = mainWindowRef && !mainWindowRef.isDestroyed() ? mainWindowRef.webContents : null;
-    if (!main || event.sender !== main || event.senderFrame !== main.mainFrame || !isRendererUrl(event.senderFrame.url)) {
+    return !!main && event.sender === main && event.senderFrame === main.mainFrame && isRendererUrl(event.senderFrame.url);
+  };
+
+  ipcMain.handle('server-trust:register', (event, trust) => {
+    if (!fromMainRenderer(event)) throw new Error('Server trust request denied');
+    const registered = registerSshTrust(trust);
+    jl('info', 'server-trust.registered', { host: registered.host, httpsPort: registered.httpsPort, sshPort: registered.sshPort });
+    return true;
+  });
+
+  ipcMain.handle('api-docs:open', async (event, opts: { baseUrl?: unknown; token?: unknown } = {}) => {
+    if (!fromMainRenderer(event)) {
       throw new Error('API docs request denied');
     }
     await openApiDocsWindow(opts?.baseUrl, opts?.token, {
@@ -2485,7 +2513,8 @@ ipcMain.handle('watermark:download', async (_event, opts: { apiBase: string; tok
     }
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const res = await fetch(url, { headers });
+    // Electron's network stack, so the server's certificate is checked like the renderer's requests.
+    const res = await electronNet.fetch(url, { headers });
     if (!res.ok) {
       jl('warn', 'watermark.download.failed', { status: res.status, relPath });
       return null;

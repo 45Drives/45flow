@@ -4,7 +4,7 @@
 
 export interface HttpUploadOpts {
   src: string             // local file path (desktop) or synthetic browser-file:// path
-  apiBase: string         // e.g. http://192.168.123.5:9095
+  apiBase: string         // e.g. https://192.168.123.5
   apiToken: string        // JWT bearer token
   dest: string            // relative destination path on server
   chunkSize?: number      // bytes per chunk (default 5MB)
@@ -75,6 +75,8 @@ export interface ChunkedUploadHooks {
   onProgress(progress: HttpUploadProgress): void
   /** Fired once the server has the file, so the UI can follow its transcodes. */
   onIngest(ingest: UploadIngest): void
+  /** Defaults to the global fetch. The desktop passes Electron's, which checks the server certificate. */
+  fetch?: typeof fetch
 }
 
 const DEFAULT_CHUNK_SIZE = 5 * 1024 * 1024 // 5 MB
@@ -102,7 +104,7 @@ export function formatEta(seconds: number): string {
 export async function runChunkedUpload(
   opts: HttpUploadOpts,
   source: ChunkedUploadSource,
-  { signal, onProgress, onIngest }: ChunkedUploadHooks,
+  { signal, onProgress, onIngest, fetch = globalThis.fetch }: ChunkedUploadHooks,
 ): Promise<HttpUploadResult> {
   const { apiBase, apiToken, dest } = opts
   const fileSize = source.size

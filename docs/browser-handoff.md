@@ -39,6 +39,7 @@ Open items B should know about:
 - **New polling needs `X-Background-Request: 1`** (`BACKGROUND_REQUEST` in `src/renderer/background-request.ts`), or it will keep sessions alive and defeat the idle timeout.
 - **New request headers** the desktop app sends need adding to the CORS `allowedHeaders` in `server/app.js`; the desktop calls the server cross-origin and the preflight blocks anything not listed.
 - **Uploads** use the shared core in `src/shared/chunkedUpload.ts`. The desktop supplies bytes from disk; the browser from a `File`.
+- **The desktop app talks to the server over HTTPS through nginx** (B2 #1), trusting the certificate it reads over SSH (`src/main/serverTrust.ts`). Network calls from the main process must use Electron's `net.fetch` or `net.request`, not Node's `fetch`, `http` or `https`, or they will not trust the server's certificate. Port 9095 is only for discovery, health and setup.
 - **Server file-type rules apply**: `.bin` is rejected, for example. Test uploads with real media or document types.
 - **Client-side transcoding is off in the browser.** Anything that assumes local ffmpeg must have a server path.
 

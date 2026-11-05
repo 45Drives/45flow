@@ -314,9 +314,11 @@ In most cases, the default ports work without changes. If your server uses non-s
 
 | Port | Default | Purpose |
 |------|---------|---------|
-| **SSH** | 22 | Secure shell communication |
-| **API** | 9095 | Server communication and link management |
-| **HTTPS** | 443 | Share links, upload links, external access |
+| **SSH** | 22 | Secure shell communication, server setup, and verifying the server's HTTPS certificate |
+| **API** | 9095 | Finding and setting up the server |
+| **HTTPS** | 443 | The app's encrypted connection to the server; share links, upload links, external access |
+
+The app signs in and does all of its work over the HTTPS port, so that port must be reachable from your computer. It trusts the server's certificate, including the default self-signed one, by reading it over SSH; if the certificate cannot be verified, or the HTTPS port cannot be reached, the app does not connect rather than fall back to an unencrypted connection. Servers saved by an earlier version move to HTTPS automatically.
 
 > **Important:** For external sharing the HTTPS port (443 by default) must be open/forwarded on your router. See [Port Forwarding](#5-port-forwarding-for-external-sharing) for details.
 
@@ -849,8 +851,8 @@ allow every address in an IP family, are rejected.
   the check.
 - **Panel cannot connect:** confirm the server's HTTPS port is reachable
   (443 by default). For custom ports, check the connection ports on the login
-  screen. This panel needs HTTPS even if other desktop requests use port 9095;
-  it does not fall back to that port.
+  screen. Like the rest of the app, this panel uses HTTPS and never falls back
+  to the backend port.
 - **Connection safety unavailable:** ask your administrator to update the server
   and regenerate/reload its nginx configuration before retrying.
 

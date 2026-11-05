@@ -181,7 +181,7 @@ const INVOKE_CHANNELS = new Set([
   'transcode-output-upload', 'transcode:cancel', 'transcode:cancel-all-active', 'transcode:cleanup-temp',
   'transcode:cleanup-watermark', 'transcode:full-cancel', 'transcode:full-start',
   'transcode:get-capabilities', 'transcode:start', 'update:check', 'update:download', 'update:install',
-  'verify-nginx-certificate-over-ssh', 'watermark:download', 'api-docs:open',
+  'verify-nginx-certificate-over-ssh', 'watermark:download', 'api-docs:open', 'server-trust:register',
 ])
 const SEND_CHANNELS = new Set(['IPCMessage', 'license:update-eligible', 'renderer-ready'])
 const RECEIVE_CHANNELS = new Set([

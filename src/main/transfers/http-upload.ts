@@ -2,7 +2,7 @@
 // Desktop host for the shared chunked upload: reads the file from disk and relays progress to the renderer.
 import * as fs from 'fs'
 import * as path from 'path'
-import { ipcMain } from 'electron'
+import { ipcMain, net } from 'electron'
 import {
   runChunkedUpload,
   type HttpUploadOpts,
@@ -43,6 +43,8 @@ async function runHttpUpload(opts: HttpUploadOpts, id: string, signal: AbortSign
       },
       {
         signal,
+        // Electron's network stack, so the server's certificate is checked like the renderer's requests.
+        fetch: (input, init) => net.fetch(input as string, init),
         onProgress: progress => sender.send(`http-upload:progress:${id}`, progress),
         // The renderer's waitForIngestAndStartTranscode listens for this event.
         onIngest: ingest => sender.send(`upload:ingest:${id}`, {

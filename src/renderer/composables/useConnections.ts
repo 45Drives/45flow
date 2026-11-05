@@ -4,6 +4,7 @@
 
 import { reactive, computed, readonly, watch, ref } from 'vue'
 import type { ConnectionCredentials } from '../../shared/secureTokens'
+import { registerServerTrust, trustFor, upgradedBaseUrl } from '../server-trust'
 
 const randomUUID = () => window.crypto.randomUUID()
 
@@ -279,13 +280,36 @@ function migrateExistingSession() {
   }
 }
 
+/** Desktop connections use HTTPS through nginx; upgrade any saved before that (http://<server>:9095). */
+function upgradeDesktopBaseUrls() {
+  for (const connection of _state.connections) {
+    const upgraded = upgradedBaseUrl(connection)
+    if (upgraded) connection.baseUrl = upgraded
+  }
+}
+
+/** Let the main process verify each server's certificate over SSH before the first request. */
+async function registerDesktopTrust() {
+  for (const connection of _state.connections) {
+    const trust = trustFor(connection)
+    if (!trust) continue
+    try {
+      await registerServerTrust(trust)
+    } catch {
+      console.error('[connections] could not register server certificate trust')
+    }
+  }
+}
+
 export function initializeConnections(): Promise<void> {
   if (initialization) return initialization
   initialization = (async () => {
     load()
     migrateExistingSession()
+    upgradeDesktopBaseUrls()
     // Scrub both legacy storage surfaces before any asynchronous keyring operation.
     persist()
+    await registerDesktopTrust()
     const api = window.electron?.secureToken
     if (!api) {
       memoryOnlyNotice()

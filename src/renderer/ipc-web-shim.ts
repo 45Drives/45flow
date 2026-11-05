@@ -76,6 +76,9 @@ function installWebIPCShim() {
                         return notifyUnsupported('Desktop network and SSH verification')
                     case 'logs:read-client':
                         return webLog.read(Number((args[0] as { limit?: number } | undefined)?.limit) || undefined)
+                    // The browser already verified this page's certificate.
+                    case 'server-trust:register':
+                        return true
                     // The page's own session cookie signs the docs in; no token is passed.
                     case 'api-docs:open':
                         window.open(new URL('/api-docs/', window.location.origin).href, '_blank', 'noopener,noreferrer')
