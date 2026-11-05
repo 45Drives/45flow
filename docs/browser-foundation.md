@@ -47,7 +47,7 @@ The desktop app keeps its Bearer token, now bound to a server-side session. `des
 
 ## Pro gate (A-04)
 
-`/app/` is served only to licensed servers. nginx asks the Broadcaster (`auth_request` to `/api/license/web-access`) before serving anything under `/app/`; a refusal shows an upgrade page (HTTP 402). "Licensed" means Pro or Pro in legacy mode, the same rule as `requireLicense`. `WEB_APP_LICENSE_GATE=off` in the Broadcaster's environment opens it to every server without regenerating nginx, so the production policy can change with a restart. The allowlist is checked first: a client outside it gets 403, never the upgrade page. This is a product gate, not a security boundary: every API is already authenticated, and the same APIs serve the desktop app on free servers.
+`/app/` is served only to licensed servers. nginx asks the Broadcaster (`auth_request` to `/api/license/web-access`) before serving anything under `/app/`; a refusal shows an upgrade page (HTTP 402). "Licensed" means active Pro/trial or paid Pro in legacy mode (`fallback: true`); expired/revoked trials are blocked even when their certificate and web package remain installed. `WEB_APP_LICENSE_GATE=off` is an explicit lab override that opens it to every server without regenerating nginx. Keep the gate enabled on production servers. The allowlist is checked first: a client outside it gets 403, never the upgrade page. This is a product gate, not a security boundary: every API is already authenticated, and the same APIs serve the desktop app on free servers. The static package is installable on any host; license enforcement happens on the hosting Broadcaster, not inside the package.
 
 ## Packaging and versioning (D-33)
 
@@ -66,7 +66,22 @@ Lab deployment without packages: `make install-remote REMOTE_HOST=<server>`; `ma
 
 `manifest.json`, `packaging/` and `.github/workflows/build-web-packages.yml` use the same 45Drives build/sign/publish pipeline as the Broadcaster. Builds cover Ubuntu Focal/Jammy, Debian Bookworm/Trixie and Rocky EL8/EL9. Debian packages are `all`; RPMs are `noarch`. The existing Broadcaster build images provide Node 22, Corepack and distro packaging tools. Checkout includes the Houston Common submodule; the package build installs locked dependencies, builds the common workspaces and builds the web renderer. Only static web files ship, not Node or Electron.
 
-`package.json` remains the version source. Before the pipeline reads the manifest, `scripts/web/sync-manifest.mjs` copies the app version (including prerelease `~` normalization) into the manifest and its changelog version. The manifest's build number controls package revisions. Pushes to `build` build/sign/update the local package repositories; `v*.*.*` tags also attach the web packages to the GitHub release and sync the repositories remotely. The self-hosted runners, existing images, signing key and repository configuration must be available; adding these files does not publish a release.
+`package.json` remains the version source. Before the pipeline reads the manifest, `scripts/web/sync-manifest.mjs` copies the app version (including prerelease `~` normalization) into the manifest and its changelog version. The manifest's build number controls package revisions.
+
+The normal `yarn release:orchestrate` flow now requires the web package workflow after the selected desktop builds finish and before any GitHub release creation/upload/publication. A Windows `stage` run still stops for manual signing without publishing web packages; the `finalize` run executes the web step. No separate web command or version bump is needed.
+
+The orchestrator records the source commit before desktop builds, verifies the Linux/Windows/macOS source after pull (or local source before Windows rsync) and writes a `source-commit` record into successful desktop staging directories. Windows finalize and macOS sign-only require that record to match the current commit; old stages without one must be rebuilt. `scripts/release/web-workflow.mjs` checks that the local commit/version have not changed, the source is clean and `GH_TAG_REF` points to that commit, then dispatches `build-web-packages.yml` with the exact source SHA and app version. A unique request ID selects only that dispatch's run, even during concurrent releases. Missing dispatches, build/sign/sync failures, cancellation and timeouts stop the release instead of allowing a desktop-only success.
+
+The workflow is dispatch-only: it no longer runs on tag/branch pushes or creates/publishes GitHub releases. It checks out the pinned source with submodules, verifies its app version, builds all six distros, signs them, verifies four signed `all` DEBs and two `noarch` RPMs exist, updates local repositories and syncs remote repositories. The orchestrator waits for the entire workflow to succeed. Signed web packages are delivered through the 45Drives repositories; desktop GitHub assets and draft/publication remain owned by the orchestrator.
+
+Before the first synchronized release:
+
+1. Push the workflow and release helpers. The workflow must be registered on the repository's default branch. The desktop source commit and its submodule commits must also be pushed.
+2. Ensure `gh` is authenticated with Actions read/write access (dispatch and watch), in addition to the existing release permissions. The self-hosted runners, existing images, signing key and repository configuration must be available.
+3. Leave `WEB_WORKFLOW_REF` empty for the default branch's workflow, or set it to a pushed branch containing the workflow implementation to use. The source checkout remains pinned to the desktop source SHA regardless of this setting.
+4. Run the existing orchestrator. Every completed run builds and pushes web packages, even if GitHub publication is disabled; Windows stage-only runs do not. Package publication precedes GitHub release publication and is not rolled back if a later GitHub upload fails.
+
+Keep the desktop hosts' existing pull/sync commands on the intended release commit. Source drift is rejected rather than silently changing the selected release version or force-checking out remote worktrees. If the local Linux pull advances the commit, rerun from that commit. Reusing an existing staging directory from a different commit is rejected; choose a fresh staging directory and rebuild all targets.
 
 The Broadcaster checks at startup, after successful admin license activation and every 15 minutes. An active license (including an active trial) with update entitlement installs a missing `45flow-web` from the host's configured apt/dnf/yum repositories. A transient `45flow-web-install` systemd unit runs the transaction outside the Broadcaster's `NoNewPrivileges` sandbox. Failures are logged and retried; they do not block startup or change the activation response. Use `journalctl -u houston-broadcaster -u 45flow-web-install` for diagnostics. Repository access, systemd and root privileges are required. No package is downloaded directly from GitHub and no repository or signing key is added automatically.
 
@@ -75,5 +90,4 @@ Unlicensed, expired-trial and non-update-entitled servers do not fetch packages.
 ## Deferred
 
 - First signed repository publication and live installation checks on licensed Debian/Rocky servers (including activation after startup, package-manager lock recovery and uninstall/reinstall).
-- Production decision on whether `/app` stays Pro-only (`WEB_APP_LICENSE_GATE`).
 - Browser validation across supported browsers (C6) and a repeatable end-to-end smoke script in the repository.

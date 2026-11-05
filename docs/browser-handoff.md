@@ -9,6 +9,7 @@ Stage 1 (A2) is built and checked. This is what B and C need to build on it. Det
 - Sign-in uses a cookie session (`POST /api/session`); the desktop app keeps its Bearer token, now backed by a server-side session. Both follow one set of rules.
 - Packages: `make web-package` builds `45flow-web` (.tar.gz, .deb, .rpm) with a checksum file. `make install-remote` deploys to a lab server.
 - **A2 #7:** six-distro repository packaging and the build/sign/publish workflow are defined. The Broadcaster installs a missing `45flow-web` on startup or license activation for active, update-entitled licenses, retrying every 15 minutes. Unlicensed servers do not install it; existing packages are not automatically upgraded or removed. First repository publication and live licensed-server installation remain to be verified; see [browser-foundation.md](./browser-foundation.md#repository-packages-and-default-installation-a2-7).
+- **Release sync:** the normal desktop orchestrator dispatches and waits for the pinned-version web build/sign/repository sync before its GitHub release steps (Windows stage waits until finalize). The web workflow does not independently publish a GitHub release. Hosted access allows active licenses/trials and paid legacy licenses; expired trials are blocked even with the package installed.
 
 ## For Track B (security)
 
