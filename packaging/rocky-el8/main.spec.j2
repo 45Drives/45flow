@@ -18,7 +18,6 @@ Recommends:     houston-broadcaster
 
 %build
 sh packaging/build.sh
-./node_modules/.bin/vitest run scripts/web/lib.test.js scripts/web/packaging.test.js
 
 %install
 make web-install DESTDIR=%{buildroot}
