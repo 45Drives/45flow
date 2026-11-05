@@ -1601,13 +1601,16 @@ The player supports standard media controls:
 
 ### Quality Selection
 
-If review copies were generated, viewers can choose their preferred quality:
-- **Auto** — Automatically adapts to available bandwidth
-- **720p** — Lower resolution, faster loading
-- **1080p** — Full HD
-- **Original** — Full quality source file (if included)
+If review copies were generated, viewers can choose a playback mode plus a manual quality:
 
-The player uses **HLS (HTTP Live Streaming)** for adaptive bitrate delivery.
+- **Auto** — Adaptive HLS; quality shifts with available bandwidth among the renditions the viewer is authorized to see.
+- **Best** — Plays the highest authorized rendition available for the file.
+- **Data Saver** — Caps playback at the configured quality ceiling (or the lowest available rendition when no ceiling is configured) and reduces preview preloading. While Data Saver is active, the manual quality selector is disabled to prevent bypassing the cap.
+- **Manual quality** (e.g. 720p, 1080p, Original) — Available while in Auto or Best, this overrides the active mode with a fixed rendition. Once you pick a manual quality, no mode button stays highlighted until you reselect one.
+
+Clicking any mode button (Auto, Best, or Data Saver) switches playback back to adaptive **HLS (HTTP Live Streaming)** and reactivates that mode.
+
+> **Note:** Available qualities are limited by the renditions generated for that file and your access permissions — not every file offers every option. For uploads that didn't request specific review-copy qualities, which renditions get generated depends on the server's configured default rendition profile (an admin-only server setting); uploads that explicitly chose their own qualities keep that explicit selection regardless of the server default.
 
 ### Timecoded Comments
 
