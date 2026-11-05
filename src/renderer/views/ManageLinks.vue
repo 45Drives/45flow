@@ -814,7 +814,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useApi } from '../composables/useApi'
-import { useExternalAddressReadiness, describeExternalAddressNotReady } from '../composables/useExternalAddressReadiness'
+import { useExternalAddressReadiness, describeExternalAddressNotReady, resolveCopyUrl } from '../composables/useExternalAddressReadiness'
 import { useConnections } from '../composables/useConnections'
 import { useServerFilter } from '../composables/useServerFilter'
 import { useLinkRefreshSignal } from '../composables/useLinkRefresh'
@@ -1486,11 +1486,16 @@ function expiresClass(it: LinkItem) {
 async function copy(txt?: string | null, it?: LinkItem) {
 	if (!txt) return
 	if (it?.externalLink) {
-		const { ready, reason } = await checkExternalAddressReady()
+		const { ready, reason, base } = await checkExternalAddressReady()
 		if (!ready) {
 			pushNotification(new Notification('External Address Not Ready', describeExternalAddressNotReady(reason), 'error', 8000))
 			return
 		}
+		// Freshen the destination against the CURRENT server-authoritative
+		// public address at copy time: `it.url` was computed whenever the
+		// list was last fetched and can be stale (e.g. another admin changed
+		// the configured hostname while this view stayed open).
+		txt = resolveCopyUrl(txt, base)
 	}
 	await navigator.clipboard.writeText(txt)
 	appLog.info('link.copied')

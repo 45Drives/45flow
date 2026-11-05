@@ -339,7 +339,7 @@ import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { appLog } from '../composables/useLog'
 import { connectionMetaInjectionKey, currentServerInjectionKey } from '../keys/injection-keys'
 import { useApi } from '../composables/useApi'
-import { useExternalAddressReadiness, describeExternalAddressNotReady } from '../composables/useExternalAddressReadiness'
+import { useExternalAddressReadiness, describeExternalAddressNotReady, resolveCopyUrl } from '../composables/useExternalAddressReadiness'
 import { validateUploadBatch } from '../utils/uploadPreflight'
 import { useConnections } from '../composables/useConnections'
 import { useActiveProject } from '../composables/useActiveProject'
@@ -1800,14 +1800,19 @@ function extractLinkToken(data: any): string {
 
 async function copyLink() {
   if (!viewUrl.value) return
+  let url = viewUrl.value
   if (usePublicBase.value) {
-    const { ready, reason } = await checkExternalAddressReady()
+    const { ready, reason, base } = await checkExternalAddressReady()
     if (!ready) {
       pushNotification(new Notification('External Address Not Ready', describeExternalAddressNotReady(reason), 'error', 8000))
       return
     }
+    // Freshen against the CURRENT server-authoritative public address —
+    // viewUrl was set once right after upload/link creation and can be
+    // stale if the configured hostname changed while this overlay stayed open.
+    url = resolveCopyUrl(url, base)
   }
-  navigator.clipboard.writeText(viewUrl.value).then(() => {
+  navigator.clipboard.writeText(url).then(() => {
     pushNotification(new Notification('Link Copied', 'Share link copied to clipboard.', 'success', 3000))
   })
 }

@@ -141,4 +141,25 @@ it('C1 blocks external copying until hostname and TLS are ready', async () => {
 
     expect(mocks.apiFetch).not.toHaveBeenCalled()
     expect(writeText).toHaveBeenCalledWith('http://192.168.1.50:9095/link/abc123')
+
+    // e. C1 correction regression: another admin changes the configured
+    // public address to a NEW trusted hostname while this overlay/view
+    // stays open. viewUrl is still the OLD cached hostname (set at
+    // mount/creation time), but checkExternalAddressReady() now reports
+    // fresh readiness for the NEW hostname (with its base). The actual
+    // copied destination must use the CURRENT server-authoritative
+    // hostname at copy time, not the stale cached one — a plain boolean
+    // ready check is not enough.
+    mocks.apiFetch.mockClear()
+    writeText.mockClear()
+    mocks.notify.mockClear()
+    state.viewUrl = 'https://old-host.example.com/link/abc123?dl=1'
+    state.usePublicBase = true
+    mocks.apiFetch.mockResolvedValue({ ready: true, base: 'https://new-host.example.com' })
+
+    await state.copyLink()
+    await nextTick()
+
+    expect(mocks.apiFetch).toHaveBeenCalledWith('/api/links/external-address-readiness', { method: 'GET' })
+    expect(writeText).toHaveBeenCalledWith('https://new-host.example.com/link/abc123?dl=1')
   })

@@ -581,7 +581,7 @@ import { Notification } from '@45drives/houston-common-ui'
 import { useApi } from '../composables/useApi'
 import { useResilientNav } from '../composables/useResilientNav'
 import { useLinkOptions } from '../composables/useLinkOptions'
-import { useExternalAddressReadiness, describeExternalAddressNotReady } from '../composables/useExternalAddressReadiness'
+import { useExternalAddressReadiness, describeExternalAddressNotReady, resolveCopyUrl } from '../composables/useExternalAddressReadiness'
 import { useHeader } from '../composables/useHeader'
 import { pushNotification } from '../composables/useNotificationQueue'
 import { signalLinkCreated } from '../composables/useLinkRefresh'
@@ -1474,14 +1474,19 @@ async function generateLink() {
 
 async function copyResult() {
 	if (!resultUrl.value) return
+	let url = resultUrl.value
 	if (opts.usePublicBase.value) {
-		const { ready, reason } = await checkExternalAddressReady()
+		const { ready, reason, base } = await checkExternalAddressReady()
 		if (!ready) {
 			pushNotification(new Notification('External Address Not Ready', describeExternalAddressNotReady(reason), 'error', 8000))
 			return
 		}
+		// Freshen against the CURRENT server-authoritative public address —
+		// resultUrl was set once right after creation and can be stale if the
+		// configured hostname changed while this result panel stayed open.
+		url = resolveCopyUrl(url, base)
 	}
-	navigator.clipboard.writeText(resultUrl.value)
+	navigator.clipboard.writeText(url)
 	pushNotification(new Notification('Copied!', 'Link copied to clipboard.', 'success', 4000))
 }
 

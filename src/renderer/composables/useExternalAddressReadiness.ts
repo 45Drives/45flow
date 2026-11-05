@@ -17,16 +17,54 @@ import { useApi } from './useApi'
 export interface ExternalAddressReadiness {
 	ready: boolean
 	reason?: string
+	/**
+	 * The CURRENT server-authoritative external base origin (e.g.
+	 * "https://share.example.com"), present only when ready===true. Narrow:
+	 * this is exactly the origin already embedded in every external
+	 * recipient link shown to an authenticated user, not a new secret.
+	 * Callers should use `resolveCopyUrl` to refresh an already-cached
+	 * recipient URL with this origin at copy time, rather than trusting a
+	 * possibly-stale hostname fetched at an earlier list/mount/render.
+	 */
+	base?: string | null
 }
 
 const READINESS_MESSAGES: Record<string, string> = {
 	missing_hostname: 'Set a public hostname in Settings → URLs & Access before sharing external links.',
 	raw_ip_address_not_allowed:
 		'Configure a real hostname instead of a raw IP address in Settings → URLs & Access.',
+	insecure_scheme_not_allowed:
+		'Your configured public address must use https, not http, before sharing external links. Fix it in Settings → URLs & Access.',
 	certificate_not_trusted:
 		'The HTTPS certificate for your configured hostname is not valid or trusted yet. Finish certificate setup in Settings → URLs & Access.',
 	readiness_check_failed:
 		'Could not verify your external address is ready. Check Settings → URLs & Access and try again.',
+}
+
+/**
+ * Rebuilds `originalUrl` using the CURRENT server-authoritative `base`
+ * origin (scheme + host + port), preserving the original path, query and
+ * fragment exactly. Used at copy time so a recipient URL cached from an
+ * earlier list/mount/render never ships a stale hostname/IP after the
+ * admin changes the configured public address while the view stays open.
+ *
+ * Uses real URL parsing (never raw string/host substring replacement) so
+ * path/query/fragment semantics are preserved exactly. Returns
+ * `originalUrl` unchanged when there is no fresh `base` to apply, or when
+ * `originalUrl` isn't a parseable absolute URL (e.g. already local/relative) —
+ * never throws.
+ */
+export function resolveCopyUrl(originalUrl: string, base?: string | null): string {
+	if (!base) return originalUrl
+	try {
+		const current = new URL(originalUrl)
+		const fresh = new URL(base)
+		current.protocol = fresh.protocol
+		current.host = fresh.host // host covers hostname + explicit port together
+		return current.toString()
+	} catch {
+		return originalUrl
+	}
 }
 
 export function describeExternalAddressNotReady(reason?: string): string {
@@ -42,7 +80,7 @@ export function useExternalAddressReadiness() {
 	async function checkExternalAddressReady(): Promise<ExternalAddressReadiness> {
 		try {
 			const res = await apiFetch('/api/links/external-address-readiness', { method: 'GET' })
-			return { ready: !!res?.ready, reason: res?.reason }
+			return { ready: !!res?.ready, reason: res?.reason, base: res?.base ?? null }
 		} catch {
 			// Fail closed: if we can't confirm readiness, treat the address as not ready
 			// rather than silently allowing a copy of a possibly-stale external URL.

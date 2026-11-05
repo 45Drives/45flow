@@ -1040,7 +1040,7 @@ import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../..
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { Switch } from '@headlessui/vue'
 import { useTransferProgress } from '../../composables/useTransferProgress'
-import { useExternalAddressReadiness, describeExternalAddressNotReady } from '../../composables/useExternalAddressReadiness'
+import { useExternalAddressReadiness, describeExternalAddressNotReady, resolveCopyUrl } from '../../composables/useExternalAddressReadiness'
 import { useConnections } from '../../composables/useConnections'
 import { useLicenseStatus } from '../../composables/useLicenseStatus'
 import { useRemoteTranscode } from '../../composables/useRemoteTranscode'
@@ -2163,11 +2163,15 @@ function fallbackTitle(it: LinkItem) {
 async function copy(txt?: string | null) {
   if (!txt) return
   if (txt === primaryUrl.value && (props.link as any)?.externalLink) {
-    const { ready, reason } = await checkExternalAddressReady()
+    const { ready, reason, base } = await checkExternalAddressReady()
     if (!ready) {
       pushNotification(new Notification('External Address Not Ready', describeExternalAddressNotReady(reason), 'error', 8000))
       return
     }
+    // Freshen against the CURRENT server-authoritative public address —
+    // primaryUrl is a prop set once by the caller and can be stale if the
+    // configured hostname changed while this modal stayed open.
+    txt = resolveCopyUrl(txt, base)
   }
   await navigator.clipboard.writeText(txt)
 }
