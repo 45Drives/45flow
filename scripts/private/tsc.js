@@ -5,7 +5,10 @@ function compile(directory) {
   console.log("compileDir:", directory);
 
   return new Promise((resolve, reject) => {
-    const tscProcess = ChildProcess.exec('tsc', { cwd: directory });
+    const tscProcess = ChildProcess.spawn(process.execPath, [require.resolve('typescript/bin/tsc')], {
+      cwd: directory,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
 
     // Handle stdout
     tscProcess.stdout.on('data', data => {
@@ -23,11 +26,12 @@ function compile(directory) {
       reject(err);
     });
 
-    // Handle process exit
-    tscProcess.on('exit', exitCode => {
-      if (exitCode > 0) {
-        console.log(Chalk.red('TypeScript compilation failed with exit code:', exitCode));
-        reject(new Error(`TypeScript compilation failed with exit code: ${exitCode}`));
+    // Wait for process completion and drained output before settling the build.
+    tscProcess.on('close', (exitCode, signal) => {
+      if (exitCode !== 0) {
+        const reason = signal ? `signal: ${signal}` : `exit code: ${exitCode}`;
+        console.log(Chalk.red(`TypeScript compilation failed with ${reason}`));
+        reject(new Error(`TypeScript compilation failed with ${reason}`));
       } else {
         console.log(Chalk.green('TypeScript compilation completed successfully.'));
         resolve();
