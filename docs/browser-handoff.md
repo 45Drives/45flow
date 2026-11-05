@@ -8,6 +8,7 @@ Stage 1 (A2) is built and checked. This is what B and C need to build on it. Det
 - It is the same renderer as the desktop app. Where Electron is absent, `src/renderer/ipc-web-shim.ts` provides `window.electron`; every desktop-only channel is mapped, handled or rejected with guidance (see the table in `browser-foundation.md`).
 - Sign-in uses a cookie session (`POST /api/session`); the desktop app keeps its Bearer token, now backed by a server-side session. Both follow one set of rules.
 - Packages: `make web-package` builds `45flow-web` (.tar.gz, .deb, .rpm) with a checksum file. `make install-remote` deploys to a lab server.
+- **A2 #7:** six-distro repository packaging and the build/sign/publish workflow are defined. The Broadcaster installs a missing `45flow-web` on startup or license activation for active, update-entitled licenses, retrying every 15 minutes. Unlicensed servers do not install it; existing packages are not automatically upgraded or removed. First repository publication and live licensed-server installation remain to be verified; see [browser-foundation.md](./browser-foundation.md#repository-packages-and-default-installation-a2-7).
 
 ## For Track B (security)
 

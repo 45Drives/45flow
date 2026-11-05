@@ -1,0 +1,17 @@
+#!/usr/bin/make -f
+DEB_PKG := $(shell dh_listpackages)
+DESTROOT := $(CURDIR)/debian/$(DEB_PKG)
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+
+override_dh_auto_build:
+	sh packaging/build.sh
+
+override_dh_auto_test:
+	./node_modules/.bin/vitest run scripts/web/lib.test.js scripts/web/packaging.test.js
+
+override_dh_auto_install:
+	$(MAKE) web-install DESTDIR=$(DESTROOT)

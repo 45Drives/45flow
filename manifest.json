@@ -1,0 +1,71 @@
+{
+  "schema_version": "45D_AP_V2.0",
+  "name": "45flow-web",
+  "title": "45Flow Web UI",
+  "description": "45Flow browser UI served by Houston Broadcaster at /app/",
+  "version": "1.0.9",
+  "build_number": "1",
+  "stable": false,
+  "author": "45Drives <info@45drives.com>",
+  "git_url": "https://github.com/45Drives/45flow",
+  "license": "GPL-3.0-only",
+  "defaults": {
+    "change_urgency": "medium"
+  },
+  "architecture": {
+    "rocky": "noarch",
+    "debian": "all",
+    "ubuntu": "all"
+  },
+  "dependencies": {
+    "ubuntu_common": [],
+    "debian_common": [],
+    "rocky_common": []
+  },
+  "builds": [
+    {
+      "group": "ubuntu",
+      "os_name": "ubuntu-focal",
+      "image": "ci.cr.45d.io/ci/houston-broadcaster/ubuntu-focal-houston-broadcaster:1"
+    },
+    {
+      "group": "ubuntu",
+      "os_name": "ubuntu-jammy",
+      "image": "ci.cr.45d.io/ci/houston-broadcaster/ubuntu-jammy-houston-broadcaster:1"
+    },
+    {
+      "group": "rocky",
+      "os_name": "rocky-el8",
+      "image": "ci.cr.45d.io/ci/houston-broadcaster/rocky-el8-houston-broadcaster:1"
+    },
+    {
+      "group": "rocky",
+      "os_name": "rocky-el9",
+      "image": "ci.cr.45d.io/ci/houston-broadcaster/rocky-el9-houston-broadcaster:1"
+    },
+    {
+      "group": "debian",
+      "os_name": "debian-bookworm",
+      "image": "ci.cr.45d.io/ci/houston-broadcaster/debian-bookworm-houston-broadcaster:1"
+    },
+    {
+      "group": "debian",
+      "os_name": "debian-trixie",
+      "image": "ci.cr.45d.io/ci/houston-broadcaster/debian-trixie-houston-broadcaster:1"
+    }
+  ],
+  "repos": [
+    "enterprise",
+    "community"
+  ],
+  "changelog": {
+    "urgency": "medium",
+    "version": "1.0.9",
+    "build_number": "1",
+    "date": null,
+    "packager": "45Drives <info@45drives.com>",
+    "changes": [
+      "Package the 45Flow browser UI for licensed Houston Broadcaster servers."
+    ]
+  }
+}

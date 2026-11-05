@@ -20,7 +20,7 @@ HB_APPDIR     ?= /opt/45drives/houston-broadcaster
 
 RSYNC_FLAGS ?= -a --delete --compress
 
-.PHONY: install-remote web-build web-package web-deploy web-nginx web-verify web-gate broadcaster-remote
+.PHONY: install-remote web-build web-package web-install web-deploy web-nginx web-verify web-gate broadcaster-remote
 
 install-remote: web-deploy web-nginx web-verify
 
@@ -30,6 +30,15 @@ web-build:
 
 web-package:
 	node scripts/web/package.mjs
+
+# Stage only static files; never install Node/Electron or change nginx from this package.
+web-install:
+	test -f $(WEB_BUILD_DIR)/index.html
+	test -f $(WEB_BUILD_DIR)/version.json
+	install -d $(DESTDIR)$(WEB_ROOT)
+	cp -a $(WEB_BUILD_DIR)/. $(DESTDIR)$(WEB_ROOT)/
+	find $(DESTDIR)$(WEB_ROOT) -type d -exec chmod 0755 {} +
+	find $(DESTDIR)$(WEB_ROOT) -type f -exec chmod 0644 {} +
 
 web-deploy: web-build
 	ssh $(REMOTE) 'mkdir -p $(WEB_ROOT)'

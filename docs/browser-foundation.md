@@ -1,6 +1,6 @@
 # Browser foundation (Stage 1)
 
-The browser entry point is `/app/` on the Houston Broadcaster nginx HTTPS listener. Both `/app` and `/app/` are restricted by the existing `45flow-admin-allow.conf` allowlist. nginx serves files from `/opt/45drives/45flow-web`; deployment of the build into that directory is intentionally not part of this stage.
+The browser entry point is `/app/` on the Houston Broadcaster nginx HTTPS listener. Both `/app` and `/app/` are restricted by the existing `45flow-admin-allow.conf` allowlist. nginx serves files from `/opt/45drives/45flow-web`, installed by the `45flow-web` package.
 
 ## IPC compatibility map
 
@@ -62,8 +62,18 @@ Output is reproducible: with `SOURCE_DATE_EPOCH` set, two builds give byte-ident
 
 Lab deployment without packages: `make install-remote REMOTE_HOST=<server>`; `make web-gate GATE=off REMOTE_HOST=<server>` lets an unlicensed lab server serve `/app/`.
 
+### Repository packages and default installation (A2 #7)
+
+`manifest.json`, `packaging/` and `.github/workflows/build-web-packages.yml` use the same 45Drives build/sign/publish pipeline as the Broadcaster. Builds cover Ubuntu Focal/Jammy, Debian Bookworm/Trixie and Rocky EL8/EL9. Debian packages are `all`; RPMs are `noarch`. The existing Broadcaster build images provide Node 22, Corepack and distro packaging tools. Checkout includes the Houston Common submodule; the package build installs locked dependencies, builds the common workspaces and builds the web renderer. Only static web files ship, not Node or Electron.
+
+`package.json` remains the version source. Before the pipeline reads the manifest, `scripts/web/sync-manifest.mjs` copies the app version (including prerelease `~` normalization) into the manifest and its changelog version. The manifest's build number controls package revisions. Pushes to `build` build/sign/update the local package repositories; `v*.*.*` tags also attach the web packages to the GitHub release and sync the repositories remotely. The self-hosted runners, existing images, signing key and repository configuration must be available; adding these files does not publish a release.
+
+The Broadcaster checks at startup, after successful admin license activation and every 15 minutes. An active license (including an active trial) with update entitlement installs a missing `45flow-web` from the host's configured apt/dnf/yum repositories. A transient `45flow-web-install` systemd unit runs the transaction outside the Broadcaster's `NoNewPrivileges` sandbox. Failures are logged and retried; they do not block startup or change the activation response. Use `journalctl -u houston-broadcaster -u 45flow-web-install` for diagnostics. Repository access, systemd and root privileges are required. No package is downloaded directly from GitHub and no repository or signing key is added automatically.
+
+Unlicensed, expired-trial and non-update-entitled servers do not fetch packages. An existing package is neither automatically upgraded nor removed when licensing changes; access remains subject to the existing nginx license gate and allowlist. To upgrade an installed web UI, use normal OS package management while entitled. The web package does not change nginx or restart services, and no new API routes or database migrations are introduced.
+
 ## Deferred
 
-- Publishing the packages to the 45Drives repositories and the "installed by default on licensed servers" policy (D-33). That needs the repository and the Broadcaster's install/licence-activation flow; nothing here installs the package automatically.
+- First signed repository publication and live installation checks on licensed Debian/Rocky servers (including activation after startup, package-manager lock recovery and uninstall/reinstall).
 - Production decision on whether `/app` stays Pro-only (`WEB_APP_LICENSE_GATE`).
 - Browser validation across supported browsers (C6) and a repeatable end-to-end smoke script in the repository.

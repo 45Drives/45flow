@@ -20,6 +20,11 @@ export const debFileName = (version) => `${PACKAGE_NAME}_${debVersion(version)}_
 export const rpmFileName = (version, release = 1) => `${PACKAGE_NAME}-${rpmVersion(version)}-${release}.noarch.rpm`
 export const tarFileName = (version) => `${PACKAGE_NAME}-${assertVersion(version)}.tar.gz`
 
+export function packageManifest(pkg, manifest) {
+  const version = debVersion(pkg.version)
+  return { ...manifest, version, changelog: { ...manifest.changelog, version, build_number: manifest.build_number } }
+}
+
 /** The file the app serves at /app/version.json, so what is deployed can be confirmed. */
 export function versionInfo({ version, commit, dirty, buildDate }) {
   return {
