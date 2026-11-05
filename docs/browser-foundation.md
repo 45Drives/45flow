@@ -66,7 +66,7 @@ Lab deployment without packages: `make install-remote REMOTE_HOST=<server>`; `ma
 
 `manifest.json`, `packaging/` and `.github/workflows/build-web-packages.yml` use the same 45Drives build/sign/publish pipeline as the Broadcaster. Builds cover Ubuntu Focal/Jammy, Debian Bookworm/Trixie and Rocky EL8/EL9. Debian packages are `all`; RPMs are `noarch`. The existing Broadcaster build images provide Node 22, Corepack and distro packaging tools. Checkout includes the Houston Common submodule; the package build installs locked dependencies, builds the common workspaces and builds the web renderer. Only static web files ship, not Node or Electron.
 
-`package.json` remains the version source. Before the pipeline reads the manifest, `scripts/web/sync-manifest.mjs` copies the app version (including prerelease `~` normalization) into the manifest and its changelog version. The manifest's build number controls package revisions.
+`package.json` remains the version source. Before the pipeline reads the manifest, `scripts/web/ci-prepare.sh` verifies the pinned commit and version, then copies the app version (including prerelease `~` normalization) into the manifest and its changelog version. It uses only POSIX tools because the package runner has no `node`; `sync-manifest.mjs` is the equivalent for local use. The manifest's build number controls package revisions.
 
 The normal `yarn release:orchestrate` flow now requires the web package workflow after the selected desktop builds finish and before any GitHub release creation/upload/publication. A Windows `stage` run still stops for manual signing without publishing web packages; the `finalize` run executes the web step. No separate web command or version bump is needed.
 

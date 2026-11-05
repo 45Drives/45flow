@@ -31,15 +31,11 @@ jobs:
         with:
           ref: ${{ inputs.source_sha }}
           submodules: recursive
-      - name: Verify release source and version
+      - name: Verify release source and sync package version
         env:
           SOURCE_SHA: ${{ inputs.source_sha }}
           EXPECTED_VERSION: ${{ inputs.expected_version }}
-        run: |
-          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
-          node -e "if(require('./package.json').version!==process.env.EXPECTED_VERSION) throw Error('Desktop/web version mismatch')"
-      - name: Version web package from package.json
-        run: node scripts/web/sync-manifest.mjs
+        run: sh scripts/web/ci-prepare.sh "$SOURCE_SHA" "$EXPECTED_VERSION"
       - id: prebuild
         uses: 45drives/actions/prebuild-flow@main
         with:

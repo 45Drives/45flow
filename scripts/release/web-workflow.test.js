@@ -107,7 +107,9 @@ describe('orchestrated web package releases', () => {
     const workflow = fs.readFileSync(new URL('../../.github/workflows/build-web-packages.yml', import.meta.url), 'utf8')
     expect(workflow).toContain("run-name: '45flow-web:${{ inputs.request_id }}'")
     expect(workflow).toContain('ref: ${{ inputs.source_sha }}')
-    expect(workflow).toContain('Desktop/web version mismatch')
+    expect(workflow).toContain('sh scripts/web/ci-prepare.sh "$SOURCE_SHA" "$EXPECTED_VERSION"')
+    // The package runner has no node; no workflow step may depend on it.
+    expect(workflow).not.toMatch(/^\s+(run:\s*)?.*\bnode\b/m)
     expect(workflow).toContain('45drives/actions/sync-repo@main')
     expect(workflow).not.toContain('create_release:')
     expect(workflow).not.toContain('action-gh-release')
