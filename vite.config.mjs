@@ -50,16 +50,26 @@ export default defineConfig(({ command, mode }) => {
       }),
     ],
     resolve: {
-      alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url)),
-        // Keep these so both dev & prod can resolve the CSS and libs
-        '@45drives/houston-common-lib': fileURLToPath(
-          new URL('./node_modules/@45drives/houston-common-lib/dist', import.meta.url)
-        ),
-        '@45drives/houston-common-ui': fileURLToPath(
-          new URL('./node_modules/@45drives/houston-common-ui/dist', import.meta.url)
-        ),
-      },
+      alias: [
+        { find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
+        // Keep these so both dev & prod can resolve the package root, but
+        // match the BARE specifier only (anchored regex, not a plain string
+        // key). A plain string key prefix-matches any subpath too (e.g.
+        // '@45drives/houston-common-ui/style.css'), which would rewrite it
+        // straight to '<dist-dir>/style.css' and bypass the package's own
+        // package.json#exports subpath map (which correctly points
+        // './style.css' at './dist/index.css'). Anchoring to the bare
+        // specifier lets subpath imports fall through to normal node
+        // resolution while still aliasing the root import.
+        {
+          find: /^@45drives\/houston-common-lib$/,
+          replacement: fileURLToPath(new URL('./node_modules/@45drives/houston-common-lib/dist', import.meta.url)),
+        },
+        {
+          find: /^@45drives\/houston-common-ui$/,
+          replacement: fileURLToPath(new URL('./node_modules/@45drives/houston-common-ui/dist', import.meta.url)),
+        },
+      ],
     },
   };
 });
