@@ -140,6 +140,92 @@ automatic replay or sibling outbox solely for naming is authorized.
 This adds one execution-tier read-only handoff context plus its continuation,
 and one GPT-6.1 Sol gate-oracle judgment consult, not another implementation/
 repair round or correction-budget reset. No G3 source is implemented yet.
+The first G3 source implementation is now dispatched to fresh execution-tier
+executor `90455b5c` in the same clean C3 worktree at
+`d7a9db0952f2eb9fcee5c4a27eb941561f062961`. It owns the bounded production
+download/version/outbox integration and meaningful failed-before/passed-after
+checks, not more admission. Existing anonymous access, mail credentials,
+invitation outcomes and intentional preview services must stay unchanged.
+No implementation is accepted or claimed complete yet; independent review
+and verification follow the frozen first candidate. The existing G3 source-
+repair budget is not reset. No new PR, provider call or Princess write is
+authorized.
+
+Executor `90455b5c` returned frozen candidate
+`ddb9eb99c20f3ac528852e3974d12862722cc0b4`, reported UTC
+20:03:14Z-20:13:11Z. Manager confirmed matching clean source before adding
+round 55. The three changed files implement the single-file production route,
+version observation/descriptor binding and a real local-SMTP test through the
+existing durable outbox. The executor reports final targeted passes and an
+eight-test focused-file pass, with three earlier failed self-check iterations.
+Its exact failed-command attribution is inconsistent and syntax-check count
+is unknown; those are not independent acceptance evidence. ZIP/collection
+notifications remain an explicit gap. Fresh independent verification and
+immutable review now examine the same candidate; source stays frozen.
+G2, G3, G8 and whole C3 remain RED until the relevant independent evidence.
+No source push, runtime update or Princess write has occurred.
+Independent verifier `a1369d67-67e7-41cc-b132-96e0cdbf9d22` owns isolated
+candidate checks; reviewer `84f6c1c8-47c6-4999-8f3b-5a7d298f4080` is
+read-only. Both use the same frozen commit and saved v4 dispatcher/oracle.
+No further source work is authorized while either check is active.
+Reviewer `84f6c1c8` finished read-only review without tests/builds; UTC
+start/end unknown. It nominated one reasoned, unmeasured latency regression:
+the new pre-stream version lookup can hash an entire large file after
+same-size mtime drift and serialize same-file requests. Dedup does not avoid
+that preceding work. Other repeated-work and provenance-comment findings
+are advisory; the reviewer found no identity/dedup/descriptor lifecycle bug.
+Narrow point-3 judgment consult `375c24af-c525-4ce4-a5ed-7f9e10b0d56d`
+classifies that one bug-versus-quality question without tests or repairs.
+Independent verification remains pending; both reports must be reconciled
+before acceptance. No gate round append races the verifier's evidence writes.
+Verification has now returned: G3's named test passed independently twice;
+the eight-test focused file also passed twice. Snapshot/dispatcher provenance
+was reproduced, source stayed frozen, and no standing suite/build ran.
+G2 and G8 remain RED. Judgment classifies the latency finding as advisory:
+the hash is real added identity work, but material delay/timeout is unmeasured.
+Acceptance still waits on one precise conflict: the verifier reports a
+null-hash provenance risk explicitly covered by the approved oracle, while
+the reviewer says the atomic snapshot writer makes that state unreachable.
+The same judgment context is resolving actual production reachability without
+tests, repairs or broader review. Passing the named test alone does not waive
+that correctness boundary. Canonical rounds 56-58 preserve both reports and
+the latency classification; bounce 2/2 and restart 0/2 are unchanged pending
+classification. No final-standing dispatch, source push or runtime update yet.
+The conflict is resolved by the current producer/persistence chain: snapshot
+path and usable SHA are published together in one SQL update after hashing
+finishes; pending/error/invalidation paths retain null/null and stay unbound.
+No legitimate current writer creates the verifier's inconsistent path-without-
+hash state. Historical/imported deployment rows remain uninspected, so this is
+an accepted defensive-invariant advisory, not a universal database guarantee.
+The verifier's "out of scope" explanation is rejected: such a real stale-ID
+path would violate the oracle even with passing tests. Canonical round 59 and
+`download-binding-classification-v1.md` preserve the narrower classification.
+Both independent reports are reconciled on the unchanged source; manager
+permits final server standing once (`yarn test`, `yarn build:server`) before
+any publication. No repair, budget reset or whole-C3 completion is authorized.
+Final standing cleared the same frozen source: server suite and build each
+ran once, serial, both exit 0. The suite reported 803 passed and two existing
+skips. Actual command UTC intervals are 20:23:48Z-20:24:01Z and
+20:24:04Z-20:24:05Z. The report's overall start 20:20:00Z conflicts with the
+later final dispatch/judgment chronology; manager records overall start as
+unknown rather than adopting it. Source/lockfile stayed unchanged; no install
+or client/viewer rerun. Round 60 records acceptance of this bounded single-
+file increment with the classified advisories, not whole C3. Publication may
+now proceed on the existing feature branch; no merge or new PR authorized.
+The accepted source and canonical evidence are now published as server
+`0019142f0f4a9faf82c1f8144fad828f899415c6`, remote-confirmed at
+20:26:05Z on `mpyne1-cuddly-waffle`; product candidate remains `ddb9eb99`.
+No merge or new PR occurred. Retained runtime owner `0683e851` is now
+preparing the genuine private-lab download increment on that accepted
+backend, preserving frozen client `0cf5b5b2` and unrelated previews.
+Normal verified-recipient auth, actual owner destination, private TLS SMTP,
+same-version dedup and anonymous availability must be observed rather than
+fabricated. The preview has not yet been claimed updated. Runtime report is
+expected at session `verification/c3-consumed-status-20261106/runtime-download-notification-v1.md`.
+This stage used one new execution-tier executor, one fresh verifier context
+(candidate plus final), one fresh reviewer and one judgment context with two
+narrow finding classifications. Bounce 2/2 and restart 0/2 remain unchanged.
+Princess writes remain paused.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
