@@ -115,6 +115,53 @@ describe('EmailInvitationPanel', () => {
     expect(host.textContent).not.toContain('Invitation sent')
   })
 
+  it('refreshes unknown SMTP configuration without stale status or an error', async () => {
+    const neutralMessage = 'SMTP configuration could not be determined; no send attempt has completed for this invitation.'
+    const apiFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, invitation: pendingInvitation })
+      .mockResolvedValueOnce({
+        ok: true,
+        invitation: {
+          ...pendingInvitation,
+          mail: { configured: null, sent: false, message: neutralMessage },
+        },
+      })
+    mount(42, apiFetch)
+    await flush()
+    setEmail('reviewer@external.test')
+    await flush()
+    sendButton().click()
+    await flush()
+    refreshButton().click()
+    await flush()
+    expect(apiFetch).toHaveBeenNthCalledWith(2, '/api/links/42/invite/7')
+    expect(host.textContent).toContain('Not sent — ' + neutralMessage)
+    expect(host.textContent).not.toContain('SMTP delivery is not configured')
+    expect(host.querySelector('[role="alert"]')).toBeNull()
+  })
+
+  it.each([undefined, 'unknown', 0])('rejects malformed configured value %s on refresh', async (configured) => {
+    const apiFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, invitation: pendingInvitation })
+      .mockResolvedValueOnce({
+        ok: true,
+        invitation: {
+          ...pendingInvitation,
+          mail: { configured, sent: false, message: 'Malformed response' },
+        },
+      })
+    mount(42, apiFetch)
+    await flush()
+    setEmail('reviewer@external.test')
+    await flush()
+    sendButton().click()
+    await flush()
+    refreshButton().click()
+    await flush()
+    expect(host.querySelector('[role="alert"]').textContent).toContain('Unexpected invitation mail response')
+    expect(host.textContent).not.toContain('Malformed response')
+  })
+
   it('discards a stale in-flight response after the link changes and does not leak prior state', async () => {
     let resolveFirst
     const apiFetch = vi.fn()

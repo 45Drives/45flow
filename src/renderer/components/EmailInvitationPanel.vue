@@ -54,7 +54,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
-export type InvitationMail = { configured: boolean; sent: boolean; message: string }
+export type InvitationMail = { configured: boolean | null; sent: boolean; message: string }
 export type InvitationStatus = 'pending' | 'sending' | 'accepted' | 'rejected' | 'timeout' | 'ambiguous'
 export type Invitation = {
     id: number
@@ -142,7 +142,7 @@ function readInvitation(data: unknown): Invitation {
     }
     const mailField: unknown = 'mail' in inv ? Reflect.get(inv, 'mail') : undefined
     if (typeof mailField !== 'object' || mailField === null
-        || !('configured' in mailField) || typeof mailField.configured !== 'boolean'
+        || !('configured' in mailField) || (mailField.configured !== null && typeof mailField.configured !== 'boolean')
         || !('sent' in mailField) || typeof mailField.sent !== 'boolean'
         || !('message' in mailField) || typeof mailField.message !== 'string') {
         throw new Error('Unexpected invitation mail response from server.')
