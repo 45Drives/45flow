@@ -74,6 +74,8 @@ vi.mock('../renderer/components/ConnectionSwitcher.vue', () => ({ default: { tem
 vi.mock('../renderer/components/BasicServerBadge.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../renderer/components/GuidedTour.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../renderer/components/NotificationBell.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('../renderer/components/modals/SettingsModal.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('../renderer/components/modals/LogViewModal.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../renderer/components/QuickShareOverlay.vue', async () => {
   const { h, onUnmounted, ref } = await import('vue')
   return {

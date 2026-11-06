@@ -76,15 +76,16 @@
         <span :class="wizardStep === 3 ? 'font-semibold' : 'text-muted'">Upload &amp; Share</span>
       </div>
 
-      <!-- Scrollable content area -->
-      <div class="flex-1 min-h-0 overflow-y-auto">
-      <!-- Dropped files list -->
-      <div class="border border-default rounded-md p-2 mb-4 max-h-32 overflow-y-auto">
+      <!-- Dropped files list (pinned above the step content, scrolls on its own) -->
+      <div class="shrink-0 border border-default rounded-md p-2 mb-4 max-h-24 overflow-y-auto" aria-label="Files to upload">
         <div v-for="f in droppedFiles" :key="f.path" class="flex items-center justify-between text-sm py-0.5 min-w-0">
           <span class="truncate min-w-0 flex-1" :title="f.path">{{ f.name }}</span>
           <span class="text-muted ml-2 shrink-0">{{ formatSize(f.size) }}</span>
         </div>
       </div>
+
+      <!-- Step content area -->
+      <div class="flex-1 min-h-0 flex flex-col overflow-y-auto">
 
       <!-- ===== STEP 1: Destination ===== -->
       <section v-show="wizardStep === 1" data-tour="qs-step-destination">
@@ -105,7 +106,7 @@
       </section>
 
       <!-- ===== STEP 2: Link Options ===== -->
-      <section v-show="wizardStep === 2" class="qs-lane flex flex-col gap-4" data-tour="qs-step-options">
+      <section v-show="wizardStep === 2" class="qs-lane min-h-0 flex flex-col gap-4" data-tour="qs-step-options">
         <!-- ── Essential options (always visible) ── -->
         <div class="flex flex-col gap-3">
           <!-- Expiry -->
@@ -133,12 +134,12 @@
             <span class="font-semibold whitespace-nowrap shrink-0">Network:</span>
             <div class="flex gap-2" role="radiogroup" aria-label="Network Access">
               <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer select-none transition border border-default bg-default hover:bg-well/40">
-                <input type="radio" name="qs-link-access" :value="false" :checked="usePublicBase === false" @change="usePublicBase = false" class="h-4 w-4" />
-                <span class="text-sm">Local (LAN)</span>
-              </label>
-              <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer select-none transition border border-default bg-default hover:bg-well/40">
                 <input type="radio" name="qs-link-access" :value="true" :checked="usePublicBase === true" @change="usePublicBase = true" class="h-4 w-4" />
                 <span class="text-sm">External (Internet)</span>
+              </label>
+              <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer select-none transition border border-default bg-default hover:bg-well/40">
+                <input type="radio" name="qs-link-access" :value="false" :checked="usePublicBase === false" @change="usePublicBase = false" class="h-4 w-4" />
+                <span class="text-sm">Local (LAN)</span>
               </label>
             </div>
             <button type="button" @click="showPortFwdModal = true" class="text-xs text-primary hover:underline whitespace-nowrap">
@@ -149,8 +150,8 @@
 
         <!-- ── Summary of current settings ── -->
         <div class="text-xs text-muted flex flex-wrap gap-x-4 gap-y-1">
-          <span>Access: {{ accessMode === 'open' ? 'Anyone' : accessMode === 'open_password' ? 'Password' : `${accessUsers.length} user(s)${accessGroups.length ? `, ${accessGroups.length} group(s)` : ''}` }}</span>
-          <span v-if="hasVideo">Review Copies: {{ proxyQualities.join(', ') || 'none' }}</span>
+          <span>Access: {{ accessMode === 'open' ? 'Anyone' : accessMode === 'open_password' ? 'Password' : `${accessUsers.length} client(s)${accessGroups.length ? `, ${accessGroups.length} team(s)` : ''}` }}</span>
+          <span v-if="hasVideo">Proxy Files: {{ proxyQualities.join(', ') || 'none' }}</span>
           <span v-if="hasMedia">Watermark: {{ watermarkEnabled ? 'on' : 'off' }}</span>
         </div>
 
@@ -313,7 +314,7 @@
         </div>
       </section>
 
-      </div> <!-- end scrollable content area -->
+      </div> <!-- end step content area -->
 
       <!-- Footer buttons -->
       <div class="flex justify-end gap-2 mt-4 border-t border-default pt-3 shrink-0" data-tour="qs-footer">
@@ -347,7 +348,6 @@ import { useApi } from '../composables/useApi'
 import { validateUploadBatch } from '../utils/uploadPreflight'
 import { useConnections } from '../composables/useConnections'
 import { useActiveProject } from '../composables/useActiveProject'
-import { useProjectMode } from '../composables/useProjectMode'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { useClientTranscode } from '../composables/useClientTranscode'
 import { useUploadTranscode } from '../composables/useUploadTranscode'
@@ -386,8 +386,7 @@ const { apiFetch } = useApi()
 const { activeConnection } = useConnections()
 const isRootUser = computed(() => activeConnection.value?.username === 'root')
 const { activeProject: rawActiveProject } = useActiveProject()
-const { projectModeEnabled } = useProjectMode()
-const activeProject = computed(() => projectModeEnabled.value ? rawActiveProject.value : null)
+const activeProject = computed(() => rawActiveProject.value)
 const transfer = useTransferProgress()
 const currentServer = inject(currentServerInjectionKey)!
 const connectionMeta = inject(connectionMetaInjectionKey)!
@@ -507,8 +506,8 @@ const quickShareTourSteps = computed<TourStep[]>(() => [
   {
     target: '[data-tour="qs-video-options"]',
     message: isPremiumActive.value
-      ? 'When sharing video or image files, media processing options appear here.\n\nFor video:\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Review copies (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nFor images and video:\n• Watermarks can be overlaid with full customization — position, size, opacity, and tiling (Pro).' + clientTranscodeTourTip
-      : 'When sharing video or image files, media processing options appear here.\n\nFor video:\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Review copies (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nFor images and video:\n• A basic watermark can be applied (bottom-right). Upgrade to Pro for full customization of position, size, and opacity.' + clientTranscodeTourTip,
+      ? 'When sharing video or image files, media processing options appear here.\n\nFor video:\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Proxy files (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nFor images and video:\n• Watermarks can be overlaid with full customization — position, size, opacity, and tiling (Pro).' + clientTranscodeTourTip
+      : 'When sharing video or image files, media processing options appear here.\n\nFor video:\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Proxy files (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nFor images and video:\n• A basic watermark can be applied (bottom-right). Upgrade to Pro for full customization of position, size, and opacity.' + clientTranscodeTourTip,
     beforeShow: async () => {
       tourQuickShareOpen.value = true
       tourQuickShareStep.value = 2
@@ -785,7 +784,7 @@ const minimizedStatusText = computed(() => {
       // Determine what kind of transcode step
       const details = Object.values(perFileDetail.value)
       if (details.some(d => d.startsWith('Stream'))) return `Generating Stream… ${overallProgress.value.toFixed(0)}%`
-      if (details.some(d => d.startsWith('Review'))) return `Review Copy… ${overallProgress.value.toFixed(0)}%`
+      if (details.some(d => d.startsWith('Review'))) return `Proxy File… ${overallProgress.value.toFixed(0)}%`
       return `Transcoding… ${overallProgress.value.toFixed(0)}%`
     }
     if (anyUploading) return `Uploading… ${overallProgress.value.toFixed(0)}%`
@@ -1335,7 +1334,7 @@ async function startUploadAndShare() {
             context: transcodeContext,
             onProgress: (phase, percent) => {
               perFileProgress.value[f.path] = percent
-              perFileDetail.value[f.path] = phase === 'hls' ? `Stream: ${percent.toFixed(0)}%` : `Review copy: ${percent.toFixed(0)}%`
+              perFileDetail.value[f.path] = phase === 'hls' ? `Stream: ${percent.toFixed(0)}%` : `Proxy file: ${percent.toFixed(0)}%`
             },
           })
 
@@ -1645,7 +1644,7 @@ async function startUploadAndShare() {
         if (proxyActive && canUsePlayback && !alreadyTrackingProxy) {
           transfer.startPlaybackTranscodeTask({
             title: `Transcoding: ${displayName}`,
-            detail: 'Review copy',
+            detail: 'Proxy file',
             intervalMs: 1500,
             jobKind: 'proxy_mp4',
             context,
@@ -1823,7 +1822,7 @@ function openInBrowser() {
   border: 1px solid color-mix(in srgb, var(--btn-primary-bg) 25%, #585867);
   border-radius: 0.8rem;
   padding: 0.8rem;
-  overflow: hidden;
+  overflow-y: auto;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--btn-primary-bg) 9%, transparent), transparent 58%);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, white 3%, transparent);

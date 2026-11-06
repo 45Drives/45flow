@@ -43,7 +43,7 @@
       >
         <input type="checkbox" v-model="rememberProjectAsDefault" :disabled="savingDefaultRoot" />
         <span>
-          Use selected project as default share root (change later in Settings -> Preferences -> Default share/upload root).
+          Use this folder as the default server folder (change later in Settings → Preferences).
         </span>
       </label>
     </div>

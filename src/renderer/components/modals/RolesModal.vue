@@ -155,7 +155,7 @@ const { onboarding, markDone } = useOnboarding()
 const rolesTourSteps: TourStep[] = [
 	{
 		target: '[data-tour="roles-modal-create"]',
-		message: 'Create custom roles here.\n\nEach role has a name and four permission checkboxes: View, Comment, Download, and Upload. These control what users with this role can do on a shared link.',
+		message: 'Create custom roles here.\n\nEach role has a name and four permission checkboxes: View, Comment, Download, and Upload. These control what clients with this role can do on a shared link.',
 	},
 	{
 		target: '[data-tour="roles-modal-list"]',

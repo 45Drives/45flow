@@ -114,7 +114,7 @@ export function useUploadTranscode() {
                 apiFetch: opts.apiFetch,
                 assetVersionIds: [opts.assetVersionId],
                 title: `Transcoding: ${opts.filename}`,
-                detail: 'Generating review copy…',
+                detail: 'Generating proxy file…',
                 intervalMs: 1500,
                 jobKind: 'proxy_mp4',
                 context: { ...opts.context, proxyQualities: opts.proxyQualities.slice() },
@@ -421,15 +421,15 @@ export function useUploadTranscode() {
                             if (dockProxyTaskId) transfer.completeTranscodeTask(dockProxyTaskId)
                         } else {
                             console.error('[client-transcode] proxy upload failed')
-                            phaseErrors.push('Review-copy output upload failed')
+                            phaseErrors.push('Proxy file upload failed')
                         }
                     } else {
                         console.error('[client-transcode] proxy FFmpeg failed:', result?.error)
-                        phaseErrors.push(`Review copy: ${summarizeTranscodeError(result?.error)}`)
+                        phaseErrors.push(`Proxy file: ${summarizeTranscodeError(result?.error)}`)
                     }
                 } catch (err: any) {
                     console.error('[client-transcode] proxy phase error:', err?.message || err)
-                    phaseErrors.push(`Review copy: ${summarizeTranscodeError(err)}`)
+                    phaseErrors.push(`Proxy file: ${summarizeTranscodeError(err)}`)
                 }
             }
 

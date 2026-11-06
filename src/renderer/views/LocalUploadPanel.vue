@@ -5,8 +5,11 @@
 				<template #header>
 					<div class="wizard-head" data-tour="upload-wizard-header">
 						<h2 class="wizard-main-title">
-							Local Upload Wizard
-							<span v-if="activeConnection" class="text-sm text-muted font-normal ml-2">
+							Add Files
+							<span v-if="activeProject" class="text-sm text-muted font-normal ml-2">
+								→ {{ activeProject.name }}
+							</span>
+							<span v-else-if="activeConnection" class="text-sm text-muted font-normal ml-2">
 								→ {{ activeConnection!.name }}
 							</span>
 						</h2>
@@ -14,16 +17,16 @@
 							<li class="wizard-step-item">
 								<div :class="stepClass(1)">1</div>
 								<div class="wizard-step-copy">
-									<span class="wizard-step-label">Select Local Files</span>
-									<span class="wizard-step-help">Choose files/folders from this workstation.</span>
+									<span class="wizard-step-label">Pick Files</span>
+									<span class="wizard-step-help">Choose files or folders on this computer.</span>
 								</div>
 							</li>
 							<li class="wizard-step-divider" aria-hidden="true"></li>
 							<li class="wizard-step-item">
 								<div :class="stepClass(2)">2</div>
 								<div class="wizard-step-copy">
-									<span class="wizard-step-label">Choose Destination</span>
-									<span class="wizard-step-help">Pick the target folder on the server.</span>
+									<span class="wizard-step-label">Choose Folder</span>
+									<span class="wizard-step-help">Pick where they go in the project.</span>
 								</div>
 							</li>
 							<li class="wizard-step-divider" aria-hidden="true"></li>
@@ -106,7 +109,7 @@
 					<!-- STEP 2: Destination (server) -->
 					<section v-show="step === 2" class="wizard-pane wizard-pane--fill" data-tour="upload-step-2">
 
-						<h2 class="wizard-heading">Choose destination on server</h2>
+						<h2 class="wizard-heading">Choose a folder on the server</h2>
 
 						<div data-tour="upload-folder-picker" class="flex flex-col flex-1 min-h-0">
 							<FolderPicker v-model="destFolderRel" :apiFetch="apiFetch" useCase="upload"
@@ -124,7 +127,7 @@
 
 					<!-- STEP 3: Upload progress -->
 					<section v-show="step === 3" class="wizard-pane wizard-pane--fill" data-tour="upload-step-3">
-						<h2 class="wizard-heading">Uploading to {{ destDir || '/' }}</h2>
+						<h2 class="wizard-heading">Adding to {{ destDir || '/' }}</h2>
 
 						<!-- Overall progress summary -->
 						<div v-if="uploads.length" data-tour="upload-progress" class="wizard-overall-progress">
@@ -246,7 +249,7 @@
 								<div class="advanced-video-header">
 									<p class="font-semibold">{{ hasVideoSelected && hasImageSelected ? 'Media options' : hasVideoSelected ? 'Video options' : 'Image options' }}</p>
 									<p class="text-xs text-muted">
-										<span v-if="hasVideoSelected">Review copies will be generated for streaming after upload.</span>
+										<span v-if="hasVideoSelected">Proxy files will be generated for streaming after upload.</span>
 										<span v-else>Image watermarks will be applied after upload.</span>
 										<span v-if="watermarkAfterUpload"> · Watermark enabled.</span>
 									</p>
@@ -321,7 +324,7 @@
 			</CardContainer>
 			<div class="button-group-row">
 				<button @click="goBack" class="btn btn-danger justify-start">
-					Return to Dashboard
+					Back to Project
 				</button>
 			</div>
 		</div>
@@ -334,7 +337,6 @@ import { ref, computed, inject, watch, onMounted, nextTick } from 'vue'
 import { useApi } from '../composables/useApi'
 import { useConnections } from '../composables/useConnections'
 import { useActiveProject } from '../composables/useActiveProject'
-import { useProjectMode } from '../composables/useProjectMode'
 import FolderPicker from '../components/FolderPicker.vue'
 import VideoOptionsPanel from '../components/VideoOptionsPanel.vue'
 import WatermarkCustomizer from '../components/WatermarkCustomizer.vue'
@@ -354,15 +356,14 @@ import { useOnboarding } from '../composables/useOnboarding'
 import { useClientTranscode } from '../composables/useClientTranscode'
 import { useUploadTranscode } from '../composables/useUploadTranscode'
 const { to } = useResilientNav()
-useHeader('Upload Files')
+useHeader('Add Files')
 const transfer = useTransferProgress()
 const { activeProject: rawActiveProject } = useActiveProject()
-const { projectModeEnabled } = useProjectMode()
 
 // Client-side transcode status (reactive, for inline hint in template)
 const { enabled: _clientTranscodeOn, hwAccel: _clientHwAccelOn } = useClientTranscode()
 const _isWebView = window.electron?.isWeb === true
-const activeProject = computed(() => projectModeEnabled.value ? rawActiveProject.value : null)
+const activeProject = computed(() => rawActiveProject.value)
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()
 
@@ -392,13 +393,13 @@ const localUploadTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="upload-step-3"]',
 		message: isPremiumActive.value
-			? 'Step 3: Review your files and start the upload.\n\nThe overall progress bar at the top tracks all files. When client-side transcoding is enabled, video files show a two-phase workflow: Transcode → Upload. The transcode generates a Stream (HLS for browser playback) and Review Copies (downloadable MP4s), then the raw file uploads to the server.\n\nFor video files, you can configure review copy qualities and watermarks with full customization — position, size, opacity, and tiling (Pro). For image files, you can apply watermark overlays as well.'
-			: 'Step 3: Review your files and start the upload.\n\nThe overall progress bar at the top tracks all files. When client-side transcoding is enabled, video files show a two-phase workflow: Transcode → Upload. The transcode generates a Stream (HLS for browser playback) and Review Copies (downloadable MP4s), then the raw file uploads to the server.\n\nFor video files, you can configure review copy qualities and a basic watermark (bottom-right). For image files, you can apply a basic watermark overlay. Upgrade to Pro for full watermark customization.',
+			? 'Step 3: Review your files and start the upload.\n\nThe overall progress bar at the top tracks all files. When client-side transcoding is enabled, video files show a two-phase workflow: Transcode → Upload. The transcode generates a Stream (HLS for browser playback) and Proxy Files (downloadable MP4s), then the raw file uploads to the server.\n\nFor video files, you can configure proxy file qualities and watermarks with full customization — position, size, opacity, and tiling (Pro). For image files, you can apply watermark overlays as well.'
+			: 'Step 3: Review your files and start the upload.\n\nThe overall progress bar at the top tracks all files. When client-side transcoding is enabled, video files show a two-phase workflow: Transcode → Upload. The transcode generates a Stream (HLS for browser playback) and Proxy Files (downloadable MP4s), then the raw file uploads to the server.\n\nFor video files, you can configure proxy file qualities and a basic watermark (bottom-right). For image files, you can apply a basic watermark overlay. Upgrade to Pro for full watermark customization.',
 		placement: 'top',
 	},
 	{
 		target: '[data-tour="upload-next-btn"]',
-		message: 'When you\'re ready, click "Start Upload" to begin transferring files to the server.\n\nYou can cancel individual uploads while they\'re in progress. If you selected video or image files, configure review copy and watermark options above before starting.',
+		message: 'When you\'re ready, click "Start Upload" to begin transferring files to the server.\n\nYou can cancel individual uploads while they\'re in progress. If you selected video or image files, configure proxy file and watermark options above before starting.',
 		placement: 'top',
 	},
 ])
@@ -1167,7 +1168,7 @@ function waitForIngestAndStartTranscode(opts: {
 					apiFetch,
 					assetVersionIds: [assetVersionId],
 					title: `Transcoding: ${opts.rowName}`,
-					detail: 'Generating review copy…',
+					detail: 'Generating proxy file…',
 					intervalMs: 1500,
 					jobKind: 'proxy_mp4',
 					context: {
@@ -1184,7 +1185,7 @@ function waitForIngestAndStartTranscode(opts: {
 					apiFetch,
 					fileIds: [fileId],
 					title: `Transcoding: ${opts.rowName}`,
-					detail: 'Generating review copy…',
+					detail: 'Generating proxy file…',
 					intervalMs: 1500,
 					jobKind: 'proxy_mp4',
 					context: {

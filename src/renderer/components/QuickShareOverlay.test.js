@@ -21,7 +21,6 @@ vi.mock('../composables/useLog', () => ({ appLog: { info: vi.fn(), error: mocks.
 vi.mock('../composables/useApi', () => ({ useApi: () => ({ apiFetch: mocks.apiFetch }) }))
 vi.mock('../composables/useConnections', () => ({ useConnections: () => ({ activeConnection: { value: null } }) }))
 vi.mock('../composables/useActiveProject', () => ({ useActiveProject: () => ({ activeProject: { value: null } }) }))
-vi.mock('../composables/useProjectMode', () => ({ useProjectMode: () => ({ projectModeEnabled: { value: false } }) }))
 vi.mock('../composables/useClientTranscode', () => ({
   useClientTranscode: () => ({ enabled: { value: false }, hwAccel: { value: false } }),
 }))

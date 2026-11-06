@@ -3,9 +3,9 @@
     <span v-if="showHeading" class="font-semibold" :class="compact ? 'text-sm' : ''">Video Options</span>
 
     <div :class="compact ? 'grid grid-cols-3 gap-4 items-start' : 'grid grid-cols-3 gap-4 items-start'">
-      <!-- Review Copies column (hidden when no video) -->
+      <!-- Proxy Files column (hidden when no video) -->
       <div v-if="!hideProxyQualities" :class="compact ? 'min-w-0' : 'rounded-md p-2.5 min-w-0'">
-        <label class="font-semibold block" :class="compact ? 'text-sm mb-1' : 'mb-2'">Review Copies</label>
+        <label class="font-semibold block" :class="compact ? 'text-sm mb-1' : 'mb-2'">Proxy Files</label>
 
         <div v-if="proxyBlockReason" class="text-xs text-amber-700 dark:text-amber-300 mb-2">
           {{ proxyBlockReason }}
@@ -81,7 +81,7 @@
           <select :value="selectedExistingWatermark" @change="$emit('update:selectedExistingWatermark', ($event.target as HTMLSelectElement).value)"
             :class="compact ? 'input-textlike border rounded px-2 py-1 text-xs min-w-[14rem]' : 'input-textlike border rounded px-2 py-1 text-sm min-w-[16rem]'">
             <option value="">{{ compact ? 'Existing watermark…' : 'Select existing watermark file…' }}</option>
-            <optgroup v-if="showDefaultWatermarks && defaultWatermarks.length && existingWatermarkFiles.length" label="User Uploads">
+            <optgroup v-if="showDefaultWatermarks && defaultWatermarks.length && existingWatermarkFiles.length" label="Client Uploads">
               <option v-for="wm in existingWatermarkFiles" :key="wm" :value="wm">{{ wm.split('/').pop() }}</option>
             </optgroup>
             <template v-else-if="existingWatermarkFiles.length">
@@ -121,7 +121,7 @@ const props = withDefaults(defineProps<{
   compact?: boolean
   /** Show "Video Options" heading */
   showHeading?: boolean
-  /** Review copy quality selections */
+  /** Proxy file quality selections */
   proxyQualities: string[]
   /** Watermark toggle state */
   watermarkEnabled: boolean
@@ -153,9 +153,9 @@ const props = withDefaults(defineProps<{
   proxyBlockReason?: string
   /** Blocking reason text for watermark (preflight) */
   watermarkBlockReason?: string
-  /** Help text below review copies */
+  /** Help text below proxy files */
   reviewCopyHelpText?: string
-  /** Hide proxy/review copy quality section (for image-only uploads) */
+  /** Hide proxy/proxy file quality section (for image-only uploads) */
   hideProxyQualities?: boolean
   /** Hide the on/off switch — use when an external checkbox already controls watermarkEnabled */
   hideWatermarkToggle?: boolean

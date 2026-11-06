@@ -25,7 +25,7 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
 | Create share links (single file or collection) | ✅ | ✅ |
 | Create upload links | ✅ | ✅ |
 | Combined links (share + upload) | ✅ | ✅ |
-| Link expiration, password protection, user restrictions | ✅ | ✅ |
+| Link expiration, password protection, invite-only access | ✅ | ✅ |
 | Project-based link organization | ✅ | ✅ |
 | Multi-server management | ❌ | ✅ |
 | **Uploads & Transfers** | | |
@@ -35,7 +35,7 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
 | Transfer Dock with progress tracking | ✅ | ✅ |
 | **Review & Playback** | | |
 | Video player with HLS streaming | ✅ | ✅ |
-| Review copies (720p, 1080p) | ✅ | ✅ |
+| Proxy files (720p, 1080p) | ✅ | ✅ |
 | Multi-file share navigation | ✅ | ✅ |
 | **Watermarking** | | |
 | Video watermarking (enable/disable, select image) | ✅ | ✅ |
@@ -53,7 +53,7 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
 | Custom logos | ❌ | ✅ |
 | Custom link preview metadata | ❌ | ✅ |
 | **Administration** | | |
-| User & role management | ✅ | ✅ |
+| Client, team & role management | ✅ | ✅ |
 | Server health monitoring | ✅ | ✅ |
 | Audit logs (client & server) | ✅ | ✅ |
 | Maintenance & cleanup tools | ✅ | ✅ |
@@ -70,25 +70,24 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
    - [Windows](#windows)
    - [Linux](#linux)
 3. [Getting Started — Connecting to Your Server](#3-getting-started--connecting-to-your-server)
-   - [Automatic Server Discovery](#automatic-server-discovery)
-   - [Manual Connection via IP](#manual-connection-via-ip)
-   - [Custom Port Configuration](#custom-port-configuration)
    - [Logging In](#logging-in)
+   - [Automatic Server Discovery](#automatic-server-discovery)
+   - [Entering the Server Address](#entering-the-server-address)
+   - [Custom Port Configuration](#custom-port-configuration)
    - [License Status & Activation](#license-status--activation)
 4. [Port Forwarding for External Sharing](#4-port-forwarding-for-external-sharing)
 5. [Projects — Organizing Your Workspace](#5-projects--organizing-your-workspace)
    - [What Are Projects](#what-are-projects)
+   - [Links Without a Project](#links-without-a-project)
+   - [The Project Workflow](#the-project-workflow)
    - [Creating a Project](#creating-a-project)
    - [Managing Projects](#managing-projects)
-   - [Unassigned Links](#unassigned-links)
-   - [Disabling Project Mode](#disabling-project-mode)
 6. [Dashboard Overview](#6-dashboard-overview)
 7. [Settings](#7-settings)
    - [URLs & Access](#urls--access)
    - [SSL Certificate Management](#ssl-certificate-management)
    - [Public Sharing](#public-sharing)
    - [Link Options](#link-options)
-   - [Project Root](#project-root)
    - [Preferences](#preferences)
    - [Performance](#performance)
    - [Server Health](#server-health)
@@ -110,12 +109,12 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
     - [Step 2: Configure Link Settings](#step-2-configure-link-settings)
     - [Link Types — Share, Upload, Combined](#link-types--share-upload-combined)
     - [Link Access Modes](#link-access-modes)
-    - [Advanced Video Options](#advanced-video-options)
+    - [Video and Media Options](#video-and-media-options)
     - [Watermark Settings — Video and Image Support](#watermark-settings--video-and-image-support)
     - [Generating the Link](#generating-the-link)
-11. [Upload Files Locally](#11-upload-files-locally)
-    - [Step 1: Select Local Files](#step-1-select-local-files)
-    - [Step 2: Choose Destination](#step-2-choose-destination)
+11. [Add Files](#11-add-files)
+    - [Step 1: Pick Files](#step-1-pick-files)
+    - [Step 2: Choose Folder](#step-2-choose-folder)
     - [Step 3: Upload & Monitor Progress](#step-3-upload--monitor-progress)
 12. [Transfer Dock](#12-transfer-dock)
     - [Transfer Dock Overview](#transfer-dock-overview)
@@ -135,20 +134,21 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
 16. [Accessing a Shared Link](#16-accessing-a-shared-link)
     - [Opening the Link](#opening-the-link)
     - [Password-Protected Links](#password-protected-links)
-    - [User-Restricted Links](#user-restricted-links)
+    - [Invite-Only Links](#invite-only-links)
 17. [Video Player, Comments & Annotations](#17-video-player-comments--annotations)
     - [Playback Controls](#playback-controls)
     - [Quality Selection](#quality-selection)
     - [Timecoded Comments](#timecoded-comments)
     - [Annotations & Drawing Tools](#annotations--drawing-tools)
     - [Multi-File Shares](#multi-file-shares)
-18. [User Management](#18-user-management)
-    - [Viewing Existing Users](#viewing-existing-users)
-    - [Creating a New User](#creating-a-new-user)
-    - [Managing Groups](#managing-groups)
-    - [Editing & Deleting Users](#editing--deleting-users)
+18. [Client Access](#18-client-access)
+    - [Viewing Existing Clients](#viewing-existing-clients)
+    - [Adding a Client](#adding-a-client)
+    - [Managing Teams](#managing-teams)
+    - [Editing & Deleting Clients](#editing--deleting-clients)
 19. [Role Management](#19-role-management)
     - [System Roles](#system-roles)
+    - [Permission Definitions](#permission-definitions)
     - [Creating Custom Roles](#creating-custom-roles)
     - [Editing & Deleting Roles](#editing--deleting-roles)
 20. [Multi-Server Management](#20-multi-server-management)
@@ -159,7 +159,7 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
     - [Update Notifications](#update-notifications)
     - [Downloading & Installing Updates](#downloading--installing-updates)
     - [Linux Package Updates](#linux-package-updates)
-22. [View Logs](#22-view-logs)
+22. [Activity Log](#22-activity-log)
     - [Client Logs](#client-logs)
     - [Server Logs (Audit Log)](#server-logs-audit-log)
     - [Multi-Server Log Viewer](#multi-server-log-viewer)
@@ -199,7 +199,7 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
 | **OS** | Ubuntu 20.04+ (Focal/Jammy) or Rocky Linux 8/9 (RHEL-compatible) | Ubuntu 22.04 LTS or Rocky Linux 9 |
 | **CPU** | 2 cores x86_64 | 4–8+ cores; transcoding is CPU-intensive, more cores allow more concurrent transcode jobs |
 | **RAM** | 2 GB | 8–16 GB; FFmpeg transcoding uses approximately 1–2 GB per concurrent 1080p job |
-| **Disk** | Enough storage for source media plus transcoded review copies; approximately 2–3× source size per link when review copies are generated | Fast SSD/NVMe for the database and transcode scratch space; bulk media storage on ZFS/spinning disk is fine |
+| **Disk** | Enough storage for source media plus transcoded proxy files; approximately 2–3× source size per link when proxy files are generated | Fast SSD/NVMe for the database and transcode scratch space; bulk media storage on ZFS/spinning disk is fine |
 | **GPU** | Not required | Intel QSV (6th-gen+ iGPU), NVIDIA with driver, or VAAPI for significantly faster server-side transcodes |
 | **Network** | 1 Gbps LAN | 10 Gbps if serving many concurrent viewers/uploads |
 | **Node.js** | 20+ | 20 LTS |
@@ -287,55 +287,68 @@ The AppImage requires no root privileges and does not modify your system. It sup
 
 ## 3. Getting Started — Connecting to Your Server
 
-When you first open 45Flow, you'll see the **Login Screen**. This is where you connect the desktop client to your 45Drives server.
+When you first open 45Flow, you'll see the **Login Screen**: a single card titled **"Sign in to 45Flow"**. This is where you connect the desktop client to your 45Drives server.
+
+The card has two sections:
+
+- **Login** — your **Username**, **Password**, and (desktop app only) **"Remember my password on this computer"**.
+- **Server** (desktop app only) — the server to connect to: the **"Choose a server"** dropdown, the **"Or enter the server address"** box, and the collapsible **"Advanced: custom ports"** settings.
 
 ![Login Screen](images/login-screen-v3.png)
-
-### Automatic Server Discovery
-
-If your server is running the **houston-broadcaster** service on the same network, it will appear automatically in the **"Select a server"** dropdown. Each entry shows the server's hostname and IP address.
-
-Simply select your server from the dropdown to populate the connection.
-
-![Server auto-discovery dropdown](images/login-server-discovery-v3.png)
-
-> **Note:** If no servers appear, the houston-broadcaster service may not be running, or you may be on a different subnet. Use the manual connection method below.
-
-### Manual Connection via IP
-
-If your server doesn't appear automatically:
-
-1. Find the **"Connect manually via IP"** field.
-2. Enter your server's IP address (e.g., `192.168.1.123`).
-
-### Custom Port Configuration
-
-In most cases, the default ports work without changes. If your server uses non-standard ports, click **"Configure Ports"** to expand the port settings:
-
-| Port | Default | Purpose |
-|------|---------|---------|
-| **SSH** | 22 | Secure shell communication, server setup, and verifying the server's HTTPS certificate |
-| **API** | 9095 | Finding and setting up the server |
-| **HTTPS** | 443 | The app's encrypted connection to the server; share links, upload links, external access |
-
-The app signs in and does all of its work over the HTTPS port, so that port must be reachable from your computer. It trusts the server's certificate, including the default self-signed one, by reading it over SSH; if the certificate cannot be verified, or the HTTPS port cannot be reached, the app does not connect rather than fall back to an unencrypted connection. Servers saved by an earlier version move to HTTPS automatically.
-
-> **Important:** For external sharing the HTTPS port (443 by default) must be open/forwarded on your router. See [Port Forwarding](#5-port-forwarding-for-external-sharing) for details.
 
 ### Logging In
 
 1. Enter your server **Username** (e.g., `root`).
 2. Enter your **Password**.
-3. Click **"Connect to Server"**.
+3. *(Optional, desktop app only)* Check **"Remember my password on this computer"** so you don't have to type it next time.
+4. In the **Server** section, choose your server from the dropdown or enter its address (see below).
+5. Click **"Sign In"**.
 
 The app will display status messages as it connects:
 - *"Preparing SSH…"*
 - *"Bootstrapping…"*
 - *"Checking server health…"*
+- *"Verifying the server certificate…"*
 
-On success, you'll be taken to the **Dashboard**.
+On success, you'll be taken to the **Projects** screen.
 
 ![Connecting to server with status messages](images/login-connecting-v3.png)
+
+At the bottom of the card:
+
+- **First-time setup** needs an account with **sudo** or **root** access, so 45Flow can install what it needs on the server.
+- **"Set up port forwarding"** opens step-by-step help for sharing with clients outside your network. See [Port Forwarding](#4-port-forwarding-for-external-sharing).
+
+### Automatic Server Discovery
+
+If your server is running the **houston-broadcaster** service on the same network, it will appear automatically in the **"Choose a server"** dropdown. Each entry shows the server's hostname and IP address. While 45Flow is still searching, the dropdown shows *"Looking for servers on your network…"*.
+
+Simply select your server from the dropdown to populate the connection.
+
+![Server auto-discovery dropdown](images/login-server-discovery-v3.png)
+
+> **Note:** If no servers appear, the houston-broadcaster service may not be running, or you may be on a different subnet. Enter the server address instead, as described below.
+
+### Entering the Server Address
+
+If your server doesn't appear automatically:
+
+1. Find the **"Or enter the server address"** box in the **Server** section.
+2. Enter your server's IP address (e.g., `192.168.1.123`).
+
+### Custom Port Configuration
+
+In most cases, the default ports work without changes. If your server uses non-standard ports, click **"Advanced: custom ports"** to expand the port settings:
+
+| Port | Default | Purpose |
+|------|---------|---------|
+| **SSH** | 22 | Secure shell communication, server setup, and verifying the server's HTTPS certificate |
+| **Setup API** | 9095 | Finding and setting up the server |
+| **HTTPS** | 443 | The app's encrypted connection to the server; share links, upload links, external access |
+
+The app signs in and does all of its work over the HTTPS port, so that port must be reachable from your computer. It trusts the server's certificate, including the default self-signed one, by reading it over SSH; if the certificate cannot be verified, or the HTTPS port cannot be reached, the app does not connect rather than fall back to an unencrypted connection. Servers saved by an earlier version move to HTTPS automatically.
+
+> **Important:** For external sharing the HTTPS port (443 by default) must be open/forwarded on your router. See [Port Forwarding](#4-port-forwarding-for-external-sharing) for details.
 
 ### License Status & Activation
 
@@ -380,7 +393,7 @@ Once activated, the app immediately upgrades to Pro mode and all Pro features un
 
 If you don't have a license key yet, you can start a **30-day free trial** directly from the Go Pro settings section. Trials give you full access to all Pro features for evaluation.
 
-After successful login, you'll be directed to the **Projects** screen (or directly to the Dashboard if Project Mode is disabled).
+After successful login, you'll always be directed to the **Projects** screen.
 
 ---
 
@@ -416,7 +429,7 @@ Port forwarding tells your router to direct incoming traffic on a specific port 
 
 ## 5. Projects — Organizing Your Workspace
 
-After logging in, the Dashboard presents the **Projects** list. This is your primary workspace organizer — click a project to view its links, or create a new one to start organizing.
+After logging in, you always land on the **Projects** screen. This is your primary workspace organizer. Each project is a folder on your server for one job or production — open a project to share files with clients or collect their uploads, or create a new one to get started.
 
 ![Projects list view](images/projects-list-v3.png)
 
@@ -425,48 +438,58 @@ After logging in, the Dashboard presents the **Projects** list. This is your pri
 A project is a named workspace that:
 
 - **Groups related links** — Keep all links for a client, campaign, or workflow together in one place.
-- **Has a root directory** — Each project points to a specific folder on your server. When creating links within a project, the file browser starts from that root.
+- **Has a project folder** — Each project points to a specific folder on your server. When creating links or adding files within a project, the file browser starts from that folder.
 - **Tracks link counts** — See at a glance how many active, expired, or disabled links each project has.
-- **Scopes your view** — When you select a project, only that project's links are displayed.
+- **Scopes your view** — When you open a project, only that project's links are displayed.
 - **Can be archived or deleted** — Archive completed projects to hide them without deletion, or permanently delete projects you no longer need.
 
-### Unassigned Links
+### Links Without a Project
 
-Below the project list on the Dashboard, a collapsible **"Unassigned Links"** section shows all links that are not assigned to any project. This includes:
+If you have older links that were created before projects (or links whose project was deleted), a collapsible **"Links Without a Project"** section appears below the project list. It only appears when such links exist. This includes:
 
-- Links created via QuickShare without a Project selected
+- Older links created before projects
 - Links whose project was deleted
-- Links explicitly created without a project assignment
+- Links created via QuickShare without a project
 
-Click the disclosure arrow to expand or collapse this section. Unassigned links are managed the same way as project links — you can view details, edit, disable, or delete them.
+Click the disclosure arrow to expand or collapse this section. These links are managed the same way as project links — you can view details, edit, disable, or delete them.
 
-![Unassigned links section below projects](images/dashboard-unassigned-links-v3.png)
+![Links Without a Project section below the project list](images/dashboard-unassigned-links-v3.png)
 
 ### The Project Workflow
 
 The typical flow is:
 
 1. **Log in** to 45Flow.
-2. **Select a project** (or create a new one) from the Dashboard project list.
-3. **The project detail view loads** showing only that project's links.
-4. **Create, manage, and share links** — all within the context of the selected project.
-5. Click **"Projects"** in the breadcrumb to return to the project list.
+2. **Open a project** (or create a new one) from the Projects screen.
+3. **The project view loads** showing only that project's links.
+4. **Create links, add files, and manage client access** — all within the context of the open project.
+5. Click **"Projects"** in the breadcrumb (or **"Back to Projects"**) to return to the project list.
 
-To switch to a different project, click the breadcrumb or close the current project.
+To switch to a different project, return to the project list and open another one.
 
 ### Creating a Project
 
-From the Projects screen, click **"New Project"** to create a new project:
+From the Projects screen, click **"+ New Project"** to create a new project:
 
-1. Enter:
-   - **Project Name** — A descriptive name (e.g., "Acme Corp Review", "Q1 Marketing Assets").
-   - **Root Directory** — The absolute path on the server where this project's files live (e.g., `/tank/projects/acme`).
-   - **Description** (optional) — Notes about the project's purpose.
-2. Click **"Create Project"**.
+1. Enter a **Project name** — A descriptive name (e.g., "Acme Corp Review", "Spring Campaign Edit").
+2. Pick the **Project folder** — The folder on the server that holds this project's media. The folder picker detects your **ZFS pools** (storage locations) so you can start from one of them. To use a fresh folder, click **"New Folder"** in the folder browser, then select it.
+3. *(Optional)* Add **Notes** about the project — client, deliverables, anything your team should know.
+4. Click **"Create Project"**.
 
 ![Create project modal](images/project-create-modal-v3.png)
 
-The new project appears in the projects list and is immediately available to select.
+**Folder check:**
+
+While you pick a folder, 45Flow checks it and shows what it finds:
+
+- **On a storage pool** — A green check shows the ZFS storage pool the folder is on and how much space is free.
+- **Not on a storage pool** — A warning shows the disk the folder is on and how much space is free. Media can fill a small disk fast; if the folder is on the server's system disk, the server can stop working.
+- **Low space** — A red warning appears when less than 50 GB is free or the disk is 90% or more used. Pick a folder with more room for proxy files and client uploads.
+- **New folder** — If the folder doesn't exist yet, 45Flow notes that it will create it.
+
+> **Note:** 45Flow keeps each project's proxy files and streams in a hidden `.45flow` folder inside the project folder. Links that are not in a project use the `.45flow` folder in the default server folder (see [Settings → Preferences](#preferences)).
+
+Once created, the new project opens immediately so you can start creating links or adding files.
 
 ### Managing Projects
 
@@ -474,10 +497,12 @@ The new project appears in the projects list and is immediately available to sel
 
 The Projects screen shows all active projects as cards in a responsive grid layout with:
 - Project name
-- Root directory path
-- Link count badges: **Total**, **Active** (green), **Expired** (amber), **Disabled** (red)
+- **Folder:** the project folder path
+- Link count badges: **Total Links**, **Active** (green), **Expired** (amber), **Disabled** (red)
 - Server name (when connected to multiple servers)
-- Description (if provided)
+- Notes (if provided)
+
+Check **"Show archived projects"** above the cards to include archived projects in the list.
 
 Projects are paginated when you have many — use the Previous/Next controls at the bottom to navigate pages.
 
@@ -489,17 +514,19 @@ Each project card has action buttons in the top-right corner (click without open
 
 | Button | Description |
 |--------|-------------|
+| **Edit** | Opens the Edit Project dialog (see below). |
+| **Disable / Enable** | Disables the project and all its links, or re-enables them. No files or links are deleted. |
 | **Archive** | Deactivates all links and hides the project from the default view. Available on active projects. |
 | **Unarchive** | Restores an archived project and re-enables its links. Available on archived projects. |
 | **Delete** | Permanently removes the project (see below). |
 
 **Editing a Project:**
 
-Click on a project card to open it, then click **"Edit Project"** in the breadcrumb bar. The edit modal lets you update the project name, root directory, and description. It also provides Archive/Unarchive and Delete buttons.
+Click **"Edit"** on a project card, or open the project and click **"Edit Project"** above its links list. The Edit Project dialog lets you update the **Project Name**, **Project Folder** (with the same folder check as when creating a project), and **Notes (optional)**. It also provides Archive/Unarchive and Delete Project buttons.
 
 **Archiving a Project:**
 
-Click **"Archive"** on a project card, or open the project and use the Edit modal's Archive button. A confirmation dialog explains what archiving does:
+Click **"Archive"** on a project card, or open the project and use the Edit Project dialog's Archive button. A confirmation dialog explains what archiving does:
 
 - All active links in the project are **disabled** (become inaccessible)
 - The project is hidden from the default project list
@@ -510,40 +537,28 @@ Click **"Archive"** on a project card, or open the project and use the Edit moda
 
 **Restoring an Archived Project:**
 
-Archived projects appear dimmed (reduced opacity) with an "Archived" badge. Click **"Unarchive"** on the card or in the Edit modal to restore the project and re-enable its links.
+Check **"Show archived projects"** to see archived projects. They appear dimmed (reduced opacity) with an "Archived" badge. Click **"Unarchive"** on the card or in the Edit Project dialog to restore the project and re-enable its links.
 
 **Deleting a Project (Hard Delete):**
 
-Click **"Delete"** on a project card or in the Edit modal. A confirmation dialog warns:
+Click **"Delete"** on a project card or **"Delete Project"** in the Edit Project dialog. A confirmation dialog warns:
 
 - The project record is permanently removed
-- Links associated with the project become **unassigned** (they are not deleted)
+- Links associated with the project are **unlinked** from it (they are not deleted) and move to **Links Without a Project**, unless you choose to delete them
 - This action **cannot be undone**
 
-You must type the project name to confirm deletion.
+You can optionally delete the project's links and their generated or original files. When you choose to delete files, you must type "DELETE" to confirm.
 
 ![Delete project confirmation dialog](images/project-delete-confirm-v3.png)
-
-### Disabling Project Mode
-
-If you prefer a flat list of all links without project grouping, you can disable Project Mode:
-
-1. Go to **Settings → Project Root**.
-2. Toggle **"Enable Project Mode"** off.
-
-When Project Mode is disabled:
-- The Projects screen is skipped entirely after login.
-- You go directly to the Dashboard, which shows **all links** regardless of project.
-- Links can still be created and managed normally, just without project grouping.
-- You can re-enable Project Mode at any time — existing links retain any project associations.
-
-> **Tip:** Project Mode is ideal for teams managing multiple clients or campaigns. If you only have one use case or a small number of links, disabling it keeps the workflow simpler.
 
 ---
 
 ## 6. Dashboard Overview
 
-The **Dashboard** (also called the **Control Center**) is your central hub for managing all file sharing operations. When Project Mode is enabled, the Dashboard shows the project list, and clicking a project opens its links in a detail view with breadcrumb navigation. Below the projects, the **Unassigned Links** section shows links not belonging to any project. When Project Mode is disabled, the Dashboard shows all links in a flat list.
+The **Dashboard** is your central hub for managing all file sharing operations. It has two views:
+
+- **Projects screen** — The project list, with **"+ New Project"**, **"Show archived projects"**, and (when any exist) the **Links Without a Project** section.
+- **Project view** — Opens when you click a project. The header shows a **"Projects ›"** breadcrumb, the project name, and **"Project folder:"** with the folder path. Below it are the action cards and the project's links.
 
 ![Dashboard overview](images/dashboard-overview-v3.png)
 
@@ -553,9 +568,10 @@ At the top of the Dashboard, you'll find quick-access buttons:
 
 | Button | Description |
 |--------|-------------|
-| **Manage Access** | Open user management to create accounts, assign roles, and manage access |
-| **View Logs** | Open the log viewer to inspect application activity and diagnose issues |
+| **Client Access** | Add client accounts, organize them into teams, and manage roles. Shown only inside a project. See [Client Access](#18-client-access). |
+| **Activity Log** | Open the log viewer to inspect application activity and diagnose issues |
 | **Settings** | Configure application-wide defaults for links, URLs, and server behavior |
+| **Log Out** | Disconnect from the server and return to the Login Screen |
 | **Notifications** (bell icon) | View notification history (see below) |
 
 ### Notifications
@@ -579,22 +595,22 @@ Notifications are displayed in reverse chronological order (newest first). The p
 
 ### Main Action Buttons
 
-Two large action buttons let you perform the core tasks:
+Inside a project, two large action cards let you perform the core tasks:
 
 | Button | Description |
 |--------|-------------|
-| **Create Link** | Create a link for sharing files, uploading files, or both (combined mode). Configure all link settings in one unified interface. |
-| **Upload Files** | Transfer files from your workstation directly to the server |
+| **Create Link** | Send a client a link to review files, send you files, or both. Configure all link settings in one screen. See [Creating Links](#10-creating-links--share-upload-or-combined). |
+| **Add Files** | Copy files from this computer into the project folder. See [Add Files](#11-add-files). |
 
 ![Dashboard action buttons](images/dashboard-action-buttons-v3.png)
 
 ### Active Links Table
 
-Below the action buttons, the Dashboard displays a table of links for the current project (or all links if Project Mode is disabled), with search/filter tools and at-a-glance status information. See [Managing Links](#13-managing-links) for full details.
+Below the action cards, the project view displays the **Links** table for the open project, with search/filter tools and at-a-glance status information. Above the table, **"Edit Project"** opens the Edit Project dialog and **"Back to Projects"** returns to the project list. See [Managing Links](#13-managing-links) for full details.
 
 ### Logging Out
 
-Click **"Log Out"** at the bottom of the Dashboard to disconnect from the server and return to the Login Screen.
+Click **"Log Out"** at the top of the Dashboard to disconnect from the server and return to the Login Screen.
 
 ---
 
@@ -604,8 +620,8 @@ Configure application-wide defaults and server settings. Access Settings from th
 
 The Settings panel is organized into sections via the left-hand navigation sidebar:
 
-- **Link Sharing** — URLs & Access, Certificate, Public Sharing, Link Options, Project Root
-- **Branding** — White Label (see [Custom Branding](#7-custom-branding-white-label))
+- **Link Sharing** — URLs & Access, Public Sharing, Certificate, Link Options
+- **Branding** — White Label (see [Custom Branding](#8-custom-branding-white-label--pro-feature))
 - **Application** — Preferences, Performance, Server Health, Maintenance, Admin Networks (server administrators)
 - **Help** — Guides
 
@@ -707,17 +723,10 @@ These defaults are applied automatically when creating new links, but can be cha
 
 | Option | Description |
 |--------|-------------|
-| **Restrict access to users** | New links default to restricted (invited users only) mode. |
+| **Invite-only links** | New links default to invite-only mode: only invited clients and teams can get in. |
 | **Allow comments on open links** | Enable comments by default on open (unauthenticated) links. |
-| **Generate review copies by default** | Automatically enable review copy generation for new links. |
+| **Generate proxy files by default** | Automatically enable proxy file generation for new links. |
 | **Default watermark settings** | Configure default watermark image and settings for new links. See [Watermark Settings — Video and Image Support](#watermark-settings--video-and-image-support) for details on Community vs Pro watermark features. |
-
-### Project Root
-
-| Setting | Description |
-|---------|-------------|
-| **Ignore ZFS pools** | Check to skip the pool selection step and always use the configured project root. |
-| **Project root path** | Absolute path used as the default starting directory when creating shares or uploads. |
 
 ### Preferences
 
@@ -726,8 +735,14 @@ These defaults are applied automatically when creating new links, but can be cha
 | Option | Description |
 |--------|-------------|
 | **Time format** | Toggle between 24-hour and 12-hour time display throughout the app. |
-| **Project mode** | Organize links into projects. When disabled, the dashboard shows a flat list of all links without project grouping. |
 | **Default link list view** | Choose which links are shown by default (All Links or Active Only). |
+
+**Path Defaults:**
+
+| Setting | Description |
+|---------|-------------|
+| **Use default server folder** | When on, folder pickers start in the default server folder below. Projects keep their own folders. |
+| **Default server folder** | Absolute path on the server. It holds the hidden `.45flow` folder (proxy files and streams) for links that are not in a project. Each project keeps its own `.45flow` folder inside its project folder. |
 
 ### Performance
 
@@ -735,7 +750,7 @@ The **Performance** section controls client-side video transcoding — processin
 
 | Option | Description |
 |--------|-------------|
-| **Enable client-side transcoding** | When enabled, videos are processed on your computer before upload — using your local CPU or GPU. This creates review copies faster and reduces load on the server. When disabled, the server handles all video processing after files are uploaded. |
+| **Enable client-side transcoding** | When enabled, videos are processed on your computer before upload — using your local CPU or GPU. This creates proxy files faster and reduces load on the server. When disabled, the server handles all video processing after files are uploaded. |
 | **Hardware Acceleration** | Uses your GPU (NVIDIA NVENC, Intel Quick Sync, AMD AMF, Apple VideoToolbox) for faster transcoding. Falls back to CPU-only when no compatible GPU is detected. |
 | **Encode Quality** | Choose between Fast (quicker encode, larger file), Balanced (good tradeoff), or Quality (slower encode, best visual fidelity). |
 | **Detected Encoders** | Shows which hardware encoders passed verification on your system. |
@@ -1025,7 +1040,7 @@ The **QuickShare** feature provides the fastest way to create a share link. Drag
 
 1. **Drag Files:** From anywhere on your computer, drag one or more files directly into the QuickShare drop zone.
 2. **Choose Destination:** Select the folder on the server where your files will be stored.
-3. **Configure Options:** For video files, choose review copy qualities and watermark settings. Set link expiry, title, and access controls.
+3. **Configure Options:** For video files, choose proxy file qualities and watermark settings. Set link expiry, title, and access controls.
 4. **Generate Link:** Click **"Share"** to upload, transcode, and generate a shareable link.
 
 Documents and spreadsheets: Share Excel, OpenDocument, CSV, TSV, and Word files. Spreadsheets have a read-only grid preview; DOCX has a text preview. Legacy DOC files require downloading.
@@ -1034,7 +1049,7 @@ Previews support files up to 10 MB and may show only part of larger documents or
 
 QuickShare checks all selected files before uploading. If any are unsupported or exceed upload limits, nothing uploads and the rejected files are listed.
 
-**Video Processing:** When client-side transcoding is enabled (Settings → Performance), video files are transcoded on your machine before upload — this generates both a **Stream** (HLS for browser playback) and **Review Copies** (downloadable MP4s). With server-side mode, files upload first and the server handles processing.
+**Video Processing:** When client-side transcoding is enabled (Settings → Performance), video files are transcoded on your machine before upload — this generates both a **Stream** (HLS for browser playback) and **Proxy Files** (downloadable MP4s). With server-side mode, files upload first and the server handles processing.
 
 ### QuickShare Options
 
@@ -1042,12 +1057,12 @@ QuickShare lets you configure:
 
 - **Destination folder** — Where files are stored on the server
 - **Link expiration** — How long the link remains active (default: 7 days)
-- **Access mode** — Open (anyone with link), password-protected, or invited users/groups
-- **Review copy qualities** — 720p, 1080p, and/or full resolution (for video)
+- **Access mode** — Open (anyone with link), password-protected, or invited clients/teams
+- **Proxy file qualities** — 720p, 1080p, and/or full resolution (for video)
 - **Watermark** — Overlay a watermark on video and image files (Pro: full positioning; Community: basic)
-- **Network mode** — Local (LAN/VPN) or External (port-forwarded)
+- **Network mode** — External (port-forwarded) or Local (LAN/VPN)
 
-These defaults can be customized in [Settings](#6-settings) under **Default Link Options**.
+These defaults can be customized in [Settings](#7-settings) under **Link Options**.
 
 ### After Creating a QuickShare Link
 
@@ -1062,7 +1077,7 @@ From the Dashboard, you can find your QuickShare link and:
 - View access logs
 - Delete the link
 
-> **Tip:** QuickShare is perfect for ad-hoc file sharing when you don't need custom settings. For more control over link configuration, use the [full file share workflow](#9-share-files-remotely-generate-a-share-link) instead.
+> **Tip:** QuickShare is perfect for ad-hoc file sharing when you don't need custom settings. For more control over link configuration, use [Create Link](#10-creating-links--share-upload-or-combined) inside a project instead.
 
 ---
 
@@ -1070,30 +1085,28 @@ From the Dashboard, you can find your QuickShare link and:
 
 45Flow uses a **unified link system** — every link can be configured to support file sharing (review/download), upload, or both simultaneously. You no longer need to create separate "share links" and "upload links" — a single link can do both.
 
-Click **"New Link"** from the Dashboard to begin.
+Open a project and click **"Create Link"** to begin.
 
 ### Step 1: Select a Project or Destination
 
-First, choose where the link will operate:
+Links are created inside a project. The **Create Link** screen opens for the project you were in, and the file browser starts in that project's folder.
 
-**For share links (or combined):**
-- Select a **Project** if you're organizing links into projects.
-- Or select a **ZFS pool** or **root directory** to browse the full filesystem.
-
-**For upload-only links:**
-- Choose the destination folder where uploaded files will be saved.
+To create the link in a different project, use the **Project** selector in the top-right corner of the screen header. Changing the project moves the file browser to that project's folder.
 
 ![Project selection with ZFS pools](images/share-select-project-v3.png)
 
-The screen displays your available **ZFS pools** (storage locations) such as `/media`, `/projects`, etc. Click **"Select"** next to the pool you want to use. Alternatively, check **"Show entire directory tree from root"** to browse the full filesystem.
-
-> **Tip:** You can set a default project root in **Settings → Project Root** to skip this step for future links.
-
-Click **"Return to Dashboard"** at any time to cancel.
+Click **"Back to Project"** at the bottom of the screen (or **"Back"** in the header) at any time to cancel and return to the project.
 
 ### Step 2: Configure Link Settings
 
-After choosing a location, you'll see the link configuration screen.
+The Create Link screen is a single page, from top to bottom:
+
+1. **Link name** *(optional)* — An internal name to help you identify the link later (e.g., "Rough Cut v2 for review").
+2. **Files to share** — A full-width file browser for picking what your client should review or download.
+3. **Details** — Whether the client can upload, and to which folder.
+4. **Link options** — Expiry, network, what happens after a client uploads, and who can access the link.
+5. **Video / Image / Media Options** — Proxy files and watermark settings (shown when you have picked video or image files).
+6. **Generate Flow link**.
 
 ![File selection and link configuration](images/share-select-files-v3.png)
 
@@ -1105,20 +1118,31 @@ After choosing a location, you'll see the link configuration screen.
 
 | Mode | Description |
 |------|-------------|
-| **Share only** | Recipients can view, download, and comment on files. You select which files to share. |
-| **Upload only** | Recipients can upload files to a specified destination folder. No files are pre-selected. |
-| **Combined (Share + Upload)** | Recipients can both review your shared files AND upload their own files to the same location. Perfect for collaborative workflows. |
+| **Share only** | Recipients can view, download, and comment on files. Pick files under **Files to share** and leave **"Let client upload to"** unchecked. |
+| **Upload only** | Recipients can send files to a specified destination folder. Leave **Files to share** empty and check **"Let client upload to"**. |
+| **Combined (Share + Upload)** | Recipients can both review your shared files AND upload their own files. Pick files and check **"Let client upload to"**. Perfect for collaborative workflows. |
 
-Toggle **"Enable file sharing"** and **"Enable uploads"** to choose the link mode.
+The link type follows from what you pick: there is no separate mode switch. A summary line under the **Generate Flow link** button tells you what kind of link you are about to create.
 
 #### Selecting Files (Share Mode)
 
-When file sharing is enabled:
+The **Files to share** browser sits front and center, across the full width of the screen:
 
-- Use the **file browser** to navigate folders and select individual files or entire folders.
-- Selected files appear in the **"Selected files"** panel with a count badge.
-- Click **"Show list"** to review your selection, and use the **✕** button to remove individual files.
-- Click **"Clear all"** to start over.
+- Use the **file browser** to navigate folders and select individual files. Check a folder to include everything in it.
+- Selected files appear in the **"Selected"** panel with a count. Files from the same folder are grouped together.
+- Click **"Show"** to review your selection, and use the **✕** button to remove individual files or a whole folder group.
+- Click **"Clear"** to start over.
+- Leave **Files to share** empty to make an **upload-only** link.
+
+#### Letting Clients Upload
+
+The **Details** section has a single row for client uploads:
+
+1. Check **"Let client upload to"**.
+2. Type the folder path on the server in the box next to it. The box suggests matching folders as you type.
+3. Or click **"Browse…"** to open the folder browser and pick the folder. Click **"Done"** to close the browser.
+
+Client uploads land in this folder. If the folder doesn't exist yet, 45Flow creates it. The filesystem root (`/`) can't receive uploads.
 
 #### Configuring Basic Settings
 
@@ -1127,16 +1151,18 @@ When file sharing is enabled:
 - Use the number and time unit (hours, days, weeks) or choose a quick preset: **1 hour**, **1 day**, **1 week**, or **Never**.
 - Once expired, the link becomes inaccessible automatically.
 
-**Network Access:**
+**Network:**
+- **Share Externally (Over Internet)** — Link accessible from anywhere. Requires port forwarding to be configured. This is listed first and is the default, unless your administrator set the default to Internal in [Settings → URLs & Access](#urls--access).
 - **Share Locally (Over LAN)** — Link accessible only within your local network or VPN.
-- **Share Externally (Over Internet)** — Link accessible from anywhere. Requires port forwarding to be configured.
-- Use the **"Check Port"** button to verify your external port forwarding is working.
+- When **Share Externally** is selected, use the **"Check Port"** button to verify your external port forwarding is working.
 
-**Link Title** (optional):
-- Give the link an internal name to help you identify it later on the Dashboard.
+**After a client uploads** (available when **"Let client upload to"** is checked):
+- **Share uploads back** — Add each upload to the files shared on this link. On an upload-only link, the client can view and download each file right after they upload it, on the same link.
+- **Watermark uploads** — Apply this link's watermark settings to new uploads.
+- **Make proxy files for uploads** — The server makes proxy files for each video the client uploads. Choose the **Proxy sizes**: **720p**, **1080p**, and/or **Full Res (MP4)**.
 
-**Project Assignment** (optional):
-- Assign the link to a Project for organization. Select from the dropdown or leave unassigned.
+**Project:**
+- The link is created in the project shown in the **Project** selector in the header.
 
 ### Link Access Modes
 
@@ -1146,30 +1172,30 @@ Choose who can access the link:
 |------|-------------|
 | **Anyone with the link** | No login required. Anyone with the URL can access the files. You can optionally enable the **"Allow comments"** toggle so visitors can leave a name and comment. |
 | **Anyone with the link + password** | Requires a shared password. Enter a password in the field that appears. The same password is used by all recipients. |
-| **Only invited users** | Requires each user to log in with their own credentials. Click **"Invite users…"** to select which users can access. Permissions are controlled by their assigned roles. |
+| **Only invited clients & teams** | Requires each client to log in with their own login. Click **"Invite clients & teams…"** to choose which clients and teams can access the link. Roles set what they can do. |
 
 ![Link access mode options](images/share-access-modes-v3.png)
 
 When comments are enabled, you can optionally define **Comment Categories** (for example: *Client Feedback*, *Audio*, *Color*, *VFX*, *Needs Revision*). Categories help standardize review notes and make filtering and exports easier later.
 
-### Advanced Video Options
+### Video and Media Options
 
-When sharing video files, expand the **"Advanced video options"** section for additional controls:
+When you pick video or image files to share, a **Video Options**, **Image Options**, or **Media Options** section appears below the link options:
 
-![Advanced video options — review copy and watermark](images/share-video-options-v3.png)
+![Video options — proxy files and watermark](images/share-video-options-v3.png)
 
-**Use Review Copies:**
-- When enabled, the system generates lower-resolution review copy versions of your videos (720p, 1080p).
-- Shared links serve the review copies instead of the originals, providing faster playback and reduced bandwidth.
-- Select which qualities to generate: **720p**, **1080p**, **Original**, or any combination.
+**Proxy Files:**
+- Choose which proxy file qualities to generate: **720p**, **1080p**, **Full Res (MP4)**, or any combination.
+- Shared links serve the proxy files instead of the originals, providing faster playback and reduced bandwidth.
+- A note shows whether the video will be transcoded on this computer (client-side transcoding) or by the server.
 
 ### Watermark Settings — Video and Image Support
 
-45Flow supports watermarking for both **video files** and **image files**. When enabled, watermarks are applied to review copies (for videos) or directly to the shared image (for images).
+45Flow supports watermarking for both **video files** and **image files**. When enabled, watermarks are applied to proxy files (for videos) or directly to the shared image (for images).
 
 **Enable Watermark:**
-- Toggle **"Apply watermark"** to enable watermarking.
-- Upload a watermark image or choose from built-in presets.
+- Turn on **"Watermark Videos"** (or **"Watermark Images"** / **"Watermark Media"**, depending on what you picked) to enable watermarking.
+- Click **"Browse…"** to upload a watermark image, or choose from built-in presets.
 
 ![Watermark settings showing video and image support](images/watermark-image-support-v3.png)
 
@@ -1207,26 +1233,31 @@ When sharing video files, expand the **"Advanced video options"** section for ad
 
 ### Generating the Link
 
-1. Verify all your settings are correct.
+1. Verify all your settings are correct. The summary line under the **"Generate Flow link"** button says what kind of link you are about to create:
+   - *"This link lets your client review and download N files."* — a share (review) link.
+   - *"No files selected, so this is an upload-only link: your client can send you files."* — an upload-only link.
+   - *"This link lets your client review N files and upload files to you."* — a combined link.
 2. Click **"Generate Flow link"**.
 3. The generated URL will appear — use the **"Copy"** button to copy it to your clipboard, or **"Open"** to view it in your browser.
-4. The link is now visible on your Dashboard for ongoing management.
+4. The link is now visible in the project's links list for ongoing management.
+
+Click **"Reset"** to clear the form and start over, or **"Back to Project"** to return to the project.
 
 ![Generated share link with Copy and Open buttons](images/share-link-generated-v3.png)
 
 ---
 
-## 11. Upload Files Locally
+## 11. Add Files
 
-Use this feature to transfer files from your workstation directly to the server. This is ideal for getting new media onto the server for sharing later.
+Use this feature to copy files from this computer into a project folder on the server. This is ideal for getting new media onto the server for sharing later.
 
-Click **"Upload Files Locally"** from the Dashboard to begin. A three-step wizard will guide you through the process.
+Open a project and click **"Add Files"** to begin. A three-step wizard titled **"Add Files → \<project name\>"** guides you through the process: **Pick Files**, **Choose Folder**, and **Upload**. Click **"Back to Project"** at any time to return to the project.
 
-### Step 1: Select Local Files
+### Step 1: Pick Files
 
 ![Local upload — Step 1: Select files](images/upload-local-step1-v3.png)
 
-1. Click **"Choose Files"** to select individual files, or **"Choose Folder"** to add an entire folder's contents.
+1. Click **"Choose Files"** to select individual files, or **"Choose Folder"** to add an entire folder's contents. You can also drag files onto the table.
 2. Selected files appear in a table showing **Name**, **Size**, and a **Remove** button.
 3. A summary shows the total number of items and combined size.
 4. Use **"Clear"** to remove all selected files and start over.
@@ -1234,28 +1265,29 @@ Click **"Upload Files Locally"** from the Dashboard to begin. A three-step wizar
 
 > **Note:** You can select multiple files at once in the file chooser dialog.
 
-### Step 2: Choose Destination
+### Step 2: Choose Folder
 
 ![Local upload — Step 2: Choose destination](images/upload-local-step2-v3.png)
 
-1. Select a **ZFS pool** (storage location) or check **"Show entire directory tree from root"** for full filesystem access.
+1. The folder browser opens in the project folder. Pick where the files go in the project.
 2. Navigate the folder browser:
    - **Single-click** a folder to select it as the destination.
    - **Double-click** a folder to enter it and browse deeper.
    - Click **"New Folder"** to create a new directory at the current location.
 3. The selected destination path is shown at the top.
-4. Click **"Change Project Directory"** to go back and select a different pool.
-5. Click **"Next"** to proceed, or **"Back"** to return to file selection.
+4. Click **"Next"** to proceed, or **"Back"** to return to file selection.
 
 ### Step 3: Upload & Monitor Progress
 
 ![Local upload — Step 3: Upload progress](images/upload-local-step3-v3.png)
 
+The heading shows **"Adding to \<folder\>"** so you can confirm where the files are going.
+
 **Before Uploading:**
 
-If you're uploading video or image files, you can configure **Advanced Options** before starting:
+If you're uploading video or image files, you can configure **Video options** (or **Image options** / **Media options**) before starting:
 
-- **Use Review Copies** — Enable to generate review copy versions (720p, 1080p) of your videos during upload. These review copies are used when you share the files later via links.
+- **Proxy Files** — Choose proxy file qualities (720p, 1080p) to generate for your videos during upload. These proxy files are used when you share the files later via links.
 - **Watermark Media** — Apply a watermark overlay to uploaded videos and images (Pro: images supported with full customization; Community: videos only with basic positioning).
 
 Click **"Start Upload"** to begin transferring files.
@@ -1277,7 +1309,7 @@ The upload table shows each file with real-time status:
 A progress bar at the top shows overall completion across all files.
 
 When **client-side transcoding** is enabled (Settings → Performance), video files go through a two-phase workflow:
-1. **Transcode** — The video is processed on your machine using hardware acceleration (GPU) if available. This generates both the **Stream** (HLS adaptive bitrate for browser playback) and **Review Copies** (downloadable MP4 files at your chosen qualities). Shown as "Transcode XX%" in the table.
+1. **Transcode** — The video is processed on your machine using hardware acceleration (GPU) if available. This generates both the **Stream** (HLS adaptive bitrate for browser playback) and **Proxy Files** (downloadable MP4 files at your chosen qualities). Shown as "Transcode XX%" in the table.
 2. **Upload** — The raw source file is transferred to the server for archival. Shown as "Upload XX%".
 
 This offloads video processing from the server to your workstation, typically completing much faster with hardware-accelerated encoding.
@@ -1292,7 +1324,7 @@ You can monitor both modes in the [Transfer Dock](#12-transfer-dock).
 
 **After Upload:**
 
-When all files are complete, click **"Finish"** to return to the Dashboard.
+When all files are complete, click **"Finish"** to return to the project.
 
 > **Tip:** If any uploads fail, the error message will appear below the file entry. You can address the issue and re-upload those files.
 
@@ -1300,7 +1332,7 @@ When all files are complete, click **"Finish"** to return to the Dashboard.
 
 ## 12. Transfer Dock
 
-The **Transfer Dock** is a persistent overlay that tracks all active and recently completed transfers — uploads, transcodes, and review copy generation. It remains visible across all screens so you can continue working while monitoring progress.
+The **Transfer Dock** is a persistent overlay that tracks all active and recently completed transfers — uploads, transcodes, and proxy file generation. It remains visible across all screens so you can continue working while monitoring progress.
 
 ![Transfer Dock open](images/transfer-dock-open-v3.png)
 
@@ -1333,10 +1365,10 @@ Each file in the Transfer Dock shows:
 
 ### Transcode Status
 
-When review copies or streaming proxies are being generated, each transcode entry shows:
+When proxy files or streams are being generated, each transcode entry shows:
 
 - **Stream** — The HLS (HTTP Live Streaming) adaptive bitrate output used for browser-based video playback. This is what link recipients see when they click play.
-- **Review Copy** — Downloadable MP4 files at specific qualities (720p, 1080p, or full resolution). These are used for offline review and download. When multiple qualities are selected, they appear as "Review Copy (Multiple Resolutions)" with per-quality progress.
+- **Proxy File** — Downloadable MP4 files at specific qualities (720p, 1080p, or full resolution). These are used for offline review and download. When multiple qualities are selected, they appear as "Proxy File (Multiple Resolutions)" with per-quality progress.
 - **Awaiting Transcode…** — The upload task is waiting for client-side transcoding to complete before uploading the raw file.
 
 Each transcode entry also shows:
@@ -1354,7 +1386,7 @@ Each transcode entry also shows:
 A typical transfer entry for a QuickShare might show multiple sub-items:
 
 ```
-Review Copy (Full Res)     Client · GPU (QSV)    1.05x   ETA 2:08   31%
+Proxy File (Full Res)      Client · GPU (QSV)    1.05x   ETA 2:08   31%
 Stream                     Client · GPU (QSV)    100%
 Upload                     95.23 MB/s            ETA 0:14            100%
 ```
@@ -1391,7 +1423,7 @@ Summary badges show the count of **Total**, **Active**, **Expired**, and **Disab
 ![Link type badges showing Share, Upload, and Combined](images/link-type-badges-v3.png)
 | **Expires** | Time remaining (e.g., *23 Hours*, *6d 22h*, *Never*). Shown in red when less than 24 hours remain. Click **Edit** to change the expiration. |
 | **Status** | Current state: **ACTIVE** (green), **EXPIRED** (amber), or **DISABLED** (gray). |
-| **Access** | Access mode: **Open** (green), **Password** (amber), or **Users only** (rose). Hover for details. |
+| **Access** | Access mode: **Open** (green), **Password** (amber), or **Invited only** (rose). Hover for details. |
 | **Created** | Date and time the link was created. |
 | **Actions** | Action buttons (see below). |
 
@@ -1416,7 +1448,7 @@ Clicking **"Delete"** opens a confirmation modal with a detailed preview of what
 The delete preview shows:
 - **Total files** associated with the link
 - **Shared files** — files also used by other links (these are kept)
-- **Option: Delete generated files** — Remove review copies, transcodes, and streaming proxies. Shows how much disk space will be freed.
+- **Option: Delete generated files** — Remove proxy files, transcodes, and streams. Shows how much disk space will be freed.
 - **Option: Delete original source files** — Remove the original uploaded files. **This is destructive** — only enable if you're sure the originals are no longer needed.
 
 You must type "DELETE" to confirm permanent deletion. This action cannot be undone.
@@ -1436,8 +1468,8 @@ The details view displays:
 | Field | Description |
 |-------|-------------|
 | **Primary Link** | The full URL with a **Copy** button. |
-| **Access** | Current access mode (Open / Password / Users only). |
-| **Review Copies** | Whether review copy generation is enabled or disabled. |
+| **Access** | Current access mode: **Anyone with the link**, **Anyone with the link + password**, or, for invite-only links, how many clients and teams are invited (**Only invited clients** when none are yet). |
+| **Proxy File Qualities Shared** | The proxy file qualities generated for this link, or "Disabled". |
 | **Watermark** | Whether watermarking is enabled or disabled (shows "Video + Image" for Pro, "Video only" for Community). |
 | **Type** | Share, Upload, or Combined. |
 | **Status** | Active, Expired, or Disabled. |
@@ -1534,12 +1566,12 @@ You can modify:
 
 - **Title** and **Notes** — Update the internal name and documentation.
 - **Project Assignment** — Assign or change the project this link belongs to.
-- **Link Type** — Toggle "Enable file sharing" and "Enable uploads" to change between Share, Upload, or Combined mode.
-- **Restrict Access to Users** — Toggle between open and restricted access.
+- **Link Type** — Toggle **"Enable Review/Share"** and **"Enable Upload"** to change between Share, Upload, or Combined mode.
+- **Only invited clients & teams** — Toggle between open and invite-only access.
 - **Allow Comments** — Enable or disable commenting on shared files.
 - **Comment Categories** — When comments are enabled, use **"Comment Categories"** to define reusable labels and colors for review notes.
 - **Password Required** — Enable or disable password protection, and set the password.
-- **Generate Review Copies** — Enable/disable review copy generation and select qualities (720p, 1080p, Original).
+- **Generate Proxy Files** — Enable/disable proxy file generation and select qualities (720p, 1080p, Original).
 - **Apply Watermark** — Enable/disable watermark overlay with full customization controls (position, scale, opacity, rotation, presets — Pro for full control).
 - **Auto-watermark uploaded files** — When enabled on upload or combined links, files uploaded through this link automatically have the link's watermark settings applied.
 - **Files for This Link** — Add or remove files associated with the link using **"Manage Files"**.
@@ -1570,9 +1602,9 @@ When you protect a link with a password (**Anyone with the link + password**), r
 
 After entering the correct password, they'll have full access to the shared files according to the permissions you set (view, download, comment, etc.).
 
-### User-Restricted Links
+### Invite-Only Links
 
-For links restricted to **specific users** or **invited users only**, recipients must log in with their credentials:
+For links set to **Only invited clients & teams**, recipients must log in with their own credentials:
 
 1. Click **"Sign In"** on the access screen.
 2. Enter their username and password.
@@ -1580,7 +1612,7 @@ For links restricted to **specific users** or **invited users only**, recipients
 
 ![User-restricted link login screen](images/link-user-restricted-v3.png)
 
-> **Note:** Users must have been invited to the link (or have appropriate role permissions) to access user-restricted content. See [User Management](#18-user-management) for details on creating and managing user accounts.
+> **Note:** Clients must have been invited to the link, directly or through a team, to open an invite-only link. See [Client Access](#18-client-access) for details on adding and managing client accounts.
 
 ---
 
@@ -1601,7 +1633,7 @@ The player supports standard media controls:
 
 ### Quality Selection
 
-If review copies were generated, viewers can choose their preferred quality:
+If proxy files were generated, viewers can choose their preferred quality:
 - **Auto** — Automatically adapts to available bandwidth
 - **720p** — Lower resolution, faster loading
 - **1080p** — Full HD
@@ -1619,7 +1651,7 @@ If comments are enabled on the link, a **Comments Panel** appears alongside the 
 - **Adding comments:** Click the comment input area, type your message, optionally choose a **Comment Category**, and submit. The comment is automatically tagged to the current playback position and the file version being viewed.
 - **Replies:** Click on any comment to reply, creating threaded conversations.
 - **Timecode markers:** Visual markers appear on the seek bar indicating where comments exist.
-- **SMPTE timecodes:** Comments display professional SMPTE timecodes (HH:MM:SS:FF) when the video's frame rate is detected.
+- **SMPTE timecodes:** Comments display professional SMPTE timecodes (HH:MM:SS:FF, drop-frame where applicable) when the video's frame rate is detected. **"Show SMPTE timecode"** above the comments is on by default; turn it off to show plain HH:MM:SS times.
 - **Previous Version Notes:** If a file has multiple versions and earlier versions have comments, a collapsible **"Previous Version Notes"** section appears below the comments list. This shows all notes from prior versions with their resolved/unresolved status, letting reviewers see what was addressed without switching versions.
 
 Use categories to quickly triage feedback types during review (for example, filter to only *Audio* notes before a sound pass, then export a category-focused report for that team).
@@ -1657,77 +1689,72 @@ For collection links (multiple files), a sidebar file browser appears on the lef
 
 ---
 
-## 18. User Management
+## 18. Client Access
 
-Users are required for the **"Only invited users"** access mode and allow role-based permissions on restricted links. Access user management from the Dashboard by clicking **"Manage Access"**.
+Clients are the people you invite to **"Only invited clients & teams"** links. Each client signs in with their own login, and their role decides what they can do. Open a project, then click **"Client Access"** at the top of the screen.
 
-![Manage Users modal](images/manage-users-v3.png)
+![Client Access](images/manage-users-v3.png)
 
-### Viewing Existing Users
+### Viewing Existing Clients
 
-The top section lists all currently created users with:
+The **Clients** list shows everyone you've added, with:
 - **Name** and **Username**
 - **Email** (if provided)
 - **Company** and **Tags** (if provided)
 - **Assigned role**
-- **Color dot** indicating their comment color
+- **Color dot** showing their comment color
 
-Use the **search bar** to filter users by name, username, email, company, or tags.
+Use the **search bar** to filter clients by name, username, email, company, or tags.
 
-### Creating a New User
+### Adding a Client
 
-Click **"Create new user"** to expand the creation form.
+Click **"Add client"** to open the form.
 
-![Create new user form](images/manage-users-create-v3.png)
+![Add client form](images/manage-users-create-v3.png)
 
 | Field | Required | Description |
 |-------|----------|-------------|
 | **Name** | Yes | Display name shown in comments and activity logs. |
-| **Username** | Yes | Login identifier. Must be unique. |
-| **Temporary Password** | Yes | Initial password (4–64 characters). Click **"Generate password"** to auto-generate one. Share this securely with the user. |
+| **Username** | Yes | What the client signs in with. Must be unique. |
+| **Temporary Password** | Yes | First password (4–64 characters). Click **"Generate password"** to make one. Send it to your client securely. |
 | **Confirm Password** | Yes | Must match the temporary password. |
 | **Email** | No | Email address for identification. |
-| **Company** | No | Company affiliation. |
-| **Tags** | No | Comma-separated tags (e.g., `finance, vip, internal`). |
-| **Default Role** | — | The role automatically assigned when this user is added to restricted links. |
-| **Comment Color** | — | Hex color used to visually distinguish this user's comments. Use the color picker or type a hex value (e.g., `#94ebc8`). |
+| **Company** | No | The client's company. |
+| **Tags** | No | Comma-separated tags (e.g., `agency, vip, internal`). |
+| **Default Role** | — | The role the client gets when invited to a link. |
+| **Comment Color** | — | Color used for this client's comments. Use the color picker or type a hex value (e.g., `#94ebc8`). |
 
-Click **"Create User"** to save. The user will appear in the existing users list and can now be invited to restricted links.
+Click **"Add Client"** to save. When you opened Client Access from a link, the button reads **"Add & Invite Client"** and also invites them to that link.
 
-### Managing Groups
+### Managing Teams
 
-Groups allow you to organize users into logical collections (e.g., **Editors**, **Clients**, **Reviewers**) for easier permission management.
+Teams group clients you share with together (e.g., **Agency**, **Producers**, **Reviewers**) so you can invite them all at once.
 
-**Creating a Group:**
+**Creating a team:**
 
-1. Click **"Create Group"** in the User Management screen.
-2. Enter a **group name** and optional **description**.
-3. Click **"Save"**.
+1. Click **"Teams"** at the top of Client Access.
+2. Enter a **team name** and optional **description**.
+3. Check the clients who belong to the team.
+4. Click **"Create"**.
 
-**Adding Users to a Group:**
+**Inviting a team to a link:**
 
-1. Open the group's detail view.
-2. Click **"Add Users"**.
-3. Select users from the list and confirm.
+When a link is set to **"Only invited clients & teams"**, click **"Invite clients & teams…"** and pick the team. Everyone on the team gets access to the link.
 
-**Using Groups for Link Access:**
+![Teams](images/manage-groups-v3.png)
 
-When creating a user-restricted link, you can invite an entire group instead of adding users individually. All group members will automatically have access to the link.
+> **Tip:** Use teams when you share with the same people again and again. Add a new person to the team once, and they get access to every link shared with that team.
 
-![User groups management](images/manage-groups-v3.png)
+### Editing & Deleting Clients
 
-> **Tip:** Use groups to streamline link permissions when sharing with the same team repeatedly. Add new members to the group once, and they'll inherit access to all links shared with that group.
-
-### Editing & Deleting Users
-
-- Click the **pencil icon** on any user to edit their name, email, company, tags, comment color, default role, or to reset their password.
-- Click the **red X** to delete a user. A confirmation dialog will appear — **this action cannot be undone**.
+- Click the **pencil icon** on any client to edit their name, email, company, tags, comment color, default role, or to reset their password.
+- Click the **red X** to delete a client. You'll be asked to confirm. **This cannot be undone.**
 
 ---
 
 ## 19. Role Management
 
-Roles define what users can do when accessing restricted links. Access role management from **Manage Users → Manage Roles**.
+Roles define what clients can do on invite-only links. Open them from **Client Access → Roles**.
 
 ![Manage Roles screen](images/manage-roles-v3.png)
 
@@ -1844,9 +1871,9 @@ On Linux systems using `.deb` or `.rpm` packages, automatic installation require
 
 ---
 
-## 22. View Logs
+## 22. Activity Log
 
-The Log Viewer lets you inspect application activity, identify errors, and troubleshoot issues. Access it from the Dashboard by clicking **"View Logs"**.
+The Activity Log lets you see what the app and server have been doing, spot errors, and troubleshoot. Click **"Activity Log"** at the top of the Projects screen or inside any project.
 
 The Log Viewer has two tabs: **Client Logs** and **Server Logs**.
 
@@ -1954,8 +1981,8 @@ Your password is never stored in the browser, and there is no "remember password
 
 | Feature | In the browser |
 |---|---|
-| Creating, editing and managing links, projects, users and roles | Works the same as the desktop app |
-| **Upload Files** | Choose files or a folder from your computer with the normal file dialog |
+| Creating, editing and managing links, projects, clients and roles | Works the same as the desktop app |
+| **Add Files** | Choose files or a folder from your computer with the normal file dialog |
 | **Drag-and-drop QuickShare** | Drag files anywhere on the Dashboard, as in the desktop app |
 | Watermark images | Choose an image from your computer |
 | Transfer Dock | Works. Uploads continue while you use other pages, but **closing or leaving the tab cancels them** (your browser asks you to confirm) |
@@ -1969,14 +1996,14 @@ Your password is never stored in the browser, and there is no "remember password
 
 These are not available in the browser, and the app explains this where it matters:
 
-- **Client-side video processing.** In the desktop app you can create review copies on your own computer before uploading. In the browser the **server** prepares them after the upload instead, which can take longer for large videos. *Settings → Performance* explains this.
+- **Client-side video processing.** In the desktop app you can create proxy files on your own computer before uploading. In the browser the **server** prepares them after the upload instead, which can take longer for large videos. *Settings → Performance* explains this.
 - **First-time server setup** (installing houston-broadcaster over SSH) and **desktop app updates**.
 - **Connecting to more than one server.** The web app talks only to the server it was opened from.
 - **Resuming an interrupted upload.** If a page is closed or reloaded during an upload, start it again.
 
 ### Browser Logs
 
-**View Logs** is available in the browser. The first tab is **Browser Logs** instead of Client Logs. It shows errors and events recorded by this browser tab, such as a failed upload or a request the server refused. It is kept for the current tab only and is cleared when you close it. Passwords and tokens are never recorded.
+**Activity Log** is available in the browser. The first tab is **Browser Logs** instead of Client Logs. It shows errors and events recorded by this browser tab, such as a failed upload or a request the server refused. It is kept for the current tab only and is cleared when you close it. Passwords and tokens are never recorded.
 
 Click **"Download"** to save the log as a file you can send to support. **Server Logs** works the same as in the desktop app.
 
@@ -2028,7 +2055,7 @@ A: When a trial license expires, the server reverts to Community mode. Pro featu
 A: The app enters **Pro — Legacy** mode. All the Pro features you had at the time of expiry remain fully functional — you keep what you paid for. However, automatic app updates stop, and any new Pro features or improvements released after your license expired will not be available to you. Renew your license at any time in Settings → Go Pro to unlock everything new and resume receiving updates.
 
 **Q: What are Projects and do I need to use them?**  
-A: Projects are the primary workspace organizer in 45Flow. After login, you select or create a project, and the Dashboard shows only that project's links. Each project has its own root directory and tracks link counts. If you prefer a flat list of all links without grouping, you can disable Project Mode in **Settings → Project Root** — you'll skip the Projects screen and go directly to the Dashboard with all links visible.
+A: A project is a folder on your server for one job or production. After you sign in you land on your Projects; open one to see its links, create new links and add files. Each project keeps its own proxy files and streams in a hidden `.45flow` folder inside the project folder.
 
 **Q: How do I create a link that supports both sharing and uploading?**  
 A: When creating a link, enable both **"Enable file sharing"** and **"Enable uploads"** toggles. This creates a Combined link where recipients can view/download your shared files AND upload their own files to the same location. Perfect for collaborative review workflows.
@@ -2051,11 +2078,11 @@ A: 45Flow supports a wide range of media file types including:
 - **Archives:** ZIP, TAR, GZ, 7Z, RAR
 - **Documents:** PDF, SRT, VTT (subtitles), XML, CSV
 
-**Q: What do review copies do?**  
-A: Review copies are lower-resolution versions (720p, 1080p) of your videos. When enabled, shared links stream the review copy instead of the original, resulting in faster playback, reduced bandwidth usage, and protection of your original high-resolution files.
+**Q: What do proxy files do?**  
+A: Proxy files are lower-resolution versions (720p, 1080p) of your videos. When enabled, shared links stream the proxy file instead of the original, resulting in faster playback, reduced bandwidth usage, and protection of your original high-resolution files.
 
 **Q: Can I change a link's settings after creating it?**  
-A: Yes. Open the link's **Details** from the Dashboard and click **"Edit"**. You can change access mode, password, expiration, review copy/watermark settings, and the files attached to the link. Changes take effect immediately.
+A: Yes. Open the link's **Details** from the Dashboard and click **"Edit"**. You can change access mode, password, expiration, proxy file/watermark settings, and the files attached to the link. Changes take effect immediately.
 
 **Q: What happens when a link expires?**  
 A: Expired links become inaccessible to anyone who tries to open them. The link remains in your Dashboard with an "Expired" status, so you can view its history or adjust its expiration to reactivate it.
@@ -2064,10 +2091,10 @@ A: Expired links become inaccessible to anyone who tries to open them. The link 
 A: Yes. Click **"Disable"** in the link's action column on the Dashboard. This immediately blocks access. You can re-enable it later with the **"Enable"** button.
 
 **Q: How do I permanently delete a link?**  
-A: Click **"Delete"** in the link's action column. A confirmation modal shows a preview of associated files and lets you choose whether to also delete generated files (review copies, transcodes) and/or original source files. Type "DELETE" to confirm. This action cannot be undone.
+A: Click **"Delete"** in the link's action column. A confirmation modal shows a preview of associated files and lets you choose whether to also delete generated files (proxy files and streams) and/or original source files. Type "DELETE" to confirm. This action cannot be undone.
 
 **Q: What happens to links when I delete a project?**  
-A: When you delete a project, its links are **not deleted** — they become "unassigned" and appear in the Unassigned Links section below the project list on the Dashboard. You can reassign them to another project later via the link edit screen.
+A: When you delete a project, its links are **not deleted** unless you choose to delete them. Kept links appear in the **Links Without a Project** section below your project list. You can move them into another project later from the link edit screen.
 
 **Q: How are uploaded files scanned for security?**  
 A: All uploaded files go through a quarantine process with malware scanning before being moved to the destination folder. Files that fail the scan are rejected.

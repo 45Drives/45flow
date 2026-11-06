@@ -50,7 +50,7 @@
                 <div class="font-semibold">{{ currentAccessSummary }}</div>
               </div>
               <div>
-                <span class="opacity-70">Review Copy Qualities Shared</span>
+                <span class="opacity-70">Proxy File Qualities Shared</span>
                 <div class="font-semibold">
                     {{ currentGenerateReviewProxy ? currentProxyQualities.join(', ') : 'Disabled' }}
                 </div>
@@ -160,7 +160,7 @@
                   class="btn btn-primary text-xs px-2 py-1"
                   @click="openAccessModal"
                 >
-                  Manage users…
+                  Invite clients…
                 </button>
               </div>
 
@@ -184,14 +184,14 @@
                 </div>
 
                 <div class="flex flex-wrap items-center gap-3 min-w-0">
-                  <label class="font-semibold sm:whitespace-nowrap">Restrict Access to Users</label>
+                  <label class="font-semibold sm:whitespace-nowrap">Only invited clients & teams</label>
 
                   <template v-if="editMode">
                     <Switch id="restrict-link-access-switch" v-model="restrictAccess" :class="[
                       restrictAccess ? 'bg-secondary' : 'bg-well',
                       'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-600 focus:ring-offset-2'
                     ]">
-                      <span class="sr-only">Toggle user access</span>
+                      <span class="sr-only">Toggle invite-only access</span>
                       <span aria-hidden="true" :class="[
                         restrictAccess ? 'translate-x-5' : 'translate-x-0',
                         'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-default shadow ring-0 transition duration-200 ease-in-out'
@@ -281,16 +281,16 @@
                 </div>
 
                 <div v-if="effectiveAccessMode === 'open'" class="text-xs opacity-70">
-                  Open links allow anyone with the link to access. Use restricted access to require users.
+                  Open links allow anyone with the link to access. Turn on invite-only to require clients to sign in.
                 </div>
 
                 <div v-if="effectiveAccessMode === 'restricted'" class="space-y-2">
                   <div v-if="!accessSatisfied" class="text-sm text-red-500">
-                    At least one user or group is required when access is restricted.
+                    Invite at least one client or team, or turn off invite-only.
                   </div>
 
                   <div v-if="accessLoading && !unifiedAccessList.length && !accessGroupRows.length" class="text-sm opacity-70">Loading…</div>
-                  <div v-else-if="!accessLoading && !unifiedAccessList.length && !accessGroupRows.length" class="text-sm opacity-70">No users or groups currently have access.</div>
+                  <div v-else-if="!accessLoading && !unifiedAccessList.length && !accessGroupRows.length" class="text-sm opacity-70">No clients or teams invited yet.</div>
 
                   <!-- Unified users table -->
                   <div v-if="unifiedAccessList.length" class="overflow-x-auto rounded-lg border border-default">
@@ -315,7 +315,7 @@
                               </div>
                               <span v-if="u.is_disabled"
                                 class="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-default/70 text-amber-400 border border-amber-500/30"
-                                title="This user account is disabled">
+                                title="This client login is disabled">
                                 Disabled
                               </span>
                             </div>
@@ -345,7 +345,7 @@
                               @click="removeAccess(u.user_id)">
                               Remove
                             </button>
-                            <span v-else class="text-xs opacity-40" title="Remove via group settings">—</span>
+                            <span v-else class="text-xs opacity-40" title="Remove in Teams">—</span>
                           </td>
                         </tr>
                       </tbody>
@@ -354,7 +354,7 @@
 
                   <!-- Groups summary -->
                   <div v-if="accessGroupRows.length" class="mt-2">
-                    <div class="font-semibold text-xs opacity-70 mb-1 uppercase tracking-wide">Groups on this link</div>
+                    <div class="font-semibold text-xs opacity-70 mb-1 uppercase tracking-wide">Teams on this link</div>
                     <div class="flex flex-wrap gap-2">
                       <div v-for="g in accessGroupRows" :key="g.group_id"
                         class="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border border-default bg-default/40">
@@ -364,7 +364,7 @@
                         <span class="text-xs opacity-50">{{ g.member_count ?? 0 }} member{{ (g.member_count ?? 0) === 1 ? '' : 's' }}</span>
                         <span class="text-xs opacity-50">· {{ g.role_name || g.role?.name || 'viewer' }}</span>
                         <button v-if="editMode" class="text-red-400 hover:text-red-300 ml-1"
-                          @click="removeGroupAccess(g.group_id)" title="Remove group">
+                          @click="removeGroupAccess(g.group_id)" title="Remove team">
                           <FontAwesomeIcon :icon="faTrash" class="text-xs" />
                         </button>
                       </div>
@@ -377,13 +377,13 @@
             <div class="col-span-3 rounded-lg border border-default bg-default/20 p-3 space-y-3">
               <div class="text-default font-semibold">Media Processing</div>
               <div class="flex flex-wrap items-center gap-3 min-w-0">
-                <label class="font-semibold sm:whitespace-nowrap">Generate Review Copies</label>
+                <label class="font-semibold sm:whitespace-nowrap">Generate Proxy Files</label>
                 <template v-if="editMode">
                   <Switch id="link-proxy-switch" v-model="draftGenerateReviewProxy" :class="[
                     draftGenerateReviewProxy ? 'bg-secondary' : 'bg-well',
                     'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-600 focus:ring-offset-2'
                   ]">
-                    <span class="sr-only">Toggle review copy generation</span>
+                    <span class="sr-only">Toggle proxy file generation</span>
                     <span aria-hidden="true" :class="[
                       draftGenerateReviewProxy ? 'translate-x-5' : 'translate-x-0',
                       'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-default shadow ring-0 transition duration-200 ease-in-out'
@@ -396,7 +396,7 @@
               </div>
 
               <div v-if="editMode && draftGenerateReviewProxy" class="flex flex-wrap items-center gap-3">
-                <span class="text-xs opacity-80">Review copy qualities:</span>
+                <span class="text-xs opacity-80">Proxy file qualities:</span>
                 <label v-for="q in proxyQualityChoices" :key="q" class="inline-flex items-center gap-1 text-sm">
                   <input type="checkbox" class="proxy-quality-checkbox" :value="q" v-model="draftProxyQualities" />
                   <span>{{ q }}</span>
@@ -447,10 +447,10 @@
                     @click="reprocessMedia()"
                   >
                     <span v-if="reprocessingMedia">Processing…</span>
-                    <span v-else>Reprocess Review Copies</span>
+                    <span v-else>Reprocess Proxy Files</span>
                   </button>
                   <span class="text-xs opacity-70">
-                    Regenerates review copies/streams with current quality and watermark settings.
+                    Regenerates proxy files/streams with current quality and watermark settings.
                   </span>
                 </div>
                 <div class="text-xs text-muted flex items-center gap-1.5 mt-2">
@@ -552,7 +552,7 @@
                   <div class="min-w-0">
                     <div class="text-sm font-medium">Auto-transcode uploads</div>
                     <div class="text-xs text-muted">
-                      Automatically generate review-copy proxies (server-side) for each video uploaded through this link.
+                      The server makes proxy files for each video uploaded through this link.
                     </div>
                   </div>
                 </label>
@@ -655,7 +655,7 @@
           </div>
         </section>
 
-        <!-- Processing (review copies / HLS / image watermarks); hides itself when nothing was requested -->
+        <!-- Processing (proxy files / HLS / image watermarks); hides itself when nothing was requested -->
         <LinkTranscodeStatus
           v-if="!editMode && link && link.type !== 'upload'"
           :link-id="link.id"
@@ -721,7 +721,7 @@
           <div class="flex flex-wrap items-start justify-between gap-3 mb-2">
             <div>
               <h4 class="font-semibold">Versions</h4>
-              <div class="text-xs opacity-70">Restore or delete versions, and inspect related review copy/version artifacts.</div>
+              <div class="text-xs opacity-70">Restore or delete versions, and inspect related proxy file/version artifacts.</div>
             </div>
             <div class="flex flex-wrap items-center justify-end gap-2">
               <label class="text-xs opacity-80 inline-flex items-center gap-1 px-2 py-1 rounded border border-default bg-default/20">
@@ -804,7 +804,7 @@
                               @click="deleteVersionArtifacts(v, 'transcodes')"
                               :disabled="isDeletingArtifacts(v, 'transcodes')"
                             >
-                              {{ isDeletingArtifacts(v, 'transcodes') ? 'Deleting…' : 'Delete review copy/HLS' }}
+                              {{ isDeletingArtifacts(v, 'transcodes') ? 'Deleting…' : 'Delete proxy file/HLS' }}
                             </button>
                             <button
                               v-if="clientTranscodeEnabled && isSelectedFileVideo"
@@ -868,9 +868,9 @@
                             </div>
                           </template>
                           <div class="grid grid-cols-[11rem_1fr_auto] gap-2 items-start pt-1">
-                            <span class="opacity-80">Review copies</span>
+                            <span class="opacity-80">Proxy files</span>
                             <span>{{ proxyPatternRelPath(v) || '—' }}</span>
-                            <button class="btn btn-secondary px-2 py-1 text-[11px]" :disabled="!proxyPatternRelPath(v)" @click="copyExtraPath('Review copies pattern', proxyPatternRelPath(v))">Copy</button>
+                            <button class="btn btn-secondary px-2 py-1 text-[11px]" :disabled="!proxyPatternRelPath(v)" @click="copyExtraPath('Proxy files pattern', proxyPatternRelPath(v))">Copy</button>
                           </div>
                           <div class="grid grid-cols-[11rem_1fr_auto] gap-2 items-start">
                             <span class="opacity-80">HLS folder</span>
@@ -951,7 +951,7 @@
                   class="input-textlike border rounded px-2 py-1 text-sm min-w-[20rem]"
                 >
                   <option value="">Select existing watermark file…</option>
-                  <optgroup v-if="showDefaultWatermarksForEdit && validDefaultWatermarksForEdit.length && existingWatermarkFilesForEdit.length" label="User Uploads">
+                  <optgroup v-if="showDefaultWatermarksForEdit && validDefaultWatermarksForEdit.length && existingWatermarkFilesForEdit.length" label="Client Uploads">
                     <option v-for="wm in existingWatermarkFilesForEdit" :key="wm" :value="wm">{{ wm.split('/').pop() }}</option>
                   </optgroup>
                   <template v-else-if="existingWatermarkFilesForEdit.length">
@@ -1070,8 +1070,8 @@ const linkDetailsTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="link-details-config"]',
 		message: isPremiumActive.value
-      ? 'Link Configuration shows editable settings.\n\nTitle, notes, access mode, password protection, comments (including Comment Categories), media processing (review copies, qualities, watermark with full customization), and for upload links — the destination directory.\n\nLinks can have both upload and share/review capabilities enabled simultaneously.'
-			: 'Link Configuration shows editable settings.\n\nTitle, notes, access mode, password protection, media processing (review copies, qualities, basic watermark), and for upload links — the destination directory.\n\nLinks can have both upload and share/review capabilities enabled simultaneously.',
+      ? 'Link Configuration shows editable settings.\n\nTitle, notes, access mode, password protection, comments (including Comment Categories), media processing (proxy files, qualities, watermark with full customization), and for upload links — the destination directory.\n\nLinks can have both upload and share/review capabilities enabled simultaneously.'
+			: 'Link Configuration shows editable settings.\n\nTitle, notes, access mode, password protection, media processing (proxy files, qualities, basic watermark), and for upload links — the destination directory.\n\nLinks can have both upload and share/review capabilities enabled simultaneously.',
 	},
 	{
 		target: '[data-tour="link-details-files"]',
@@ -1089,8 +1089,8 @@ const linkDetailsEditTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="link-details-config"]',
 		message: isPremiumActive.value
-			? 'You\'re now in Edit mode!\n\nAll fields in this section are editable. Change the title, notes, access mode, password, review copy settings, or watermark configuration with full position/size/opacity customization (Pro).\n\nFor upload links, you can also change the destination directory. For combined links, you can toggle upload and share capabilities independently.'
-			: 'You\'re now in Edit mode!\n\nAll fields in this section are editable. Change the title, notes, access mode, password, review copy settings, or basic watermark.\n\nFor upload links, you can also change the destination directory. For combined links, you can toggle upload and share capabilities independently.',
+			? 'You\'re now in Edit mode!\n\nAll fields in this section are editable. Change the title, notes, access mode, password, proxy file settings, or watermark configuration with full position/size/opacity customization (Pro).\n\nFor upload links, you can also change the destination directory. For combined links, you can toggle upload and share capabilities independently.'
+			: 'You\'re now in Edit mode!\n\nAll fields in this section are editable. Change the title, notes, access mode, password, proxy file settings, or basic watermark.\n\nFor upload links, you can also change the destination directory. For combined links, you can toggle upload and share capabilities independently.',
 	},
 	{
 		target: '[data-tour="link-details-header"]',
@@ -1421,15 +1421,15 @@ const openPasswordEnabled = computed(() =>
 )
 const accessModeOpenLabel = computed(() => (openPasswordEnabled.value ? 'Open (password required)' : 'Open'))
 const accessModeSummary = computed(() => {
-  if (effectiveAccessMode.value === 'restricted') return 'Restricted (users & groups)'
+  if (effectiveAccessMode.value === 'restricted') return 'Invited clients & teams'
   return accessModeOpenLabel.value
 })
 const currentAccessSummary = computed(() => {
   if (currentAccessMode.value === 'restricted') {
     const parts: string[] = []
-    if (access.value.length) parts.push(`${access.value.length} user(s)`)
-    if (accessGroupRows.value.length) parts.push(`${accessGroupRows.value.length} group(s)`)
-    return parts.length ? parts.join(', ') : 'Only invited users'
+    if (access.value.length) parts.push(`${access.value.length} client(s)`)
+    if (accessGroupRows.value.length) parts.push(`${accessGroupRows.value.length} team(s)`)
+    return parts.length ? parts.join(', ') : 'Only invited clients'
   }
   if ((props.link?.auth_mode || '') === 'password' || !!props.link?.passwordRequired) {
     return 'Anyone with the link + password'
@@ -2227,9 +2227,9 @@ function extraPathRows(v: any) {
   return [
     { label: 'Snapshot file', value: snapshotRelPath(v) },
     { label: 'Version folder', value: snapshotDirRelPath(v) },
-    { label: 'Review Copy/HLS folder', value: transcodeDirRelPath(v) },
+    { label: 'Proxy File/HLS folder', value: transcodeDirRelPath(v) },
     { label: 'HLS folder', value: hlsFolderRelPath(v) },
-    { label: 'Review copies pattern', value: proxyPatternRelPath(v) },
+    { label: 'Proxy files pattern', value: proxyPatternRelPath(v) },
   ].filter((row) => String(row.value || '').trim())
 }
 
@@ -2274,7 +2274,7 @@ function isDeletingArtifacts(v: any, target: ArtifactDeleteTarget) {
 
 function artifactDeleteTitle(target: ArtifactDeleteTarget) {
   if (target === 'snapshot') return 'Delete Snapshot'
-  if (target === 'transcodes') return 'Delete Review Copy/HLS'
+  if (target === 'transcodes') return 'Delete Proxy File/HLS'
   return 'Delete All Extra Files'
 }
 
@@ -2284,9 +2284,9 @@ function artifactDeletePrompt(v: any, target: ArtifactDeleteTarget) {
     return `Delete snapshot files for ${ver}?\n\nThis removes version snapshot files from disk and clears snapshot metadata for this version.`
   }
   if (target === 'transcodes') {
-    return `Delete review copy/HLS artifacts for ${ver}?\n\nThis removes generated review copy/HLS files and clears transcode job state for this version.`
+    return `Delete proxy file/HLS artifacts for ${ver}?\n\nThis removes generated proxy file/HLS files and clears transcode job state for this version.`
   }
-  return `Delete all extra files for ${ver}?\n\nThis removes both snapshot files and review copy/HLS artifacts for this version.`
+  return `Delete all extra files for ${ver}?\n\nThis removes both snapshot files and proxy file/HLS artifacts for this version.`
 }
 
 async function deleteVersionArtifacts(v: any, target: ArtifactDeleteTarget) {
@@ -2899,7 +2899,7 @@ async function reprocessMedia() {
       pushNotification(
         new Notification(
           'Media Reprocessing Started',
-          'Review copies are being regenerated. Track progress in the Transfer Dock.',
+          'Proxy files are being regenerated. Track progress in the Transfer Dock.',
           'success',
           5000
         )
@@ -3026,7 +3026,7 @@ function startLinkTranscodeTracking(opts: {
               const filePath = allPaths.find(p => p.endsWith(detailLabel)) || detailLabel
               const playbackPath = `/api/token/${encodeURIComponent(detailsToken.value)}/files/${encodeURIComponent(String(fileId))}/playback/${encodeURIComponent(String(assetVersionId))}?prefer=auto&audit=0`
               transfer.startPlaybackTranscodeTask({
-                title: `Review Copy: ${detailLabel}`,
+                title: `Proxy File: ${detailLabel}`,
                 detail: filePath,
                 intervalMs: 1500,
                 jobKind: 'proxy_mp4',
@@ -3061,7 +3061,7 @@ function startLinkTranscodeTracking(opts: {
             transfer.startAssetVersionTranscodeTask({
               apiFetch: props.apiFetch,
               assetVersionIds: [assetVersionId],
-              title: `Review Copy: ${fallbackLabel}`,
+              title: `Proxy File: ${fallbackLabel}`,
               detail: fallbackPath,
               intervalMs: 1500,
               jobKind: 'proxy_mp4',
@@ -3080,8 +3080,8 @@ function startLinkTranscodeTracking(opts: {
         if (!opts.suppressInfoNotifications) {
           pushNotification(
             new Notification(
-              'Review Copies Already In Progress',
-              `Review copy generation is already in progress for ${proxyInProgressIds.length} item(s).`,
+              'Proxy Files Already In Progress',
+              `Proxy file generation is already in progress for ${proxyInProgressIds.length} item(s).`,
               'info',
               6000
             )
@@ -3091,8 +3091,8 @@ function startLinkTranscodeTracking(opts: {
         if (!opts.suppressInfoNotifications) {
           pushNotification(
             new Notification(
-              'Review Copies Already Available',
-              `Review copy generation was skipped for ${proxySplit.skipped.length} item(s) (already exists).`,
+              'Proxy Files Already Available',
+              `Proxy file generation was skipped for ${proxySplit.skipped.length} item(s) (already exists).`,
               'info',
               6000
             )
@@ -3254,7 +3254,7 @@ function startLinkTranscodeTracking(opts: {
 
       if (opts.wantsProxy) {
         transfer.startPlaybackTranscodeTask({
-          title: `Review Copy: ${fileLabel}`,
+          title: `Proxy File: ${fileLabel}`,
           detail: filePath || undefined,
           intervalMs: 1500,
           jobKind: 'proxy_mp4',
@@ -3310,7 +3310,7 @@ function startLinkTranscodeTracking(opts: {
     apiFetch: props.apiFetch,
     fileIds,
     title: jobKind === 'proxy_mp4'
-      ? 'Generating review copies'
+      ? 'Generating proxy files'
       : (jobKind === 'hls' ? 'Generating browser stream' : 'Generating transcodes'),
     detail: `Tracking ${fileIds.length} file(s)`,
     intervalMs: 1500,
@@ -3726,15 +3726,15 @@ async function mergeAccessFromModal(
 
 async function removeAccess(userId: number) {
   if (!props.link) return
-  if (!confirm('Remove access for this user?')) return
+  if (!confirm('Remove access for this client?')) return
   await props.apiFetch(`/api/links/${props.link.id}/access/${userId}`, { method: 'DELETE' })
   await loadAccess()
 }
 
 async function removeGroupAccess(groupId: number) {
   if (!props.link) return
-  if (!confirm('Remove group access?')) return
-  // Remove group access by re-merging without this group
+  if (!confirm('Remove team access?')) return
+  // Remove team access by re-merging without this group
   const remainingGroups = accessGroupRows.value
     .filter((g: any) => g.group_id !== groupId)
     .map((g: any) => ({ groupId: g.group_id, roleId: g.role_id, roleName: g.role_name }))
@@ -4093,7 +4093,7 @@ async function saveAll() {
       pushNotification(
         new Notification(
           'Invalid Media Settings',
-          'Enable review copies before enabling watermark.',
+          'Enable proxy files before enabling watermark.',
           'warning',
           8000
         )
@@ -4103,8 +4103,8 @@ async function saveAll() {
     if (draftGenerateReviewProxy.value && nextProxyQualities.length === 0) {
       pushNotification(
         new Notification(
-          'Review Copy Quality Required',
-          'Select at least one review copy quality.',
+          'Proxy File Quality Required',
+          'Select at least one proxy file quality.',
           'warning',
           8000
         )

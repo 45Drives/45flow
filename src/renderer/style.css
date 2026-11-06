@@ -855,6 +855,16 @@
 /* =====================
    Buttons
    ===================== */
+/* Gradient fills default to the padding box and tile under the border, which
+   paints the opposite end of the gradient along the edges. Span the border box. */
+button,
+.btn,
+[role="button"],
+.bg-primary,
+.bg-secondary {
+  background-origin: border-box !important;
+}
+
 .btn-primary {
   background: var(--btn-primary-fill) !important;
   border: none !important;
@@ -1036,7 +1046,10 @@ input[type="checkbox"].styled-checkbox:focus-visible {
   outline-offset: 2px;
 }
 
+/* :is(.dark *) matches houston-common-ui's red dark-mode .input-checkbox:checked
+   rule in specificity; without it the theme color loses in dark mode. */
 .input-checkbox:checked,
+.input-checkbox:checked:is(.dark *),
 input[type="checkbox"].styled-checkbox:checked {
   background-color: var(--btn-primary-bg);
   border-color: var(--btn-primary-border);

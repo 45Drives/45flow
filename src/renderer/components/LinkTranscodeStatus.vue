@@ -102,7 +102,7 @@ const props = defineProps<{
 
 const KINDS: JobKind[] = ['proxy_mp4', 'hls', 'watermark_image']
 const KIND_LABELS: Record<JobKind, string> = {
-  proxy_mp4: 'Review copy',
+  proxy_mp4: 'Proxy file',
   hls: 'Streaming (HLS)',
   watermark_image: 'Watermark',
 }

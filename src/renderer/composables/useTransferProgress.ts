@@ -281,17 +281,17 @@ function qualityLabel(q: string) {
 
 function proxyDetailFromProgress(progress: number, qualities?: string[]) {
     const list = normalizeQualityList(qualities)
-    if (!list.length) return 'Tracking review copy'
+    if (!list.length) return 'Tracking proxy file'
     const chunk = 100 / list.length
     const p = clampPct(progress)
     const idx = Math.min(list.length - 1, Math.floor(p / chunk))
     const current = qualityLabel(list[idx])
-    return current ? `Tracking review copy (${current})` : 'Tracking review copy'
+    return current ? `Tracking proxy file (${current})` : 'Tracking proxy file'
 }
 
 function proxyDetailFromActiveQuality(activeQuality?: string, progress?: number, qualities?: string[]) {
     const q = qualityLabel(activeQuality || '')
-    if (q) return `Tracking review copy (${q})`
+    if (q) return `Tracking proxy file (${q})`
     return proxyDetailFromProgress(progress ?? 0, qualities)
 }
 
@@ -1655,7 +1655,7 @@ export function useTransferProgress() {
                     if (hasExistingTask) continue
 
                     const label = kind === 'hls' ? 'Generating browser stream'
-                        : kind === 'proxy_mp4' ? 'Generating review copies'
+                        : kind === 'proxy_mp4' ? 'Generating proxy files'
                         : 'Generating transcodes'
 
                     // Files uploaded by a recipient through an upload/combined link (vs. the

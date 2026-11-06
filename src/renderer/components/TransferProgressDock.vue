@@ -328,7 +328,7 @@ function taskRowLabel(t: any) {
             const qualitySuffix = (status === 'running' && m)
                 ? ` (${m[1]})`
                 : multiRes ? ' (Multiple Resolutions)' : (m ? ` (${m[1]})` : '')
-            const baseLabel = `Review Copy${qualitySuffix}`
+            const baseLabel = `Proxy File${qualitySuffix}`
             if (status === 'queued') {
                 return `${baseLabel} (Queued)`
             }

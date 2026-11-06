@@ -513,7 +513,7 @@
 					<ul class="text-sm text-red-600 dark:text-red-300/80 list-disc list-inside space-y-1">
 						<li>The share/upload link, which will no longer be accessible to anyone</li>
 						<li>All activity history and access logs</li>
-						<li>All user access permissions</li>
+						<li>All client access permissions</li>
 					</ul>
 				</div>
 
@@ -678,7 +678,7 @@
 					<ul class="text-sm text-red-600 dark:text-red-300/80 list-disc list-inside space-y-1">
 						<li>All {{ selectedIds.size }} selected links</li>
 						<li>All activity history and access logs for each link</li>
-						<li>All user access permissions</li>
+						<li>All client access permissions</li>
 					</ul>
 				</div>
 
@@ -831,6 +831,7 @@ type SortKey = 'title' | 'type' | 'url' | 'expires' | 'status' | 'access' | 'cre
 type SortDir = 'asc' | 'desc'
 
 const props = withDefaults(defineProps<{ tourActive?: boolean; projectId?: number | string | null }>(), { tourActive: false, projectId: null })
+const emit = defineEmits<{ (e: 'rows-changed'): void }>()
 
 /** Demo rows shown during the guided tour when no real links exist */
 const DEMO_LINKS: LinkItem[] = [
@@ -845,7 +846,7 @@ const DEMO_LINKS: LinkItem[] = [
 		access_mode: 'open',
 		auth_mode: 'none',
 		allow_comments: true,
-		shareMode: 'Review Copy',
+		shareMode: 'Proxy File',
 		target: { dirRel: '/projects/rough-cut', files: [{ name: 'rough_cut_v2.mov', size: 2_400_000_000, mime: 'video/quicktime' }] },
 	},
 	{
@@ -873,7 +874,7 @@ const DEMO_LINKS: LinkItem[] = [
 		auth_mode: 'password',
 		passwordRequired: true,
 		allow_comments: true,
-		shareMode: 'Review Copy',
+		shareMode: 'Proxy File',
 		proxyQualities: ['1080p', '720p'],
 		target: { dirRel: '/projects/season2', files: [{ name: 'ep01_final.mp4' }, { name: 'ep02_final.mp4' }, { name: 'ep03_final.mp4' }] },
 	},
@@ -1293,6 +1294,8 @@ watch(showArchived, () => {
 	currentPage.value = 1
 	refresh()
 })
+// rows is reassigned on every refresh, delete, and move, so parents can recount.
+watch(rows, () => emit('rows-changed'))
 watch([sortKey, sortDir], () => {
 	currentPage.value = 1
 })
@@ -1435,12 +1438,12 @@ function hasOpenPassword(it: LinkItem) {
 }
 
 function accessLabel(it: LinkItem) {
-	if (isRestricted(it)) return 'Users only'
+	if (isRestricted(it)) return 'Invited only'
 	return hasOpenPassword(it) ? 'Password' : 'Open'
 }
 
 function accessDetail(it: LinkItem) {
-	if (isRestricted(it)) return 'Users only'
+	if (isRestricted(it)) return 'Invited only'
 	const comments = it.allow_comments ? 'Comments: on' : 'Comments: off'
 	return hasOpenPassword(it) ? `Password protected • ${comments}` : `Open link • ${comments}`
 }

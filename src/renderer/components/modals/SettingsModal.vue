@@ -277,8 +277,8 @@
                         <!-- ═══ Default Link Options ══════════════════════════ -->
                         <template v-if="activeSection === 'linkOptions' && settingsLoaded">
                             <div class="divide-y divide-default">
-                                <SettingRow label="Restrict access to users"
-                                    description="New links will require user accounts by default.">
+                                <SettingRow label="Invite-only links"
+                                    description="New links only let invited clients and teams in by default.">
                                     <Switch v-model="defaultRestrictAccess" :disabled="busy" :class="[
                                         defaultRestrictAccess ? 'bg-primary' : 'bg-well',
                                         'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
@@ -303,13 +303,13 @@
                                         ]" />
                                     </Switch>
                                 </SettingRow>
-                                <SettingRow label="Generate review copies by default"
-                                    description="Create streamable review copies of video files when sharing.">
+                                <SettingRow label="Generate proxy files by default"
+                                    description="Create streamable proxy files of video files when sharing.">
                                     <Switch v-model="defaultUseProxyFiles" :disabled="busy" :class="[
                                         defaultUseProxyFiles ? 'bg-primary' : 'bg-well',
                                         'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
                                     ]">
-                                        <span class="sr-only">Toggle review copies</span>
+                                        <span class="sr-only">Toggle proxy files</span>
                                         <span :class="[
                                             defaultUseProxyFiles ? 'translate-x-4' : 'translate-x-0',
                                             'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
@@ -390,7 +390,7 @@
                                             <select v-model="selectedExistingWatermark" @change="onSelectExistingWatermark"
                                                 class="input-textlike border rounded px-2 py-1 text-xs min-w-[14rem]">
                                                 <option value="">Select existing watermark…</option>
-                                                <optgroup v-if="showDefaultWatermarksInSettings && defaultWatermarkPresets.length && existingWatermarkFiles.length" label="User Uploads">
+                                                <optgroup v-if="showDefaultWatermarksInSettings && defaultWatermarkPresets.length && existingWatermarkFiles.length" label="Client Uploads">
                                                     <option v-for="wm in existingWatermarkFiles" :key="wm" :value="wm">{{ wm.split('/').pop() }}</option>
                                                 </optgroup>
                                                 <template v-else-if="existingWatermarkFiles.length">
@@ -447,23 +447,6 @@
                                         <span class="text-sm" :class="hour12 ? 'font-semibold' : 'opacity-60'">12-hour</span>
                                     </div>
                                 </SettingRow>
-                                <SettingRow label="Project mode" description="Organize links into projects. When disabled, the dashboard shows a flat list of all links without project grouping.">
-                                    <div class="flex items-center gap-3">
-                                        <span class="text-sm" :class="projectModeEnabled ? 'font-semibold' : 'opacity-60'">
-                                            {{ projectModeEnabled ? 'Enabled' : 'Disabled' }}
-                                        </span>
-                                        <Switch v-model="projectModeEnabled" :class="[
-                                            projectModeEnabled ? 'bg-primary' : 'bg-well',
-                                            'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                        ]">
-                                            <span class="sr-only">Toggle project mode</span>
-                                            <span :class="[
-                                                projectModeEnabled ? 'translate-x-4' : 'translate-x-0',
-                                                'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                            ]" />
-                                        </Switch>
-                                    </div>
-                                </SettingRow>
                                 <SettingRow label="Default link list view" description="Choose which links are shown by default when viewing the Manage Links list.">
                                     <select v-model="linkListDefault" class="text-sm bg-well border border-default rounded px-2 py-1">
                                         <option value="">All Links</option>
@@ -484,12 +467,12 @@
 
                             <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Path Defaults</p>
                             <div class="divide-y divide-default">
-                                <SettingRow label="Use default share/upload root" description="This path always stores hidden .45flow app data. When Project Mode is off, shares/uploads also default to this path.">
+                                <SettingRow label="Use default server folder" description="Start folder pickers in the default server folder below. Projects keep their own folders.">
                                     <Switch v-model="forceProjectRoot" :disabled="busy" :class="[
                                         forceProjectRoot ? 'bg-primary' : 'bg-well',
                                         'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
                                     ]">
-                                        <span class="sr-only">Toggle default share/upload root</span>
+                                        <span class="sr-only">Toggle default server folder</span>
                                         <span :class="[
                                             forceProjectRoot ? 'translate-x-4' : 'translate-x-0',
                                             'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
@@ -499,14 +482,14 @@
                             </div>
 
                             <div class="mt-4">
-                                <label class="block text-sm font-medium text-default mb-1">Default share/upload root path</label>
+                                <label class="block text-sm font-medium text-default mb-1">Default server folder</label>
                                 <PathInput
                                     v-model="projectRoot"
                                     :apiFetch="apiFetch"
                                     :dirsOnly="true"
                                 />
                                 <div class="text-xs text-accent mt-1">
-                                    Always used for hidden .45flow app data; also used as share/upload default root when Project Mode is off.
+                                    Holds the hidden .45flow folder (proxy files and streams) for links that are not in a project. Each project keeps its own .45flow folder inside its project folder.
                                 </div>
                             </div>
 
@@ -518,11 +501,11 @@
                         </template>
                         <template v-else-if="activeSection === 'performance'">
                             <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Client-Side Transcoding</p>
-                            <p class="text-xs text-muted mb-3">When enabled, video processing (review copies and browser streams) happens on this computer using your CPU or GPU before uploading. When disabled, the server handles all transcoding after files are uploaded.</p>
+                            <p class="text-xs text-muted mb-3">When enabled, video processing (proxy files and browser streams) happens on this computer using your CPU or GPU before uploading. When disabled, the server handles all transcoding after files are uploaded.</p>
                             <div class="divide-y divide-default">
                                 <SettingRow 
                                     label="Enable client-side transcoding" 
-                                    description="Process videos locally to create review copies faster and reduce server load. Requires FFmpeg — works best with a modern GPU."
+                                    description="Process videos locally to create proxy files faster and reduce server load. Requires FFmpeg — works best with a modern GPU."
                                 >
                                     <div class="flex items-center gap-3">
                                         <span class="text-sm" :class="!clientTranscodeEnabled ? 'opacity-60' : 'font-semibold'">
@@ -1664,7 +1647,6 @@ import PathInput from "../PathInput.vue";
 import { useOnboarding } from "../../composables/useOnboarding";
 import { useTimeFormat } from "../../composables/useTimeFormat";
 import { useClientTranscode, type TranscodePreset } from "../../composables/useClientTranscode";
-import { useProjectMode } from "../../composables/useProjectMode";
 import { useLinkListDefault } from "../../composables/useLinkListDefault";
 import { useTourManager, type TourStep } from "../../composables/useTourManager";
 import { useTourPreferences } from "../../composables/useTourPreferences";
@@ -1704,7 +1686,6 @@ const { apiFetch, baseUrl, meta } = useApi();
 const { onboarding, resetAll: resetOnboarding, markDone } = useOnboarding();
 const { hour12 } = useTimeFormat();
 const { enabled: _tcEnabled, preset: _tcPreset, hwAccel: _tcHwAccel, setEnabled: commitTranscodeEnabled, setPreset: commitTranscodePreset, setHwAccel: commitHwAccel } = useClientTranscode();
-const { projectModeEnabled } = useProjectMode();
 const { linkListDefault } = useLinkListDefault();
 const { requestTour } = useTourManager();
 const { setCustomThemeColors, setCustomThemeEnabled } = useThemeFromAlias();
@@ -1764,8 +1745,8 @@ const settingsTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="settings-modal-nav"]',
         message: isPremiumActive.value
-            ? 'Use the sidebar to navigate between sections.\n\n• URLs & Access — configure external/internal share URLs.\n• Certificate — manage your SSL/TLS certificate.\n• Link Options — default access, comments, review copy, and watermark settings.\n• White Label — customize branding, colors, logos, and recipient theming (Pro).\n• Preferences — time format, project mode toggle, and default share/upload root.\n• Performance — client-side transcoding, hardware acceleration, and encode quality.\n• Server Health — monitor server status.\n• Maintenance — clean up orphaned files and metadata.\n• Guides — user guide and guided tour settings.'
-            : 'Use the sidebar to navigate between sections.\n\n• URLs & Access — configure external/internal share URLs.\n• Certificate — manage your SSL/TLS certificate.\n• Link Options — default access, comments, review copy, and watermark settings.\n• Preferences — time format, project mode toggle, and default share/upload root.\n• Performance — client-side transcoding, hardware acceleration, and encode quality.\n• Server Health — monitor server status.\n• Maintenance — clean up orphaned files and metadata.\n• Guides — user guide and guided tour settings.',
+            ? 'Use the sidebar to navigate between sections.\n\n• URLs & Access — configure external/internal share URLs.\n• Certificate — manage your SSL/TLS certificate.\n• Link Options — default access, comments, proxy file, and watermark settings.\n• White Label — customize branding, colors, logos, and recipient theming (Pro).\n• Preferences — time format, link list view, and default server folder.\n• Performance — client-side transcoding, hardware acceleration, and encode quality.\n• Server Health — monitor server status.\n• Maintenance — clean up orphaned files and metadata.\n• Guides — user guide and guided tour settings.'
+            : 'Use the sidebar to navigate between sections.\n\n• URLs & Access — configure external/internal share URLs.\n• Certificate — manage your SSL/TLS certificate.\n• Link Options — default access, comments, proxy file, and watermark settings.\n• Preferences — time format, link list view, and default server folder.\n• Performance — client-side transcoding, hardware acceleration, and encode quality.\n• Server Health — monitor server status.\n• Maintenance — clean up orphaned files and metadata.\n• Guides — user guide and guided tour settings.',
 	},
 	{
 		target: '[data-tour="settings-modal-urls"]',
@@ -3250,7 +3231,7 @@ const validationError = computed(() => {
     }
 
     if (forceProjectRoot.value && !projectRoot.value.trim()) {
-        return "Default share/upload root path is required when this option is enabled.";
+        return "Choose a default server folder to turn this on.";
     }
 
     return null;
