@@ -1,5 +1,76 @@
 # Project 15210: Track C execution record
 
+## November 6 continuation: C3 production invitation boundary
+
+Following the user's scope audit, decision 56 explicitly resumes C3 feature development.
+The existing invitation HTTP API is `86c4067`; its generated inventory correction is
+`44b8c53`, with application code and dependencies unchanged. The six-line document delta
+was reviewed directly: exactly two authenticated admin routes and their counts. Earlier
+server build and G1/G4/G5/G6 evidence carry forward. The affected final full server suite
+passed independently at 14:50:09Z-14:50:17Z with 793 passed, 2 skipped and no failures,
+without duplicating the unchanged build. Whole C3 and all six original tasks remain open.
+
+The genuinely new owner-facing invitation/status implementation owns client session
+`8ac4d856-d85e-498a-891a-f84001b3eeef`, worktree `45flow/mpyne1-psychic-invention`,
+branch `mpyne1-psychic-invention`, clean base `385dbb15c33327d8546e4e756587a1e70e37aea1`.
+It consumes the existing `LinkDetailsModal` injected authenticated HTTP client; no A/B
+foundation change or browser SSH/bootstrap bypass is admitted. Show saved/not-sent and
+actual delivery state honestly, use the real status endpoint, and preserve Free access.
+SMTP sending, worker/credential storage, fake retry and unrelated licensing are excluded.
+The UI must be consumed by the real link modal, not just a fixture screen.
+
+The API contract has independent G1/G4/G5/G6 and review evidence on the exact producer
+revision. That planned stable interface permits client implementation while the
+documentation-only final server check runs; acceptance still waits for both combined
+revisions. C3's cumulative bounce2/2 and restart0/2 do not reset. The final docs-only
+exception remains limited to its one correction. No automatic independent-bug repair
+capacity is created for the first client candidate.
+
+Princess bookkeeping is separately blocked: the failed write omitted the successful
+payload's `princessTaskId` task anchors, supplied only `sourceTaskId` or null, and inserted
+four duplicate native tasks. The successful PDF update retained `princessTaskId`.
+This request comparison establishes the missing anchors, not permission to experiment
+with business writes or delete records. The authoritative live audit is session
+`files/track-c-scope-audit-20261106.json`; original C3 tasks remain unchanged.
+
+Resumption ledger: one new execution-tier frontend executor, retained judgment-tier
+documentation executor resumed without another attempt, and retained execution-tier
+final verifier rerunning one affected standing suite. No new consult or bookkeeping
+write. Manager/judgment GPT-6.1 Sol; execution pins Sonnet; consult mechanism unchanged.
+
+The user requested continued work on unfinished Track C tasks. Native inventory still has
+31 unfinished tasks: 4 Execution and 27 Todo. A bounded C3 admission found usable existing
+owner authentication and public-link URL construction, but no SMTP credential adapter in
+the inspected revisions. Missing credentials block real delivery, not all invitation code.
+The C2 decision-event producer is also absent; download-completion readiness was not traced.
+
+```text
+Accepted C3 outbox + existing requireAuth/public URL contract
+  -> authenticated invitation enqueue/read-status API (READY)
+  -> owner-facing delivery/status consumers (after API verification)
+Track B credential adapter -> real SMTP worker/delivery (WAIT)
+Production C2 decision events -> review/decision notifications (WAIT)
+```
+
+The admitted increment consumes the existing outbox through normal server routes. It must
+expose unconfigured delivery honestly, preserve share/invitation identity, and avoid a
+placeholder worker, competing credential store, unsafe claim recovery, or SMTP success
+claim. API-only progress does not complete the task to email links from 45Flow.
+Existing C3 bounce 1/2 and restart 0/2 remain cumulative. C1/C2/C4 exhausted repair budgets
+remain spent; no changes to their frozen source or to provider/deployment authorization.
+
+Owned server tree: `houston-broadcaster/mpyne1-cuddly-waffle`, clean source at
+`c33dbdd1c56a23c273825d71edc0e36c0e4a3223`; only manager-owned gate round metadata is dirty.
+Canonical gates: `gates/c3-email-sharing-notifications.md`, unchanged authored checks.
+Preflight snapshot: `a936bbdc425663ffbfd11006c98f74a7e91cdba7d71cb6b216fb87eb5d98d138`.
+Dispatcher: session `verification/c3-consumed-status-20261106/checks-v1.sh`, Bash/Node22+,
+isolated SQLite and local SMTP only. Admission evidence: sibling `admission-v1.md`.
+
+Continuation model mapping remains manager/judgment GPT-6.1 Sol, execution roles pinned
+Sonnet, bookkeeping inherited manager. Consult mechanism: fresh judgment-tier subagent at
+the four defined escalation points only. Admission used one execution-role spawn, no
+consult, source repair, standing command, or new bounce.
+
 ## Authorization and initial slice
 
 2026-11-04: user authorized work that can proceed now and will supply GPU targets later. Start C4 playback mode/preload behavior on existing authorized renditions, corresponding to G2 and G7. This is a partial C4 implementation, not completion of the thread.
