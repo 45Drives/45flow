@@ -19,6 +19,29 @@ actual delivery state honestly, use the real status endpoint, and preserve Free 
 SMTP sending, worker/credential storage, fake retry and unrelated licensing are excluded.
 The UI must be consumed by the real link modal, not just a fixture screen.
 
+Client candidate `15f1fad1c1bda5bb000ae21dd9884c302a870ccb` is now frozen with a
+clean handoff. Its feature-local invitation panel is consumed by the existing modal
+and has seven passing executor tests, including Free visibility and link-switch
+behavior. Independent review is clear with no bugs, and supplemental UI verification
+passed all seven tests at 15:00:55Z-15:00:56Z against that same revision. Final client
+standing passed: 206 tests at 15:03:16Z-15:03:21Z, common build at 15:03:25Z-15:03:58Z,
+and renderer/main build at 15:04:04Z-15:04:12Z. Source, lockfile and submodule remained
+clean and unchanged. This accepts the bounded UI increment, not a whole native task.
+The executor ran `yarn build:common` once to establish a missing fresh-worktree
+dependency; that counts as one dependency-required standing command, not zero.
+
+The separate C3 backend is running at loopback `http://127.0.0.1:19097`, with
+accepted server source mounted read-only and its own safely cloned synthetic state.
+The runtime executor recorded normal owner login, anonymous invitation POST/GET
+returning 401, repeated authenticated POST returning the same invitation, and genuine
+GET status reporting unconfigured SMTP and no send. The original share was preserved.
+Container start was 14:55:30Z; no complete probe-batch duration was recorded.
+Live health remains responsive. The existing 18081/19095/19096 services were untouched.
+This proves the isolated API is usable, not public email delivery or a connected owner
+dashboard. A genuine component-lab preview is now being prepared from the accepted
+production component against this real backend, with normal authentication and a
+visible lab-only label. It must not bypass or claim to fix the owner bootstrap.
+
 The API contract has independent G1/G4/G5/G6 and review evidence on the exact producer
 revision. That planned stable interface permits client implementation while the
 documentation-only final server check runs; acceptance still waits for both combined
@@ -37,6 +60,19 @@ Resumption ledger: one new execution-tier frontend executor, retained judgment-t
 documentation executor resumed without another attempt, and retained execution-tier
 final verifier rerunning one affected standing suite. No new consult or bookkeeping
 write. Manager/judgment GPT-6.1 Sol; execution pins Sonnet; consult mechanism unchanged.
+
+The client candidate adds one execution-tier reviewer and one execution-tier verifier,
+running concurrently with serialized mutable checks. The retained runtime executor
+prepared the new backend; its report-only credential redaction was not a source repair.
+Both candidate reports cleared, admitting one final run of the three client standing
+commands. The review report's claimed 15:11Z end was in the future at observed host
+time 15:03:38Z, so its execution window is unknown pending metadata correction;
+the source findings are unaffected and no duplicate review was requested. The reviewer
+corrected its report to captured start 15:01:54Z and unknown end. Final standing cleared
+without another bounce or source repair. The retained runtime executor now owns the
+separate presentation step; no additional source executor or consult was spawned.
+
+### Earlier API admission snapshot
 
 The user requested continued work on unfinished Track C tasks. Native inventory still has
 31 unfinished tasks: 4 Execution and 27 Todo. A bounded C3 admission found usable existing
