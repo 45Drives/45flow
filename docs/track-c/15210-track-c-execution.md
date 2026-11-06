@@ -1,5 +1,57 @@
 # Project 15210: Track C execution record
 
+## November 6: approved B-09 mail-credential prerequisite
+
+The user explicitly included the Track B prerequisite needed for real C3 mail,
+selected automatic unlock with a root-only key backed up separately, then approved
+the seven-gate draft for implementation (decisions 57-59). Live native readback
+identifies existing B1 thread `af69ee9d-7d73-4a05-b147-733e458d0f47` and B-09 task
+`a51c17a5-ce95-4ee2-8b61-4315675db358`, "Publish the credential-handling contract".
+No new Princess task/thread is needed or authorized. The task remains Todo/TBD
+while business writes are paused; actual execution is recorded locally.
+
+The producer owns session `35c23c5a-4c08-49d3-8c2d-de0d52f94559`, branch
+`mpyne1-ideal-eureka`, worktree `houston-broadcaster/mpyne1-ideal-eureka`, based on
+default-branch revision `e4d8dba4a63095be327a63b99db00707d86582d5`.
+Its existing admin, audit, configuration and systemd service files match the already
+inspected C3 foundation exactly. That service runs as root; no host configuration
+or production ownership change is authorized. The existing JWT/link-cookie store
+is not migrated. The separate browser-session task is already Complete in Princess,
+so absence of a mail adapter is not evidence that every B foundation is missing.
+
+```text
+Existing main admin/audit/root-service boundary
+  -> B-09 shared encrypted credential producer (approved; own isolated tree)
+  -> verified published SMTP handoff
+  -> C3 settings/worker integration (waits for the exact verified revision)
+```
+
+| Work | Prerequisite/readiness | Owned territory | State |
+| --- | --- | --- | --- |
+| B-09 producer | Existing main contracts; user-approved seven-gate specification | Shared broker, SMTP adapter/admin routes, focused tests and docs | First implementation active |
+| C3 consumer | Independently verified B-09 source and actual integration checks | Existing C3 mail/settings/worker interfaces | Waiting; not early-started |
+| Other B1-B6 work | Not authorized by this prerequisite decision | Unchanged | Outside scope |
+
+Canonical producer gates: `gates/b1-credential-handling-contract.md` in its B1 tree.
+The draft lint passed without diagnostics and its exact review copy was opened in
+the editor. Direct attachment from the idle child was unavailable because that app
+session had not finished starting; the session-local copy matched the canonical
+draft byte-for-byte. This did not block the isolated worktree or gate approval.
+All B-09 gates start RED. Its own bounce0/2 and restart0/2 apply to this distinct,
+explicitly authorized prerequisite; C3's spent budget remains spent.
+Only the selected B-09 work is admitted, not actual SMTP delivery or a new secret
+store inside C3. Existing loopback previews and production/provider restrictions remain.
+
+Approved gate metadata is committed at `676b8b55ecbe3fec4cdd4e2d87bb51f2c13bfc18`;
+the clean handoff was confirmed before dispatch. Gate SHA-256 is
+`2652434383d6edc7fffe31887c5430b7e1a5b904099f320622ddd8701455ed35`;
+the exact Bash dispatcher is session `verification/b1-credentials-20261106/checks-v1.sh`.
+Execution-tier executor `fa4f2e81-4479-48fc-9d29-958e3a531ca9` is implementing
+the first candidate. The pre-dispatch clock was 15:43:18Z; actual executor
+start/end must come from its captured report. No native dates were written.
+B-09 ledger: manager/judgment GPT-6.1 Sol, one new agent-pinned Sonnet executor,
+zero verifier/reviewer/consult spawns so far. No candidate or GREEN claim yet.
+
 ## November 6 continuation: C3 production invitation boundary
 
 Following the user's scope audit, decision 56 explicitly resumes C3 feature development.
@@ -80,7 +132,8 @@ separate presentation step; no additional source executor or consult was spawned
 Its isolated temporary Chromium helper was stopped; only the intentional lab server
 (PID 1922494) and backend container (PID 1845829) remain alongside the earlier previews.
 
-Resumed-slice model ledger (decision 56 onward; earlier rounds remain recorded below):
+C3 UI resumed-slice model ledger (decision 56 through component-lab publication;
+the later B-09 prerequisite is tracked separately above):
 
 | Role | Tier/model | New spawns | Notes |
 | --- | --- | --- | --- |
