@@ -15,6 +15,8 @@
 <script setup lang="ts">
 import { computed, useSlots } from 'vue'
 
+type ClassProp = string | Array<string | Record<string, boolean>> | Record<string, boolean>
+
 const props = withDefaults(defineProps<{
   /**
    * surface  elevated top-level panel (theme-tinted, rounded, shadow)
@@ -24,9 +26,9 @@ const props = withDefaults(defineProps<{
   variant?: 'surface' | 'inset' | 'plain'
   padding?: 'none' | 'sm' | 'md' | 'lg'
   as?: string
-  headerClass?: unknown
-  bodyClass?: unknown
-  footerClass?: unknown
+  headerClass?: ClassProp
+  bodyClass?: ClassProp
+  footerClass?: ClassProp
 }>(), {
   variant: 'surface',
   padding: 'md',

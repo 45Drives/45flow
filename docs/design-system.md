@@ -4,6 +4,8 @@ One set of values and a small set of pieces, so every screen (desktop and browse
 
 `yarn check:ui` (also part of `yarn test`) fails on the old patterns and names the replacement.
 
+Building a Track C screen (approvals, comments, email)? Start with [track-c-ui-guide.md](./track-c-ui-guide.md). It covers which codebase each screen goes in, the shared status words, and copy-ready recipes.
+
 ## Where things live
 
 | Layer | File | Owns |
@@ -160,3 +162,16 @@ A deliberate full-screen layer that isn't a dialog (drag-and-drop target, tour s
 | Close / Cancel / Back to … / Log out button without the dismiss variant | `btn-dismiss` (a "Cancel" that stops running work is `btn-danger` with a `flow-ui-allow` note) |
 
 For a genuine exception (for example a colour swatch that shows a user's chosen colour), add `flow-ui-allow: <reason>` in a comment on that line or an HTML comment on the line above.
+
+## Share player
+
+The client-facing share page (`houston-broadcaster/studiosharevideoplayer`) uses the same system:
+
+| App | Player |
+|---|---|
+| `src/renderer/styles/tokens.css` (semantic section) | `src/styles/flow-tokens.css`, a mirror. Keep the values identical. |
+| `src/renderer/styles/components.css` | `src/styles/flow-components.css`, adapted to the player's `--panelSolid` / `--border` / `--fg` / `--muted` |
+| `src/renderer/ui/*` | `src/ui/*`: same API, minus `FlowCard`; Notice icons come from Font Awesome |
+| `scripts/design-system-guard.cjs` | `scripts/design-system-guard.cjs` (port); `yarn check:ui`, runs in the player's `yarn test` |
+
+When you change a token value or a piece's props in one codebase, make the same change in the other. Differences in the player are listed in [track-c-ui-guide.md](./track-c-ui-guide.md#differences-in-the-player).

@@ -16,6 +16,8 @@
 <script setup lang="ts">
 import { computed, useId, useSlots } from 'vue'
 
+type ClassProp = string | Array<string | Record<string, boolean>> | Record<string, boolean>
+
 const props = defineProps<{
   label?: string
   /** id for the control; generated when omitted. Bind it with the default slot's `id`. */
@@ -24,7 +26,7 @@ const props = defineProps<{
   error?: string | null
   required?: boolean
   optional?: boolean
-  labelClass?: unknown
+  labelClass?: ClassProp
 }>()
 
 const slots = useSlots()

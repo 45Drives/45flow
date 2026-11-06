@@ -59,6 +59,8 @@
 import { computed, nextTick, ref, toRef, useId, useSlots, watch } from 'vue'
 import { useModalStack } from './useModalStack'
 
+type ClassProp = string | Array<string | Record<string, boolean>> | Record<string, boolean>
+
 defineOptions({ inheritAttrs: false })
 
 export type FlowModalCloseReason = 'close' | 'escape' | 'backdrop'
@@ -84,12 +86,12 @@ const props = withDefaults(defineProps<{
   beforeClose?: (reason: FlowModalCloseReason) => boolean | void | Promise<boolean | void>
   /** CSS selector inside the panel to focus on open. Defaults to [autofocus], then the panel. */
   initialFocus?: string
-  panelClass?: unknown
-  headerClass?: unknown
+  panelClass?: ClassProp
+  headerClass?: ClassProp
   /** Extra attributes for the header row, e.g. { 'data-tour': 'settings-modal-header' }. */
   headerAttrs?: Record<string, unknown>
-  bodyClass?: unknown
-  footerClass?: unknown
+  bodyClass?: ClassProp
+  footerClass?: ClassProp
 }>(), {
   size: 'md',
   position: 'center',
@@ -148,8 +150,8 @@ function trapTab(event: KeyboardEvent) {
     panel.value?.focus()
     return
   }
-  const first = items[0]
-  const last = items[items.length - 1]
+  const first = items[0]!
+  const last = items[items.length - 1]!
   const active = document.activeElement
   if (event.shiftKey && (active === first || active === panel.value)) {
     event.preventDefault()
