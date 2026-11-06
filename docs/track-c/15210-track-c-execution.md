@@ -69,20 +69,42 @@ round 47 records the three actual final commands. The bounded client settings/
 retry slice is accepted with the field-feedback advisory, not whole C3.
 Client `0cf5b5b280bb178b52f9afaa336df51fd1d4c162` was pushed and remote-
 confirmed at 18:29:12Z on `mpyne1-psychic-invention`, without a new PR or merge
-(canonical round 48). Retained runtime owner `0683e851` is now preparing the
-genuine immutable retry increment using only the private TLS sink and normal
-authenticated APIs. Until that proof returns, the existing preview remains the
-earlier accepted version; updated controls are not claimed live.
-The global SMTP panel will be shown only if its real shared transport works
-without fabricated connection/bootstrap/admin state. Otherwise the labelled
-invitation component lab demonstrates retry, with the full-host limitation
-explicitly retained.
+(canonical round 48). Retained runtime owner `0683e851` completed the genuine
+immutable retry increment using only the private TLS sink and normal
+authenticated APIs. Invitation 7 retained the original share across a timeout,
+a controlled 550 rejection and SMTP 250 acceptance on attempt 3; refresh left
+its attempt/status and sink log unchanged. The frozen invitation component
+matches accepted blob `2b83e4d2b40fcbbce488b0717030c79d01946293`.
+The timeout cause remains unknown, despite the runtime report's unsupported
+restart-settling attribution. Later TCP success does not prove that cause or
+the absence/presence of a product defect. A manager qualification preserves
+the observations while correcting that interpretation.
+The global SMTP panel's bounded probe stopped at a frozen-lab relative-import
+resolution error before the real shared transport executed. This is a lab
+limitation, not a demonstrated production failure or proof that all legitimate
+immutable-host approaches require forged state. No bootstrap/admin state was
+fabricated and the global settings screen is not claimed demonstrated.
+At 18:44:21.516Z the manager published a new genuine live-browser capture:
+fresh reserved recipient, actual Send -> rejected -> explicit Retry ->
+accepted -> Refresh, preserving the original owner link. This is the
+labelled invitation component lab and private TLS SMTP sink, not the full
+dashboard or external inbox. Canonical rounds 49-50 and session
+`runtime-mail-controls-v1.md` plus
+`published-updates/9ab2c224191678b3bd9c115df02f5ab4e6907c1d77cf7dc01dd69dff9c2678c7/`
+record the runtime/presentation bounds.
 The published preview stays frozen to accepted bytes. This is first UI
 implementation, not a correction-budget reset or whole-C3 completion.
 This mail-controls stage has one Sonnet admission, one Sonnet implementation,
 one fresh Sonnet verifier and one fresh Sonnet reviewer. Earlier producer,
 status-correction and runtime ledgers remain carried without a reset.
 One GPT-6.1 Sol classification consult is now added, not another broad review.
+The retained runtime context was reused, with no additional runtime spawn.
+Review-event integration still needs the authorized C2 producer handoff.
+The saved `download-readiness-v1.json` already locates the real download seam,
+verified-user/anonymous split and version helpers; no broad retrace is needed.
+Before first-download email integration, clarify the anonymous-recipient
+policy rather than invent a verified identity or silently change open-link
+access. No anonymous-notification policy has been selected yet.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
