@@ -374,6 +374,10 @@
               </div>
             </div>
 
+            <div v-if="link?.id" class="col-span-3 rounded-lg border border-default bg-default/20 p-3">
+              <EmailInvitationPanel :key="link.id" :link-id="link.id" :api-fetch="apiFetch" />
+            </div>
+
             <div class="col-span-3 rounded-lg border border-default bg-default/20 p-3 space-y-3">
               <div class="text-default font-semibold">Media Processing</div>
               <div class="flex flex-wrap items-center gap-3 min-w-0">
@@ -1033,6 +1037,7 @@ import CommentsReviewModal from './CommentsReviewModal.vue'
 import CategoryManagementModal from './CategoryManagementModal.vue'
 import PathInput from '../PathInput.vue'
 import LinkTranscodeStatus from '../LinkTranscodeStatus.vue'
+import EmailInvitationPanel from '../EmailInvitationPanel.vue'
 import WatermarkCustomizer from '../WatermarkCustomizer.vue'
 import WatermarkPreview from '../WatermarkPreview.vue'
 import type { LinkItem, LinkType, AccessRow, Status, ExistingUser } from '../../typings/electron'
@@ -1041,6 +1046,7 @@ import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../..
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { Switch } from '@headlessui/vue'
 import { useTransferProgress } from '../../composables/useTransferProgress'
+import { useExternalAddressReadiness, describeExternalAddressNotReady, resolveCopyUrl } from '../../composables/useExternalAddressReadiness'
 import { useConnections } from '../../composables/useConnections'
 import { useLicenseStatus } from '../../composables/useLicenseStatus'
 import { useRemoteTranscode } from '../../composables/useRemoteTranscode'
@@ -1124,6 +1130,7 @@ watch(() => props.modelValue, (open) => {
 })
 
 const transfer = useTransferProgress()
+const { checkExternalAddressReady } = useExternalAddressReadiness()
 const { activeConnection, connections } = useConnections()
 const connectionMeta = inject(connectionMetaInjectionKey, null)
 
@@ -2161,6 +2168,17 @@ function fallbackTitle(it: LinkItem) {
 }
 async function copy(txt?: string | null) {
   if (!txt) return
+  if (txt === primaryUrl.value && (props.link as any)?.externalLink) {
+    const { ready, reason, base } = await checkExternalAddressReady()
+    if (!ready) {
+      pushNotification(new Notification('External Address Not Ready', describeExternalAddressNotReady(reason), 'error', 8000))
+      return
+    }
+    // Freshen against the CURRENT server-authoritative public address —
+    // primaryUrl is a prop set once by the caller and can be stale if the
+    // configured hostname changed while this modal stayed open.
+    txt = resolveCopyUrl(txt, base)
+  }
   await writeClipboard(txt)
 }
 

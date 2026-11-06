@@ -7,9 +7,6 @@ const Chalk = require('chalk');
 const Chokidar = require('chokidar');
 const Electron = require('electron');
 const compileTs = require('./private/tsc');
-const fix_css = require('./fix-css');
-fix_css();
-
 const FileSystem = require('fs');
 const { EOL } = require('os');
 

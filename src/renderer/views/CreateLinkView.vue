@@ -582,6 +582,7 @@ import { Notification } from '@45drives/houston-common-ui'
 import { useApi } from '../composables/useApi'
 import { useResilientNav } from '../composables/useResilientNav'
 import { useLinkOptions } from '../composables/useLinkOptions'
+import { useExternalAddressReadiness, describeExternalAddressNotReady, resolveCopyUrl } from '../composables/useExternalAddressReadiness'
 import { useHeader } from '../composables/useHeader'
 import { pushNotification } from '../composables/useNotificationQueue'
 import { signalLinkCreated } from '../composables/useLinkRefresh'
@@ -620,6 +621,7 @@ const transfer = useTransferProgress()
 const { runRemoteTranscode } = useRemoteTranscode()
 const { enabled: clientTranscodeEnabled } = useClientTranscode()
 const opts = useLinkOptions()
+const { checkExternalAddressReady } = useExternalAddressReadiness()
 
 const { isPremiumActive } = useLicenseStatus()
 const { getDefaultCategories } = useCommentCategories()
@@ -1471,11 +1473,22 @@ async function generateLink() {
 	}
 }
 
-function copyResult() {
-	if (resultUrl.value) {
-		writeClipboard(resultUrl.value)
-		pushNotification(new Notification('Copied!', 'Link copied to clipboard.', 'success', 4000))
+async function copyResult() {
+	if (!resultUrl.value) return
+	let url = resultUrl.value
+	if (opts.usePublicBase.value) {
+		const { ready, reason, base } = await checkExternalAddressReady()
+		if (!ready) {
+			pushNotification(new Notification('External Address Not Ready', describeExternalAddressNotReady(reason), 'error', 8000))
+			return
+		}
+		// Freshen against the CURRENT server-authoritative public address —
+		// resultUrl was set once right after creation and can be stale if the
+		// configured hostname changed while this result panel stayed open.
+		url = resolveCopyUrl(url, base)
 	}
+	await writeClipboard(url)
+	pushNotification(new Notification('Copied!', 'Link copied to clipboard.', 'success', 4000))
 }
 
 function extractLinkToken(data: any): string {

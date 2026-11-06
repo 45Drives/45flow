@@ -49,6 +49,7 @@ export type LinkItem = {
   project_id?: number | null
   project_name?: string | null
   project_root_dir?: string | null
+  externalLink?: boolean
 }
 export type Role = {
   id: number

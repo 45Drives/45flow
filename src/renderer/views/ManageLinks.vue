@@ -355,7 +355,7 @@
 									</a>
 
 									<button class="text-blue-500 hover:underline text-xs shrink-0"
-										@click="copy(it.url)">
+										@click="copy(it.url, it)">
 										Copy
 									</button>
 								</div>
@@ -815,6 +815,7 @@
 import { writeClipboard } from '../clipboard'
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useApi } from '../composables/useApi'
+import { useExternalAddressReadiness, describeExternalAddressNotReady, resolveCopyUrl } from '../composables/useExternalAddressReadiness'
 import { useConnections } from '../composables/useConnections'
 import { useServerFilter } from '../composables/useServerFilter'
 import { useLinkRefreshSignal } from '../composables/useLinkRefresh'
@@ -882,6 +883,7 @@ const DEMO_LINKS: LinkItem[] = [
 const showingDemoData = computed(() => props.tourActive && rows.value.length === 0 && !loading.value)
 
 const { apiFetch, apiFetchAll, baseUrl, meta } = useApi()
+const { checkExternalAddressReady } = useExternalAddressReadiness()
 const { activeConnection, connections } = useConnections()
 const { selectedFilter, filteredConnections } = useServerFilter()
 
@@ -1482,8 +1484,20 @@ function expiresClass(it: LinkItem) {
 	return ms <= 86400000 ? 'text-red-400 font-semibold' : ''
 }
 
-async function copy(txt?: string | null) {
+async function copy(txt?: string | null, it?: LinkItem) {
 	if (!txt) return
+	if (it?.externalLink) {
+		const { ready, reason, base } = await checkExternalAddressReady()
+		if (!ready) {
+			pushNotification(new Notification('External Address Not Ready', describeExternalAddressNotReady(reason), 'error', 8000))
+			return
+		}
+		// Freshen the destination against the CURRENT server-authoritative
+		// public address at copy time: `it.url` was computed whenever the
+		// list was last fetched and can be stale (e.g. another admin changed
+		// the configured hostname while this view stayed open).
+		txt = resolveCopyUrl(txt, base)
+	}
 	await writeClipboard(txt)
 	appLog.info('link.copied')
 	pushNotification(new Notification('Copied!', 'Link copied to clipboard', 'success', 8000, 'clipboard-copy'))
