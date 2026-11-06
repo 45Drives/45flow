@@ -34,9 +34,9 @@
                         <!-- ═══ Link Sharing ══════════════════════════════════ -->
                         <template v-if="activeSection === 'sharing' && settingsLoaded">
                             <div class="divide-y divide-default">
-                                <SettingRow label="Default Link Access" description="External uses your public domain or IP. Internal uses LAN or VPN routing.">
+                                <SettingRow label="Default Link Network" description="Internet links use your public domain or IP. Local Network links only work on the same network (or VPN) as this server.">
                                     <div class="flex items-center gap-3">
-                                        <span class="text-sm" :class="!defaultAccessIsExternal ? 'font-semibold' : 'opacity-60'">Internal</span>
+                                        <span class="text-sm" :class="!defaultAccessIsExternal ? 'font-semibold' : 'opacity-60'">Local Network</span>
                                         <Switch v-model="defaultAccessIsExternal" :class="[
                                             defaultAccessIsExternal ? 'bg-primary' : 'bg-well',
                                             'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
@@ -47,7 +47,7 @@
                                                 'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
                                             ]" />
                                         </Switch>
-                                        <span class="text-sm" :class="defaultAccessIsExternal ? 'font-semibold' : 'opacity-60'">External</span>
+                                        <span class="text-sm" :class="defaultAccessIsExternal ? 'font-semibold' : 'opacity-60'">Internet</span>
                                     </div>
                                 </SettingRow>
                             </div>
@@ -264,8 +264,8 @@
                         <!-- ═══ Default Link Options ══════════════════════════ -->
                         <template v-if="activeSection === 'linkOptions' && settingsLoaded">
                             <div class="divide-y divide-default">
-                                <SettingRow label="Invite-only links"
-                                    description="New links only let invited clients and teams in by default.">
+                                <SettingRow label="Invite-only links (recommended)"
+                                    description="New links start as &quot;Only invited clients &amp; teams&quot;. Turn off to start new links as &quot;Anyone with the link&quot;. You can still change it on each link.">
                                     <Switch v-model="defaultRestrictAccess" :disabled="busy" :class="[
                                         defaultRestrictAccess ? 'bg-primary' : 'bg-well',
                                         'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
@@ -1977,7 +1977,7 @@ const savedHttpsPort = ref<number>(443);
 const savedExternalAuto = ref(false);
 const savedExternalBase = ref("");
 
-const defaultRestrictAccess = ref(false);
+const defaultRestrictAccess = ref(true);
 const defaultAllowComments = ref(true);
 const defaultUseProxyFiles = ref(false);
 const defaultExpiryValue = ref<number>(1);
@@ -3253,7 +3253,7 @@ async function reload() {
         savedExternalBase.value = externalBase.value;
 
         defaultRestrictAccess.value =
-            typeof data.defaultRestrictAccess === "boolean" ? data.defaultRestrictAccess : false;
+            typeof data.defaultRestrictAccess === "boolean" ? data.defaultRestrictAccess : true;
         defaultAllowComments.value =
             typeof data.defaultAllowComments === "boolean" ? data.defaultAllowComments : true;
 

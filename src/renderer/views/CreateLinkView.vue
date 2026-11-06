@@ -188,6 +188,9 @@
 											<button type="button" class="btn btn-secondary w-20" @click="opts.setPreset(1, 'weeks')">1 week</button>
 											<button type="button" class="btn btn-secondary w-20" @click="opts.setNever()">Never</button>
 										</div>
+										<p class="text-xs text-default">
+											After this time the link stops working and clients can no longer open it. Your files stay on the server, and you can extend the link later.
+										</p>
 									</div>
 								</template>
 
@@ -272,16 +275,16 @@
 											<div class="flex flex-wrap gap-2 min-w-0" role="radiogroup" aria-label="Network">
 												<label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer select-none transition border border-default bg-default hover:bg-well/40">
 													<input type="radio" name="create-link-access-network" :value="true" v-model="opts.usePublicBase.value" class="h-4 w-4" />
-													<span class="text-sm truncate">Share Externally (Over Internet)</span>
+													<span class="text-sm truncate">Internet (outside your network)</span>
 												</label>
 												<label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer select-none transition border border-default bg-default hover:bg-well/40">
 													<input type="radio" name="create-link-access-network" :value="false" v-model="opts.usePublicBase.value" class="h-4 w-4" />
-													<span class="text-sm truncate">Share Locally (Over LAN)</span>
+													<span class="text-sm truncate">Local Network only</span>
 												</label>
 											</div>
 										</div>
 										<p class="text-xs text-default">
-											Clients outside your network need port forwarding set up on your router. Local links only work on your office network.
+											Internet links need port forwarding set up on your router. Local Network links only open for people on the same network as this server (for example, your office).
 										</p>
 									</div>
 								</template>

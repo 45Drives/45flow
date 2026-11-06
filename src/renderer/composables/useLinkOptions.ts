@@ -107,8 +107,8 @@ export function useLinkOptions(): LinkOptionsState {
 	const externalHttpsPort = ref(443)
 
 	// ── Access control ──
-	const accessMode = ref<AccessMode>('open')
-	const defaultAccessMode = ref<AccessMode>('open')
+	const accessMode = ref<AccessMode>('restricted')
+	const defaultAccessMode = ref<AccessMode>('restricted')
 	const password = ref('')
 	const showPassword = ref(false)
 	const allowOpenComments = ref(true)
@@ -139,7 +139,7 @@ export function useLinkOptions(): LinkOptionsState {
 			usePublicBase.value = defaultUsePublicBase.value
 			externalHttpsPort.value = Number(s?.externalHttpsPort ?? 443)
 
-			const defaultRestrict = typeof s?.defaultRestrictAccess === 'boolean' ? s.defaultRestrictAccess : false
+			const defaultRestrict = typeof s?.defaultRestrictAccess === 'boolean' ? s.defaultRestrictAccess : true
 			defaultAccessMode.value = defaultRestrict ? 'restricted' : 'open'
 			defaultAllowOpenComments.value =
 				typeof s?.defaultAllowComments === 'boolean' ? s.defaultAllowComments : true
@@ -168,9 +168,9 @@ export function useLinkOptions(): LinkOptionsState {
 		} catch {
 			defaultUsePublicBase.value = false
 			usePublicBase.value = false
-			defaultAccessMode.value = 'open'
+			defaultAccessMode.value = 'restricted'
 			defaultAllowOpenComments.value = true
-			accessMode.value = 'open'
+			accessMode.value = 'restricted'
 			allowOpenComments.value = true
 		}
 		linkDefaultsLoaded.value = true

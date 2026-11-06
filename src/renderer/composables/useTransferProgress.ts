@@ -474,6 +474,9 @@ const _dismissedAssetVersions = new Set<string>() // "avId:jobKind"
  */
 let _clientReleaseDone = false
 
+/** Set when the user closes the dock so background polling never re-opens it. */
+let _dockClosedByUser = false
+
 function dismissedKey(avId: number, jobKind: string) {
     return `${avId}:${jobKind}`
 }
@@ -648,6 +651,7 @@ export function useTransferProgress() {
 
     function setOpen(v: boolean) {
         _state.open = v
+        _dockClosedByUser = !v
     }
 
     function createUploadTask(opts: {
@@ -1605,6 +1609,7 @@ export function useTransferProgress() {
             })
             if (!json?.ok || !Array.isArray(json.items)) return
 
+            let restoredCount = 0
             for (const item of json.items as any[]) {
                 const assetVersionId = Number(item.assetVersionId)
                 const fileId = Number(item.fileId)
@@ -1669,6 +1674,7 @@ export function useTransferProgress() {
                             : 'Uploaded via link')
                         : filePath
 
+                    restoredCount++
                     startAssetVersionTranscodeTask({
                         apiFetch,
                         assetVersionIds: [assetVersionId],
@@ -1694,8 +1700,9 @@ export function useTransferProgress() {
                 }
             }
 
-            // If we restored tasks, open the dock
-            if (_state.tasks.some(isActiveTask)) {
+            // This runs on a background poll, so only open the dock when new work was
+            // discovered, and never re-open it after the user has closed it.
+            if (restoredCount > 0 && !_dockClosedByUser) {
                 _state.open = true
             }
         } catch (e: any) {

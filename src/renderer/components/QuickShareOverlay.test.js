@@ -69,6 +69,7 @@ beforeEach(async () => {
   state = vm.$.setupState
   state.droppedFiles = files
   state.destFolder = '/uploads'
+  state.accessMode = 'open'
   mocks.apiFetch.mockClear()
 })
 afterEach(() => {
@@ -113,5 +114,29 @@ describe('Quick Share preflight wiring', () => {
     expect(mocks.createUploadTask).toHaveBeenCalledOnce()
     expect(mocks.httpUploadStart).toHaveBeenCalledOnce()
     expect(state.errorMsg).toBe('Test transfer stopped')
+  })
+})
+
+describe('Quick Share defaults', () => {
+  it('starts links as invite-only when the server has no saved default', async () => {
+    mocks.apiFetch.mockResolvedValue({})
+    await state.loadLinkDefaults()
+    expect(state.accessMode).toBe('restricted')
+  })
+
+  it('makes the user pick an active, non-archived project outside a project', async () => {
+    mocks.apiFetch.mockResolvedValue({
+      projects: [
+        { id: 1, name: 'Alpha', root_dir: '/tank/alpha' },
+        { id: 2, name: 'Off', root_dir: '/tank/off', is_disabled: 1 },
+        { id: 3, name: 'Old', root_dir: '/tank/old', archived: 1 },
+        { id: 4, name: 'Beta', root_dir: '/tank/beta' },
+      ],
+    })
+    await state.loadProjectOptions()
+    expect(state.projectOptions.map(p => p.name)).toEqual(['Alpha', 'Beta'])
+    expect(state.activeProject).toBeNull()
+    state.pickedProjectId = 4
+    expect(state.activeProject).toEqual({ id: 4, name: 'Beta', root_dir: '/tank/beta' })
   })
 })

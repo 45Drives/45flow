@@ -24,6 +24,14 @@
 					</template>
 				</div>
 
+				<div v-if="activeProject" class="dashboard-drop-hint" data-tour="quick-share-hint">
+					<ArrowUpTrayIcon class="dashboard-drop-hint-icon" aria-hidden="true" />
+					<div class="min-w-0">
+						<p class="dashboard-drop-hint-title">Quick Share: drag files onto this window</p>
+						<p class="dashboard-drop-hint-copy">Drop files from your computer anywhere here to upload them into this project and get a share link in one step.</p>
+					</div>
+				</div>
+
 				<div class="dashboard-utility button-group-row">
 					<button v-if="activeProject" @click="goToManageUsers" data-tour="manage-users" class="btn btn-secondary px-5 py-2.5">Client Access</button>
 					<button @click="leaveServer" class="btn btn-dismiss px-5 py-2.5">Log Out</button>
@@ -45,7 +53,7 @@
 				</button>
 				<button @click="goToUploadFiles" class="btn btn-primary dashboard-action" data-tour="upload-files">
 					<span class="dashboard-action-title">Add Files</span>
-					<span class="dashboard-action-copy">Copy files from this computer into the project folder.</span>
+					<span class="dashboard-action-copy">Upload videos, images, audio, documents and other files from your computer into this project's folder on the server.</span>
 				</button>
 			</div>
 		</template>
@@ -557,7 +565,7 @@ import FlowModal from '../ui/FlowModal.vue'
 import FlowNotice from '../ui/FlowNotice.vue'
 import FlowField from '../ui/FlowField.vue'
 import FlowEmpty from '../ui/FlowEmpty.vue'
-import { FolderIcon } from '@heroicons/vue/24/outline'
+import { ArrowUpTrayIcon, FolderIcon } from '@heroicons/vue/24/outline'
 import { Notification } from '@45drives/houston-common-ui'
 import { useHeader } from '../composables/useHeader'
 import { useResilientNav } from '../composables/useResilientNav'
@@ -1129,6 +1137,35 @@ const goToCreateLink = () => { to('create-link', undefined, activeProject.value 
 	margin-top: 0.2rem;
 	font-size: 0.9rem;
 	opacity: 0.95;
+}
+
+.dashboard-drop-hint {
+	flex: 1 1 18rem;
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	min-width: 0;
+	max-width: 44rem;
+	padding: 0.6rem 0.9rem;
+	border: 1px dashed currentColor;
+	border-radius: 0.6rem;
+	opacity: 0.85;
+}
+
+.dashboard-drop-hint-icon {
+	width: 1.6rem;
+	height: 1.6rem;
+	flex-shrink: 0;
+}
+
+.dashboard-drop-hint-title {
+	font-size: 0.85rem;
+	font-weight: 600;
+}
+
+.dashboard-drop-hint-copy {
+	font-size: 0.75rem;
+	opacity: 0.85;
 }
 
 .dashboard-utility {
