@@ -22,8 +22,9 @@ A rejected row and one timeout row were preserved rather than rewritten.
 The timeout's cause remains unproven: a later successful raw-TCP probe does
 not establish the claimed networking-settle attribution or prove a source bug.
 It is not grounds for another product repair or a guarantee of resolution.
-Settings/retry controls, authorized review/download notification producers and
-real-inbox acceptance remain unfinished; Princess writes are still paused.
+Settings/retry controls were still pending after that preview; the subsequent
+rounds below accept them. Authorized review/download notification producers
+and real-inbox acceptance remain unfinished; Princess writes are still paused.
 Fresh execution-tier read-only admission `98cfd911-e957-4187-b5ff-d7874dfcf5b3`
 returned READY, observed 18:01:05Z-18:02:36Z, with no source/tests/builds/children.
 It traced the production SMTP settings home/admin patterns and existing retry
@@ -36,11 +37,52 @@ Canonical round 42 and `client-mail-controls-admission-v1.md` preserve readiness
 Evidence-only server head `91e8eb2eae2e6bc2508391f60ebdbb082f5720bf`
 was pushed/remote-confirmed at 18:05:07Z with unchanged verified source.
 Fresh execution-tier executor `9533794f-d7d4-493c-8978-91820c1c2879` now
-implements only that admitted client slice from clean `a8f2513`.
+completed the first client slice from clean `a8f2513`, candidate
+`0cf5b5b280bb178b52f9afaa336df51fd1d4c162`. Only five admitted client files
+changed: SMTP panel/tests, invitation panel/tests and settings host plumbing.
+Its final targeted self-run reported 30 passing tests, not independent
+acceptance. Earlier failed assertions remain failures despite a reported
+wrapper-zero exit; the exact number of focused reruns is unknown, not zero.
+No standing suite/build, dependency, server, preview or service change ran.
+Manager confirmed clean matching client and unchanged server at 18:17:34Z.
+Fresh verifier `7b3410ab-6a91-4dfb-b95a-d1a459dec14c` and immutable reviewer
+`347dacb5-4a99-462f-b10c-6d8f3ed71108` completed that frozen candidate.
+Verification passed 30 focused tests plus a bounded temporary real-component
+Reload-after-error probe. The reviewer found a field-feedback mismatch:
+the new panel expects `Error.details`, while the real shared transport forwards
+only status/requestId/code. A real 400 still correctly reports failure and
+no changes saved, but loses the server's field-specific reason. The unit test
+mock fabricates the missing error property. No data, secret, authorization or
+save-success misreport was found. Host admin/nav/remount wiring was source-
+inspected, not mounted in a real host test; that coverage boundary is retained.
+Judgment consult `b64a3721-4449-4a4f-83b4-a7a2899b0d45` now classifies that
+narrow finding as a real but nonblocking feedback defect: the correct generic
+400 rejection meets this slice's honest-failure contract, without claiming
+field-specific rendering works. Manager accepts that advisory with no gate
+change; no repair is authorized and the spent budget is unchanged.
+Canonical rounds 44-46 record both independent passes, bounds and classification.
+Final client standing passed on the unchanged candidate, each command once:
+`yarn test` (20 files, 231 passed, none failed/skipped), `yarn build:common`
+and `node scripts/build.js`, all exit 0. Actual UTC 18:25:42Z-18:27:04Z;
+HEAD, tracked/untracked tree, lockfile and package hash unchanged. Canonical
+round 47 records the three actual final commands. The bounded client settings/
+retry slice is accepted with the field-feedback advisory, not whole C3.
+Client `0cf5b5b280bb178b52f9afaa336df51fd1d4c162` was pushed and remote-
+confirmed at 18:29:12Z on `mpyne1-psychic-invention`, without a new PR or merge
+(canonical round 48). Retained runtime owner `0683e851` is now preparing the
+genuine immutable retry increment using only the private TLS sink and normal
+authenticated APIs. Until that proof returns, the existing preview remains the
+earlier accepted version; updated controls are not claimed live.
+The global SMTP panel will be shown only if its real shared transport works
+without fabricated connection/bootstrap/admin state. Otherwise the labelled
+invitation component lab demonstrates retry, with the full-host limitation
+explicitly retained.
 The published preview stays frozen to accepted bytes. This is first UI
 implementation, not a correction-budget reset or whole-C3 completion.
-The consumer-stage model ledger adds one Sonnet admission and one Sonnet
-implementation spawn; existing verifier/reviewer/runtime contexts were reused.
+This mail-controls stage has one Sonnet admission, one Sonnet implementation,
+one fresh Sonnet verifier and one fresh Sonnet reviewer. Earlier producer,
+status-correction and runtime ledgers remain carried without a reset.
+One GPT-6.1 Sol classification consult is now added, not another broad review.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
