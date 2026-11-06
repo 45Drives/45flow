@@ -38,9 +38,15 @@ GET status reporting unconfigured SMTP and no send. The original share was prese
 Container start was 14:55:30Z; no complete probe-batch duration was recorded.
 Live health remains responsive. The existing 18081/19095/19096 services were untouched.
 This proves the isolated API is usable, not public email delivery or a connected owner
-dashboard. A genuine component-lab preview is now being prepared from the accepted
-production component against this real backend, with normal authentication and a
-visible lab-only label. It must not bypass or claim to fix the owner bootstrap.
+dashboard. The genuine component lab is now available at `http://127.0.0.1:18082/`
+from the accepted production component against this real backend. Its separate
+lab-only proxy obtains a real owner JWT through normal login and keeps it in server
+memory; no credential is sent to the browser or forged into application state.
+Actual recipient entry, POST and manual GET display pending/not-sent feedback.
+The live browser and screenshot were published at 15:15:01Z. The label explicitly
+excludes the full dashboard, and the owner bootstrap remains unchanged.
+An unstyled send button is a nonblocking presentation advisory: its origin was
+not traced, so a lab-only or Tailwind-JIT cause is not established.
 
 The API contract has independent G1/G4/G5/G6 and review evidence on the exact producer
 revision. That planned stable interface permits client implementation while the
@@ -71,6 +77,29 @@ the source findings are unaffected and no duplicate review was requested. The re
 corrected its report to captured start 15:01:54Z and unknown end. Final standing cleared
 without another bounce or source repair. The retained runtime executor now owns the
 separate presentation step; no additional source executor or consult was spawned.
+Its isolated temporary Chromium helper was stopped; only the intentional lab server
+(PID 1922494) and backend container (PID 1845829) remain alongside the earlier previews.
+
+Resumed-slice model ledger (decision 56 onward; earlier rounds remain recorded below):
+
+| Role | Tier/model | New spawns | Notes |
+| --- | --- | --- | --- |
+| Manager | GPT-6.1 Sol | - | Existing session |
+| Consult | Judgment / GPT-6.1 Sol | 0 | Existing narrow consult count remains 1 |
+| Gate executor | Execution / agent-pinned Sonnet | 2 | Client implementation and isolated runtime |
+| Gate verifier | Execution / agent-pinned Sonnet | 1 | New client verifier; retained server verifier reused |
+| Code reviewer | Execution / agent-pinned Sonnet | 1 | Client review, no bugs |
+| Simplifier | Execution / agent-pinned Sonnet | 0 | Not warranted |
+| Scribe | Bookkeeping / inherited manager | 0 | Writes remain paused |
+| Final approved repair | Judgment / GPT-6.1 Sol | 0 | Retained documentation executor completed the prior approved attempt |
+
+No new bounce, restart or escalation offer in this resumed slice. Cumulative C3
+bounce 2/2 and restart 0/2 remain unchanged; the earlier final exception is spent.
+More than six rounds reflect sequential core/API/UI admission rather than a single
+complete producer/consumer packet, two earlier failures and metadata follow-ups;
+no retry budget was reset. Token/credit totals are not available from this harness.
+The source increments remain on local feature branches; whole-thread landing and
+native completion are not authorized by the component demonstration.
 
 ### Earlier API admission snapshot
 
