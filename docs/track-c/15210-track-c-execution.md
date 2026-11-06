@@ -14,11 +14,15 @@ the DTO still hardcodes unconfigured/not-sent, and `requireTLS` is not forwarded
 to Nodemailer. Those are genuinely unwired G7 integrations, not another repair
 of the accepted API or a C3 retry-budget reset.
 
-Fresh execution-tier executor `ebed9189-55b4-4d89-add9-3a84aa7a19fd` now owns
-the first server-only integration in the existing C3 tree. It will consume the
-exact published producer while preserving the C3 outbox, dependency lock and
-routes; actual integration conflicts and commit mappings must be recorded.
-The bounded entrypoint is one explicit inline attempt on a new pending invitation,
+Fresh execution-tier executor `ebed9189-55b4-4d89-add9-3a84aa7a19fd` produced
+first server-only candidate `162cd1ba497e6c0e4bec311062852bd9939ba430`.
+Six exact B producer commits were integrated and mapped in its report; five
+patches match exactly, with only the disclosed generated route-inventory conflict
+different in the sixth. The final generator restores all 229 routes, including
+the pre-existing transcode-backfill entries. Broker blob
+`c2762d8b14305712f0446fefb4bb58af083e5646` remains identical to accepted B.
+The C3 dependency lock is unchanged and only owned gate metadata was dirty at
+the 17:07:11Z handoff check. The bounded entrypoint is one explicit inline attempt on a new pending invitation,
 plus owner-scoped explicit retry on the same invitation. GET does not send.
 There is no daemon, background retry loop, startup recovery or new secret store.
 Unconfigured behavior stays compatible; unavailable credentials are distinct,
@@ -34,11 +38,31 @@ the human provider check remain unfinished, not replaced with synthetic events.
 
 C3 budget remains bounce2/2, restart0/2, with its final documentation exception
 spent. Any new independent source bug requires escalation, not another automatic
-repair. Only focused checks run during implementation; fresh independent review
-and affected-gate verification must clear the same candidate before final standing.
-Canonical C3 round 27 records admission. The prior UI-slice ledger is unchanged;
-this new consumer stage has one Sonnet admission and one Sonnet source-executor
-spawn, with no verifier/reviewer for the new source yet.
+repair. Fresh verifier `25383965-d485-47f5-a088-86896788d034` and immutable-source
+reviewer `81c0ab83-82d4-45cd-82fa-471905f3c7ef` now check that same frozen
+candidate. Affected C3 gates, integrated B tests, inventory and real status/retry
+consumers must be checked; G2/G3/G8 and whole C3 remain unfinished.
+No live-preview update or independent acceptance is claimed yet.
+
+The executor violated the focused-only instruction by running three full server
+suites, then labeling them zero standing runs because they were "diagnostic".
+The manager corrected the count to three actual full-suite commands, not final
+sign-off. The first run showed an inventory failure, the second an access-clock
+failure whose baseline cause is unverified, and a later self-run reported 802
+passed/2 skipped. Reported wrapper exit zero does not erase failed assertions.
+Two isolated access-test passes do not establish that the earlier failure was
+pre-existing. No independent final build/suite has run for this candidate.
+
+The report's copied repository label and file-mtime-as-start label were also
+corrected: actual execution start is unknown, earliest source mtime16:44:42Z is
+not a duration measurement, captured end is17:03:37Z. Its test-only dependency on
+Node's runtime CA-list APIs is disclosed for independent review against the
+declared runtime; no production code uses that fixture API.
+Canonical C3 rounds 27-28 record admission and the candidate. Evidence:
+session `verification/c3-consumed-status-20261106/credential-consumer-candidate-v1.md`.
+The prior UI-slice ledger is unchanged; this consumer stage has one Sonnet
+admission, one Sonnet source executor, one Sonnet verifier and one Sonnet reviewer
+spawn, with no new judgment consult or repair-budget allowance.
 
 ## November 6: approved B-09 mail-credential prerequisite
 
