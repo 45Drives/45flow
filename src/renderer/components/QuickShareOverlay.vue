@@ -1,7 +1,7 @@
 <template>
   <!-- Visual "drop here" overlay — purely presentational, all events handled on document -->
   <Transition name="qs-fade">
-    <div v-if="dragging" class="fixed inset-0 z-[1500] flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none">
+    <div v-if="dragging" data-flow-overlay class="fixed inset-0 z-overlay flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none">
       <div class="flex flex-col items-center gap-3 text-white text-xl font-semibold select-none">
         <ArrowUpTrayIcon class="w-16 h-16 text-white/80 animate-bounce" />
         <span>Drop files to quick-share</span>
@@ -12,9 +12,9 @@
   <!-- Minimized floating bar -->
   <Transition name="qs-fade">
     <div v-if="showModal && minimized"
-      class="fixed bottom-4 right-4 z-[2200] flex items-center gap-3 rounded-lg shadow-xl px-4 py-3 cursor-pointer select-none transition-all duration-300 w-72"
+      class="fixed bottom-4 right-4 z-banner flex items-center gap-3 rounded-lg shadow-xl px-4 py-3 cursor-pointer select-none transition-all duration-300 w-72"
       :class="[
-        uploadPhase === 'done' ? 'bg-green-600/90 border-green-400 text-white qs-flash-green' : 'bg-accent border-default hover:bg-well/40',
+        uploadPhase === 'done' ? 'bg-flow-success border-flow-success text-white qs-flash-green' : 'bg-accent border-default hover:bg-well/40',
         'border'
       ]"
       @click="minimized = false">
@@ -30,30 +30,19 @@
   </Transition>
 
   <!-- Modal: shown after files are dropped -->
-  <div v-if="showModal && !minimized" class="fixed inset-0 z-[2100] flex items-center justify-center">
-    <div class="absolute inset-0 bg-black/50" @click="cancel" />
-    <div
-      class="relative w-full max-w-6xl h-[85vh] flex flex-col bg-accent rounded-lg shadow-xl p-5"
-      role="dialog"
-      aria-label="Quick upload and share"
-      data-tour="qs-modal"
-      @keydown.esc.prevent.stop="cancel"
-    >
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-4 shrink-0">
-        <h2 class="text-lg font-semibold">
-          Upload {{ droppedFiles.length === 1 ? `"${droppedFiles[0].name}"` : `${droppedFiles.length} files` }} to server
+  <FlowModal :model-value="showModal && !minimized" size="2xl" class="h-[85vh]" data-tour="qs-modal" :busy="busy"
+    body-class="flex flex-col" @close="cancel">
+      <template #title>
+          Upload {{ droppedFiles.length === 1 ? `"${droppedFiles[0]?.name}"` : `${droppedFiles.length} files` }} to server
           <span v-if="activeConnection" class="text-sm text-muted font-normal ml-2">
             ({{ activeConnection.name }})
           </span>
-        </h2>
-        <div class="flex items-center gap-2">
-          <button class="btn btn-secondary flex items-center gap-1" @click="minimized = true" title="Minimize">
+      </template>
+      <template #header-actions>
+          <button class="btn btn-secondary flex items-center gap-1" @click="minimized = true" title="Minimize" aria-label="Minimize">
             <MinusIcon class="w-4 h-4" />
           </button>
-          <button class="btn btn-secondary" @click="cancel" :disabled="busy">Close</button>
-        </div>
-      </div>
+      </template>
 
       <!-- Step indicator -->
       <div class="flex items-center gap-2 text-sm mb-4 shrink-0" data-tour="qs-steps">
@@ -214,7 +203,7 @@
             <!-- Client-side transcoding status hint -->
             <div v-if="hasVideo" class="text-xs text-muted flex items-center gap-1.5 mt-1">
               <template v-if="_clientTranscodeOn">
-                <span class="text-green-600 dark:text-green-400">✓</span>
+                <span class="text-flow-success">✓</span>
                 <span>Client-side transcoding: <strong class="text-default">Enabled</strong>{{ _clientHwAccelOn ? ' (GPU)' : ' (CPU)' }}</span>
               </template>
               <template v-else-if="_isWebView">
@@ -222,7 +211,7 @@
                 <span>Client-side transcoding: <strong>Unavailable in the web view</strong> — the server will handle transcoding. Use 45Flow Desktop for local processing.</span>
               </template>
               <template v-else>
-                <span class="text-amber-500">ⓘ</span>
+                <span class="text-flow-warning">ⓘ</span>
                 <span>Client-side transcoding: <strong>Off</strong> — enable in Settings → Performance for faster processing</span>
               </template>
             </div>
@@ -284,7 +273,7 @@
             <progress
               class="w-full h-2 rounded-lg overflow-hidden"
               :class="{
-                '[&::-webkit-progress-value]:bg-amber-500 [&::-moz-progress-bar]:bg-amber-500': perFileStatus[f.path] === 'transcoding',
+                '[&::-webkit-progress-value]:bg-flow-warning [&::-moz-progress-bar]:bg-flow-warning': perFileStatus[f.path] === 'transcoding',
                 '[&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary': perFileStatus[f.path] === 'uploading',
               }"
               :value="perFileProgress[f.path] ?? 0" max="100"
@@ -298,7 +287,7 @@
         </div>
 
         <div v-else-if="uploadPhase === 'done'" class="flex flex-col gap-3">
-          <div class="text-sm font-semibold text-green-500">Upload complete &amp; link generated!</div>
+          <div class="text-sm font-semibold text-flow-success">Upload complete &amp; link generated!</div>
           <div class="p-3 border rounded flex flex-col items-center min-w-0 bg-default">
             <code class="max-w-full break-all">{{ viewUrl }}</code>
             <div class="flex flex-wrap gap-2 mt-2">
@@ -309,15 +298,16 @@
         </div>
 
         <div v-else-if="uploadPhase === 'error'" class="flex flex-col gap-2">
-          <div class="text-sm font-semibold text-red-500">Error</div>
-          <p class="text-sm text-red-400 whitespace-pre-wrap break-words">{{ errorMsg }}</p>
+          <div class="text-sm font-semibold text-flow-danger">Error</div>
+          <p class="text-sm text-flow-danger whitespace-pre-wrap break-words">{{ errorMsg }}</p>
         </div>
       </section>
 
       </div> <!-- end step content area -->
 
       <!-- Footer buttons -->
-      <div class="flex justify-end gap-2 mt-4 border-t border-default pt-3 shrink-0" data-tour="qs-footer">
+      <template #footer>
+      <div class="flex justify-end gap-2 w-full" data-tour="qs-footer">
         <button v-if="wizardStep > 1 && uploadPhase === 'idle'" class="btn btn-secondary" @click="wizardStep--" :disabled="busy">
           Back
         </button>
@@ -327,12 +317,12 @@
         <button v-else-if="wizardStep === 2" class="btn btn-primary" :disabled="!canProceed" @click="startUploadAndShare">
           Upload &amp; Share
         </button>
-        <button v-else-if="uploadPhase === 'done' || uploadPhase === 'error'" class="btn btn-secondary" @click="cancel">
+        <button v-else-if="uploadPhase === 'done' || uploadPhase === 'error'" class="btn btn-dismiss" @click="cancel">
           Close
         </button>
       </div>
-    </div>
-  </div>
+      </template>
+  </FlowModal>
 </template>
 
 <script setup lang="ts">
@@ -368,6 +358,7 @@ import { useCommentCategories } from '../composables/useCommentCategories'
 import type { WatermarkSettings, Default45FlowWatermark } from '../types/watermark'
 import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../types/watermark'
 import type { Commenter } from '../typings/electron'
+import FlowModal from '../ui/FlowModal.vue'
 
 // Cast to avoid TS plugin resolution issues with global Window augmentation
 const electron = window.electron as any

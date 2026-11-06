@@ -1,7 +1,7 @@
 <template>
 	<div class="h-full overflow-y-auto pt-3 pb-4">
 		<div class="ss-page-frame grid grid-cols-1 gap-3 text-xl">
-			<CardContainer class="local-upload-card ss-surface bg-accent rounded-md shadow-xl h-[calc(100vh-10rem)] min-h-[32rem] flex flex-col">
+			<FlowCard variant="plain" class="local-upload-card ss-surface bg-accent rounded-md shadow-xl h-[calc(100vh-10rem)] min-h-[32rem] flex flex-col">
 				<template #header>
 					<div class="wizard-head" data-tour="upload-wizard-header">
 						<h2 class="wizard-main-title">
@@ -65,7 +65,7 @@
 						</div>
 
 							<div class="wizard-table-shell"
-								:class="[selected.length ? 'wizard-table-shell--filled' : 'wizard-table-shell--empty', tableDragOver ? 'ring-2 ring-blue-500/50 bg-blue-500/5' : '']"
+								:class="[selected.length ? 'wizard-table-shell--filled' : 'wizard-table-shell--empty', tableDragOver ? 'ring-2 ring-blue-500/50 flow-tone-info' : '']"
 								@dragenter="onTableDragEnter"
 								@dragover="onTableDragOver"
 								@dragleave="onTableDragLeave"
@@ -196,9 +196,9 @@
 															'bg-default dark:bg-well/75 text-zinc-600 dark:text-zinc-300': u.status === 'queued',
 															'bg-default dark:bg-well/75 text-purple-600 dark:text-purple-300': u.status === 'transcoding',
 															'bg-default dark:bg-well/75 text-blue-600 dark:text-blue-300': u.status === 'uploading',
-															'bg-default dark:bg-well/75 text-green-600 dark:text-green-300': u.status === 'done',
-															'bg-default dark:bg-well/75 text-amber-600 dark:text-amber-300': u.status === 'canceled',
-															'bg-default dark:bg-well/75 text-red-600 dark:text-red-300': u.status === 'error',
+															'bg-default dark:bg-well/75 text-flow-success': u.status === 'done',
+															'bg-default dark:bg-well/75 text-flow-warning': u.status === 'canceled',
+															'bg-default dark:bg-well/75 text-flow-danger': u.status === 'error',
 														}">
 														<template v-if="u.status === 'transcoding'">
 															Transcode {{ Number.isFinite(u.progress) ? u.progress.toFixed(0) : 0 }}%
@@ -220,7 +220,8 @@
 												</td>
 												<td class="px-4 py-2 border border-default">
 													<div class="flex justify-end">
-														<button class="btn btn-secondary" @click="cancelOne(u)"
+														<!-- flow-ui-allow: "Cancel" stops a running upload, so it is a danger action -->
+														<button class="btn btn-danger" @click="cancelOne(u)"
 															:disabled="u.status !== 'uploading' && u.status !== 'transcoding'" title="Cancel this upload">
 															Cancel
 														</button>
@@ -236,7 +237,7 @@
 											</tr>
 
 											<tr v-if="u.error">
-												<td colspan="5" class="px-4 py-2 border border-default text-xs text-red-400">
+												<td colspan="5" class="px-4 py-2 border border-default text-xs text-flow-danger">
 													{{ u.error }}
 												</td>
 											</tr>
@@ -277,7 +278,7 @@
 								<!-- Client-side transcoding status hint -->
 								<div v-if="hasVideoSelected" class="text-xs text-muted flex items-center gap-1.5 mt-2">
 									<template v-if="_clientTranscodeOn">
-										<span class="text-green-600 dark:text-green-400">✓</span>
+										<span class="text-flow-success">✓</span>
 										<span>Client-side transcoding: <strong class="text-default">Enabled</strong>{{ _clientHwAccelOn ? ' (GPU)' : ' (CPU)' }}</span>
 									</template>
 									<template v-else-if="_isWebView">
@@ -285,7 +286,7 @@
 										<span>Client-side transcoding: <strong>Unavailable in the web view</strong> — the server will handle transcoding. Use 45Flow Desktop for local processing.</span>
 									</template>
 									<template v-else>
-										<span class="text-amber-500">ⓘ</span>
+										<span class="text-flow-warning">ⓘ</span>
 										<span>Client-side transcoding: <strong>Off</strong> — enable in Settings → Performance for faster processing</span>
 									</template>
 								</div>
@@ -321,9 +322,9 @@
 					</div>
 				</template>
 
-			</CardContainer>
+			</FlowCard>
 			<div class="button-group-row">
-				<button @click="goBack" class="btn btn-danger justify-start">
+				<button @click="goBack" class="btn btn-dismiss justify-start">
 					Back to Project
 				</button>
 			</div>
@@ -333,6 +334,7 @@
 </template>
 
 <script setup lang="ts">
+import FlowCard from '../ui/FlowCard.vue'
 import { ref, computed, inject, watch, onMounted, nextTick } from 'vue'
 import { useApi } from '../composables/useApi'
 import { useConnections } from '../composables/useConnections'
@@ -349,7 +351,7 @@ import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../ty
 import { useHeader } from '../composables/useHeader';
 import { useResilientNav } from '../composables/useResilientNav'
 import { onBeforeRouteLeave } from 'vue-router';
-import { pushNotification, Notification, CardContainer } from '@45drives/houston-common-ui';
+import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'

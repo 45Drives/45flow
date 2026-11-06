@@ -1,7 +1,7 @@
 <template>
     <form @submit.prevent="connectToServer" class="connect-page" :class="{ 'is-dark': darkMode }" :aria-busy="anyBusy">
         <div class="connect-center">
-            <CardContainer class="connect-card rounded-xl shadow-xl text-black" :style="{ background: connectMainCardBackground }">
+            <FlowCard variant="plain" class="connect-card rounded-xl shadow-xl text-black" :style="{ background: connectMainCardBackground }">
                 <div class="connect-panel">
                     <header data-tour="connect-hero" class="connect-header">
                         <h1>Sign in to 45Flow</h1>
@@ -11,15 +11,16 @@
 
                     <section data-tour="connect-auth" class="connect-section">
                         <div class="connect-section-title">Login</div>
-                        <label class="connect-field">
-                            <span class="connect-label">Username</span>
-                            <input v-model="username" type="text" autocomplete="username" placeholder="root" :disabled="anyBusy"
+                        <FlowField label="Username">
+                            <template #default="{ id }">
+                            <input :id="id" v-model="username" type="text" autocomplete="username" placeholder="root" :disabled="anyBusy"
                                 class="connect-control h-[2.75rem] text-default input-textlike px-4 rounded-lg text-base w-full border" />
-                        </label>
-                        <label class="connect-field">
-                            <span class="connect-label">Password</span>
+                            </template>
+                        </FlowField>
+                        <FlowField label="Password" id="password">
+                            <template #default="{ id }">
                             <div class="w-full relative">
-                                <input v-model="password" :type="showPassword ? 'text' : 'password'" id="password"
+                                <input v-model="password" :type="showPassword ? 'text' : 'password'" :id="id"
                                     autocomplete="current-password" :disabled="anyBusy"
                                     class="connect-control h-[2.75rem] text-default input-textlike pl-4 pr-11 rounded-lg text-base w-full border"
                                     placeholder="••••••••" />
@@ -30,7 +31,8 @@
                                     <EyeSlashIcon v-else class="w-5 h-5" />
                                 </button>
                             </div>
-                        </label>
+                            </template>
+                        </FlowField>
                         <label v-if="!isWeb" class="connect-check">
                             <input type="checkbox" v-model="rememberPassword" class="proxy-quality-checkbox" :disabled="anyBusy" />
                             <span>Remember my password on this computer</span>
@@ -39,21 +41,23 @@
 
                     <section v-if="!isWeb" data-tour="connect-server-selection" class="connect-section">
                         <div class="connect-section-title">Server</div>
-                        <label class="connect-field">
-                            <span class="connect-label">Choose a server</span>
-                            <select v-model="selectedServerIp" :disabled="anyBusy || manualIp !== ''"
+                        <FlowField label="Choose a server">
+                            <template #default="{ id }">
+                            <select :id="id" v-model="selectedServerIp" :disabled="anyBusy || manualIp !== ''"
                                 class="connect-control h-[2.75rem] text-default rounded-lg px-3 border border-default w-full">
                                 <option v-if="!discoveryState.servers.length" value="" disabled>Looking for servers on your network…</option>
                                 <option v-for="server in discoveryState.servers" :key="server.ip" :value="server.ip">
                                     {{ server.name }} ({{ server.ip }})
                                 </option>
                             </select>
-                        </label>
-                        <label class="connect-field">
-                            <span class="connect-label">Or enter the server address</span>
-                            <input v-model="manualIp" type="text" placeholder="192.168.1.123" :disabled="anyBusy"
+                            </template>
+                        </FlowField>
+                        <FlowField label="Or enter the server address">
+                            <template #default="{ id }">
+                            <input :id="id" v-model="manualIp" type="text" placeholder="192.168.1.123" :disabled="anyBusy"
                                 class="connect-control h-[2.75rem] text-default input-textlike border px-4 rounded-lg text-base w-full" />
-                        </label>
+                            </template>
+                        </FlowField>
 
                         <details ref="portsDetailsRef" data-tour="connect-ports" class="connect-advanced group" :open="Boolean(portError || portWarning) || tourPortsOpen">
                             <summary class="list-none flex w-full items-center justify-between text-left cursor-pointer select-none">
@@ -90,8 +94,8 @@
                             <p class="mt-2 text-xs opacity-75">
                                 Leave blank for the defaults (SSH 22, setup API 9095, HTTPS 443). Each port must be different.
                             </p>
-                            <p v-if="portError" class="mt-1 text-xs text-danger">{{ portError }}</p>
-                            <p v-else-if="portWarning" class="mt-1 text-xs text-warning">{{ portWarning }}</p>
+                            <p v-if="portError" class="mt-1 text-xs text-flow-danger" role="alert">{{ portError }}</p>
+                            <p v-else-if="portWarning" class="mt-1 text-xs text-flow-warning">{{ portWarning }}</p>
                         </details>
                     </section>
 
@@ -123,20 +127,22 @@
                         </p>
                     </footer>
                 </div>
-            </CardContainer>
+            </FlowCard>
         </div>
     </form>
     <PortForwardingModal v-if="showPortFwdModal" @close="togglePortFwdModal" />
 </template>
 
 <script setup lang="ts">
+import FlowCard from '../ui/FlowCard.vue'
+import FlowField from '../ui/FlowField.vue'
 import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHeader } from '../composables/useHeader'
 import { currentServerInjectionKey, discoveryStateInjectionKey, connectionMetaInjectionKey } from '../keys/injection-keys'
 import { EyeIcon, EyeSlashIcon } from "@heroicons/vue/20/solid";
 import type { DiscoveryState, Server } from '../types'
-import { pushNotification, Notification, CardContainer, useDarkModeState } from '@45drives/houston-common-ui'
+import { pushNotification, Notification, useDarkModeState } from '@45drives/houston-common-ui'
 import PortForwardingModal from '../components/modals/PortForwardingModal.vue' 
 import { useResilientNav } from '../composables/useResilientNav';
 import { signInWithSession, restoreSession, WEB_SESSION_TOKEN, type WebSessionInfo } from '../web-session';
@@ -1538,13 +1544,8 @@ async function checkBroadcasterUpdateInBackground(apiBase: string, token: string
     font-weight: 700;
 }
 
-.connect-field {
-    display: flex;
-    flex-direction: column;
-}
-
-.connect-label {
-    margin-bottom: 0.3rem;
+.connect-panel :deep(.flow-field__label) {
+    margin-bottom: 0.1rem;
     font-size: 0.86rem;
     font-weight: 600;
     opacity: 0.9;
@@ -1590,7 +1591,7 @@ async function checkBroadcasterUpdateInBackground(apiBase: string, token: string
 
 .connect-page.is-dark .connect-panel h1,
 .connect-page.is-dark .connect-panel .connect-section-title,
-.connect-page.is-dark .connect-panel .connect-label,
+.connect-page.is-dark .connect-panel :deep(.flow-field__label),
 .connect-page.is-dark .connect-panel p,
 .connect-page.is-dark .connect-panel span {
     color: #2f3340;

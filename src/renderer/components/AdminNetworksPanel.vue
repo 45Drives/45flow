@@ -20,7 +20,7 @@
                 </template>
             </dl>
         </details>
-        <p class="text-sm text-danger">
+        <p class="text-sm text-flow-danger">
             Keep server console or SSH recovery access available. Changes are temporary until confirmed
             through the reloaded nginx policy; unconfirmed changes are automatically rolled back.
             An empty list denies all nginx admin access.
@@ -33,14 +33,14 @@
             If prompted, verify the SSH host-key fingerprint before trusting the server.</template>
         </p>
         <p v-if="loading" role="status">Loading admin networks…</p>
-        <p v-if="error" role="alert" class="text-sm text-danger">{{ error }}</p>
+        <p v-if="error" role="alert" class="text-sm text-flow-danger">{{ error }}</p>
         <template v-if="loaded">
             <p v-if="safety?.available" class="text-sm" role="status">
                 nginx sees your connection as <strong>{{ safety.clientAddress }}</strong>.
                 Currently allowed by: <span class="font-mono">{{ safety.matchedCidr || 'no matching range' }}</span>.
                 This may be a proxy address, not your device, and does not identify your whole LAN or VPN.
             </p>
-            <p v-else role="alert" class="text-sm text-danger">
+            <p v-else role="alert" class="text-sm text-flow-danger">
                 Connection safety is unavailable: {{ safety?.reason || 'update the server and its nginx configuration.' }}
                 Changes are disabled; update/regenerate the server's nginx configuration and reload this panel.
             </p>
@@ -55,15 +55,15 @@
                     Check proposed networks
                 </button>
             </div>
-            <p v-if="hasGlobalRange" role="alert" class="text-sm text-danger">
+            <p v-if="hasGlobalRange" role="alert" class="text-sm text-flow-danger">
                 Remove all /0 ranges before applying. They eliminate the admin network restriction
                 for that IP family, and the server will reject them.
             </p>
-            <p v-if="checked?.allowed" class="text-sm text-success" role="status">
+            <p v-if="checked?.allowed" class="text-sm text-flow-success" role="status">
                 The proposed list includes your current nginx-observed address. This does not guarantee
                 future access if your address, VPN, or proxy changes.
             </p>
-            <p v-if="checked && !checked.allowed" role="alert" class="text-sm text-danger">
+            <p v-if="checked && !checked.allowed" role="alert" class="text-sm text-flow-danger">
                 The proposed list excludes your current connection ({{ checked.clientAddress }}).
                 You will need another permitted connection to confirm, or the server will roll back.
             </p>
@@ -93,7 +93,7 @@
             <button type="button" class="btn btn-primary" :disabled="saving || confirming || loading"
                 @click="confirmPolicy">{{ confirming ? 'Reconnecting to reloaded nginx…' : 'Reconnect and confirm' }}</button>
         </div>
-        <p v-if="saved" role="status" class="text-sm text-success">
+        <p v-if="saved" role="status" class="text-sm text-flow-success">
             Admin networks confirmed through reloaded nginx. Future connections must use a trusted network.
         </p>
     </section>

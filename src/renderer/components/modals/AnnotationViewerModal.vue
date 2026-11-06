@@ -1,21 +1,11 @@
 <template>
-  <div v-if="modelValue && comment" class="fixed inset-0 z-[200]">
-    <div class="absolute inset-0 bg-black/80" @click="close"></div>
-
-    <div class="absolute inset-8 mx-auto max-w-5xl max-h-[90vh] bg-accent border border-default rounded-lg shadow-2xl z-[201] flex flex-col">
-      <!-- Header -->
-      <div class="flex items-center justify-between px-5 py-4 border-b border-default shrink-0 bg-well">
-        <div class="flex-1 min-w-0">
-          <h3 class="text-xl font-bold flex items-center gap-2 m-5">
-            <PencilIcon class="w-5 h-5 m-2" />
-            View Annotation
-          </h3>
-          <p class="text-xs text-muted mt-0.5">
-            {{ comment.file_name || 'Unknown file' }} • {{ formatTimecode(comment.start_seconds) }}
-          </p>
-        </div>
-        <button class="btn btn-danger px-4 py-2 h-fit" @click="close">Close</button>
-      </div>
+  <FlowModal :model-value="!!(modelValue && comment)" size="xl" header-class="bg-well" flush body-class="flex flex-col"
+    :description="comment ? `${comment.file_name || 'Unknown file'} • ${formatTimecode(comment.start_seconds)}` : ''"
+    @close="close">
+      <template #title>
+        <span class="flex items-center gap-2"><PencilIcon class="w-5 h-5" /> View Annotation</span>
+      </template>
+      <template v-if="comment">
 
       <!-- Loading State -->
       <div v-if="loading" class="flex-1 flex items-center justify-center">
@@ -30,7 +20,7 @@
 
       <!-- Error State -->
       <div v-else-if="error" class="flex-1 flex items-center justify-center p-8">
-        <div class="p-4 rounded bg-red-900/30 text-default border border-red-800 max-w-md">
+        <div class="p-4 rounded flow-tone-danger text-default border max-w-md">
           <div class="font-semibold mb-1">Failed to load annotation</div>
           <div class="text-sm opacity-80">{{ error }}</div>
         </div>
@@ -286,8 +276,8 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
+      </template>
+  </FlowModal>
 </template>
 
 <script setup lang="ts">
@@ -296,6 +286,7 @@ import { PencilIcon } from '@heroicons/vue/24/outline'
 import type { Comment } from '../../composables/useComments'
 import { useApi } from '../../composables/useApi'
 import { useTimeFormat } from '../../composables/useTimeFormat'
+import FlowModal from '../../ui/FlowModal.vue'
 
 const props = defineProps<{
   modelValue: boolean

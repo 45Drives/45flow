@@ -1,21 +1,14 @@
 <template>
-  <div v-if="modelValue" class="fixed inset-0 z-[2000] flex items-center justify-center" @click.self="close">
-    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-    <div class="relative w-full max-w-4xl max-h-[85vh] flex flex-col bg-accent rounded-lg shadow-xl p-6">
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-semibold">Server Connections</h2>
-        <button class="btn btn-secondary" @click="close">Close</button>
-      </div>
+  <FlowModal :model-value="modelValue" title="Server Connections" size="xl" @close="close">
 
       <!-- Active Connection Badge -->
       <div v-if="activeConnection" class="mb-4 p-3 bg-well rounded-md border border-primary/30">
         <div class="text-sm text-muted mb-1">Active Connection</div>
         <div class="flex items-center gap-2">
           <span class="inline-block w-2 h-2 rounded-full" :class="{
-            'bg-green-500': activeConnection.status === 'connected',
-            'bg-red-500': activeConnection.status === 'disconnected' || activeConnection.status === 'error',
-            'bg-yellow-500': activeConnection.status === 'checking'
+            'bg-flow-success': activeConnection.status === 'connected',
+            'bg-flow-danger': activeConnection.status === 'disconnected' || activeConnection.status === 'error',
+            'bg-flow-warning': activeConnection.status === 'checking'
           }" />
           <span class="font-semibold">{{ activeConnection.name }}</span>
           <span class="text-muted text-sm">({{ activeConnection.serverIp }})</span>
@@ -45,7 +38,7 @@
                 <!-- Name and Status -->
                 <div class="flex items-center gap-2 mb-1">
                   <button
-                    class="text-yellow-500 hover:text-yellow-400"
+                    class="text-flow-warning hover:text-flow-warning"
                     :class="{ 'opacity-30': !conn.isFavorite }"
                     @click.stop="toggleFavorite(conn.connectionId)"
                     :title="conn.isFavorite ? 'Remove from favorites' : 'Add to favorites'"
@@ -53,9 +46,9 @@
                     ★
                   </button>
                   <span class="inline-block w-2 h-2 rounded-full" :class="{
-                    'bg-green-500': conn.status === 'connected',
-                    'bg-red-500': conn.status === 'disconnected' || conn.status === 'error',
-                    'bg-yellow-500': conn.status === 'checking'
+                    'bg-flow-success': conn.status === 'connected',
+                    'bg-flow-danger': conn.status === 'disconnected' || conn.status === 'error',
+                    'bg-flow-warning': conn.status === 'checking'
                   }" />
                   <span class="font-semibold truncate">{{ conn.name }}</span>
                   <span v-if="conn.isActive" class="text-xs bg-primary text-white px-2 py-0.5 rounded">Active</span>
@@ -66,17 +59,17 @@
                   <div>IP: {{ conn.serverIp }}</div>
                   <div>User: {{ conn.username }}</div>
                   <div>
-                    Status: <span :class="conn.token && conn.status === 'connected' ? 'text-green-500' : 'text-yellow-500'">
+                    Status: <span :class="conn.token && conn.status === 'connected' ? 'text-flow-success' : 'text-flow-warning'">
                       {{ !conn.token ? 'Logged out' : conn.status === 'connected' ? 'Connected' : 'Reconnect required' }}
                     </span>
                   </div>
                   <div v-if="conn.licensed !== undefined">
-                    License: <span :class="conn.licensed ? 'text-green-500' : 'text-yellow-500'">
+                    License: <span :class="conn.licensed ? 'text-flow-success' : 'text-flow-warning'">
                       {{ conn.licensed ? 'Licensed' : 'Unlicensed' }}
                     </span>
                   </div>
                   <div>Last connected: {{ formatDate(conn.lastConnectedAt) }}</div>
-                  <div v-if="conn.lastError" class="text-danger">Error: {{ conn.lastError }}</div>
+                  <div v-if="conn.lastError" class="text-flow-danger">Error: {{ conn.lastError }}</div>
                 </div>
               </div>
 
@@ -109,32 +102,27 @@
       </div>
 
       <!-- Add Server Button -->
-      <div class="flex justify-between items-center">
-        <div class="text-sm text-muted">
+      <template #footer>
+        <div class="text-sm text-muted mr-auto">
           {{ sortedConnections.length }} connection{{ sortedConnections.length !== 1 ? 's' : '' }}
         </div>
         <button class="btn btn-primary" @click="addServer">
           + Add Server
         </button>
-      </div>
-    </div>
-  </div>
+      </template>
+  </FlowModal>
 
   <!-- Confirm Remove Dialog -->
-  <div v-if="removeConfirmFor" class="fixed inset-0 z-[2100] flex items-center justify-center" @click.self="removeConfirmFor = null">
-    <div class="absolute inset-0 bg-black/50" />
-    <div class="relative bg-accent rounded-lg shadow-xl p-6 max-w-md text-left">
-      <h3 class="text-lg font-semibold mb-2">Remove Connection?</h3>
-      <p class="text-sm text-muted mb-4">
-        Are you sure you want to remove the connection to <strong>{{ removeConfirmFor.name }}</strong>?
+  <FlowModal :model-value="!!removeConfirmFor" title="Remove Connection?" size="sm" hide-close @close="removeConfirmFor = null">
+      <p class="text-sm text-muted">
+        Are you sure you want to remove the connection to <strong>{{ removeConfirmFor?.name }}</strong>?
         This will cancel any active uploads or transcodes on this server.
       </p>
-      <div class="flex justify-end gap-2">
-        <button class="btn btn-secondary" @click="removeConfirmFor = null">Cancel</button>
+      <template #footer>
+        <button class="btn btn-dismiss" @click="removeConfirmFor = null">Cancel</button>
         <button class="btn btn-danger" @click="removeConnection">Remove</button>
-      </div>
-    </div>
-  </div>
+      </template>
+  </FlowModal>
 </template>
 
 <script setup lang="ts">
@@ -142,6 +130,7 @@ import { ref, computed } from 'vue'
 import { useConnections } from '../../composables/useConnections'
 import type { Connection } from '../../composables/useConnections'
 import { useRouter } from 'vue-router'
+import FlowModal from '../../ui/FlowModal.vue'
 
 const props = defineProps<{
   modelValue: boolean

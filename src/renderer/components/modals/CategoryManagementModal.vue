@@ -1,24 +1,6 @@
 <!-- src/renderer/components/modals/CategoryManagementModal.vue -->
 <template>
-  <teleport to="body">
-    <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div class="relative bg-default rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-        <!-- Header -->
-        <div class="flex items-center justify-between px-6 py-4 border-b border-default">
-          <h2 class="text-lg font-semibold text-default">Comment Categories</h2>
-          <button
-            @click="cancel"
-            class="text-muted hover:text-default p-1"
-            aria-label="Close"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <!-- Content -->
-        <div class="flex-1 overflow-y-auto px-6 py-4">
+  <FlowModal :model-value="isOpen" title="Comment Categories" size="lg" surface="default" :busy="isSaving" @close="cancel">
           <!-- Add New Category -->
           <div class="mb-4">
             <label class="block text-sm font-medium text-default mb-2">Add New Category</label>
@@ -46,7 +28,7 @@
                 Add
               </button>
             </div>
-            <div v-if="addError" class="mt-1 text-sm text-red-500">{{ addError }}</div>
+            <div v-if="addError" class="mt-1 text-sm text-flow-danger">{{ addError }}</div>
           </div>
 
           <!-- Default Categories Suggestion -->
@@ -95,13 +77,11 @@
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Footer -->
-        <div class="flex justify-end gap-2 px-6 py-4 border-t border-default">
+        <template #footer>
           <button
             @click="cancel"
-            class="btn btn-secondary"
+            class="btn btn-dismiss"
           >
             Cancel
           </button>
@@ -112,16 +92,15 @@
           >
             {{ isSaving ? 'Saving...' : 'Save Categories' }}
           </button>
-        </div>
-      </div>
-    </div>
-  </teleport>
+        </template>
+  </FlowModal>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { useCommentCategories } from '../../composables/useCommentCategories';
 import { pushNotification, Notification } from '@45drives/houston-common-ui';
+import FlowModal from '../../ui/FlowModal.vue';
 
 interface Props {
   isOpen: boolean;

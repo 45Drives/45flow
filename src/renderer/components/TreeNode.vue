@@ -83,7 +83,7 @@
                 <div v-else :class="[
                     'tree-node-row grid auto-rows-[28px] items-center border-b border-default cursor-pointer select-none',
                     (!modeIsUpload && selected.has(ch.path)) ?
-                    'bg-[var(--row-selected-bg)] ring-1 ring-[var(--btn-primary-border)] border-b-transparent relative z-[1]'
+                    'bg-[var(--row-selected-bg)] ring-1 ring-[var(--btn-primary-border)] border-b-transparent relative z-raised'
                         : 'ss-explorer-hover',
                     modeIsUpload ? 'opacity-90 pointer-events-none' : ''
                 ]" @click="($event) => onFileToggle(ch.path, $event)" @keydown.enter.prevent="onFileToggle(ch.path)"

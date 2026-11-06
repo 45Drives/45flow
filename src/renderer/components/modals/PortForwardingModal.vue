@@ -1,17 +1,6 @@
 <template>
-    <div class="fixed inset-0 z-40">
-        <div class="absolute inset-0 bg-black/50" @click="close"></div>
-
-        <div
-            class="absolute inset-x-0 top-12 mx-auto w-11/12 max-w-5xl bg-default border border-default rounded-lg shadow-lg z-50">
-            <!-- Header -->
-            <div class="flex items-center justify-between px-4 py-3 border-b border-default">
-                <h3 class="text-lg font-semibold">HOW TO PORT FORWARD</h3>
-                <button class="btn btn-danger" @click="close">Close</button>
-            </div>
-
-            <!-- Body -->
-            <div class="px-4 pt-4 pb-4 text-sm text-left space-y-6 overflow-y-auto max-h-[75vh]">
+    <FlowModal :model-value="true" title="HOW TO PORT FORWARD" size="xl" position="top" surface="default"
+        body-class="text-sm text-left space-y-6" @close="close">
                 <section class="space-y-3">
                     <p>
                         To let people <em>outside</em> your network open 45Flow links, you must forward the
@@ -203,12 +192,11 @@
                         system updated.
                     </p>
                 </section>
-            </div>
-        </div>
-    </div>
+    </FlowModal>
 </template>
 
 <script setup lang="ts">
+import FlowModal from '../../ui/FlowModal.vue'
 const emit = defineEmits(["close"]);
 function close() {
     emit("close");

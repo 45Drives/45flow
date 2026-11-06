@@ -15,7 +15,7 @@
       </button>
     </div>
 
-    <div v-if="loadError" class="text-xs text-red-600 dark:text-red-400 mb-2">
+    <div v-if="loadError" class="text-xs text-flow-danger mb-2">
       Couldn't load processing status: {{ loadError }}
     </div>
 
@@ -52,11 +52,11 @@
                   </button>
                 </div>
                 <div v-if="f.transcodes[k].status === 'running'" class="mt-1 h-1.5 w-full rounded bg-default overflow-hidden">
-                  <div class="h-full bg-blue-500 transition-all" :style="{ width: `${Math.round(f.transcodes[k].progress ?? 0)}%` }"></div>
+                  <div class="h-full bg-flow-info transition-all" :style="{ width: `${Math.round(f.transcodes[k].progress ?? 0)}%` }"></div>
                 </div>
                 <div
                   v-if="f.transcodes[k].status === 'failed' && f.transcodes[k].error"
-                  class="mt-1 text-xs text-red-600 dark:text-red-400 truncate max-w-[16rem]"
+                  class="mt-1 text-xs text-flow-danger truncate max-w-[16rem]"
                   :title="f.transcodes[k].error || ''"
                 >
                   {{ f.transcodes[k].error }}

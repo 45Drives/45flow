@@ -1,20 +1,5 @@
 <template>
-    <div v-if="modelValue" class="fixed inset-0 z-[70]">
-        <div class="absolute inset-0 bg-black/60" @click="close"></div>
-
-        <div
-            class="absolute inset-x-0 top-12 mx-auto w-11/12 max-w-5xl bg-well border border-default rounded-lg shadow-lg">
-            <div class="flex items-center justify-between px-4 py-3 border-b border-default">
-                <h3 class="text-lg font-semibold">
-                    Edit Shared Files
-                </h3>
-
-                <div class="flex items-center gap-2">
-                    <button class="btn btn-secondary" @click="close">Close</button>
-                </div>
-            </div>
-
-            <div class="px-4 pt-4 pb-4 space-y-4 max-h-[75vh] overflow-y-auto">
+    <FlowModal :model-value="modelValue" title="Edit Shared Files" size="xl" position="top" body-class="space-y-4" @close="close">
                 <div class="text-sm opacity-80">
                     Click on files to select or deselect them. Shift-click to select a range. Click on folders to enter. Use folder checkboxes to select all contents.
                 </div>
@@ -22,7 +7,7 @@
                 <FileExplorer :apiFetch="apiFetch" :modelValue="selected" :base="base" :startDir="startDir"
                     @add="onExplorerAdd" @remove="onExplorerRemove" @error="explorerError = $event" />
 
-                <div v-if="explorerError" class="text-sm text-red-400">
+                <div v-if="explorerError" class="text-sm text-flow-danger">
                     {{ explorerError }}
                 </div>
 
@@ -50,24 +35,23 @@
                     </div>
                 </div>
 
-                <div v-if="validationError" class="text-sm text-red-400">
+                <div v-if="validationError" class="text-sm text-flow-danger">
                     {{ validationError }}
                 </div>
 
-                <div class="flex justify-end gap-2 pt-2">
-                    <button class="btn btn-secondary" @click="close">Cancel</button>
+                <template #footer>
+                    <button class="btn btn-dismiss" @click="close">Cancel</button>
                     <button class="btn btn-primary" :disabled="!!validationError" @click="apply">
                         Apply
                     </button>
-                </div>
-            </div>
-        </div>
-    </div>
+                </template>
+    </FlowModal>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import FileExplorer from '../FileExplorer.vue'
+import FlowModal from '../../ui/FlowModal.vue'
 
 const props = defineProps<{
     modelValue: boolean

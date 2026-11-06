@@ -1,12 +1,5 @@
 <template>
-  <div v-if="modelValue" class="fixed inset-0 z-[2500] flex items-center justify-center">
-    <div class="absolute inset-0 bg-black/50" @click="close()"></div>
-
-    <div class="relative w-full max-w-4xl bg-accent rounded-lg shadow-xl p-4">
-      <div class="flex items-center justify-between mb-3" data-tour="roles-modal-header">
-        <h3 class="text-lg font-semibold">Manage roles</h3>
-        <button class="btn btn-secondary" @click="close()">Close</button>
-      </div>
+  <FlowModal :model-value="modelValue" title="Manage roles" size="xl" :header-attrs="{ 'data-tour': 'roles-modal-header' }" @close="close()">
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Create role -->
@@ -45,7 +38,7 @@
               <button class="btn btn-secondary" @click="resetCreate">Reset</button>
             </div>
 
-            <div v-if="createError" class="text-sm text-red-500">{{ createError }}</div>
+            <div v-if="createError" class="text-sm text-flow-danger">{{ createError }}</div>
           </div>
         </div>
 
@@ -58,7 +51,7 @@
             </button>
           </div>
 
-          <div v-if="loadError" class="text-sm text-red-500 mb-2">{{ loadError }}</div>
+          <div v-if="loadError" class="text-sm text-flow-danger mb-2">{{ loadError }}</div>
 
           <div class="max-h-80 overflow-auto border rounded">
             <div v-for="r in roles" :key="r.id" class="border-b border-default px-3 py-2 text-sm">
@@ -68,7 +61,7 @@
                     class="input-textlike border rounded px-2 py-1 text-sm" :disabled="r.is_system" />
                   <span v-else class="font-medium">{{ r.name }}</span>
                   <span v-if="r.is_system"
-                    class="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-default/70 text-amber-400 border border-amber-500/30">
+                    class="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-default/70 text-flow-warning border border-flow-warning">
                     System
                   </span>
                 </div>
@@ -86,7 +79,7 @@
                     @click="cancelEdit">
                     Cancel
                   </button>
-                  <button class="px-2 py-1 text-xs border rounded text-red-600 hover:bg-red-600/10"
+                  <button class="px-2 py-1 text-xs border rounded flow-tone-danger"
                     :disabled="!!r.is_system"
                     @click="deleteRole(r)">
                     Delete
@@ -136,11 +129,10 @@
             <div v-if="!roles.length" class="px-3 py-2 text-sm opacity-70">No roles found.</div>
           </div>
 
-          <div v-if="editError" class="text-sm text-red-500 mt-2">{{ editError }}</div>
+          <div v-if="editError" class="text-sm text-flow-danger mt-2">{{ editError }}</div>
         </div>
       </div>
-    </div>
-  </div>
+  </FlowModal>
 </template>
 
 <script setup lang="ts">
@@ -148,6 +140,7 @@ import { ref, watch } from 'vue'
 import type { Role } from '../../typings/electron'
 import { useTourManager, type TourStep } from '../../composables/useTourManager'
 import { useOnboarding } from '../../composables/useOnboarding'
+import FlowModal from '../../ui/FlowModal.vue'
 
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()

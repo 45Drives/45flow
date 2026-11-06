@@ -7,7 +7,7 @@
       <div v-if="!hideProxyQualities" :class="compact ? 'min-w-0' : 'rounded-md p-2.5 min-w-0'">
         <label class="font-semibold block" :class="compact ? 'text-sm mb-1' : 'mb-2'">Proxy Files</label>
 
-        <div v-if="proxyBlockReason" class="text-xs text-amber-700 dark:text-amber-300 mb-2">
+        <div v-if="proxyBlockReason" class="text-xs text-flow-warning mb-2">
           {{ proxyBlockReason }}
         </div>
 
@@ -67,7 +67,7 @@
           {{ watermarkLabel }}
         </label>
 
-        <div v-if="watermarkBlockReason" class="text-xs text-amber-700 dark:text-amber-300 mb-2">
+        <div v-if="watermarkBlockReason" class="text-xs text-flow-warning mb-2">
           {{ watermarkBlockReason }}
         </div>
 
@@ -100,7 +100,7 @@
         </div>
 
         <p v-if="watermarkEnabled && !watermarkFile && !selectedExistingWatermark && !usingExistingWatermark"
-          class="text-xs text-amber-700 dark:text-amber-300 mb-2">
+          class="text-xs text-flow-warning mb-2">
           Select a watermark image to continue.
         </p>
       </div>

@@ -7,11 +7,11 @@
 			</div>
 
 			<div class="manage-metrics">
-				<span class="ss-chip ss-chip--neutral">Total {{ linkSummary.total }}</span>
-				<span class="ss-chip ss-chip--success">Active {{ linkSummary.active }}</span>
-				<span class="ss-chip ss-chip--warning">Expired {{ linkSummary.expired }}</span>
-				<span class="ss-chip ss-chip--danger">Disabled {{ linkSummary.disabled }}</span>
-				<span v-if="linkSummary.archived" class="ss-chip ss-chip--muted">
+				<span class="flow-chip flow-chip--neutral">Total {{ linkSummary.total }}</span>
+				<span class="flow-chip flow-chip--success">Active {{ linkSummary.active }}</span>
+				<span class="flow-chip flow-chip--warning">Expired {{ linkSummary.expired }}</span>
+				<span class="flow-chip flow-chip--danger">Disabled {{ linkSummary.disabled }}</span>
+				<span v-if="linkSummary.archived" class="flow-chip flow-chip--muted">
 					Archived {{ linkSummary.archived }}
 				</span>
 			</div>
@@ -48,7 +48,7 @@
 							Archive
 						</button>
 
-						<button class="btn btn-delete bulk-action-btn" @click="bulkDeleteOpen = true">
+						<button class="btn btn-danger bulk-action-btn" @click="bulkDeleteOpen = true">
 							Delete
 						</button>
 
@@ -90,7 +90,7 @@
 			</div>
 
 			<div v-if="error"
-				class="p-3 rounded bg-red-900/30 text-default border border-red-800 mb-3 text-center items-center justify-self-center">
+				class="p-3 rounded flow-tone-danger text-default border mb-3 text-center items-center justify-self-center">
 				{{ error }}
 			</div>
 
@@ -200,9 +200,8 @@
 						</tr>
 
 						<tr v-else-if="filteredRows.length === 0 && !showingDemoData">
-							<td colspan="11"
-								class="px-2 py-4 text-center text-default font-bold border border-default align-middle whitespace-nowrap">
-								No links found.
+							<td colspan="11" class="border border-default align-middle">
+								<FlowEmpty compact title="No links found." />
 							</td>
 						</tr>
 
@@ -234,11 +233,11 @@
 							<td class="p-1.5 border border-default align-middle whitespace-nowrap">
 								<div class="capability-stack">
 									<span class="capability-pill"
-										:class="hasShareCap(it) ? 'bg-emerald-500/20 text-emerald-400' : 'bg-well/50 text-muted/40'">
+										:class="hasShareCap(it) ? 'flow-tone-success' : 'bg-well/50 text-muted/40'">
 										Review
 									</span>
 									<span class="capability-pill"
-										:class="hasUploadCap(it) ? 'bg-blue-500/20 text-blue-400' : 'bg-well/50 text-muted/40'">
+										:class="hasUploadCap(it) ? 'flow-tone-info' : 'bg-well/50 text-muted/40'">
 										Upload
 									</span>
 								</div>
@@ -297,7 +296,7 @@
 
 						<tr v-for="it in pagedRows" :key="'link-' + it.id" v-else
 							class="hover:bg-black/10 dark:hover:bg-white/10 transition border border-default h-12"
-							:class="{ 'bg-blue-500/10': selectedIds.has(it.id), 'opacity-50': it.archived }">
+							:class="{ 'flow-tone-info': selectedIds.has(it.id), 'opacity-50': it.archived }">
 							<td class="p-1 border border-default align-middle text-center select-cell cursor-pointer" @click="toggleSelect(it)">
 								<input type="checkbox" class="input-checkbox pointer-events-none" :checked="selectedIds.has(it.id)" />
 							</td>
@@ -330,18 +329,18 @@
 										@keydown.enter="saveTitle(it)" @keydown.escape="cancelEdit" />
 									<button class="btn btn-secondary table-mini-btn"
 										@click="saveTitle(it)">Save</button>
-									<button class="btn btn-danger table-mini-btn" @click="cancelEdit">Cancel</button>
+									<button class="btn btn-dismiss table-mini-btn" @click="cancelEdit">Cancel</button>
 								</div>
 							</td>
 
 							<td class="p-1.5 border border-default align-middle whitespace-nowrap">
 								<div class="capability-stack">
 									<span class="capability-pill"
-										:class="hasShareCap(it) ? 'bg-emerald-500/20 text-emerald-400' : 'bg-well/50 text-muted/40'">
+										:class="hasShareCap(it) ? 'flow-tone-success' : 'bg-well/50 text-muted/40'">
 										Review
 									</span>
 									<span class="capability-pill"
-										:class="hasUploadCap(it) ? 'bg-blue-500/20 text-blue-400' : 'bg-well/50 text-muted/40'">
+										:class="hasUploadCap(it) ? 'flow-tone-info' : 'bg-well/50 text-muted/40'">
 										Upload
 									</span>
 								</div>
@@ -397,7 +396,7 @@
 											Apply
 										</button>
 
-										<button class="btn btn-danger expiry-action-btn" @click="closeCustom(it)">
+										<button class="btn btn-dismiss expiry-action-btn" @click="closeCustom(it)">
 											Cancel
 										</button>
 									</div>
@@ -410,7 +409,7 @@
 										:class="statusChipClass(statusOf(it))">
 										{{ statusOf(it) === 'archived' ? (it.expiresAt && it.expiresAt <= Date.now() ? 'EXPIRED' : (it.isDisabled ? 'DISABLED' : 'ACTIVE')) : statusOf(it).toUpperCase() }}
 									</span>
-									<span v-if="it.archived" class="ss-chip ss-chip--muted text-xs shrink-0">ARCHIVED</span>
+									<span v-if="it.archived" class="flow-chip flow-chip--muted text-xs shrink-0">ARCHIVED</span>
 								</div>
 							</td>
 
@@ -462,7 +461,7 @@
 										{{ it.archived ? 'Unarchive' : 'Archive' }}
 									</button>
 
-									<button class="btn btn-delete table-action-btn actions-delete-btn"
+									<button class="btn btn-danger table-action-btn actions-delete-btn"
 										@click="confirmDelete(it)">
 										Delete
 									</button>
@@ -497,25 +496,17 @@
 
 	<LinkDetailsModal v-model="showModal" :link="current" :apiFetch="apiFetch" @updated="applyLinkPatch" @requestDelete="onRequestDeleteFromDetails" />
 
-	<Teleport to="body">
-		<div v-if="linkToDelete" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50"
-			@click.self="cancelDelete">
-			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto text-default bg-accent">
-				<div class="flex items-center gap-2 mb-3">
-					<span class="text-red-500 dark:text-red-400 text-xl">!</span>
-					<h3 class="text-lg font-semibold text-red-600 dark:text-red-400">Permanently Delete Link</h3>
-				</div>
-
-				<div class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 mb-4">
-					<p class="text-sm text-red-700 dark:text-red-300 font-medium mb-2">
+	<FlowModal :model-value="!!(linkToDelete)" title="Permanently Delete Link" size="md" hide-close @close="cancelDelete">
+				<FlowNotice tone="danger" class="mb-4">
+					<p class="text-sm font-medium mb-2">
 						This action is irreversible and will permanently destroy:
 					</p>
-					<ul class="text-sm text-red-600 dark:text-red-300/80 list-disc list-inside space-y-1">
+					<ul class="text-sm list-disc list-inside space-y-1">
 						<li>The share/upload link, which will no longer be accessible to anyone</li>
 						<li>All activity history and access logs</li>
 						<li>All client access permissions</li>
 					</ul>
-				</div>
+				</FlowNotice>
 
 				<p class="text-sm text-default mb-3">
 					Deleting <strong>{{ linkToDelete?.title || 'Untitled link' }}</strong>
@@ -534,12 +525,12 @@
 						<p v-if="deletePreview.summary.totalFiles === 0" class="text-xs text-default">
 							No files in this link.
 						</p>
-						<p v-else-if="nothingToDelete" class="text-xs text-amber-600 dark:text-amber-400">
+						<p v-else-if="nothingToDelete" class="text-xs text-flow-warning">
 							All files are used by other links, so they'll be kept.
 						</p>
 						<p v-else class="text-xs text-default">
 							{{ deletePreview.summary.totalFiles }} file(s)<template v-if="deletePreview.summary.sharedFiles > 0">
-								· <span class="text-amber-600 dark:text-amber-400">{{ deletePreview.summary.sharedFiles }} used by other links will be kept</span>
+								· <span class="text-flow-warning">{{ deletePreview.summary.sharedFiles }} used by other links will be kept</span>
 							</template>
 						</p>
 
@@ -549,7 +540,7 @@
 								<li v-for="f in deletePreview.files" :key="f.id" class="flex items-baseline gap-2 min-w-0">
 									<span class="truncate" :title="f.relPath">{{ f.filename }}</span>
 									<span class="shrink-0 opacity-70">{{ formatBytes(f.originalBytes) }}</span>
-									<span v-if="f.sharedWithOtherLinks" class="ml-auto shrink-0 truncate max-w-[50%] text-amber-600 dark:text-amber-400"
+									<span v-if="f.sharedWithOtherLinks" class="ml-auto shrink-0 truncate max-w-[50%] text-flow-warning"
 										:title="otherLinkNames(f)">
 										Also in {{ otherLinkNames(f) }}
 									</span>
@@ -575,19 +566,19 @@
 							<input type="checkbox" v-model="deleteOriginalFiles" :disabled="nothingToDelete"
 								class="styled-checkbox mt-0.5" />
 							<div>
-								<span class="text-sm text-red-600 dark:text-red-400 font-medium">Delete original source files</span>
-								<p class="text-xs text-red-500 dark:text-red-300/80">
+								<span class="text-sm text-flow-danger font-medium">Delete original source files</span>
+								<p class="text-xs text-flow-danger">
 									The actual media files on disk. Cannot be recovered.<template v-if="!nothingToDelete">
 									({{ sizeOfTotal(deletePreview.summary.totalOriginalBytes, deletePreview.summary.allOriginalBytes) }})</template>
 								</p>
 							</div>
 						</label>
 
-						<div v-if="deleteOriginalFiles" class="p-2 rounded bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700">
-							<p class="text-xs text-red-700 dark:text-red-300 font-medium">
+						<div v-if="deleteOriginalFiles" class="p-2 rounded flow-tone-danger border">
+							<p class="text-xs text-flow-danger font-medium">
 								Danger: this will permanently delete the original files from disk.
 							</p>
-							<p class="text-xs text-red-600 dark:text-red-200/70 mt-1">
+							<p class="text-xs text-flow-danger mt-1">
 								These are your source media files. Once deleted, they cannot be recovered unless you
 								have a separate backup.
 							</p>
@@ -595,7 +586,7 @@
 							<div v-if="deletePreview.files.filter((f: any) => !f.sharedWithOtherLinks).length > 0"
 								class="mt-2 max-h-24 overflow-y-auto">
 								<p class="text-xs text-default mb-1">Files that will be deleted:</p>
-								<ul class="text-xs text-red-600 dark:text-red-200/70 list-disc list-inside">
+								<ul class="text-xs text-flow-danger list-disc list-inside">
 									<li v-for="f in deletePreview.files.filter((f: any) => !f.sharedWithOtherLinks)"
 										:key="f.id" class="truncate">
 										{{ f.relPath }} ({{ formatBytes(f.originalBytes) }})
@@ -608,34 +599,27 @@
 
 				<template v-if="deleteGeneratedFiles || deleteOriginalFiles">
 					<label class="block text-sm text-default mb-1">
-						Type <strong class="text-red-600 dark:text-red-400">DELETE</strong> to confirm:
+						Type <strong class="text-flow-danger">DELETE</strong> to confirm:
 					</label>
 
 					<input v-model="deleteLinkConfirmText" type="text"
-						class="input-textlike w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-800 bg-default mb-4"
+						class="input-textlike w-full px-3 py-2 rounded-lg border border-flow-danger bg-default mb-4"
 						placeholder="DELETE" autocomplete="off" />
 				</template>
-
-				<div class="flex items-center justify-end gap-2">
-					<button class="btn btn-secondary px-4 py-2" @click="cancelDelete">
+				<template #footer>
+					<button class="btn btn-dismiss px-4 py-2" @click="cancelDelete">
 						Cancel
 					</button>
 					<button
-						class="btn btn-delete px-4 py-2"
+						class="btn btn-danger px-4 py-2"
 						:disabled="(deleteGeneratedFiles || deleteOriginalFiles) && deleteLinkConfirmText !== 'DELETE'" @click="deleteLink">
 						Delete Permanently
 					</button>
-				</div>
-			</div>
-		</div>
-	</Teleport>
+				</template>
+	</FlowModal>
 
-	<Teleport to="body">
-		<div v-if="bulkExpiryOpen" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50"
-			@click.self="cancelBulkExpiry">
-			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 bg-accent text-default">
-				<h3 class="text-lg font-semibold mb-4 text-default">Set Expiry for {{ selectedIds.size }} Links</h3>
-
+	<FlowModal :model-value="!!(bulkExpiryOpen)" size="sm" hide-close @close="cancelBulkExpiry">
+		<template #title>Set Expiry for {{ selectedIds.size }} Links</template>
 				<div class="flex flex-col gap-3 mb-4">
 					<label class="flex items-center gap-2 text-default">
 						<span class="text-sm w-12">Days</span>
@@ -651,36 +635,26 @@
 
 					<p class="text-xs text-muted">Sets expiry to the specified duration from now.</p>
 				</div>
-
-				<div class="flex items-center justify-end gap-2">
-					<button class="btn btn-secondary px-4 py-2" @click="cancelBulkExpiry">Cancel</button>
+				<template #footer>
+					<button class="btn btn-dismiss px-4 py-2" @click="cancelBulkExpiry">Cancel</button>
 					<button class="btn btn-primary px-4 py-2" @click="applyBulkExpiry({ never: true })">Never</button>
 					<button class="btn btn-primary px-4 py-2" @click="applyBulkExpiry()">Apply</button>
-				</div>
-			</div>
-		</div>
-	</Teleport>
+				</template>
+	</FlowModal>
 
 	<!-- Bulk Delete Confirmation Modal -->
-	<Teleport to="body">
-		<div v-if="bulkDeleteOpen" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50"
-			@click.self="cancelBulkDelete">
-			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto bg-accent text-default">
-				<div class="flex items-center gap-2 mb-3">
-					<span class="text-red-500 dark:text-red-400 text-xl">!</span>
-					<h3 class="text-lg font-semibold text-red-600 dark:text-red-400">Delete {{ selectedIds.size }} Links</h3>
-				</div>
-
-				<div class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 mb-4">
-					<p class="text-sm text-red-700 dark:text-red-300 font-medium mb-2">
+	<FlowModal :model-value="!!(bulkDeleteOpen)" size="md" hide-close @close="cancelBulkDelete">
+		<template #title>Delete {{ selectedIds.size }} Links</template>
+				<FlowNotice tone="danger" class="mb-4">
+					<p class="text-sm font-medium mb-2">
 						This action is irreversible and will permanently destroy:
 					</p>
-					<ul class="text-sm text-red-600 dark:text-red-300/80 list-disc list-inside space-y-1">
+					<ul class="text-sm list-disc list-inside space-y-1">
 						<li>All {{ selectedIds.size }} selected links</li>
 						<li>All activity history and access logs for each link</li>
 						<li>All client access permissions</li>
 					</ul>
-				</div>
+				</FlowNotice>
 
 				<div class="border border-default rounded-lg p-3 mb-4 space-y-3">
 					<p class="text-sm font-medium">Optional: Clean up associated files</p>
@@ -696,15 +670,15 @@
 					<label class="flex items-start gap-2 cursor-pointer select-none">
 						<input type="checkbox" v-model="bulkDeleteOriginals" class="styled-checkbox mt-0.5" />
 						<div>
-							<span class="text-sm text-red-600 dark:text-red-400 font-medium">Delete original source files</span>
-							<p class="text-xs text-red-500 dark:text-red-300/80">
+							<span class="text-sm text-flow-danger font-medium">Delete original source files</span>
+							<p class="text-xs text-flow-danger">
 								The actual media files on disk. Cannot be recovered.
 							</p>
 						</div>
 					</label>
 
-					<div v-if="bulkDeleteOriginals" class="p-2 rounded bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700">
-						<p class="text-xs text-red-700 dark:text-red-300 font-medium">
+					<div v-if="bulkDeleteOriginals" class="p-2 rounded flow-tone-danger border">
+						<p class="text-xs text-flow-danger font-medium">
 							Danger: original source files will be permanently deleted for each link where they are not shared with other links.
 						</p>
 					</div>
@@ -712,32 +686,25 @@
 
 				<template v-if="bulkDeleteGenerated || bulkDeleteOriginals">
 					<label class="block text-sm text-default mb-1">
-						Type <strong class="text-red-600 dark:text-red-400">DELETE</strong> to confirm:
+						Type <strong class="text-flow-danger">DELETE</strong> to confirm:
 					</label>
 					<input v-model="bulkDeleteConfirmText" type="text"
-						class="input-textlike w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-800 bg-default mb-4"
+						class="input-textlike w-full px-3 py-2 rounded-lg border border-flow-danger bg-default mb-4"
 						placeholder="DELETE" autocomplete="off" />
 				</template>
-
-				<div class="flex items-center justify-end gap-2">
-					<button class="btn btn-secondary px-4 py-2" @click="cancelBulkDelete">Cancel</button>
-					<button class="btn btn-delete px-4 py-2"
+				<template #footer>
+					<button class="btn btn-dismiss px-4 py-2" @click="cancelBulkDelete">Cancel</button>
+					<button class="btn btn-danger px-4 py-2"
 						:disabled="(bulkDeleteGenerated || bulkDeleteOriginals) && bulkDeleteConfirmText !== 'DELETE'"
 						@click="executeBulkDelete">
 						Delete {{ selectedIds.size }} Links
 					</button>
-				</div>
-			</div>
-		</div>
-	</Teleport>
+				</template>
+	</FlowModal>
 
 	<!-- Bulk Move to Project Modal -->
-	<Teleport to="body">
-		<div v-if="bulkMoveProjectOpen" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50"
-			@click.self="cancelBulkMoveProject">
-			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 bg-accent text-default">
-				<h3 class="text-lg font-semibold mb-4 text-default">Move {{ selectedIds.size }} Link{{ selectedIds.size !== 1 ? 's' : '' }} to Project</h3>
-
+	<FlowModal :model-value="!!(bulkMoveProjectOpen)" size="sm" hide-close @close="cancelBulkMoveProject">
+		<template #title>Move {{ selectedIds.size }} Link{{ selectedIds.size !== 1 ? 's' : '' }} to Project</template>
 				<div v-if="bulkMoveProjectsLoading" class="flex items-center gap-2 text-sm text-muted mb-4">
 					<span class="inline-block w-3 h-3 border-2 border-default border-t-transparent rounded-full animate-spin"></span>
 					Loading projects...
@@ -750,68 +717,57 @@
 						<option v-for="proj in bulkMoveProjects" :key="proj.id" :value="proj.id">{{ proj.name }}</option>
 					</select>
 				</template>
-
-				<div class="flex items-center justify-end gap-2">
-					<button class="btn btn-secondary px-4 py-2" @click="cancelBulkMoveProject">Cancel</button>
+				<template #footer>
+					<button class="btn btn-dismiss px-4 py-2" @click="cancelBulkMoveProject">Cancel</button>
 					<button class="btn btn-primary px-4 py-2"
 						:disabled="bulkMoveProjectsLoading"
 						@click="executeBulkMoveProject">
 						Move
 					</button>
-				</div>
-			</div>
-		</div>
-	</Teleport>
+				</template>
+	</FlowModal>
 
 	<!-- Single Link Archive Confirmation Modal -->
-	<Teleport to="body">
-		<div v-if="linkToArchive" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50"
-			@click.self="linkToArchive = null">
-			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 text-default bg-accent">
-				<h3 class="text-lg font-semibold mb-2 text-orange-600 dark:text-orange-400">Archive Link</h3>
-				<div class="p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-800 mb-4">
-					<p class="text-sm text-orange-700 dark:text-orange-300 font-medium mb-2">This will deactivate and hide the link:</p>
-					<ul class="text-sm text-orange-600 dark:text-orange-300/80 list-disc list-inside space-y-1">
+	<FlowModal :model-value="!!(linkToArchive)" title="Archive Link" size="sm" hide-close @close="linkToArchive = null">
+				<FlowNotice tone="warning" class="mb-4">
+					<p class="text-sm font-medium mb-2">This will deactivate and hide the link:</p>
+					<ul class="text-sm list-disc list-inside space-y-1">
 						<li>The link will be disabled immediately and no longer accessible</li>
 						<li>It will be hidden from the default view</li>
 						<li>No files are deleted</li>
 						<li>You can unarchive the link at any time to restore it</li>
 					</ul>
-				</div>
+				</FlowNotice>
 				<p class="text-sm text-default mb-4">Archive <strong>{{ linkToArchive?.title || 'Untitled link' }}</strong>?</p>
-				<div class="flex items-center justify-end gap-2">
-					<button class="btn btn-secondary px-4 py-2" @click="linkToArchive = null">Cancel</button>
+				<template #footer>
+					<button class="btn btn-dismiss px-4 py-2" @click="linkToArchive = null">Cancel</button>
 					<button class="btn btn-warning px-4 py-2" @click="executeArchiveLink">Archive</button>
-				</div>
-			</div>
-		</div>
-	</Teleport>
+				</template>
+	</FlowModal>
 
 	<!-- Bulk Archive Confirmation Modal -->
-	<Teleport to="body">
-		<div v-if="bulkArchiveOpen" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50"
-			@click.self="bulkArchiveOpen = false">
-			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 text-default bg-accent">
-				<h3 class="text-lg font-semibold mb-2 text-orange-600 dark:text-orange-400">Archive {{ selectedIds.size }} Links</h3>
-				<div class="p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-800 mb-4">
-					<p class="text-sm text-orange-700 dark:text-orange-300 font-medium mb-2">This will deactivate and hide the selected links:</p>
-					<ul class="text-sm text-orange-600 dark:text-orange-300/80 list-disc list-inside space-y-1">
+	<FlowModal :model-value="!!(bulkArchiveOpen)" size="sm" hide-close @close="bulkArchiveOpen = false">
+		<template #title>Archive {{ selectedIds.size }} Links</template>
+				<FlowNotice tone="warning" class="mb-4">
+					<p class="text-sm font-medium mb-2">This will deactivate and hide the selected links:</p>
+					<ul class="text-sm list-disc list-inside space-y-1">
 						<li>All {{ selectedIds.size }} links will be disabled immediately</li>
 						<li>They will be hidden from the default view</li>
 						<li>No files are deleted</li>
 						<li>You can unarchive them at any time to restore access</li>
 					</ul>
-				</div>
-				<div class="flex items-center justify-end gap-2">
-					<button class="btn btn-secondary px-4 py-2" @click="bulkArchiveOpen = false">Cancel</button>
+				</FlowNotice>
+				<template #footer>
+					<button class="btn btn-dismiss px-4 py-2" @click="bulkArchiveOpen = false">Cancel</button>
 					<button class="btn btn-warning px-4 py-2" @click="executeBulkArchive">Archive {{ selectedIds.size }} Links</button>
-				</div>
-			</div>
-		</div>
-	</Teleport>
+				</template>
+	</FlowModal>
 </template>
 	
 <script setup lang="ts">
+import FlowModal from '../ui/FlowModal.vue'
+import FlowNotice from '../ui/FlowNotice.vue'
+import FlowEmpty from '../ui/FlowEmpty.vue'
 import { writeClipboard } from '../clipboard'
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useApi } from '../composables/useApi'

@@ -32,7 +32,7 @@
             </span>
           </label>
 
-          <p v-if="showSummary" class="text-xs text-success text-center mt-1">
+          <p v-if="showSummary" class="text-xs text-flow-success text-center mt-1">
             Access:
             {{ modelValue === 'open' ? 'Anyone with the link' : modelValue === 'open_password' ? 'Anyone with the link + password' : 'Invited users only' }}
           </p>
@@ -41,8 +41,8 @@
         <!-- Column 2: settings for the selected mode -->
         <div class="access-mode-detail border border-default rounded-md p-3 min-w-0 flex flex-col gap-2">
           <template v-if="modelValue === 'open'">
-            <div class="flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-3">
-              <ExclamationTriangleIcon class="w-5 h-5 shrink-0 text-amber-500" />
+            <div class="flex items-start gap-2 rounded-md border flow-tone-warning p-3">
+              <ExclamationTriangleIcon class="w-5 h-5 shrink-0 text-flow-warning" />
               <div class="min-w-0">
                 <p class="font-semibold" :class="compact ? 'text-sm' : ''">Anyone with the link can open it</p>
                 <p class="text-xs mt-0.5 opacity-90">
@@ -67,7 +67,7 @@
                 <EyeSlashIcon v-else class="w-5 h-5" />
               </button>
             </div>
-            <p v-if="!password" class="text-sm text-red-500">
+            <p v-if="!password" class="text-sm text-flow-danger">
               Password is required{{ compact ? '.' : ' when protection is enabled.' }}
             </p>
           </template>
@@ -83,7 +83,7 @@
                 {{ accessCount }}
               </span>
             </button>
-            <p v-if="!accessSatisfied" class="text-sm text-red-500">
+            <p v-if="!accessSatisfied" class="text-sm text-flow-danger">
               Add at least one client or team{{ compact ? '.' : ' to continue.' }}
             </p>
           </template>

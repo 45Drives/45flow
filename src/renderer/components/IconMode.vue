@@ -29,9 +29,9 @@
                 @keydown.enter.prevent="ent.isDir ? openFolder(ent) : onFileKey(ent)">
                 <!-- icon -->
                 <div class="flex justify-center">
-                    <FolderIcon v-if="ent.isDir" :class="compact ? 'w-5 h-5' : 'w-6 h-6'" class="text-amber-300 opacity-90" />
+                    <FolderIcon v-if="ent.isDir" :class="compact ? 'w-5 h-5' : 'w-6 h-6'" class="text-flow-warning opacity-90" />
                     <template v-else>
-                        <ImageIcon v-if="kindFor(ent) === 'image'" :class="compact ? 'w-8 h-8' : 'w-12 h-12'" class="text-emerald-300 opacity-90" />
+                        <ImageIcon v-if="kindFor(ent) === 'image'" :class="compact ? 'w-8 h-8' : 'w-12 h-12'" class="text-flow-success opacity-90" />
                         <VideoIcon v-else-if="kindFor(ent) === 'video'" :class="compact ? 'w-8 h-8' : 'w-12 h-12'" class="text-indigo-300 opacity-90" />
                         <AudioIcon v-else-if="kindFor(ent) === 'audio'" :class="compact ? 'w-8 h-8' : 'w-12 h-12'" class="text-violet-300 opacity-90" />
                         <FileIcon v-else :class="compact ? 'w-8 h-8' : 'w-12 h-12'" class="text-slate-200 opacity-90" />

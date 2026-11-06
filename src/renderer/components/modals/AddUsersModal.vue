@@ -1,19 +1,12 @@
 <template>
-  <div v-if="modelValue" class="fixed inset-0 z-[2200] flex items-center justify-center">
-    <div class="absolute inset-0 bg-black/50" @click="close()"></div>
-
-    <div class="relative w-[96vw] max-w-4xl bg-accent rounded-lg shadow-xl p-4 flex flex-col max-h-[90vh]">
-      <div class="flex items-center justify-between mb-3" data-tour="users-modal-header">
-        <h3 class="text-lg font-semibold">{{ linkMode ? 'Invite clients & teams' : 'Client Access' }}</h3>
-
-        <div class="flex items-center gap-2">
+  <FlowModal :model-value="modelValue" :title="linkMode ? 'Invite clients & teams' : 'Client Access'" size="xl"
+    :header-attrs="{ 'data-tour': 'users-modal-header' }" @close="close()">
+      <template #header-actions>
           <button class="btn btn-secondary" @click="openGroups()">Teams</button>
           <button class="btn btn-secondary" @click="openRoles()">Roles</button>
-          <button class="btn btn-secondary" @click="close()">Close</button>
-        </div>
-      </div>
+      </template>
 
-      <div class="flex-1 overflow-auto pr-1 min-h-0">
+      <div>
         <div class="grid grid-cols-1 gap-4">
           <!-- Existing users -->
           <div class="border rounded p-3 bg-accent/60" data-tour="users-modal-list">
@@ -80,7 +73,7 @@
                     title="Edit client">
                     <FontAwesomeIcon :icon="faEdit" />
                   </button>
-                  <button class="px-2 py-1 text-xs border rounded text-red-600 hover:bg-red-600/10"
+                  <button class="px-2 py-1 text-xs border rounded flow-tone-danger"
                     @click.stop="deleteUser(u)" title="Delete client">
                     <FontAwesomeIcon :icon="faTrash" />
                   </button>
@@ -156,7 +149,7 @@
                 class="btn btn-primary"
                 @click="openCreate()">Add client</button>
               <button v-else
-                class="btn btn-danger"
+                class="btn btn-dismiss"
                 @click="closeCreate()">
                 Cancel
               </button>
@@ -167,19 +160,19 @@
                 <div class="text-xs opacity-70 mb-1">Set a temporary password and send it to your client securely.</div>
                 <div class="grid grid-cols-2 gap-2 text-left">
                   <div>
-                    <label class="text-xs opacity-80">Name <span class="text-red-500">*</span></label>
+                    <label class="text-xs opacity-80">Name <span class="text-flow-danger">*</span></label>
                     <input type="text" v-model.trim="newUser.name" tabindex="1"
                       class="input-textlike border rounded px-3 py-2 w-full" placeholder="Jane Doe" />
                   </div>
                   <div>
-                    <label class="text-xs opacity-80">Username <span class="text-red-500">*</span></label>
+                    <label class="text-xs opacity-80">Username <span class="text-flow-danger">*</span></label>
                     <input type="text" v-model.trim="newUser.username" tabindex="2"
                       class="input-textlike border rounded px-3 py-2 w-full" placeholder="jane" />
                   </div>
                   <div>
                     <div class="relative">
                       <label class="text-xs opacity-80 pr-28 inline-block">
-                        Temporary Password <span class="text-red-500">*</span>
+                        Temporary Password <span class="text-flow-danger">*</span>
                       </label>
                       <button type="button"
                         class="absolute right-0 top-0 text-xs underline opacity-80 hover:opacity-100 mt-1.5"
@@ -190,7 +183,7 @@
                     <div class="relative">
                       <input :type="showTempPassword ? 'text' : 'password'"
                         v-model.trim="tempPassword" tabindex="3"
-                        :class="['input-textlike border rounded px-3 py-2 w-full pr-12', (passwordFormatInvalid ? 'border-red-500' : '')]"
+                        :class="['input-textlike border rounded px-3 py-2 w-full pr-12', (passwordFormatInvalid ? 'border-flow-danger' : '')]"
                         placeholder="4–64 characters" aria-invalid="true"
                         v-bind="passwordFormatInvalid ? { 'aria-describedby': 'password-format-error' } : {}" />
                       <button type="button"
@@ -199,16 +192,16 @@
                         {{ showTempPassword ? 'Hide' : 'Show' }}
                       </button>
                     </div>
-                    <p v-if="passwordFormatInvalid" id="password-format-error" class="mt-1 text-xs text-red-500">
+                    <p v-if="passwordFormatInvalid" id="password-format-error" class="mt-1 text-xs text-flow-danger">
                       Password must be 4–64 characters.
                     </p>
                   </div>
                    <div>
-                    <label class="text-xs opacity-80">Confirm Password <span class="text-red-500">*</span></label>
+                    <label class="text-xs opacity-80">Confirm Password <span class="text-flow-danger">*</span></label>
                     <div class="relative">
                       <input :type="showTempPasswordConfirm ? 'text' : 'password'"
                         v-model.trim="tempPasswordConfirm" tabindex="4"
-                        :class="['input-textlike border rounded px-3 py-2 w-full pr-12', (passwordMismatch ? 'border-red-500' : '')]"
+                        :class="['input-textlike border rounded px-3 py-2 w-full pr-12', (passwordMismatch ? 'border-flow-danger' : '')]"
                         placeholder="Re-enter password" aria-invalid="true"
                         v-bind="passwordMismatch ? { 'aria-describedby': 'password-mismatch-error' } : {}" />
                       <button type="button"
@@ -217,7 +210,7 @@
                         {{ showTempPasswordConfirm ? 'Hide' : 'Show' }}
                       </button>
                     </div>
-                    <p v-if="passwordMismatch" id="password-mismatch-error" class="mt-1 text-xs text-red-500">Passwords do not match.</p>
+                    <p v-if="passwordMismatch" id="password-mismatch-error" class="mt-1 text-xs text-flow-danger">Passwords do not match.</p>
                   </div>
                   <div>
                     <label class="text-xs opacity-80">Email (optional)</label>
@@ -289,7 +282,7 @@
                   <div class="text-xs opacity-70 mt-1">Used to color this client’s comments.</div>
                 </div>
 
-                <div v-if="error" class="text-sm text-red-500">{{ error }}</div>
+                <div v-if="error" class="text-sm text-flow-danger">{{ error }}</div>
 
                 <div class="flex flex-row w-full justify-between mt-2 sticky bottom-0 bg-accent/95 py-2 border-t border-default -mb-1">
 
@@ -302,28 +295,23 @@
         </div>
       </div>
 
-      <div class="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-default" data-tour="users-modal-actions">
+      <template #footer>
+      <div class="flex items-center justify-between gap-2 w-full" data-tour="users-modal-actions">
         <span v-if="linkMode" class="text-xs opacity-60">
           {{ selectedKeys.length + selectedGroupIds.length }} user{{ selectedKeys.length + selectedGroupIds.length === 1 ? '' : 's'}}/group{{ selectedKeys.length + selectedGroupIds.length === 1 ? '' : 's'}} selected
         </span>
         <span v-else></span>
         <div class="flex gap-2">
-          <button class="btn btn-secondary" @click="close()">{{ linkMode ? 'Cancel' : 'Close' }}</button>
+          <button class="btn btn-dismiss" @click="close()">{{ linkMode ? 'Cancel' : 'Close' }}</button>
           <button v-if="linkMode" class="btn btn-success" @click="apply()" :disabled="!selectedKeys.length && !selectedGroupIds.length">Add selected to link</button>
         </div>
       </div>
-    </div>
-  </div>
+      </template>
+  </FlowModal>
 
   <!-- Edit modal -->
-  <div v-if="editing" class="fixed inset-0 z-[2300] flex items-center justify-center text-left">
-    <div class="absolute inset-0 bg-black/50" @click="editing = null"></div>
-    <div class="relative w-full max-w-md bg-accent rounded-lg shadow-xl p-4">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-semibold">Edit client</h3>
-        <button class="btn btn-secondary" @click="editing = null">Close</button>
-      </div>
-      <div class="space-y-3">
+  <FlowModal :model-value="!!editing" title="Edit client" size="sm" @close="editing = null">
+      <div v-if="editing" class="space-y-3">
         <div>
           <label class="text-xs opacity-80">Username</label>
           <input class="input-textlike border rounded px-3 py-2 w-full bg-gray-600/20 opacity-70"
@@ -394,14 +382,13 @@
         </div>
       </div>
 
-      <div class="flex justify-end gap-2 mt-4">
-        <button class="btn btn-secondary" @click="editing = null">Cancel</button>
+      <template #footer>
+        <button class="btn btn-dismiss" @click="editing = null">Cancel</button>
         <button class="btn btn-success" @click="saveEdit()" :disabled="!(hasProfileEdits || pendingResetPassword)">
           Save
         </button>
-      </div>
-    </div>
-  </div>
+      </template>
+  </FlowModal>
   <ConfirmDeleteModal v-model="deleteOpen" :title="'Delete client'"
     :message="userToDelete ? `Delete “${userToDelete.name || userToDelete.username}”? This cannot be undone.` : ''"
     :danger="true" :busy="deleting" :error="deleteError" :clickOutsideCancels="true" confirmText="Delete"
@@ -426,6 +413,7 @@ import RolesModal from './RolesModal.vue'
 import GroupsModal from './GroupsModal.vue'
 import { useTourManager, type TourStep } from '../../composables/useTourManager'
 import { useOnboarding } from '../../composables/useOnboarding'
+import FlowModal from '../../ui/FlowModal.vue'
 
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()

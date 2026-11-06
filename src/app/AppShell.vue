@@ -30,13 +30,13 @@
           <ConnectionSwitcher v-if="route.name !== 'server-selection' && isPremiumActive && !isWeb" />
           <BasicServerBadge v-else-if="route.name !== 'server-selection'" />
         </div>
-        <span v-if="isFallback && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 font-medium whitespace-nowrap" title="Pro legacy mode: premium features remain available at your current version. Renew your license to restore app and server updates.">
+        <span v-if="isFallback && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="flow-chip flow-chip--warning whitespace-nowrap" title="Pro legacy mode: premium features remain available at your current version. Renew your license to restore app and server updates.">
           License Expired
         </span>
-        <span v-else-if="isTrial && trialDaysRemaining !== null && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 font-medium whitespace-nowrap">
+        <span v-else-if="isTrial && trialDaysRemaining !== null && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="flow-chip flow-chip--warning whitespace-nowrap">
           Pro Trial — {{ trialDaysRemaining }} {{ trialDaysRemaining === 1 ? 'day' : 'days' }} left
         </span>
-        <span v-else-if="isTrialExpired && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-800 dark:text-red-300 font-medium whitespace-nowrap">
+        <span v-else-if="isTrialExpired && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="flow-chip flow-chip--danger whitespace-nowrap">
           Trial Expired
         </span>
         <NotificationBell />

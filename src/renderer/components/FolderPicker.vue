@@ -153,32 +153,29 @@
       </div>
       </div>
 
-      <div v-if="showNewFolderModal" class="fixed inset-0 z-[2000] bg-gray-600/80 flex items-center justify-center p-4">
-        <div class="fp-modal bg-accent p-6 rounded-lg shadow-2xl w-full max-w-sm border border-default">
-          <h3 class="text-lg font-semibold mb-4 text-default">Create New Folder</h3>
+      <FlowModal v-model="showNewFolderModal" title="Create New Folder" size="sm" hide-close>
           <p class="text-sm mb-4 text-muted">
             Current Path: <code>{{ newFolderBasePath }}</code>
           </p>
 
-          <form @submit.prevent="confirmNewFolder">
+          <form id="fp-new-folder-form" @submit.prevent="confirmNewFolder">
             <input ref="folderNameInput" type="text" v-model="newFolderName" placeholder="Enter folder name" required
-              autofocus class="w-full px-3 py-2 input-textlike text-default" />
-
-            <div class="mt-6 flex justify-end gap-3">
-              <button type="button" @click="showNewFolderModal = false" class="btn btn-danger">
-                Cancel
-              </button>
-              <button type="submit" :disabled="!newFolderName.trim()" class="btn btn-primary">
-                Create
-              </button>
-            </div>
+              autofocus aria-label="Folder name" class="w-full px-3 py-2 input-textlike text-default" />
           </form>
 
-          <p v-if="newFolderError" class="mt-4 text-sm text-danger p-2 bg-red-900/30 rounded">
+          <FlowNotice v-if="newFolderError" tone="danger" size="sm" class="mt-4">
             Error: {{ newFolderError }}
-          </p>
-        </div>
-      </div>
+          </FlowNotice>
+
+          <template #footer>
+              <button type="button" @click="showNewFolderModal = false" class="btn btn-dismiss">
+                Cancel
+              </button>
+              <button type="submit" form="fp-new-folder-form" :disabled="!newFolderName.trim()" class="btn btn-primary">
+                Create
+              </button>
+          </template>
+      </FlowModal>
     </div>
   </section>
 </template>
@@ -192,6 +189,8 @@ import PathInput from './PathInput.vue'
 import TreeNode from './TreeNode.vue'
 import IconMode from './IconMode.vue'
 import { useProjectChoices } from '../composables/useProjectChoices'
+import FlowModal from '../ui/FlowModal.vue'
+import FlowNotice from '../ui/FlowNotice.vue'
 
 type ViewMode = 'tree' | 'icons'
 
@@ -760,10 +759,6 @@ const containerHeights = computed(() => props.heightClass || (props.compact ? 'h
 
 .fp-root-row:hover {
     background: color-mix(in srgb, var(--btn-primary-bg) 12%, transparent);
-}
-
-.fp-modal {
-    border-color: color-mix(in srgb, var(--btn-primary-bg) 34%, #535468);
 }
 
 @media (max-width: 980px) {

@@ -349,41 +349,46 @@
     </div>
 
     <!-- Save Preset Dialog -->
-    <div
-      v-if="showSavePresetDialog"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      @click.self="showSavePresetDialog = false"
-    >
-      <div class="bg-accent border border-default rounded-lg p-4 w-96 space-y-4">
-        <h3 class="text-lg font-bold">Save as Preset</h3>
-        
-        <div class="space-y-2">
-          <label class="text-sm font-semibold">Preset Name</label>
+    <FlowModal v-model="showSavePresetDialog" title="Save as Preset" size="sm" hide-close :busy="saving" body-class="space-y-4">
+        <FlowField label="Preset Name">
+          <template #default="{ id }">
           <input
+            :id="id"
             ref="presetNameInput"
+            data-autofocus
             v-model="newPresetName"
             type="text"
             placeholder="e.g., My Custom Watermark"
             class="w-full px-3 py-2 border border-default rounded-lg bg-default"
             @keyup.enter="handleSavePreset"
           />
-        </div>
+          </template>
+        </FlowField>
         
-        <div class="space-y-2">
-          <label class="text-sm font-semibold">Description (optional)</label>
+        <FlowField label="Description" optional>
+          <template #default="{ id }">
           <textarea
+            :id="id"
             v-model="newPresetDescription"
             placeholder="Optional description..."
             rows="2"
             class="w-full px-3 py-2 border border-default rounded-lg bg-default"
           ></textarea>
-        </div>
+          </template>
+        </FlowField>
         
-        <div v-if="error" class="text-xs text-red-500">
+        <div v-if="error" class="text-xs text-flow-danger">
           {{ error }}
         </div>
         
-        <div class="flex items-center gap-2">
+        <template #footer>
+          <button
+            @click="showSavePresetDialog = false"
+            :disabled="saving"
+            class="btn btn-dismiss px-4 py-2 h-fit"
+          >
+            Cancel
+          </button>
           <button
             @click="handleSavePreset"
             :disabled="!newPresetName.trim() || saving"
@@ -391,16 +396,8 @@
           >
             {{ saving ? 'Saving...' : 'Save' }}
           </button>
-          <button
-            @click="showSavePresetDialog = false"
-            :disabled="saving"
-            class="btn btn-secondary px-4 py-2 h-fit"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
+        </template>
+    </FlowModal>
   </div>
 </template>
 
@@ -409,6 +406,8 @@ import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import type { WatermarkSettings, PositionAnchor } from '../types/watermark'
 import { useWatermarkCustomization } from '../composables/useWatermarkCustomization'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
+import FlowModal from '../ui/FlowModal.vue'
+import FlowField from '../ui/FlowField.vue'
 
 const props = withDefaults(defineProps<{
   /** Pass existing settings to initialize */

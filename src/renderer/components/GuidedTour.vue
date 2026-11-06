@@ -1,7 +1,7 @@
 <template>
   <teleport to="body">
     <!-- Overlay + spotlight: only visible once positioned -->
-    <div v-if="active && positioned" class="fixed inset-0 z-[2200] pointer-events-none">
+    <div v-if="active && positioned" data-flow-overlay class="fixed inset-0 z-tour pointer-events-none">
       <!-- Dark overlay with cutout — allows scroll passthrough -->
       <svg class="absolute inset-0 w-full h-full pointer-events-auto tour-overlay"
         @click="handleOverlayClick" @wheel.prevent="onOverlayWheel">
@@ -33,7 +33,7 @@
     </div>
 
     <!-- Popup: always in DOM when active (needed for popupRef), but invisible until positioned -->
-    <div v-if="active" ref="popupRef" class="fixed pointer-events-auto z-[2201]"
+    <div v-if="active" ref="popupRef" class="fixed pointer-events-auto z-tour"
       :style="{ top: popupPos.top, left: popupPos.left, visibility: positioned ? 'visible' : 'hidden' }">
       <div class="flex items-start text-left bg-slate-800/95 text-white p-5 min-h-[80px] rounded-md shadow-lg max-w-[500px]"
         @click.stop>

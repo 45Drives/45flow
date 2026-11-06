@@ -1,57 +1,61 @@
 <template>
-	<Teleport to="body">
-		<div v-if="modelValue" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 text-default" @click.self="close">
-			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-4xl mx-4 bg-accent max-h-[92vh] overflow-y-auto">
-				<h3 class="text-lg font-semibold">New Project</h3>
-				<p class="text-sm opacity-80 mb-4">A project is a folder on your server for one job or production. Everything you share for it lives in that folder.</p>
-				<form @submit.prevent="submit" class="flex flex-col gap-4">
-					<div>
-						<label class="block text-sm font-medium mb-1" for="new-project-name">Project name</label>
-						<input
-							id="new-project-name"
-							v-model="name"
-							type="text"
-							class="input-textlike w-full px-3 py-2 rounded-lg border border-default"
-							placeholder="e.g. Spring Campaign Edit"
-							required
-						/>
-					</div>
-					<div class="flex flex-col gap-2">
-						<label class="block text-sm font-medium">Project folder</label>
-						<p class="text-xs opacity-75 -mt-1">Pick the folder that holds this project's media. Use <b>New Folder</b> in the browser below to make one.</p>
-						<FolderPicker
-							v-model="rootDir"
-							:apiFetch="apiFetch"
-							useCase="upload"
-							subtitle=""
-							:auto-detect-roots="true"
-							:allow-entire-tree="true"
-							:is-root-user="isRootUser"
-							v-model:project="pickerBase"
-							v-model:dest="rootDir"
-						/>
-						<FolderSpaceNotice :path="finalRootDir" :apiFetch="apiFetch" />
-					</div>
-					<div>
-						<label class="block text-sm font-medium mb-1" for="new-project-description">Notes (optional)</label>
-						<textarea
-							id="new-project-description"
-							v-model="description"
-							class="input-textlike w-full px-3 py-2 rounded-lg border border-default resize-none"
-							rows="2"
-							placeholder="Client, deliverables, anything your team should know…"
-						/>
-					</div>
-					<div class="flex items-center justify-end gap-2 mt-2">
-						<button type="button" class="btn btn-secondary px-4 py-2" @click="close">Cancel</button>
-						<button type="submit" class="btn btn-primary px-4 py-2" :disabled="!canCreate">
-							{{ creating ? 'Creating…' : 'Create Project' }}
-						</button>
-					</div>
-				</form>
-			</div>
-		</div>
-	</Teleport>
+	<FlowModal
+		:model-value="modelValue"
+		title="New Project"
+		description="A project is a folder on your server for one job or production. Everything you share for it lives in that folder."
+		size="xl"
+		hide-close
+		:busy="creating"
+		@update:model-value="(v) => emit('update:modelValue', v)"
+	>
+		<form id="create-project-form" @submit.prevent="submit" class="flex flex-col gap-4">
+			<FlowField label="Project name" id="new-project-name" required>
+				<template #default="{ id }">
+					<input
+						:id="id"
+						v-model="name"
+						type="text"
+						class="input-textlike w-full px-3 py-2 rounded-lg border border-default"
+						placeholder="e.g. Spring Campaign Edit"
+						required
+						autofocus
+					/>
+				</template>
+			</FlowField>
+			<FlowField label="Project folder" id="new-project-folder">
+				<p class="flow-field__help -mt-0.5 mb-1">Pick the folder that holds this project's media. Use <b>New Folder</b> in the browser below to make one.</p>
+				<FolderPicker
+					v-model="rootDir"
+					:apiFetch="apiFetch"
+					useCase="upload"
+					subtitle=""
+					:auto-detect-roots="true"
+					:allow-entire-tree="true"
+					:is-root-user="isRootUser"
+					v-model:project="pickerBase"
+					v-model:dest="rootDir"
+				/>
+				<FolderSpaceNotice :path="finalRootDir" :apiFetch="apiFetch" />
+			</FlowField>
+			<FlowField label="Notes" id="new-project-description" optional>
+				<template #default="{ id }">
+					<textarea
+						:id="id"
+						v-model="description"
+						class="input-textlike w-full px-3 py-2 rounded-lg border border-default resize-none"
+						rows="2"
+						placeholder="Client, deliverables, anything your team should know…"
+					/>
+				</template>
+			</FlowField>
+		</form>
+		<template #footer>
+			<button type="button" class="btn btn-dismiss px-4 py-2" :disabled="creating" @click="close">Cancel</button>
+			<button type="submit" form="create-project-form" class="btn btn-primary px-4 py-2" :disabled="!canCreate">
+				{{ creating ? 'Creating…' : 'Create Project' }}
+			</button>
+		</template>
+	</FlowModal>
 </template>
 
 <script setup lang="ts">
@@ -62,6 +66,8 @@ import { useConnections } from '../../composables/useConnections'
 import { pushNotification } from '../../composables/useNotificationQueue'
 import FolderPicker from '../FolderPicker.vue'
 import FolderSpaceNotice from '../FolderSpaceNotice.vue'
+import FlowModal from '../../ui/FlowModal.vue'
+import FlowField from '../../ui/FlowField.vue'
 
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{

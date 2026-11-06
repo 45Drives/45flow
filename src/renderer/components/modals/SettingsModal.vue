@@ -1,20 +1,7 @@
 <template>
-    <div class="fixed inset-0 z-50">
-        <div class="absolute inset-0 bg-black/60" @click="close" />
-
-        <div class="absolute inset-0 flex items-center justify-center p-4">
-            <div
-                class="w-full max-w-5xl h-[min(36rem,calc(100vh-2rem))] rounded-lg border border-default bg-default text-default shadow-2xl flex flex-col"
-                @click.stop>
-
-                <!-- Header -->
-                <div class="flex items-center justify-between px-5 py-3 border-b border-default shrink-0" data-tour="settings-modal-header">
-                    <div>
-                        <h2 class="text-lg font-semibold text-default">45Flow Settings</h2>
-                        <div class="text-xs text-accent mt-0.5">Adjust global settings for share links.</div>
-                    </div>
-                    <button class="btn btn-secondary" type="button" @click="close">Close</button>
-                </div>
+    <FlowModal :model-value="true" title="45Flow Settings" description="Adjust global settings for share links." size="xl"
+        surface="default" class="h-[min(36rem,calc(100vh-2rem))]" :header-attrs="{ 'data-tour': 'settings-modal-header' }"
+        flush body-class="flex flex-col !overflow-hidden" footer-class="justify-between" @close="close">
 
                 <!-- Body: sidebar + content -->
                 <div class="flex flex-1 min-h-0">
@@ -135,25 +122,25 @@
                         <template v-if="activeSection === 'publicSharing'">
                             <!-- Status Summary Card -->
                             <div class="rounded-lg border p-4 mb-4" :class="{
-                                'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20': publicSharingStatus?.friendlyStatus === 'ready',
-                                'border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20': publicSharingStatus?.friendlyStatus === 'needs_trusted_cert' || publicSharingStatus?.friendlyStatus === 'firewall_warning',
-                                'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20': publicSharingStatus?.friendlyStatus === 'nginx_warning',
+                                'flow-tone-success': publicSharingStatus?.friendlyStatus === 'ready',
+                                'flow-tone-warning': publicSharingStatus?.friendlyStatus === 'needs_trusted_cert' || publicSharingStatus?.friendlyStatus === 'firewall_warning',
+                                'flow-tone-danger': publicSharingStatus?.friendlyStatus === 'nginx_warning',
                                 'border-default bg-default/40': !publicSharingStatus || publicSharingStatus?.friendlyStatus === 'unknown',
                             }">
                                 <div class="flex items-center justify-between mb-3">
                                     <div class="flex items-center gap-2">
                                         <div class="text-sm font-semibold" :class="{
-                                            'text-green-800 dark:text-green-400': publicSharingStatus?.friendlyStatus === 'ready',
-                                            'text-yellow-800 dark:text-yellow-400': publicSharingStatus?.friendlyStatus === 'needs_trusted_cert' || publicSharingStatus?.friendlyStatus === 'firewall_warning',
-                                            'text-red-800 dark:text-red-400': publicSharingStatus?.friendlyStatus === 'nginx_warning',
+                                            'text-flow-success': publicSharingStatus?.friendlyStatus === 'ready',
+                                            'text-flow-warning': publicSharingStatus?.friendlyStatus === 'needs_trusted_cert' || publicSharingStatus?.friendlyStatus === 'firewall_warning',
+                                            'text-flow-danger': publicSharingStatus?.friendlyStatus === 'nginx_warning',
                                             'text-default': !publicSharingStatus || publicSharingStatus?.friendlyStatus === 'unknown',
                                         }">
                                             {{ publicSharingFriendlyLabel }}
                                         </div>
                                         <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium" :class="{
-                                            'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-400': publicSharingStatus?.friendlyStatus === 'ready',
-                                            'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-400': publicSharingStatus?.friendlyStatus === 'needs_trusted_cert' || publicSharingStatus?.friendlyStatus === 'firewall_warning',
-                                            'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400': publicSharingStatus?.friendlyStatus === 'nginx_warning',
+                                            'flow-tone-success': publicSharingStatus?.friendlyStatus === 'ready',
+                                            'flow-tone-warning': publicSharingStatus?.friendlyStatus === 'needs_trusted_cert' || publicSharingStatus?.friendlyStatus === 'firewall_warning',
+                                            'flow-tone-danger': publicSharingStatus?.friendlyStatus === 'nginx_warning',
                                             'bg-default text-accent': !publicSharingStatus || publicSharingStatus?.friendlyStatus === 'unknown',
                                         }">
                                             {{ publicSharingStatusBadge }}
@@ -172,21 +159,21 @@
                                 </SettingRow>
                                 <SettingRow label="HTTPS" :description="publicSharingCertDescription">
                                     <span class="text-sm" :class="{
-                                        'text-green-700 dark:text-green-400': publicSharingStatus?.certificate?.mode === 'letsencrypt' && publicSharingStatus?.certificate?.valid,
-                                        'text-yellow-700 dark:text-yellow-400': publicSharingStatus?.certificate?.mode === 'self-signed',
-                                        'text-red-700 dark:text-red-400': publicSharingStatus?.certificate?.mode === 'letsencrypt' && !publicSharingStatus?.certificate?.valid,
+                                        'text-flow-success': publicSharingStatus?.certificate?.mode === 'letsencrypt' && publicSharingStatus?.certificate?.valid,
+                                        'text-flow-warning': publicSharingStatus?.certificate?.mode === 'self-signed',
+                                        'text-flow-danger': publicSharingStatus?.certificate?.mode === 'letsencrypt' && !publicSharingStatus?.certificate?.valid,
                                     }">{{ publicSharingCertLabel }}</span>
                                 </SettingRow>
                                 <SettingRow label="Web routing" description="Houston automatically configures web traffic routing.">
                                     <span class="text-sm" :class="{
-                                        'text-green-700 dark:text-green-400': publicSharingStatus?.nginx?.running && publicSharingStatus?.nginx?.configValid,
-                                        'text-red-700 dark:text-red-400': publicSharingStatus?.nginx && (!publicSharingStatus?.nginx?.running || !publicSharingStatus?.nginx?.configValid),
+                                        'text-flow-success': publicSharingStatus?.nginx?.running && publicSharingStatus?.nginx?.configValid,
+                                        'text-flow-danger': publicSharingStatus?.nginx && (!publicSharingStatus?.nginx?.running || !publicSharingStatus?.nginx?.configValid),
                                     }">{{ publicSharingNginxLabel }}</span>
                                 </SettingRow>
                                 <SettingRow label="Firewall" description="HTTP and HTTPS ports must be open for external access.">
                                     <span class="text-sm" :class="{
-                                        'text-green-700 dark:text-green-400': publicSharingStatus?.firewall?.httpOpen && publicSharingStatus?.firewall?.httpsOpen,
-                                        'text-yellow-700 dark:text-yellow-400': publicSharingStatus?.firewall && (!publicSharingStatus?.firewall?.httpOpen || !publicSharingStatus?.firewall?.httpsOpen),
+                                        'text-flow-success': publicSharingStatus?.firewall?.httpOpen && publicSharingStatus?.firewall?.httpsOpen,
+                                        'text-flow-warning': publicSharingStatus?.firewall && (!publicSharingStatus?.firewall?.httpOpen || !publicSharingStatus?.firewall?.httpsOpen),
                                     }">{{ publicSharingFirewallLabel }}</span>
                                 </SettingRow>
                                 <SettingRow v-if="publicSharingStatus?.bootstrap?.timestamp" label="Last setup" description="When Houston last configured public sharing.">
@@ -217,15 +204,15 @@
                             <!-- Check Results -->
                             <div v-if="publicSharingCheckResult" class="mt-4 rounded-lg border border-default bg-default/40 p-3">
                                 <div class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Check Results</div>
-                                <div v-if="publicSharingCheckResult.issues?.length === 0" class="text-sm text-green-700 dark:text-green-400">
+                                <div v-if="publicSharingCheckResult.issues?.length === 0" class="text-sm text-flow-success">
                                     All checks passed. Public sharing is working correctly.
                                 </div>
                                 <div v-else class="space-y-2">
                                     <div v-for="(issue, idx) in publicSharingCheckResult.issues" :key="idx"
                                         class="flex items-start gap-2 text-sm">
                                         <span class="shrink-0 mt-0.5" :class="{
-                                            'text-red-600 dark:text-red-400': issue.severity === 'error',
-                                            'text-yellow-600 dark:text-yellow-400': issue.severity === 'warning',
+                                            'text-flow-danger': issue.severity === 'error',
+                                            'text-flow-warning': issue.severity === 'warning',
                                         }">{{ issue.severity === 'error' ? '✕' : '⚠' }}</span>
                                         <span>{{ issue.message }}</span>
                                     </div>
@@ -240,9 +227,9 @@
                                     <div v-for="(action, idx) in publicSharingRepairResult.actions" :key="idx"
                                         class="flex items-center gap-2 text-sm">
                                         <span :class="{
-                                            'text-green-600 dark:text-green-400': action.status === 'ok',
-                                            'text-red-600 dark:text-red-400': action.status === 'error',
-                                            'text-yellow-600 dark:text-yellow-400': action.status === 'warning',
+                                            'text-flow-success': action.status === 'ok',
+                                            'text-flow-danger': action.status === 'error',
+                                            'text-flow-warning': action.status === 'warning',
                                         }">{{ action.status === 'ok' ? '✓' : action.status === 'error' ? '✕' : '⚠' }}</span>
                                         <span>{{ action.message }}</span>
                                     </div>
@@ -403,7 +390,7 @@
                                             <button class="btn btn-secondary px-2 py-1 text-xs" @click="refreshWatermarks">Refresh</button>
                                         </div>
                                         
-                                        <p v-if="!defaultWatermarkFile && !selectedExistingWatermark" class="text-xs text-amber-700 dark:text-amber-300">
+                                        <p v-if="!defaultWatermarkFile && !selectedExistingWatermark" class="text-xs text-flow-warning">
                                             Select a watermark image to continue.
                                         </p>
                                         
@@ -562,7 +549,7 @@
                                     <div class="flex flex-wrap gap-1.5">
                                         <span v-for="(ok, codec) in hardwareCapabilities.probeResults" :key="codec"
                                             class="text-xs px-1.5 py-0.5 rounded"
-                                            :class="ok ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-default text-muted line-through opacity-50'"
+                                            :class="ok ? 'flow-tone-success' : 'bg-default text-muted line-through opacity-50'"
                                         >{{ codec }}</span>
                                     </div>
                                 </SettingRow>
@@ -624,14 +611,14 @@
                         <template v-if="activeSection === 'upgrade'">
                             <!-- Full license active (non-trial) -->
                             <div v-if="isPremiumActive && !isFallback && !isTrial" class="space-y-3">
-                                <div class="rounded-lg border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 p-4">
+                                <div class="rounded-lg border flow-tone-success p-4">
                                     <div class="flex items-center gap-2 mb-2">
-                                        <div class="text-sm font-semibold text-green-800 dark:text-green-400">Pro Edition Active</div>
-                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-400">
+                                        <div class="text-sm font-semibold text-flow-success">Pro Edition Active</div>
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium flow-tone-success">
                                             {{ licenseInfo?.perpetual ? 'Perpetual' : 'Licensed' }}
                                         </span>
                                     </div>
-                                    <div class="text-sm text-green-700 dark:text-green-400 space-y-1">
+                                    <div class="text-sm text-flow-success space-y-1">
                                         <p>All premium features are enabled on this server.</p>
                                     </div>
                                 </div>
@@ -662,7 +649,7 @@
                                         </div>
                                         <div v-else-if="licenseInfo?.perpetual">
                                             <span class="text-accent">Expires:</span>
-                                            <span class="ml-1 text-green-600 dark:text-green-400">Never</span>
+                                            <span class="ml-1 text-flow-success">Never</span>
                                         </div>
                                     </div>
                                 </div>
@@ -691,18 +678,18 @@
                                             {{ upgradeBusy ? 'Updating…' : 'Update License' }}
                                         </button>
                                     </div>
-                                    <div v-if="upgradeError" class="text-danger text-sm mt-3">{{ upgradeError }}</div>
+                                    <div v-if="upgradeError" class="text-flow-danger text-sm mt-3">{{ upgradeError }}</div>
                                 </div>
                             </div>
 
                             <!-- Trial active -->
                             <div v-else-if="isPremiumActive && isTrial" class="space-y-3">
-                                <div class="rounded-lg border border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/20 p-4">
+                                <div class="rounded-lg border flow-tone-warning p-4">
                                     <div class="flex items-center gap-2 mb-1">
-                                        <div class="text-sm font-semibold text-amber-800 dark:text-amber-400">Pro Trial Active</div>
-                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400">Trial</span>
+                                        <div class="text-sm font-semibold text-flow-warning">Pro Trial Active</div>
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium flow-tone-warning">Trial</span>
                                     </div>
-                                    <div class="text-sm text-amber-700 dark:text-amber-400 space-y-1">
+                                    <div class="text-sm text-flow-warning space-y-1">
                                         <p v-if="licenseInfo?.expiresAt">
                                             Trial expires: <span class="font-semibold">{{ new Date(licenseInfo.expiresAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) }}</span>
                                         </p>
@@ -742,17 +729,17 @@
                                     </div>
                                 </div>
 
-                                <div v-if="upgradeError" class="text-danger text-sm mt-3">{{ upgradeError }}</div>
+                                <div v-if="upgradeError" class="text-flow-danger text-sm mt-3">{{ upgradeError }}</div>
                             </div>
 
                             <!-- Unlicensed — Pro expired (legacy/fallback mode) -->
                             <div v-else-if="isFallback" class="space-y-3">
-                                <div class="rounded-lg border border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/20 p-4">
+                                <div class="rounded-lg border flow-tone-warning p-4">
                                     <div class="flex items-center gap-2 mb-2">
-                                        <div class="text-sm font-semibold text-amber-800 dark:text-amber-400">License Expired</div>
-                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400">Legacy Mode</span>
+                                        <div class="text-sm font-semibold text-flow-warning">License Expired</div>
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium flow-tone-warning">Legacy Mode</span>
                                     </div>
-                                    <div class="text-sm text-amber-700 dark:text-amber-400 space-y-1">
+                                    <div class="text-sm text-flow-warning space-y-1">
                                         <p>Your Pro license has expired. Premium features remain available at your current version, but app and server updates are paused until you renew.</p>
                                         <p v-if="licenseInfo?.expiresAt" class="text-xs opacity-80">
                                             Expired: {{ new Date(licenseInfo.expiresAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) }}
@@ -790,17 +777,17 @@
                                     </div>
                                 </div>
 
-                                <div v-if="upgradeError" class="text-danger text-sm mt-3">{{ upgradeError }}</div>
+                                <div v-if="upgradeError" class="text-flow-danger text-sm mt-3">{{ upgradeError }}</div>
                             </div>
 
                             <!-- Unlicensed — Trial expired (community mode) -->
                             <div v-else-if="isTrialExpired" class="space-y-3">
-                                <div class="rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-4">
+                                <div class="rounded-lg border flow-tone-danger p-4">
                                     <div class="flex items-center gap-2 mb-2">
-                                        <div class="text-sm font-semibold text-red-800 dark:text-red-400">Trial Expired</div>
-                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400">Community Mode</span>
+                                        <div class="text-sm font-semibold text-flow-danger">Trial Expired</div>
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium flow-tone-danger">Community Mode</span>
                                     </div>
-                                    <div class="text-sm text-red-700 dark:text-red-400 space-y-1">
+                                    <div class="text-sm text-flow-danger space-y-1">
                                         <p>Your 30-day Pro trial has expired. The server is now in Community mode — premium features are disabled.</p>
                                         <p v-if="licenseInfo?.expiresAt" class="text-xs opacity-80">
                                             Trial ended: {{ new Date(licenseInfo.expiresAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) }}
@@ -838,7 +825,7 @@
                                     </div>
                                 </div>
 
-                                <div v-if="upgradeError" class="text-danger text-sm mt-3">{{ upgradeError }}</div>
+                                <div v-if="upgradeError" class="text-flow-danger text-sm mt-3">{{ upgradeError }}</div>
                             </div>
 
                             <!-- Unlicensed (never licensed) -->
@@ -870,8 +857,8 @@
                                                 {{ trialBusy ? 'Requesting…' : 'Start Trial' }}
                                             </button>
                                         </div>
-                                        <div v-if="trialError" class="text-danger text-xs mt-2">{{ trialError }}</div>
-                                        <div v-if="trialSuccess" class="text-green-600 dark:text-green-400 text-xs mt-2">{{ trialSuccess }}</div>
+                                        <div v-if="trialError" class="text-flow-danger text-xs mt-2">{{ trialError }}</div>
+                                        <div v-if="trialSuccess" class="text-flow-success text-xs mt-2">{{ trialSuccess }}</div>
                                     </div>
 
                                     <!-- License Key Activation Section -->
@@ -898,7 +885,7 @@
                                     </div>
                                 </div>
 
-                                <div v-if="upgradeError" class="text-danger text-sm mt-3">{{ upgradeError }}</div>
+                                <div v-if="upgradeError" class="text-flow-danger text-sm mt-3">{{ upgradeError }}</div>
                             </div>
                         </template>
 
@@ -909,11 +896,11 @@
                                 <div class="flex items-center gap-2 mb-2">
                                     <div class="text-xs font-semibold text-accent uppercase tracking-wide">Certificate Status</div>
                                     <span v-if="certStatus.certMode === 'letsencrypt' && certStatus.valid"
-                                        class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                        class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium flow-tone-success">
                                         Trusted
                                     </span>
                                     <span v-else
-                                        class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                                        class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium flow-tone-warning">
                                         Self-Signed
                                     </span>
                                 </div>
@@ -930,11 +917,11 @@
                                     <div v-if="certStatus.certMode === 'letsencrypt'">
                                         <span class="text-accent">Auto-renewal:</span>
                                         <span v-if="certStatus.renewalTimerActive"
-                                            class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                            class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium flow-tone-success">
                                             Active
                                         </span>
                                         <span v-else
-                                            class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                                            class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium flow-tone-danger">
                                             Inactive
                                         </span>
                                     </div>
@@ -956,10 +943,10 @@
                                 <SettingRow label="Contact email *" description="Required — Let's Encrypt sends renewal notices here.">
                                     <input v-model="certEmailInput" type="email" :disabled="certBusy"
                                         class="input-textlike border border-default px-2 py-1 rounded text-sm w-56"
-                                        :class="{ 'border-red-400 dark:border-red-600': certEmailTouched && !certEmailInput.trim() }"
+                                        :class="{ 'border-flow-danger': certEmailTouched && !certEmailInput.trim() }"
                                         placeholder="admin@yourcompany.com" required
                                         @blur="certEmailTouched = true" />
-                                    <p v-if="certEmailTouched && !certEmailInput.trim()" class="text-xs text-red-500 mt-1">Email is required to install a trusted certificate.</p>
+                                    <p v-if="certEmailTouched && !certEmailInput.trim()" class="text-xs text-flow-danger mt-1">Email is required to install a trusted certificate.</p>
                                 </SettingRow>
                             </div>
 
@@ -1020,15 +1007,15 @@
                             </p>
 
                             <!-- Status messages -->
-                            <div v-if="certDnsResult && !certDnsResult.ok" class="mt-3 rounded-lg border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 p-3 text-sm">
-                                <div class="font-semibold text-yellow-800 dark:text-yellow-300 mb-1">DNS Not Ready</div>
-                                <div class="text-yellow-700 dark:text-yellow-400">{{ certDnsResult.message }}</div>
+                            <div v-if="certDnsResult && !certDnsResult.ok" class="mt-3 rounded-lg border flow-tone-warning p-3 text-sm">
+                                <div class="font-semibold text-flow-warning mb-1">DNS Not Ready</div>
+                                <div class="text-flow-warning">{{ certDnsResult.message }}</div>
                             </div>
-                            <div v-if="certDnsVerified" class="mt-3 rounded-lg border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 p-3 text-sm text-green-700 dark:text-green-400">
+                            <div v-if="certDnsVerified" class="mt-3 rounded-lg border flow-tone-success p-3 text-sm">
                                 DNS verified — {{ certDomainInput }} points to {{ certStatus.wanIp }}.
                             </div>
-                            <div v-if="certError" class="text-danger text-sm mt-3">{{ certError }}</div>
-                            <div v-if="certSuccessMsg" class="text-success text-sm mt-3">{{ certSuccessMsg }}</div>
+                            <div v-if="certError" class="text-flow-danger text-sm mt-3">{{ certError }}</div>
+                            <div v-if="certSuccessMsg" class="text-flow-success text-sm mt-3">{{ certSuccessMsg }}</div>
                         </template>
 
                         <!-- ═══ Server Health ═════════════════════════════════ -->
@@ -1043,7 +1030,7 @@
                                 </button>
                             </div>
 
-                            <div v-if="healthError" class="text-danger text-xs mb-3">{{ healthError }}</div>
+                            <div v-if="healthError" class="text-flow-danger text-xs mb-3">{{ healthError }}</div>
 
                             <!-- Multi-server health display -->
                             <div v-if="serverHealthData.length" class="space-y-4">
@@ -1055,7 +1042,7 @@
                                         <div v-if="server.connection.isActive" class="text-xs px-2 py-0.5 rounded bg-primary/20 text-primary">Active</div>
                                     </div>
                                     
-                                    <div v-if="server.error" class="text-danger text-xs">{{ server.error }}</div>
+                                    <div v-if="server.error" class="text-flow-danger text-xs">{{ server.error }}</div>
                                     
                                     <template v-else>
                                         <!-- License Status -->
@@ -1065,11 +1052,11 @@
                                                 <div>
                                                     <span class="text-muted">Status:</span>
                                                     <span class="ml-1 font-mono">
-                                                        <span v-if="server.license.licensed" class="text-green-500">Licensed</span>
-                                                        <span v-else-if="server.license.reason === 'trial_expired'" class="text-red-500">Trial Expired</span>
-                                                        <span v-else-if="server.license.fallback" class="text-amber-500">Pro Expired (Legacy)</span>
-                                                        <span v-else-if="server.license.needsActivation" class="text-red-500">Not Activated</span>
-                                                        <span v-else class="text-red-500">Unlicensed</span>
+                                                        <span v-if="server.license.licensed" class="text-flow-success">Licensed</span>
+                                                        <span v-else-if="server.license.reason === 'trial_expired'" class="text-flow-danger">Trial Expired</span>
+                                                        <span v-else-if="server.license.fallback" class="text-flow-warning">Pro Expired (Legacy)</span>
+                                                        <span v-else-if="server.license.needsActivation" class="text-flow-danger">Not Activated</span>
+                                                        <span v-else class="text-flow-danger">Unlicensed</span>
                                                     </span>
                                                 </div>
                                                 <div v-if="server.license.license">
@@ -1110,10 +1097,10 @@
                                                         <span v-else>Activate License</span>
                                                     </button>
                                                 </div>
-                                                <p v-if="licenseActivationError[server.connection.connectionId]" class="text-danger text-xs">
+                                                <p v-if="licenseActivationError[server.connection.connectionId]" class="text-flow-danger text-xs">
                                                     {{ licenseActivationError[server.connection.connectionId] }}
                                                 </p>
-                                                <p v-if="licenseActivationOk[server.connection.connectionId]" class="text-success text-xs">
+                                                <p v-if="licenseActivationOk[server.connection.connectionId]" class="text-flow-success text-xs">
                                                     {{ licenseActivationOk[server.connection.connectionId] }}
                                                 </p>
                                             </div>
@@ -1174,12 +1161,12 @@
                                                 </div>
                                                 <div>
                                                     <span class="text-muted">Mode:</span>
-                                                    <span class="ml-1 font-mono" :class="server.health.hardware.type === 'hw' ? 'text-green-500' : 'text-amber-500'">
+                                                    <span class="ml-1 font-mono" :class="server.health.hardware.type === 'hw' ? 'text-flow-success' : 'text-flow-warning'">
                                                         {{ server.health.hardware.type === 'hw' ? 'GPU' : 'CPU' }}
                                                     </span>
                                                 </div>
                                             </div>
-                                            <p v-if="server.health.hardware.autoDisabled" class="text-xs text-amber-500 mt-2">
+                                            <p v-if="server.health.hardware.autoDisabled" class="text-xs text-flow-warning mt-2">
                                                 GPU encoding was auto-disabled after a runtime failure ({{ server.health.hardware.disabledReason }}). It will retry the GPU again in
                                                 {{ Math.ceil((server.health.hardware.cooldownRemainingMs || 0) / 60000) }} min, sooner if the server restarts.
                                             </p>
@@ -1269,7 +1256,7 @@
                                 </button>
                             </div>
 
-                            <div v-if="cleanupError" class="text-danger text-xs mt-2">{{ cleanupError }}</div>
+                            <div v-if="cleanupError" class="text-flow-danger text-xs mt-2">{{ cleanupError }}</div>
 
                             <div v-if="cleanupResult" class="mt-4 rounded-lg border border-default bg-default/40 p-3 text-xs space-y-2">
                                 <div class="font-semibold">
@@ -1367,7 +1354,7 @@
                                                         placeholder="#D92B2F" maxlength="7" />
                                                 </div>
                                                 <div class="mt-1.5">
-                                                    <div v-if="brandingPrimaryContrastWarning" class="text-xs text-warning flex items-start gap-1.5">
+                                                    <div v-if="brandingPrimaryContrastWarning" class="text-xs text-flow-warning flex items-start gap-1.5">
                                                         <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                                             <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                                                         </svg>
@@ -1387,7 +1374,7 @@
                                                         placeholder="#b02428" maxlength="7" />
                                                 </div>
                                                 <div class="mt-1.5">
-                                                    <div v-if="brandingSecondaryContrastWarning" class="text-xs text-warning flex items-start gap-1.5">
+                                                    <div v-if="brandingSecondaryContrastWarning" class="text-xs text-flow-warning flex items-start gap-1.5">
                                                         <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                                             <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                                                         </svg>
@@ -1592,11 +1579,11 @@
                 </div>
 
                 <!-- Footer -->
-                <div class="flex items-center justify-between px-5 py-3 border-t border-default shrink-0">
+                <template #footer>
                     <div class="min-w-0">
-                        <div v-if="validationError" class="text-danger text-sm">{{ validationError }}</div>
-                        <div v-else-if="saveError" class="text-danger text-sm">{{ saveError }}</div>
-                        <div v-else-if="saveOk" class="text-success text-sm">Saved.</div>
+                        <div v-if="validationError" class="text-flow-danger text-sm">{{ validationError }}</div>
+                        <div v-else-if="saveError" class="text-flow-danger text-sm">{{ saveError }}</div>
+                        <div v-else-if="saveOk" class="text-flow-success text-sm">Saved.</div>
                         <div v-else class="text-xs text-accent">New shares will use these settings automatically.</div>
                     </div>
                     <div class="flex items-center gap-2">
@@ -1606,10 +1593,8 @@
                             <span v-else>Save Settings</span>
                         </button>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                </template>
+    </FlowModal>
 </template>
 
 <!-- Inline sub-components -->
@@ -1658,6 +1643,7 @@ import WatermarkCustomizer from "../WatermarkCustomizer.vue";
 import WatermarkPreview from "../WatermarkPreview.vue";
 import type { WatermarkSettings } from "../../types/watermark";
 import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from "../../types/watermark";
+import FlowModal from '../../ui/FlowModal.vue';
 
 const props = withDefaults(defineProps<{
     initialSection?: string

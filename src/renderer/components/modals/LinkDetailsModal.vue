@@ -1,16 +1,12 @@
 <template>
-  <div v-if="modelValue" class="fixed inset-0 z-40">
-    <div class="absolute inset-0 bg-black/50" @click="close"></div>
-
-    <div
-      class="absolute inset-x-0 top-12 mx-auto w-11/12 max-w-5xl bg-accent border border-default rounded-lg shadow-lg z-50 flex flex-col max-h-[calc(100vh-4rem)]">
-      <!-- Header -->
-      <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-default shrink-0 min-w-0" data-tour="link-details-header">
-        <h3 class="text-lg font-semibold truncate min-w-0" :title="link?.title || (link && fallbackTitle(link))">
+  <FlowModal :model-value="modelValue" size="xl" position="top" header-class="items-center"
+    :header-attrs="{ 'data-tour': 'link-details-header' }" body-class="text-sm text-left space-y-4" @close="close">
+      <template #title>
+        <span class="block truncate" :title="link?.title || (link && fallbackTitle(link)) || undefined">
           Link Details — {{ link?.title || (link && fallbackTitle(link)) }}
-        </h3>
-
-        <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+        </span>
+      </template>
+      <template #header-actions>
           <button v-if="!editMode && isPremiumActive"
             class="btn btn-secondary flex items-center gap-2 whitespace-nowrap" 
             @click="commentsModalOpen = true" 
@@ -23,15 +19,10 @@
 
           <button v-if="!editMode" class="btn btn-primary whitespace-nowrap" @click="beginEdit" :disabled="!link">Edit</button>
 
-          <button v-if="editMode" class="btn btn-secondary px-4 py-2 whitespace-nowrap" @click="cancelEdit" :disabled="saving">Cancel</button>
+          <button v-if="editMode" class="btn btn-dismiss px-4 py-2 whitespace-nowrap" @click="cancelEdit" :disabled="saving">Cancel</button>
           <button v-if="editMode" class="btn btn-success px-4 py-2 whitespace-nowrap" @click="saveAll" :disabled="saveDisabled">Save & Close</button>
+      </template>
 
-          <button class="btn btn-danger whitespace-nowrap" @click="close">Close</button>
-        </div>
-      </div>
-
-      <!-- Body -->
-      <div class="px-4 pt-4 pb-4 text-sm text-left space-y-4 overflow-y-auto flex-1 min-h-0">
         <!-- Meta -->
         <section class="grid gap-3 lg:grid-cols-3" data-tour="link-details-meta">
           <div class="lg:col-span-2 rounded-lg border border-default bg-default/20 p-3 space-y-2">
@@ -90,10 +81,10 @@
               <span class="text-default font-bold">Type:</span>
               <div class="flex items-center gap-1">
                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold leading-tight"
-                  :class="hasShareCapability ? 'bg-emerald-500/20 text-emerald-400' : 'bg-well/50 text-muted/40'"
+                  :class="hasShareCapability ? 'flow-tone-success' : 'bg-well/50 text-muted/40'"
                 >Review</span>
                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold leading-tight"
-                  :class="hasUploadCapability ? 'bg-blue-500/20 text-blue-400' : 'bg-well/50 text-muted/40'"
+                  :class="hasUploadCapability ? 'flow-tone-info' : 'bg-well/50 text-muted/40'"
                 >Upload</span>
               </div>
             </div>
@@ -178,7 +169,7 @@
                       <span class="text-sm">Enable Upload</span>
                     </label>
                   </div>
-                  <div v-if="!draftShareEnabled && !draftUploadEnabled" class="text-xs text-red-500 mt-1">
+                  <div v-if="!draftShareEnabled && !draftUploadEnabled" class="text-xs text-flow-danger mt-1">
                     At least one capability must be enabled.
                   </div>
                 </div>
@@ -275,7 +266,7 @@
                     </p>
                   </div>
 
-                  <p v-if="mustProvidePassword" class="text-xs text-red-500">
+                  <p v-if="mustProvidePassword" class="text-xs text-flow-danger">
                     Password is required when protection is enabled.
                   </p>
                 </div>
@@ -285,7 +276,7 @@
                 </div>
 
                 <div v-if="effectiveAccessMode === 'restricted'" class="space-y-2">
-                  <div v-if="!accessSatisfied" class="text-sm text-red-500">
+                  <div v-if="!accessSatisfied" class="text-sm text-flow-danger">
                     Invite at least one client or team, or turn off invite-only.
                   </div>
 
@@ -314,7 +305,7 @@
                                 <span v-if="u.user_name && u.name" class="text-xs opacity-60">@{{ u.user_name }}</span>
                               </div>
                               <span v-if="u.is_disabled"
-                                class="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-default/70 text-amber-400 border border-amber-500/30"
+                                class="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-default/70 text-flow-warning border border-flow-warning"
                                 title="This client login is disabled">
                                 Disabled
                               </span>
@@ -322,7 +313,7 @@
                           </td>
                           <td class="px-3 py-2 border border-default">
                             <span v-if="u.source === 'direct'"
-                              class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                              class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full flow-tone-info border">
                               Direct
                             </span>
                             <span v-else
@@ -363,7 +354,7 @@
                         <span class="font-medium">{{ g.group_name }}</span>
                         <span class="text-xs opacity-50">{{ g.member_count ?? 0 }} member{{ (g.member_count ?? 0) === 1 ? '' : 's' }}</span>
                         <span class="text-xs opacity-50">· {{ g.role_name || g.role?.name || 'viewer' }}</span>
-                        <button v-if="editMode" class="text-red-400 hover:text-red-300 ml-1"
+                        <button v-if="editMode" class="text-flow-danger hover:text-flow-danger ml-1"
                           @click="removeGroupAccess(g.group_id)" title="Remove team">
                           <FontAwesomeIcon :icon="faTrash" class="text-xs" />
                         </button>
@@ -455,7 +446,7 @@
                 </div>
                 <div class="text-xs text-muted flex items-center gap-1.5 mt-2">
                   <template v-if="clientTranscodeEnabled">
-                    <span class="text-green-600 dark:text-green-400">✓</span>
+                    <span class="text-flow-success">✓</span>
                     <span>Client-side transcoding: <strong class="text-default">Enabled</strong> — will use local hardware</span>
                   </template>
                   <template v-else>
@@ -477,7 +468,7 @@
 
                 <div class="text-xs opacity-70">
                   {{ draftFilePaths.length }} selected
-                  <span v-if="filesDirty" class="ml-2 text-amber-400">Pending changes</span>
+                  <span v-if="filesDirty" class="ml-2 text-flow-warning">Pending changes</span>
                 </div>
 
                 <div v-if="draftFilePaths.length">
@@ -492,7 +483,7 @@
                     </div>
                   </div>
                 </div>
-                <div v-else class="text-sm text-amber-500">No files selected. Click "Manage files…" to select files.</div>
+                <div v-else class="text-sm text-flow-warning">No files selected. Click "Manage files…" to select files.</div>
               </div>
 
               <div v-if="editMode && draftUploadEnabled" ref="uploadDestSection" class="pt-2 border-t border-default space-y-2">
@@ -506,9 +497,9 @@
                 </div>
                 <div class="text-xs opacity-70">
                   Current: <code>{{ currentUploadDir || '—' }}</code>
-                  <span v-if="uploadDirDirty" class="ml-2 text-amber-400">Pending changes</span>
+                  <span v-if="uploadDirDirty" class="ml-2 text-flow-warning">Pending changes</span>
                 </div>
-                <div v-if="uploadDirMissing" class="text-sm text-red-500">
+                <div v-if="uploadDirMissing" class="text-sm text-flow-danger">
                   Choose an upload destination folder to save.
                 </div>
 
@@ -537,7 +528,7 @@
                     <div class="text-sm font-medium" :class="{ 'opacity-50': !link?.watermark }">Auto-watermark uploaded files</div>
                     <div class="text-xs text-muted" :class="{ 'opacity-50': !link?.watermark }">
                       Apply this link's watermark settings to files uploaded through this link.
-                      <span v-if="!link?.watermark" class="text-amber-500"> (Link has no watermark configured)</span>
+                      <span v-if="!link?.watermark" class="text-flow-warning"> (Link has no watermark configured)</span>
                     </div>
                   </div>
                 </label>
@@ -618,7 +609,7 @@
           <div v-if="detailsLoading" class="text-sm opacity-70">Loading…</div>
           <div v-else-if="displayFiles.length === 0" class="text-sm opacity-70">No files.</div>
           <div v-else>
-            <div v-if="usingFallbackFiles" class="text-xs text-amber-700 dark:text-amber-300 mb-2">
+            <div v-if="usingFallbackFiles" class="text-xs text-flow-warning mb-2">
               Loaded from link summary because detailed file rows are currently unavailable.
             </div>
             <div class="overflow-x-auto max-h-[18rem] overflow-y-auto overscroll-y-contain rounded-lg border border-default">
@@ -747,7 +738,7 @@
             No version-managed files for this link.
           </div>
           <div v-else>
-            <div v-if="versionsError" class="p-2 mb-2 rounded bg-red-900/30 border border-red-800 text-default">
+            <div v-if="versionsError" class="p-2 mb-2 rounded flow-tone-danger border text-default">
               {{ versionsError }}
             </div>
 
@@ -832,7 +823,7 @@
                         </div>
                         <div class="grid gap-1 text-xs font-mono break-all opacity-85">
                           <div v-if="artifactLoading(v)" class="text-xs opacity-70">Loading artifact files…</div>
-                          <div v-else-if="artifactError(v)" class="text-xs text-red-500">{{ artifactError(v) }}</div>
+                          <div v-else-if="artifactError(v)" class="text-xs text-flow-danger">{{ artifactError(v) }}</div>
                           <template v-else-if="artifactFileNodes(v).length">
                             <div class="text-xs font-semibold mb-1">Existing files</div>
                             <div
@@ -889,24 +880,22 @@
 
         <!-- Danger Zone -->
         <section v-if="!editMode" class="w-full">
-          <div class="border border-red-300 dark:border-red-800 rounded-lg p-3 mt-2">
+          <div class="border border-flow-danger rounded-lg p-3 mt-2">
             <div class="flex items-center justify-between">
               <div>
-                <h4 class="font-semibold text-red-600 dark:text-red-400 text-sm">Danger Zone</h4>
+                <h4 class="font-semibold text-flow-danger text-sm">Danger Zone</h4>
                 <p class="text-xs opacity-70">Permanently delete this link and all associated data.</p>
               </div>
-              <button class="btn btn-delete px-3 py-1.5 text-sm"
+              <button class="btn btn-danger px-3 py-1.5 text-sm"
                 @click="emit('requestDelete', link!)">
                 Delete Link
               </button>
             </div>
           </div>
         </section>
+  </FlowModal>
 
-      </div>
-
-
-
+  <template v-if="modelValue">
       <EditLinkFilesModal v-model="filesEditorOpen" :apiFetch="apiFetch"
         :initialPaths="draftFilePaths"
         :base="linkProjectBase" :startDir="linkStartDir" @apply="onApplyFilePaths" />
@@ -925,13 +914,7 @@
       />
 
       <!-- Watermark Customization Modal -->
-      <div v-if="watermarkConfigModalOpen" class="fixed inset-0 z-50 flex items-center justify-center">
-        <div class="absolute inset-0 bg-black/60" @click="watermarkConfigModalOpen = false"></div>
-        <div class="relative bg-accent border border-default rounded-lg shadow-lg w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto p-6 z-50">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold">Configure Watermark</h3>
-            <button class="btn btn-secondary" @click="watermarkConfigModalOpen = false">Close</button>
-          </div>
+      <FlowModal :model-value="watermarkConfigModalOpen" title="Configure Watermark" size="xl" @close="watermarkConfigModalOpen = false">
           
           <!-- Watermark file selection -->
           <div class="mb-4 space-y-2 p-4 border border-default rounded-lg bg-default/20">
@@ -1007,17 +990,14 @@
           </div>
           
           <!-- Save/Regenerate Actions -->
-          <div v-if="draftWatermarkFile || draftWatermarkLocalFile" class="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-default">
-            <button class="btn btn-secondary" @click="cancelWatermarkConfig">Cancel</button>
+          <template v-if="draftWatermarkFile || draftWatermarkLocalFile" #footer>
+            <button class="btn btn-dismiss" @click="cancelWatermarkConfig">Cancel</button>
             <button class="btn btn-primary" @click="saveWatermarkConfig">
               Apply Settings
             </button>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
+          </template>
+      </FlowModal>
+  </template>
 </template>
 
 <script setup lang="ts">
@@ -1049,6 +1029,7 @@ import { useCommentCategories } from '../../composables/useCommentCategories'
 import { connectionMetaInjectionKey } from '../../keys/injection-keys'
 import { useTourManager, type TourStep } from '../../composables/useTourManager'
 import { useOnboarding } from '../../composables/useOnboarding'
+import FlowModal from '../../ui/FlowModal.vue'
 
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()

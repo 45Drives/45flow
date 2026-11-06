@@ -2,7 +2,7 @@
 	<div class="h-full min-h-0 flex items-start justify-center pt-2 overflow-y-auto">
 		<div class="mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8">
 			<div class="grid w-full grid-cols-1 gap-4 text-xl min-w-0">
-				<CardContainer class="w-full bg-well rounded-md shadow-xl min-w-0">
+				<FlowCard variant="plain" class="w-full bg-well rounded-md shadow-xl min-w-0">
 					<div class="ss-toned-panel flex flex-col gap-3 text-left min-w-0 p-3">
 						<!-- Header -->
 						<div class="flex flex-wrap items-start justify-between gap-3 min-w-0" data-tour="create-link-capabilities">
@@ -24,7 +24,7 @@
 										<option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
 									</select>
 								</label>
-								<button class="btn btn-secondary px-4 py-2 text-sm" @click="goBack">Back</button>
+								<button class="btn btn-dismiss px-4 py-2 text-sm" @click="goBack">Back</button>
 							</div>
 						</div>
 
@@ -100,7 +100,7 @@
 											class="grid items-center grid-cols-[minmax(0,1fr)_auto] border-t border-default first:border-t-0 text-sm min-w-0">
 											<div class="relative px-3 py-2 rounded-md bg-default min-w-0" :class="{ 'ml-4': group.files.length > 1 }" :title="f">
 												<span aria-hidden="true"
-													class="pointer-events-none absolute inset-0 rounded-md bg-green-500/50 animate-pulse z-0"></span>
+													class="pointer-events-none absolute inset-0 rounded-md flow-tone-success animate-pulse z-0"></span>
 												<span class="truncate block text-default relative z-10 min-w-0">{{ group.files.length > 1 ? f.split('/').pop() : f }}</span>
 											</div>
 											<button class="btn btn-danger m-2 px-2 py-1" @click="removeShareFile(f)" title="Remove">✕</button>
@@ -135,7 +135,7 @@
 									@click="showUploadBrowser = !showUploadBrowser"
 								>{{ showUploadBrowser ? 'Done' : 'Browse…' }}</button>
 							</div>
-							<p v-if="opts.uploadEnabled.value && uploadDestIsFilesystemRoot" class="text-xs text-red-500 mt-1">
+							<p v-if="opts.uploadEnabled.value && uploadDestIsFilesystemRoot" class="text-xs text-flow-danger mt-1">
 								The filesystem root (/) can't receive uploads. Choose a folder.
 							</p>
 							<p v-else class="text-xs opacity-70 mt-1">
@@ -337,7 +337,7 @@
 							<!-- Transcoding mode hint -->
 							<div v-if="hasVideoSelected" class="text-xs text-default flex items-center gap-1.5 mt-2">
 								<template v-if="clientTranscodeEnabled">
-									<span class="text-green-600 dark:text-green-400">✓</span>
+									<span class="text-flow-success">✓</span>
 									<span>Client-side transcoding: <strong class="text-default">Enabled</strong> — files will be streamed from the server and transcoded locally</span>
 								</template>
 								<template v-else>
@@ -347,7 +347,7 @@
 							</div>
 
 							<!-- Existing watermark info message -->
-							<p v-if="existingFileWatermarkMessage && watermarkEnabled" class="text-xs text-emerald-500 mt-1.5 flex items-center gap-1.5">
+							<p v-if="existingFileWatermarkMessage && watermarkEnabled" class="text-xs text-flow-success mt-1.5 flex items-center gap-1.5">
 								<svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 									<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
 								</svg>
@@ -407,7 +407,7 @@
 
 						<!-- ══════ Generate Button ══════ -->
 						<section class="border-t border-default pt-4">
-							<div v-if="error" class="p-3 rounded bg-red-900/30 text-default border border-red-800 mb-3 text-sm text-center">
+							<div v-if="error" class="p-3 rounded flow-tone-danger text-default border mb-3 text-sm text-center">
 								{{ error }}
 							</div>
 
@@ -429,7 +429,7 @@
 									<span v-else>Generate Flow link</span>
 								</button>
 							</div>
-							<p class="text-xs mt-2" :class="linkKind ? 'opacity-80' : 'text-red-400'">
+							<p class="text-xs mt-2" :class="linkKind ? 'opacity-80' : 'text-flow-danger'">
 								<template v-if="linkKind === 'both'">This link lets your client review {{ shareFiles.length }} file{{ shareFiles.length === 1 ? '' : 's' }} and upload files to you.</template>
 								<template v-else-if="linkKind === 'share'">This link lets your client review and download {{ shareFiles.length }} file{{ shareFiles.length === 1 ? '' : 's' }}.</template>
 								<template v-else-if="linkKind === 'upload'">No files selected, so this is an upload-only link: your client can send you files.</template>
@@ -446,9 +446,9 @@
 						</section>
 						</template>
 					</div>
-				</CardContainer>
+				</FlowCard>
 				<div class="button-group-row col-span-1 min-w-0">
-					<button @click="goBack" class="btn btn-secondary justify-start">
+					<button @click="goBack" class="btn btn-dismiss justify-start">
 						Back to Project
 					</button>
 				</div>
@@ -523,10 +523,11 @@
 </style>
 
 <script setup lang="ts">
+import FlowCard from '../ui/FlowCard.vue'
 import { writeClipboard } from '../clipboard'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { CardContainer } from '@45drives/houston-common-ui'
+
 import { Notification } from '@45drives/houston-common-ui'
 import { useApi } from '../composables/useApi'
 import { useResilientNav } from '../composables/useResilientNav'

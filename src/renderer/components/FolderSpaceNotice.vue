@@ -1,44 +1,43 @@
 <template>
-  <div v-if="normalizedPath" class="fsn flex flex-col gap-1.5 text-xs" aria-live="polite">
-    <div v-if="loading && !info" class="fsn-row opacity-70">
-      <span class="inline-block w-3 h-3 border-2 border-default border-t-transparent rounded-full animate-spin" aria-hidden="true"></span>
-      <span>Checking this folder…</span>
-    </div>
+  <div v-if="normalizedPath" class="flex flex-col gap-1.5" aria-live="polite">
+    <FlowNotice v-if="loading && !info" tone="info" size="sm" plain class="opacity-70">
+      <template #icon>
+        <span class="inline-block w-3 h-3 border-2 border-default border-t-transparent rounded-full animate-spin"></span>
+      </template>
+      Checking this folder…
+    </FlowNotice>
 
     <template v-else-if="info">
-      <div class="fsn-row" :class="info.isZfs ? 'fsn-ok' : 'fsn-warn'">
-        <span aria-hidden="true">{{ info.isZfs ? '✓' : '⚠' }}</span>
-        <span v-if="info.isZfs">
-          On storage pool <strong>{{ info.zfsPool || info.zfsDataset }}</strong>
-          <template v-if="spaceKnown"> · <strong>{{ formatBytes(info.availBytes) }}</strong> free of {{ formatBytes(info.totalBytes) }}</template>
-        </span>
-        <span v-else>
-          Not on a storage pool<template v-if="info.mountpoint"> (disk mounted at <code>{{ info.mountpoint }}</code>)</template>.
-          <template v-if="spaceKnown"> <strong>{{ formatBytes(info.availBytes) }}</strong> free of {{ formatBytes(info.totalBytes) }}.</template>
-          Media can fill a small disk fast; if this is the server's system disk, the server can stop working.
-        </span>
-      </div>
+      <FlowNotice v-if="info.isZfs" tone="success" size="sm" plain>
+        On storage pool <strong>{{ info.zfsPool || info.zfsDataset }}</strong>
+        <template v-if="spaceKnown"> · <strong>{{ formatBytes(info.availBytes) }}</strong> free of {{ formatBytes(info.totalBytes) }}</template>
+      </FlowNotice>
+      <FlowNotice v-else tone="warning" size="sm">
+        Not on a storage pool<template v-if="info.mountpoint"> (disk mounted at <code>{{ info.mountpoint }}</code>)</template>.
+        <template v-if="spaceKnown"> <strong>{{ formatBytes(info.availBytes) }}</strong> free of {{ formatBytes(info.totalBytes) }}.</template>
+        Media can fill a small disk fast; if this is the server's system disk, the server can stop working.
+      </FlowNotice>
 
-      <div v-if="lowSpace" class="fsn-row fsn-danger">
-        <span aria-hidden="true">⚠</span>
-        <span>Low space: only {{ formatBytes(info.availBytes) }} left ({{ Math.round(info.usedPercent) }}% used). Pick a folder with more room for proxies and client uploads.</span>
-      </div>
+      <FlowNotice v-if="lowSpace" tone="danger" size="sm">
+        Low space: only {{ formatBytes(info.availBytes) }} left ({{ Math.round(info.usedPercent) }}% used). Pick a folder with more room for proxies and client uploads.
+      </FlowNotice>
 
-      <div v-if="!info.exists" class="fsn-row opacity-80">
-        <span aria-hidden="true">＋</span>
-        <span>This folder doesn't exist yet. 45Flow will create it.</span>
-      </div>
+      <FlowNotice v-if="!info.exists" tone="info" size="sm" plain class="!text-current opacity-80">
+        <template #icon><PlusCircleIcon class="w-full h-full" /></template>
+        This folder doesn't exist yet. 45Flow will create it.
+      </FlowNotice>
     </template>
 
-    <div v-if="showDataNote" class="fsn-row opacity-80">
-      <span aria-hidden="true">ⓘ</span>
-      <span>45Flow keeps this project's proxy files and streams in a hidden <code>.45flow</code> folder inside the project folder.</span>
-    </div>
+    <FlowNotice v-if="showDataNote" tone="info" size="sm" plain class="!text-current opacity-80">
+      45Flow keeps this project's proxy files and streams in a hidden <code>.45flow</code> folder inside the project folder.
+    </FlowNotice>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
+import { PlusCircleIcon } from '@heroicons/vue/20/solid'
+import FlowNotice from '../ui/FlowNotice.vue'
 
 interface FolderSpaceInfo {
   path: string
@@ -113,33 +112,3 @@ watch(normalizedPath, (p) => {
 onUnmounted(() => { if (timer) clearTimeout(timer) })
 </script>
 
-<style scoped>
-.fsn-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.45rem;
-  line-height: 1.4;
-}
-
-.fsn-ok {
-  color: rgb(22 163 74);
-}
-
-.fsn-warn {
-  padding: 0.45rem 0.6rem;
-  border-radius: 0.45rem;
-  border: 1px solid color-mix(in srgb, #d97706 45%, transparent);
-  background: color-mix(in srgb, #f59e0b 12%, transparent);
-}
-
-.fsn-danger {
-  padding: 0.45rem 0.6rem;
-  border-radius: 0.45rem;
-  border: 1px solid color-mix(in srgb, #dc2626 45%, transparent);
-  background: color-mix(in srgb, #ef4444 12%, transparent);
-}
-
-:global(.dark) .fsn-ok {
-  color: rgb(74 222 128);
-}
-</style>

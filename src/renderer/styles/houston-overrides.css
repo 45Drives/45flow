@@ -1,0 +1,194 @@
+/* Every 45Flow override of houston-common-css lives here. Most need !important because houston's @layer components rules are applied with matching specificity. */
+
+/* === Success button === */
+.btn-success {
+  background-color: var(--btn-success-bg) !important;
+  border-color: var(--btn-success-border) !important;
+  color: white !important;
+}
+
+.btn-success:hover {
+  background-color: var(--btn-success-hover-bg) !important;
+  border-color: var(--btn-success-hover-border) !important;
+}
+
+/* Extend disabled styles to cover success */
+.btn-success:disabled,
+.btn-success.disabled {
+  background-color: #d3d3d3 !important;
+  border-color: #d3d3d3 !important;
+  color: #6c757d !important;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* Helpers (to match your bg/border helpers) */
+.bg-success {
+  background-color: var(--btn-success-bg) !important;
+  border-color: var(--btn-success-border) !important;
+  color: white !important;
+}
+
+.border-success {
+  border-color: var(--btn-success-border) !important;
+}
+
+/* =====================
+   Buttons
+   ===================== */
+/* Gradient fills default to the padding box and tile under the border, which
+   paints the opposite end of the gradient along the edges. Span the border box. */
+button,
+.btn,
+[role="button"],
+.bg-primary,
+.bg-secondary {
+  background-origin: border-box !important;
+}
+
+.btn-primary {
+  background: var(--btn-primary-fill) !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: white !important;
+}
+
+.btn-primary:hover {
+  background: var(--btn-primary-hover-fill) !important;
+  border: none !important;
+}
+
+.btn-secondary {
+  background: var(--btn-secondary-fill) !important;
+  border-color: var(--btn-secondary-border) !important;
+  color: white !important;
+}
+
+.btn-secondary:hover {
+  background: var(--btn-secondary-hover-fill) !important;
+  border-color: var(--btn-secondary-hover-border) !important;
+}
+
+/* Disabled state */
+.btn-secondary:disabled,
+.btn-primary:disabled,
+.btn-secondary.disabled,
+.btn-primary.disabled {
+  background: #d3d3d3 !important;
+  border-color: #d3d3d3 !important;
+  color: #6c757d !important;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.btn-primary:disabled:hover,
+.btn-secondary:disabled:hover {
+  background: #d3d3d3 !important;
+  border-color: #d3d3d3 !important;
+}
+
+/* Helpers */
+.bg-primary {
+  background: var(--btn-primary-fill) !important;
+  border-color: var(--btn-primary-border) !important;
+  color: white !important;
+}
+
+.bg-secondary {
+  background: var(--btn-secondary-fill) !important;
+  border-color: var(--btn-secondary-border) !important;
+  color: white !important;
+}
+
+.border-primary {
+  border-color: var(--btn-primary-border);
+}
+
+.border-secondary {
+  border-color: var(--btn-secondary-border);
+}
+
+/* =====================
+   Checkbox (theme-matched)
+   ===================== */
+.input-checkbox,
+input[type="checkbox"].styled-checkbox {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  accent-color: initial !important;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--border-color, #94a3b8);
+  background: var(--surface-color, #ffffff);
+  cursor: pointer;
+  box-shadow: none;
+  position: relative;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.input-checkbox:focus-visible,
+input[type="checkbox"].styled-checkbox:focus-visible {
+  outline: 2px solid #22c55e;
+  outline-offset: 2px;
+}
+
+/* :is(.dark *) matches houston-common-ui's red dark-mode .input-checkbox:checked
+   rule in specificity; without it the theme color loses in dark mode. */
+.input-checkbox:checked,
+.input-checkbox:checked:is(.dark *),
+input[type="checkbox"].styled-checkbox:checked {
+  background-color: var(--btn-primary-bg);
+  border-color: var(--btn-primary-border);
+}
+
+.input-checkbox:checked::after,
+input[type="checkbox"].styled-checkbox:checked::after {
+  content: "";
+  position: absolute;
+  left: 0.25rem;
+  top: 0.095rem;
+  width: 0.25rem;
+  height: 0.5rem;
+  border: 2px solid #fff;
+  border-top: 0;
+  border-left: 0;
+  transform: rotate(45deg);
+  box-sizing: content-box;
+}
+
+.input-checkbox:disabled,
+input[type="checkbox"].styled-checkbox:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn {
+  transition: background 160ms ease, border-color 160ms ease, transform 120ms ease, box-shadow 160ms ease;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.input-textlike,
+select,
+textarea {
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.input-textlike:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--ui-ring) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--btn-primary-bg) 28%, transparent);
+}

@@ -1,5 +1,5 @@
 <template>
-	<CardContainer class="dashboard-shell overflow-y-auto h-full min-h-0">
+	<FlowCard variant="plain" class="dashboard-shell overflow-y-auto h-full min-h-0">
 		<template #header>
 			<div class="dashboard-top">
 				<div class="dashboard-intro">
@@ -10,8 +10,8 @@
 						</nav>
 						<div class="flex items-center gap-2 min-w-0">
 							<h2 class="dashboard-title truncate">{{ activeProject.name }}</h2>
-							<span v-if="activeProject.archived" class="ss-chip ss-chip--muted text-xs shrink-0">Archived</span>
-							<span v-if="activeProject.is_disabled && !activeProject.archived" class="ss-chip ss-chip--danger text-xs shrink-0">Disabled</span>
+							<span v-if="activeProject.archived" class="flow-chip flow-chip--muted text-xs shrink-0">Archived</span>
+							<span v-if="activeProject.is_disabled && !activeProject.archived" class="flow-chip flow-chip--danger text-xs shrink-0">Disabled</span>
 						</div>
 						<p class="dashboard-subtitle truncate" :title="activeProject.root_dir">
 							Project folder: <span class="font-mono">{{ activeProject.root_dir }}</span>
@@ -26,7 +26,7 @@
 
 				<div class="dashboard-utility button-group-row">
 					<button v-if="activeProject" @click="goToManageUsers" data-tour="manage-users" class="btn btn-secondary px-5 py-2.5">Client Access</button>
-					<button @click="leaveServer" class="btn btn-danger px-5 py-2.5">Log Out</button>
+					<button @click="leaveServer" class="btn btn-dismiss px-5 py-2.5">Log Out</button>
 				</div>
 			</div>
 
@@ -64,11 +64,13 @@
 				<span class="text-sm text-muted">Loading projects…</span>
 			</div>
 
-			<div v-else-if="projects.length === 0" class="flex flex-col items-center justify-center py-12 gap-3">
-				<p class="text-lg font-semibold">No projects yet</p>
-				<p class="text-default opacity-85 text-base text-center max-w-lg leading-relaxed">A project is a folder on your server for one job or production. Create one to start sharing files with clients.</p>
-				<button class="btn btn-primary px-6 py-3 text-base font-semibold mt-1" @click="showCreateProjectModal = true">+ New Project</button>
-			</div>
+			<FlowEmpty v-else-if="projects.length === 0" title="No projects yet" class="py-12"
+				description="A project is a folder on your server for one job or production. Create one to start sharing files with clients.">
+				<template #icon><FolderIcon /></template>
+				<template #actions>
+					<button class="btn btn-primary px-6 py-3 text-base font-semibold" @click="showCreateProjectModal = true">+ New Project</button>
+				</template>
+			</FlowEmpty>
 
 			<div v-else>
 				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -82,8 +84,8 @@
 						<div class="flex items-start justify-between gap-2 mb-2">
 							<div class="flex items-center gap-2 min-w-0">
 								<h4 class="font-semibold text-sm truncate" :class="{ 'text-muted': project.is_disabled }">{{ project.name }}</h4>
-								<span v-if="project.is_disabled" class="ss-chip ss-chip--danger text-xs shrink-0">DISABLED</span>
-								<span v-if="project.archived" class="ss-chip ss-chip--muted text-xs shrink-0">Archived</span>
+								<span v-if="project.is_disabled" class="flow-chip flow-chip--danger text-xs shrink-0">DISABLED</span>
+								<span v-if="project.archived" class="flow-chip flow-chip--muted text-xs shrink-0">Archived</span>
 							</div>
 							<div class="flex items-center gap-1 shrink-0" @click.stop>
 								<button
@@ -116,17 +118,17 @@
 									@click="confirmCardUnarchive(project)"
 								>Unarchive</button>
 								<button
-									class="btn btn-delete px-2 py-1 text-xs"
+									class="btn btn-danger px-2 py-1 text-xs"
 									title="Permanently delete this project"
 									@click="confirmCardDelete(project)"
 								>Delete</button>
 							</div>
 						</div>
 						<div class="flex flex-row items-end gap-1.5 mb-2">
-							<span class="ss-chip ss-chip--neutral text-xs">Total Links: {{ project.link_count ?? 0 }}</span>
-							<span class="ss-chip ss-chip--success text-xs">Active {{ project.active_count ?? 0 }}</span>
-							<span class="ss-chip ss-chip--warning text-xs">Expired {{ project.expired_count ?? 0 }}</span>
-							<span class="ss-chip ss-chip--danger text-xs">Disabled {{ project.disabled_count ?? 0 }}</span>
+							<span class="flow-chip flow-chip--neutral text-xs">Total Links: {{ project.link_count ?? 0 }}</span>
+							<span class="flow-chip flow-chip--success text-xs">Active {{ project.active_count ?? 0 }}</span>
+							<span class="flow-chip flow-chip--warning text-xs">Expired {{ project.expired_count ?? 0 }}</span>
+							<span class="flow-chip flow-chip--danger text-xs">Disabled {{ project.disabled_count ?? 0 }}</span>
 						</div>
 						<div v-if="project._serverName" class="text-xs text-muted mb-1">Server: {{ project._serverName }}</div>
 						<div class="text-xs truncate" :title="project.root_dir">Folder: {{ project.root_dir }}</div>
@@ -171,38 +173,38 @@
 				<h3 class="text-base font-semibold">Links</h3>
 				<div class="button-group-row text-xs">
 					<button class="btn btn-secondary" @click="startEditProject">Edit Project</button>
-					<button class="btn btn-secondary" @click="backToProjects">Back to Projects</button>
+					<button class="btn btn-dismiss" @click="backToProjects">Back to Projects</button>
 				</div>
 			</div>
 
 			<ManageLinks :projectId="activeProject.id" :key="activeProject.id" :tourActive="tourShowDemoLinks"/>
 		</div>
-	</CardContainer>
+	</FlowCard>
 
 	<SettingsModal v-if="showSettings" :initialSection="settingsInitialSection" @close="showSettings = false" />
 	<AddUsersModal v-model="usersModalOpen" :apiFetch="apiFetch" />
 	<CreateProjectModal v-model="showCreateProjectModal" @created="onProjectCreated" />
 
 	<!-- Edit Project Modal -->
-	<Teleport to="body">
-		<div v-if="showEditProjectModal && actionTarget" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 text-default" @click.self="closeEditModal">
-			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-4xl mx-4 bg-accent">
+	<FlowModal :model-value="!!(showEditProjectModal && actionTarget)" :title="editModalTitle"
+		:size="editModalConfirm ? 'md' : 'xl'" hide-close @close="closeEditModal">
+		<template v-if="actionTarget">
 
 				<!-- Default: Edit Form -->
 				<template v-if="!editModalConfirm">
-					<h3 class="text-lg font-semibold mb-4">Edit Project</h3>
 					<form @submit.prevent="saveProject" class="flex flex-col gap-4">
-						<div>
-							<label class="block text-sm font-medium mb-1">Project Name</label>
+						<FlowField label="Project Name" required>
+							<template #default="{ id }">
 							<input
+								:id="id"
 								v-model="editProjectName"
 								type="text"
 								class="input-textlike w-full px-3 py-2 rounded-lg border border-default"
 								required
 							/>
-						</div>
-						<div>
-							<label class="block text-sm font-medium mb-1">Project Folder</label>
+							</template>
+						</FlowField>
+						<FlowField label="Project Folder">
 							<FolderPicker
 								:key="editKey"
 								v-model="editProjectRoot"
@@ -217,16 +219,18 @@
 								v-model:dest="editProjectRoot"
 							/>
 							<FolderSpaceNotice class="mt-2" :path="editProjectRoot" :apiFetch="apiFetch" :showDataNote="false" />
-						</div>
-						<div>
-							<label class="block text-sm font-medium mb-1">Notes (optional)</label>
+						</FlowField>
+						<FlowField label="Notes" optional>
+							<template #default="{ id }">
 							<textarea
+								:id="id"
 								v-model="editProjectDescription"
 								class="input-textlike w-full px-3 py-2 rounded-lg border border-default resize-none"
 								rows="2"
 								placeholder="Brief description…"
 							/>
-						</div>
+							</template>
+						</FlowField>
 						
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-2">
@@ -239,14 +243,14 @@
 									title="Restore the project and re-enable all previously disabled links."
 									@click="editModalConfirm = 'unarchive'">Unarchive</button>
 							</div>
-							<button type="button" class="btn btn-delete px-3 py-2 text-sm"
+							<button type="button" class="btn btn-danger px-3 py-2 text-sm"
 								title="Permanently remove the project. Links will be unlinked but not deleted."
 								@click="editModalConfirm = 'delete'; resetProjectDeleteState(); loadProjectDeletePreview(actionTarget!)">Delete Project</button>
 						</div>
 
 						<hr class="border-default" />
 						<div class="flex items-center justify-end gap-2">
-							<button type="button" class="btn btn-secondary px-4 py-2"
+							<button type="button" class="btn btn-dismiss px-4 py-2"
 								@click="closeEditModal">Cancel</button>
 							<button type="submit" class="btn btn-primary px-4 py-2"
 								:disabled="!editProjectName.trim() || !editProjectRoot.trim() || savingProject">
@@ -258,51 +262,48 @@
 
 				<!-- Confirm: Archive -->
 				<template v-else-if="editModalConfirm === 'archive'">
-					<h3 class="text-lg font-semibold mb-2 text-orange-600 dark:text-orange-400">Archive Project</h3>
-					<div class="p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-800 mb-4">
-						<p class="text-sm text-orange-700 dark:text-orange-300 font-medium mb-2">This will deactivate and hide the project:</p>
-						<ul class="text-sm text-orange-600 dark:text-orange-300/80 list-disc list-inside space-y-1">
+					<FlowNotice tone="warning" class="mb-4">
+						<p class="text-sm font-medium mb-2">This will deactivate and hide the project:</p>
+						<ul class="text-sm list-disc list-inside space-y-1">
 							<li>All active links will be disabled immediately</li>
 							<li>The project will be hidden from the default view</li>
 							<li>No files or links are deleted</li>
 							<li>You can unarchive the project at any time to restore it</li>
 						</ul>
-					</div>
+					</FlowNotice>
 					<p class="text-sm text-default mb-4">Archive <strong>{{ actionTarget.name }}</strong>?</p>
 					<div class="flex items-center justify-end gap-2">
-						<button class="btn btn-secondary px-4 py-2" @click="editModalConfirm = null">Back</button>
+						<button class="btn btn-dismiss px-4 py-2" @click="editModalConfirm = null">Back</button>
 						<button class="btn btn-warning px-4 py-2" @click="archiveProject">Archive</button>
 					</div>
 				</template>
 
 				<!-- Confirm: Unarchive -->
 				<template v-else-if="editModalConfirm === 'unarchive'">
-					<h3 class="text-lg font-semibold mb-2 text-green-600 dark:text-green-400">Unarchive Project</h3>
-					<div class="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-800 mb-4">
-						<p class="text-sm text-green-700 dark:text-green-300 font-medium mb-2">This will restore the project:</p>
-						<ul class="text-sm text-green-600 dark:text-green-300/80 list-disc list-inside space-y-1">
+					<FlowNotice tone="success" class="mb-4">
+						<p class="text-sm font-medium mb-2">This will restore the project:</p>
+						<ul class="text-sm list-disc list-inside space-y-1">
 							<li>The project will reappear in the default view</li>
 							<li>All previously disabled links will be re-enabled</li>
 							<li>Expired links will remain expired</li>
 						</ul>
-					</div>
+					</FlowNotice>
 					<p class="text-sm text-default mb-4">Unarchive <strong>{{ actionTarget.name }}</strong>?</p>
 					<div class="flex items-center justify-end gap-2">
-						<button class="btn btn-secondary px-4 py-2" @click="editModalConfirm = null">Back</button>
+						<button class="btn btn-dismiss px-4 py-2" @click="editModalConfirm = null">Back</button>
 						<button class="btn btn-success px-4 py-2" @click="unarchiveProject">Unarchive</button>
 					</div>
 				</template>
 
 				<!-- Confirm: Delete -->
 				<template v-else-if="editModalConfirm === 'delete'">
-					<h3 class="text-lg font-semibold mb-2 text-red-600 dark:text-red-400">Delete Project</h3>
-					<div class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 mb-4">
-						<p class="text-sm text-red-700 dark:text-red-300 font-medium mb-2">This action is irreversible and will permanently destroy:</p>
-						<ul class="text-sm text-red-600 dark:text-red-300/80 list-disc list-inside space-y-1">
+					<FlowNotice tone="danger" class="mb-4">
+						<p class="text-sm font-medium mb-2">This action is irreversible and will permanently destroy:</p>
+						<ul class="text-sm list-disc list-inside space-y-1">
 							<li>The project and all its metadata</li>
 							<li>All links will be unlinked from this project (unless you choose to delete them below)</li>
 						</ul>
-					</div>
+					</FlowNotice>
 
 					<div class="border border-default rounded-lg p-3 mb-4 space-y-3">
 						<p class="text-sm font-medium">Optional: Delete links and files</p>
@@ -324,7 +325,7 @@
 							<template v-if="projectDeleteLinks && projectDeletePreview.summary.totalFiles > 0">
 								<div class="text-xs text-default space-y-1 ml-5">
 									<p>{{ projectDeletePreview.summary.totalFiles }} file(s) across all links</p>
-									<p v-if="projectDeletePreview.summary.sharedFiles > 0" class="text-amber-600 dark:text-amber-400">
+									<p v-if="projectDeletePreview.summary.sharedFiles > 0" class="text-flow-warning">
 										{{ projectDeletePreview.summary.sharedFiles }} file(s) shared with links outside this project — will be kept
 									</p>
 								</div>
@@ -343,22 +344,22 @@
 								<label class="flex items-start gap-2 cursor-pointer select-none ml-5">
 									<input type="checkbox" v-model="projectDeleteOriginals" class="styled-checkbox mt-0.5" />
 									<div>
-										<span class="text-sm text-red-600 dark:text-red-400 font-medium">Delete original source files</span>
-										<p class="text-xs text-red-500 dark:text-red-300/80">
+										<span class="text-sm text-flow-danger font-medium">Delete original source files</span>
+										<p class="text-xs text-flow-danger">
 											The actual media files on disk. Cannot be recovered.
 											({{ formatBytes(projectDeletePreview.summary.totalOriginalBytes) }})
 										</p>
 									</div>
 								</label>
 
-								<div v-if="projectDeleteOriginals" class="p-2 rounded bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 ml-5">
-									<p class="text-xs text-red-700 dark:text-red-300 font-medium">
+								<div v-if="projectDeleteOriginals" class="p-2 rounded flow-tone-danger border ml-5">
+									<p class="text-xs text-flow-danger font-medium">
 										Danger: this will permanently delete the original source files from disk.
 									</p>
 									<div v-if="projectDeletePreview.files.filter((f: any) => !f.sharedWithOtherLinks).length > 0"
 										class="mt-2 max-h-24 overflow-y-auto">
 										<p class="text-xs text-default mb-1">Files that will be deleted:</p>
-										<ul class="text-xs text-red-600 dark:text-red-200/70 list-disc list-inside">
+										<ul class="text-xs text-flow-danger list-disc list-inside">
 											<li v-for="f in projectDeletePreview.files.filter((f: any) => !f.sharedWithOtherLinks)"
 												:key="f.id" class="truncate">
 												{{ f.relPath }} ({{ formatBytes(f.originalBytes) }})
@@ -372,105 +373,86 @@
 
 					<template v-if="projectDeleteGenerated || projectDeleteOriginals">
 						<label class="block text-sm text-default mb-1">
-							Type <strong class="text-red-600 dark:text-red-400">DELETE</strong> to confirm:
+							Type <strong class="text-flow-danger">DELETE</strong> to confirm:
 						</label>
 						<input v-model="projectDeleteConfirmText" type="text"
-							class="input-textlike w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-800 bg-default mb-4"
+							class="input-textlike w-full px-3 py-2 rounded-lg border border-flow-danger bg-default mb-4"
 							placeholder="DELETE" autocomplete="off" />
 					</template>
 
 					<div class="flex items-center justify-end gap-2">
-						<button class="btn btn-secondary px-4 py-2" @click="editModalConfirm = null">Back</button>
-						<button class="btn btn-delete px-4 py-2"
+						<button class="btn btn-dismiss px-4 py-2" @click="editModalConfirm = null">Back</button>
+						<button class="btn btn-danger px-4 py-2"
 							:disabled="(projectDeleteGenerated || projectDeleteOriginals) && projectDeleteConfirmText !== 'DELETE'"
 							@click="deleteProject">Delete Permanently</button>
 					</div>
 				</template>
 
-			</div>
-		</div>
-	</Teleport>
+		</template>
+	</FlowModal>
 
 	<!-- Card-level Disable Confirmation Modal -->
-	<Teleport to="body">
-		<div v-if="cardActionProject && cardAction === 'disable'" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50" @click.self="clearCardAction()">
-			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 text-default bg-accent">
-				<h3 class="text-lg font-semibold mb-2 text-red-600 dark:text-red-400">Disable Project</h3>
-				<div class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 mb-4">
-					<p class="text-sm text-red-700 dark:text-red-300 font-medium mb-2">This will disable the project and all its links:</p>
-					<ul class="text-sm text-red-600 dark:text-red-300/80 list-disc list-inside space-y-1">
+	<FlowModal :model-value="!!(cardActionProject && cardAction === 'disable')" title="Disable Project" size="sm" hide-close @close="clearCardAction()">
+				<FlowNotice tone="danger" class="mb-4">
+					<p class="text-sm font-medium mb-2">This will disable the project and all its links:</p>
+					<ul class="text-sm list-disc list-inside space-y-1">
 						<li>All active links will be disabled immediately</li>
 						<li>The project will appear greyed out with a DISABLED badge</li>
 						<li>No files or links are deleted</li>
 						<li>You can re-enable the project at any time</li>
 					</ul>
-				</div>
+				</FlowNotice>
 				<p class="text-sm text-default mb-4">Disable <strong>{{ cardActionProject.name }}</strong>?</p>
-				<div class="flex items-center justify-end gap-2">
-					<button class="btn btn-secondary px-4 py-2" @click="clearCardAction()">Cancel</button>
-					<button class="btn btn-secondary px-4 py-2" @click="disableProject">Disable</button>
-				</div>
-			</div>
-		</div>
-	</Teleport>
+				<template #footer>
+					<button class="btn btn-dismiss px-4 py-2" @click="clearCardAction()">Cancel</button>
+					<button class="btn btn-danger px-4 py-2" @click="disableProject">Disable</button>
+				</template>
+	</FlowModal>
 
 	<!-- Card-level Archive Confirmation Modal (project list view) -->
-	<Teleport to="body">
-		<div v-if="cardActionProject && cardAction === 'archive'" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50" @click.self="clearCardAction()">
-			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 text-default bg-accent">
-				<h3 class="text-lg font-semibold mb-2 text-orange-600 dark:text-orange-400">Archive Project</h3>
-				<div class="p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-800 mb-4">
-					<p class="text-sm text-orange-700 dark:text-orange-300 font-medium mb-2">This will deactivate and hide the project:</p>
-					<ul class="text-sm text-orange-600 dark:text-orange-300/80 list-disc list-inside space-y-1">
+	<FlowModal :model-value="!!(cardActionProject && cardAction === 'archive')" title="Archive Project" size="sm" hide-close @close="clearCardAction()">
+				<FlowNotice tone="warning" class="mb-4">
+					<p class="text-sm font-medium mb-2">This will deactivate and hide the project:</p>
+					<ul class="text-sm list-disc list-inside space-y-1">
 						<li>All active links will be disabled immediately</li>
 						<li>The project will be hidden from the default view</li>
 						<li>No files or links are deleted</li>
 						<li>You can unarchive the project at any time to restore it</li>
 					</ul>
-				</div>
+				</FlowNotice>
 				<p class="text-sm text-default mb-4">Archive <strong>{{ cardActionProject.name }}</strong>?</p>
-				<div class="flex items-center justify-end gap-2">
-					<button class="btn btn-secondary px-4 py-2" @click="clearCardAction()">Cancel</button>
+				<template #footer>
+					<button class="btn btn-dismiss px-4 py-2" @click="clearCardAction()">Cancel</button>
 					<button class="btn btn-warning px-4 py-2" @click="archiveProject">Archive</button>
-				</div>
-			</div>
-		</div>
-	</Teleport>
+				</template>
+	</FlowModal>
 
 	<!-- Card-level Unarchive Confirmation Modal -->
-	<Teleport to="body">
-		<div v-if="cardActionProject && cardAction === 'unarchive'" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50" @click.self="clearCardAction()">
-			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 text-default bg-accent">
-				<h3 class="text-lg font-semibold mb-2 text-green-600 dark:text-green-400">Unarchive Project</h3>
-				<div class="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-800 mb-4">
-					<p class="text-sm text-green-700 dark:text-green-300 font-medium mb-2">This will restore the project:</p>
-					<ul class="text-sm text-green-600 dark:text-green-300/80 list-disc list-inside space-y-1">
+	<FlowModal :model-value="!!(cardActionProject && cardAction === 'unarchive')" title="Unarchive Project" size="sm" hide-close @close="clearCardAction()">
+				<FlowNotice tone="success" class="mb-4">
+					<p class="text-sm font-medium mb-2">This will restore the project:</p>
+					<ul class="text-sm list-disc list-inside space-y-1">
 						<li>The project will reappear in the default view</li>
 						<li>All previously disabled links will be re-enabled</li>
 						<li>Expired links will remain expired</li>
 					</ul>
-				</div>
+				</FlowNotice>
 				<p class="text-sm text-default mb-4">Unarchive <strong>{{ cardActionProject.name }}</strong>?</p>
-				<div class="flex items-center justify-end gap-2">
-					<button class="btn btn-secondary px-4 py-2" @click="clearCardAction()">Cancel</button>
+				<template #footer>
+					<button class="btn btn-dismiss px-4 py-2" @click="clearCardAction()">Cancel</button>
 					<button class="btn btn-success px-4 py-2" @click="unarchiveProject">Unarchive</button>
-				</div>
-			</div>
-		</div>
-	</Teleport>
+				</template>
+	</FlowModal>
 
 	<!-- Card-level Delete Confirmation Modal -->
-	<Teleport to="body">
-		<div v-if="cardActionProject && cardAction === 'delete'" class="fixed inset-0 z-60 flex items-center justify-center bg-black/50" @click.self="clearCardAction()">
-			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto text-default bg-accent">
-				<h3 class="text-lg font-semibold mb-2 text-red-600 dark:text-red-400">Delete Project</h3>
-				<div class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 mb-4">
-					<p class="text-sm text-red-700 dark:text-red-300 font-medium mb-2">This action is irreversible and will permanently destroy:</p>
-					<ul class="text-sm text-red-600 dark:text-red-300/80 list-disc list-inside space-y-1">
+	<FlowModal :model-value="!!(cardActionProject && cardAction === 'delete')" title="Delete Project" size="md" hide-close @close="clearCardAction()">
+				<FlowNotice tone="danger" class="mb-4">
+					<p class="text-sm font-medium mb-2">This action is irreversible and will permanently destroy:</p>
+					<ul class="text-sm list-disc list-inside space-y-1">
 						<li>The project and all its metadata</li>
 						<li>All links will be unlinked from this project (unless you choose to delete them below)</li>
 					</ul>
-				</div>
+				</FlowNotice>
 
 				<p class="text-sm text-default mb-3">
 					Deleting <strong>{{ cardActionProject.name }}</strong>
@@ -495,12 +477,12 @@
 
 						<template v-if="projectDeleteLinks && projectDeletePreview.summary.totalFiles > 0">
 							<div class="text-xs text-default space-y-1 ml-5">
-								<p v-if="projectNothingToDelete" class="text-amber-600 dark:text-amber-400">
+								<p v-if="projectNothingToDelete" class="text-flow-warning">
 									All files are used by links outside this project, so they'll be kept.
 								</p>
 								<template v-else>
 									<p>{{ projectDeletePreview.summary.totalFiles }} file(s) across all links</p>
-									<p v-if="projectDeletePreview.summary.sharedFiles > 0" class="text-amber-600 dark:text-amber-400">
+									<p v-if="projectDeletePreview.summary.sharedFiles > 0" class="text-flow-warning">
 										{{ projectDeletePreview.summary.sharedFiles }} file(s) shared with links outside this project — will be kept
 									</p>
 								</template>
@@ -524,22 +506,22 @@
 								<input type="checkbox" v-model="projectDeleteOriginals" :disabled="projectNothingToDelete"
 									class="styled-checkbox mt-0.5" />
 								<div>
-									<span class="text-sm text-red-600 dark:text-red-400 font-medium">Delete original source files</span>
-									<p class="text-xs text-red-500 dark:text-red-300/80">
+									<span class="text-sm text-flow-danger font-medium">Delete original source files</span>
+									<p class="text-xs text-flow-danger">
 										The actual media files on disk. Cannot be recovered.<template v-if="!projectNothingToDelete">
 										({{ formatBytes(projectDeletePreview.summary.totalOriginalBytes) }})</template>
 									</p>
 								</div>
 							</label>
 
-							<div v-if="projectDeleteOriginals" class="p-2 rounded bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 ml-5">
-								<p class="text-xs text-red-700 dark:text-red-300 font-medium">
+							<div v-if="projectDeleteOriginals" class="p-2 rounded flow-tone-danger border ml-5">
+								<p class="text-xs text-flow-danger font-medium">
 									Danger: this will permanently delete the original source files from disk.
 								</p>
 								<div v-if="projectDeletePreview.files.filter((f: any) => !f.sharedWithOtherLinks).length > 0"
 									class="mt-2 max-h-24 overflow-y-auto">
 									<p class="text-xs text-default mb-1">Files that will be deleted:</p>
-									<ul class="text-xs text-red-600 dark:text-red-200/70 list-disc list-inside">
+									<ul class="text-xs text-flow-danger list-disc list-inside">
 										<li v-for="f in projectDeletePreview.files.filter((f: any) => !f.sharedWithOtherLinks)"
 											:key="f.id" class="truncate">
 											{{ f.relPath }} ({{ formatBytes(f.originalBytes) }})
@@ -553,26 +535,29 @@
 
 				<template v-if="projectDeleteGenerated || projectDeleteOriginals">
 					<label class="block text-sm text-default mb-1">
-						Type <strong class="text-red-600 dark:text-red-400">DELETE</strong> to confirm:
+						Type <strong class="text-flow-danger">DELETE</strong> to confirm:
 					</label>
 					<input v-model="projectDeleteConfirmText" type="text"
-						class="input-textlike w-full px-3 py-2 rounded-lg border border-red-300 dark:border-red-800 bg-default mb-4"
+						class="input-textlike w-full px-3 py-2 rounded-lg border border-flow-danger bg-default mb-4"
 						placeholder="DELETE" autocomplete="off" />
 				</template>
 
-				<div class="flex items-center justify-end gap-2">
-					<button class="btn btn-secondary px-4 py-2" @click="clearCardAction()">Cancel</button>
-					<button class="btn btn-delete px-4 py-2"
+				<template #footer>
+					<button class="btn btn-dismiss px-4 py-2" @click="clearCardAction()">Cancel</button>
+					<button class="btn btn-danger px-4 py-2"
 						:disabled="(projectDeleteGenerated || projectDeleteOriginals) && projectDeleteConfirmText !== 'DELETE'"
 						@click="deleteProject">Delete Permanently</button>
-				</div>
-			</div>
-		</div>
-	</Teleport>
+				</template>
+	</FlowModal>
 </template>
 
 <script setup lang="ts">
-import { CardContainer } from '@45drives/houston-common-ui'
+import FlowCard from '../ui/FlowCard.vue'
+import FlowModal from '../ui/FlowModal.vue'
+import FlowNotice from '../ui/FlowNotice.vue'
+import FlowField from '../ui/FlowField.vue'
+import FlowEmpty from '../ui/FlowEmpty.vue'
+import { FolderIcon } from '@heroicons/vue/24/outline'
 import { Notification } from '@45drives/houston-common-ui'
 import { useHeader } from '../composables/useHeader'
 import { useResilientNav } from '../composables/useResilientNav'
@@ -913,6 +898,12 @@ function clearCardAction() {
 	cardAction.value = null
 	resetProjectDeleteState()
 }
+
+const editModalTitle = computed(() => ({
+	archive: 'Archive Project',
+	unarchive: 'Unarchive Project',
+	delete: 'Delete Project',
+} as Record<string, string>)[editModalConfirm.value ?? ''] ?? 'Edit Project')
 
 function closeEditModal() {
 	showEditProjectModal.value = false

@@ -1,39 +1,23 @@
 <template>
-  <div class="fixed inset-0 z-[2100]">
-    <div class="absolute inset-0 bg-black/60" @click="close" />
-
-    <div class="absolute inset-0 flex items-center justify-center p-4">
-      <div class="w-full max-w-7xl max-h-[calc(100vh-2rem)] rounded-lg border border-default bg-default shadow-2xl flex flex-col">
-        <CardContainer class="flex-1 min-h-0 overflow-y-auto w-full bg-accent rounded-md shadow-xl min-w-0">
-          <template #header>
-            <div class="flex items-center justify-between px-6 py-4 shrink-0" data-tour="logs-modal-header">
-              <div>
-                <div class="text-xl font-semibold text-default text-left">Log Viewer</div>
-                <div class="text-xs text-muted mt-1">
-                  {{ source === 'client' ? (isWeb ? 'Showing events and errors recorded by this browser tab.' : 'Showing parsed entries from the local app log file.') : 'Showing audit log entries from the connected server.' }}
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
+  <FlowModal :model-value="true" title="Log Viewer" size="2xl"
+    :description="source === 'client' ? (isWeb ? 'Showing events and errors recorded by this browser tab.' : 'Showing parsed entries from the local app log file.') : 'Showing audit log entries from the connected server.'"
+    :header-attrs="{ 'data-tour': 'logs-modal-header' }" @close="close">
+          <template #header-actions>
                 <button v-if="isWeb && source === 'client'" class="btn btn-secondary" type="button" @click="downloadBrowserLog">
                   Download
                 </button>
                 <button class="btn btn-secondary" type="button" @click="refresh" :disabled="loading">
                   {{ loading ? 'Refreshing…' : 'Refresh' }}
                 </button>
-                <button class="btn btn-secondary" type="button" @click="close">
-                  Close
-                </button>
-              </div>
-            </div>
           </template>
 
-          <div class="px-6 pb-4 text-left min-h-0" data-tour="logs-modal-body">
+          <div class="text-left min-h-0" data-tour="logs-modal-body">
             <!-- Source selector tabs -->
             <div class="flex items-center gap-1 mb-4 border-b border-default">
               <button
                 type="button"
                 class="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
-                :class="source === 'client' ? 'border-blue-500 text-blue-400' : 'border-transparent text-muted hover:text-default'"
+                :class="source === 'client' ? 'border-flow-info text-blue-400' : 'border-transparent text-muted hover:text-default'"
                 @click="switchSource('client')"
               >
                 {{ isWeb ? 'Browser Logs' : 'Client Logs' }}
@@ -41,7 +25,7 @@
               <button
                 type="button"
                 class="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
-                :class="source === 'server' ? 'border-blue-500 text-blue-400' : 'border-transparent text-muted hover:text-default'"
+                :class="source === 'server' ? 'border-flow-info text-blue-400' : 'border-transparent text-muted hover:text-default'"
                 @click="switchSource('server')"
               >
                 Server Logs
@@ -58,7 +42,7 @@
                     {{ conn.name || conn.serverIp }}{{ conn.status !== 'connected' ? ' (disconnected)' : '' }}
                   </option>
                 </select>
-                <span v-if="selectedServerDisconnected" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-400">
+                <span v-if="selectedServerDisconnected" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium flow-tone-warning">
                   Not connected
                 </span>
               </div>
@@ -103,11 +87,11 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
               <div class="rounded-md border border-default p-3 bg-default">
                 <div class="text-xs text-muted">Errors</div>
-                <div class="text-lg font-semibold text-red-400">{{ counts.error }}</div>
+                <div class="text-lg font-semibold text-flow-danger">{{ counts.error }}</div>
               </div>
               <div class="rounded-md border border-default p-3 bg-default">
                 <div class="text-xs text-muted">Warnings</div>
-                <div class="text-lg font-semibold text-amber-400">{{ counts.warn }}</div>
+                <div class="text-lg font-semibold text-flow-warning">{{ counts.warn }}</div>
               </div>
               <div class="rounded-md border border-default p-3 bg-default">
                 <div class="text-xs text-muted">Info</div>
@@ -143,7 +127,7 @@
               </label>
             </div>
 
-            <div v-if="error" class="p-3 rounded bg-red-900/20 border border-red-800 text-sm mb-3">
+            <div v-if="error" class="p-3 rounded flow-tone-danger border text-sm mb-3">
               {{ error }}
             </div>
 
@@ -171,8 +155,8 @@
                     :key="row.id"
                     class="border-b border-default align-top"
                     :class="{
-                      'bg-red-900/10': row.level === 'error',
-                      'bg-amber-900/10': row.level === 'warn',
+                      'flow-tone-danger': row.level === 'error',
+                      'flow-tone-warning': row.level === 'warn',
                     }"
                   >
                     <td class="p-2 border-r border-default whitespace-nowrap">{{ formatTs(row.timestamp) }}</td>
@@ -215,12 +199,12 @@
                     <td colspan="6" class="p-4 text-center">Loading logs…</td>
                   </tr>
                   <tr v-else-if="selectedServerDisconnected">
-                    <td colspan="6" class="p-4 text-center text-amber-400">
+                    <td colspan="6" class="p-4 text-center text-flow-warning">
                       This server is not connected. Log in to this server to view its logs.
                     </td>
                   </tr>
                   <tr v-else-if="serverAccessDenied">
-                    <td colspan="6" class="p-4 text-center text-amber-400">
+                    <td colspan="6" class="p-4 text-center text-flow-warning">
                       Admin access required to view server logs. Log in with a system (PAM) account.
                     </td>
                   </tr>
@@ -233,8 +217,8 @@
                     :key="row.id"
                     class="border-b border-default align-top"
                     :class="{
-                      'bg-red-900/10': row.level === 'error',
-                      'bg-amber-900/10': row.level === 'warn',
+                      'flow-tone-danger': row.level === 'error',
+                      'flow-tone-warning': row.level === 'warn',
                     }"
                   >
                     <td class="p-2 border-r border-default whitespace-nowrap">{{ formatTs(row.ts) }}</td>
@@ -278,14 +262,11 @@
               </div>
             </div>
           </div>
-        </CardContainer>
-      </div>
-    </div>
-  </div>
+  </FlowModal>
 </template>
 
 <script setup lang="ts">
-import { CardContainer } from "@45drives/houston-common-ui";
+import FlowModal from "../../ui/FlowModal.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { useTimeFormat } from "../../composables/useTimeFormat";
 import { useTourManager, type TourStep } from "../../composables/useTourManager";
