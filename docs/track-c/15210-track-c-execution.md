@@ -2,6 +2,47 @@
 
 ## November 6: C3 G7 first sending integration
 
+The approved status correction is committed as server
+`71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
+`a8f25134daba9019b5cb867bc0f21a6eac15dc55`. Retained independent delta review
+and affected verification cleared that same frozen pair. The reviewer observed
+17:33:47Z-17:34:57Z; the verifier observed 17:33:48Z-17:37:10Z, reproduced
+the saved snapshot hash, ran exact G1/G7 and the nine panel tests, and carried
+unchanged core/producer/inventory evidence with an explicit scope rationale.
+No new bugs were found. The historical failure sub-message during a later
+in-flight retry remains a nonblocking advisory; the top-level sending state
+is correct. Canonical rounds 35-36 record both completed independent passes.
+Final standing cleared the pair: server build and full suite (802 passed,
+2 skipped), client full suite (210 passed), common build and application
+build all exited zero, with the final build ending 17:39:30Z. Exactly five
+standing commands ran in this final round, in addition to the earlier three
+executor diagnostic full-server invocations. Source/dependencies/locks stayed
+unchanged and no owned children remained. Round 37 records bounded G7
+acceptance, not full C3 completion. Both feature branches were pushed and
+remote-confirmed at 17:41:17Z: server metadata head
+`f1e6a8ab66a502dbc93e0a1bfbdda6e6b9a850b7` on `mpyne1-cuddly-waffle`,
+client `a8f25134daba9019b5cb867bc0f21a6eac15dc55` on
+`mpyne1-psychic-invention`. No new PR or merge was made.
+The retained runtime executor `0683e851-fac6-4c2b-bb6c-ddf0174234a7` is
+refreshing only the authorized isolated C3 backend and component lab, using
+normal auth, the real credential API and a trusted local TLS SMTP sink.
+The component must be frozen to its accepted bytes before handoff so later
+source edits cannot silently alter a published preview. No real provider
+or inbox acceptance is claimed, and no new preview is published yet.
+Evidence: session `verification/c3-consumed-status-20261106/verifier-status-final-v1.md`.
+The executor observed
+17:28:16Z-17:31:16Z, directly reproduced the stale server diagnosis and the
+client's null rejection before fixing them, then self-checked exact G1/G7
+and nine panel tests. Those executor self-runs were not independent acceptance.
+No standing command ran during execution or correction verification; the
+earlier three full diagnostic server suites remain counted.
+Only the server DTO, strengthened existing G7 fixture, related credential
+documentation, client configured type/guard and panel regressions changed.
+No new frontend control or mail-transport/outbox/secret behavior was added.
+Manager confirmed matching HEADs, clean client and only owned server gate
+metadata dirty at 17:32:45Z. Canonical round 34 records the paired candidate.
+Evidence: session `verification/c3-consumed-status-20261106/status-correction-candidate-v2.md`.
+
 B-09's accepted producer is published at
 `2d66c3e4d9cf2412fee06625dcf6b6c19234dd85` on `mpyne1-ideal-eureka`.
 It is not merged and no additional PR was opened. This completes the bounded
@@ -72,7 +113,15 @@ regressions and a neutral, consumer-compatible unavailable representation.
 The user then explicitly approved one focused correction (decision 60).
 Fresh judgment-tier executor `78f6f19b-9ddf-4514-a317-99e7b7ea708a` now owns
 that bounded correction in the existing C3 tree. It must confirm the actual
-client's compatibility with the neutral DTO before changing source. No final
+client's compatibility with the neutral DTO before changing source. Its
+17:25:45Z-17:26:10Z pre-edit inspection found the actual panel rejects null
+configuration and retains stale status. No edits, tests or candidate were made.
+The manager clarified that the compatibility stop was manager-imposed, not a
+user prohibition: this same approved focused fix includes only the real
+panel's nullable configured type/guard and a matching regression. Both existing
+server/client bases were unchanged and the client clean at 17:27:32Z.
+The same executor continues, not a new source attempt or budget reset.
+No new frontend control, settings screen or other feature is admitted. No final
 standing checks or further automatic repair are authorized yet. This was not
 another broad review or repair. Manager saved the read-only consultant's finding in session
 `verification/c3-consumed-status-20261106/status-classification-v1.md`.
@@ -92,8 +141,9 @@ A byte-exact canonical snapshot is preserved as
 `gates-status-correction-v3.snapshot.md` in that evidence directory, SHA-256
 `29dad6709d0d029a38e098d1762410fa27cf6908036479a078b4809f46ae054a`.
 No Check/Expect/Contract changed. Human approval is canonical round 32;
-only the zero-attempt DTO, safe resolver use, coupled tests and directly related
-documentation are admitted. No provider, production, schema, transport, outbox,
+only the zero-attempt DTO, safe resolver use, necessary existing consumer
+type/guard compatibility, coupled tests and directly related documentation
+are admitted. No provider, production, schema, transport, outbox,
 scheduler, dependency, gate, new-PR, merge or Princess-write expansion.
 
 The executor violated the focused-only instruction by running three full server
