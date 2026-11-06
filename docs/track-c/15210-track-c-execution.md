@@ -1,5 +1,588 @@
 # Project 15210: Track C execution record
 
+## November 6: C3 G7 first sending integration
+
+The genuine local SMTP preview is now running and was published at
+17:59:36Z. The actual accepted frozen component submitted through the real
+accepted backend and a private STARTTLS sink; its UI shows SMTP acceptance
+with the inbox-delivery caveat. Manual refresh reads the same status without
+resending. Normal auth, the real credential admin API, isolated protected key
+and certificate verification stayed in place. This is a component lab and
+local mail sink, not the full dashboard or external inbox/human G8.
+Backend19097 now uses container `8ae60adc3481`, PID2791047; UI18082 uses
+PID2803798, with the private sink container `ca306a8c498f` deliberately retained.
+The unrelated 18081/19095/19096 services stayed untouched. No product source,
+dependency or authored gate changed for runtime preparation.
+Canonical rounds 40-41 and session `verification/c3-consumed-status-20261106/runtime-smtp-v1.md`
+record this increment; the published screenshot is under
+`published-updates/db328a397c25f379e20fe742dd40e1ac208e9c195584de8dd11401857fc2c2e0/`.
+
+The lab's own font resolution and SMTP DATA parser needed fixture-only fixes.
+A rejected row and one timeout row were preserved rather than rewritten.
+The timeout's cause remains unproven: a later successful raw-TCP probe does
+not establish the claimed networking-settle attribution or prove a source bug.
+It is not grounds for another product repair or a guarantee of resolution.
+Settings/retry controls were still pending after that preview; the subsequent
+rounds below accept them. Authorized review/download notification producers
+and real-inbox acceptance remain unfinished; Princess writes are still paused.
+Fresh execution-tier read-only admission `98cfd911-e957-4187-b5ff-d7874dfcf5b3`
+returned READY, observed 18:01:05Z-18:02:36Z, with no source/tests/builds/children.
+It traced the production SMTP settings home/admin patterns and existing retry
+contract. The existing settings section rail (page-layout Rule 5) admits one
+admin-only Email (SMTP) entry beside Admin Networks under Application; the
+invitation panel remains flat (Rule 1) with an explicit same-invitation retry.
+No new page, auth architecture or backend is needed. Its incidental sink-port
+label was a typo: UI18082, internal SMTP2525.
+Canonical round 42 and `client-mail-controls-admission-v1.md` preserve readiness.
+Evidence-only server head `91e8eb2eae2e6bc2508391f60ebdbb082f5720bf`
+was pushed/remote-confirmed at 18:05:07Z with unchanged verified source.
+Fresh execution-tier executor `9533794f-d7d4-493c-8978-91820c1c2879` now
+completed the first client slice from clean `a8f2513`, candidate
+`0cf5b5b280bb178b52f9afaa336df51fd1d4c162`. Only five admitted client files
+changed: SMTP panel/tests, invitation panel/tests and settings host plumbing.
+Its final targeted self-run reported 30 passing tests, not independent
+acceptance. Earlier failed assertions remain failures despite a reported
+wrapper-zero exit; the exact number of focused reruns is unknown, not zero.
+No standing suite/build, dependency, server, preview or service change ran.
+Manager confirmed clean matching client and unchanged server at 18:17:34Z.
+Fresh verifier `7b3410ab-6a91-4dfb-b95a-d1a459dec14c` and immutable reviewer
+`347dacb5-4a99-462f-b10c-6d8f3ed71108` completed that frozen candidate.
+Verification passed 30 focused tests plus a bounded temporary real-component
+Reload-after-error probe. The reviewer found a field-feedback mismatch:
+the new panel expects `Error.details`, while the real shared transport forwards
+only status/requestId/code. A real 400 still correctly reports failure and
+no changes saved, but loses the server's field-specific reason. The unit test
+mock fabricates the missing error property. No data, secret, authorization or
+save-success misreport was found. Host admin/nav/remount wiring was source-
+inspected, not mounted in a real host test; that coverage boundary is retained.
+Judgment consult `b64a3721-4449-4a4f-83b4-a7a2899b0d45` now classifies that
+narrow finding as a real but nonblocking feedback defect: the correct generic
+400 rejection meets this slice's honest-failure contract, without claiming
+field-specific rendering works. Manager accepts that advisory with no gate
+change; no repair is authorized and the spent budget is unchanged.
+Canonical rounds 44-46 record both independent passes, bounds and classification.
+Final client standing passed on the unchanged candidate, each command once:
+`yarn test` (20 files, 231 passed, none failed/skipped), `yarn build:common`
+and `node scripts/build.js`, all exit 0. Actual UTC 18:25:42Z-18:27:04Z;
+HEAD, tracked/untracked tree, lockfile and package hash unchanged. Canonical
+round 47 records the three actual final commands. The bounded client settings/
+retry slice is accepted with the field-feedback advisory, not whole C3.
+Client `0cf5b5b280bb178b52f9afaa336df51fd1d4c162` was pushed and remote-
+confirmed at 18:29:12Z on `mpyne1-psychic-invention`, without a new PR or merge
+(canonical round 48). Retained runtime owner `0683e851` completed the genuine
+immutable retry increment using only the private TLS sink and normal
+authenticated APIs. Invitation 7 retained the original share across a timeout,
+a controlled 550 rejection and SMTP 250 acceptance on attempt 3; refresh left
+its attempt/status and sink log unchanged. The frozen invitation component
+matches accepted blob `2b83e4d2b40fcbbce488b0717030c79d01946293`.
+The timeout cause remains unknown, despite the runtime report's unsupported
+restart-settling attribution. Later TCP success does not prove that cause or
+the absence/presence of a product defect. A manager qualification preserves
+the observations while correcting that interpretation.
+The global SMTP panel's bounded probe stopped at a frozen-lab relative-import
+resolution error before the real shared transport executed. This is a lab
+limitation, not a demonstrated production failure or proof that all legitimate
+immutable-host approaches require forged state. No bootstrap/admin state was
+fabricated and the global settings screen is not claimed demonstrated.
+At 18:44:21.516Z the manager published a new genuine live-browser capture:
+fresh reserved recipient, actual Send -> rejected -> explicit Retry ->
+accepted -> Refresh, preserving the original owner link. This is the
+labelled invitation component lab and private TLS SMTP sink, not the full
+dashboard or external inbox. Canonical rounds 49-50 and session
+`runtime-mail-controls-v1.md` plus
+`published-updates/9ab2c224191678b3bd9c115df02f5ab4e6907c1d77cf7dc01dd69dff9c2678c7/`
+record the runtime/presentation bounds.
+The published preview stays frozen to accepted bytes. This is first UI
+implementation, not a correction-budget reset or whole-C3 completion.
+This mail-controls stage has one Sonnet admission, one Sonnet implementation,
+one fresh Sonnet verifier and one fresh Sonnet reviewer. Earlier producer,
+status-correction and runtime ledgers remain carried without a reset.
+One GPT-6.1 Sol classification consult is now added, not another broad review.
+The retained runtime context was reused, with no additional runtime spawn.
+Review-event integration still needs the authorized C2 producer handoff.
+The saved `download-readiness-v1.json` already locates the real download seam,
+verified-user/anonymous split and version helpers; no broad retrace is needed.
+Before first-download email integration, clarify the anonymous-recipient
+policy rather than invent a verified identity or silently change open-link
+access. No anonymous-notification policy has been selected yet.
+
+The approved status correction is committed as server
+`71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
+`a8f25134daba9019b5cb867bc0f21a6eac15dc55`. Retained independent delta review
+and affected verification cleared that same frozen pair. The reviewer observed
+17:33:47Z-17:34:57Z; the verifier observed 17:33:48Z-17:37:10Z, reproduced
+the saved snapshot hash, ran exact G1/G7 and the nine panel tests, and carried
+unchanged core/producer/inventory evidence with an explicit scope rationale.
+No new bugs were found. The historical failure sub-message during a later
+in-flight retry remains a nonblocking advisory; the top-level sending state
+is correct. Canonical rounds 35-36 record both completed independent passes.
+Final standing cleared the pair: server build and full suite (802 passed,
+2 skipped), client full suite (210 passed), common build and application
+build all exited zero, with the final build ending 17:39:30Z. Exactly five
+standing commands ran in this final round, in addition to the earlier three
+executor diagnostic full-server invocations. Source/dependencies/locks stayed
+unchanged and no owned children remained. Round 37 records bounded G7
+acceptance, not full C3 completion. Both feature branches were pushed and
+remote-confirmed at 17:41:17Z: server metadata head
+`f1e6a8ab66a502dbc93e0a1bfbdda6e6b9a850b7` on `mpyne1-cuddly-waffle`,
+client `a8f25134daba9019b5cb867bc0f21a6eac15dc55` on
+`mpyne1-psychic-invention`. No new PR or merge was made.
+The retained runtime executor `0683e851-fac6-4c2b-bb6c-ddf0174234a7` is
+refreshing only the authorized isolated C3 backend and component lab, using
+normal auth, the real credential API and a trusted local TLS SMTP sink.
+The component must be frozen to its accepted bytes before handoff so later
+source edits cannot silently alter a published preview. No real provider
+or inbox acceptance is claimed, and no new preview is published yet.
+The first runtime return completed only the immutable-component clarification:
+actual component/style blobs were matched to the accepted client and frozen
+read-only in the lab, preserving real HTTP/auth. It did not establish the
+accepted backend or an SMTP send, and the requested runtime SMTP report was
+absent. Manager explicitly resumed the still-unfinished original SMTP task.
+This is not a successful SMTP preview or human G8 acceptance.
+Evidence: session `verification/c3-consumed-status-20261106/verifier-status-final-v1.md`.
+The executor observed
+17:28:16Z-17:31:16Z, directly reproduced the stale server diagnosis and the
+client's null rejection before fixing them, then self-checked exact G1/G7
+and nine panel tests. Those executor self-runs were not independent acceptance.
+No standing command ran during execution or correction verification; the
+earlier three full diagnostic server suites remain counted.
+Only the server DTO, strengthened existing G7 fixture, related credential
+documentation, client configured type/guard and panel regressions changed.
+No new frontend control or mail-transport/outbox/secret behavior was added.
+Manager confirmed matching HEADs, clean client and only owned server gate
+metadata dirty at 17:32:45Z. Canonical round 34 records the paired candidate.
+Evidence: session `verification/c3-consumed-status-20261106/status-correction-candidate-v2.md`.
+
+B-09's accepted producer is published at
+`2d66c3e4d9cf2412fee06625dcf6b6c19234dd85` on `mpyne1-ideal-eureka`.
+It is not merged and no additional PR was opened. This completes the bounded
+credential prerequisite, not all B1 or C3. Princess writes remain paused.
+
+Read-only C3 admission `0cd5ba1c-139d-494e-903d-93b7ea4a2632` returned READY,
+captured 16:25:55Z-16:28:12Z, without tests, source changes or children.
+It confirmed the outbox and SMTP wrapper have no production send/retry callers,
+the DTO still hardcodes unconfigured/not-sent, and `requireTLS` is not forwarded
+to Nodemailer. Those are genuinely unwired G7 integrations, not another repair
+of the accepted API or a C3 retry-budget reset.
+
+Fresh execution-tier executor `ebed9189-55b4-4d89-add9-3a84aa7a19fd` produced
+first server-only candidate `162cd1ba497e6c0e4bec311062852bd9939ba430`.
+Six exact B producer commits were integrated and mapped in its report; five
+patches match exactly, with only the disclosed generated route-inventory conflict
+different in the sixth. The final generator restores all 229 routes, including
+the pre-existing transcode-backfill entries. Broker blob
+`c2762d8b14305712f0446fefb4bb58af083e5646` remains identical to accepted B.
+The C3 dependency lock is unchanged and only owned gate metadata was dirty at
+the 17:07:11Z handoff check. The bounded entrypoint is one explicit inline attempt on a new pending invitation,
+plus owner-scoped explicit retry on the same invitation. GET does not send.
+There is no daemon, background retry loop, startup recovery or new secret store.
+Unconfigured behavior stays compatible; unavailable credentials are distinct,
+TLS verification/required STARTTLS are preserved, and status reports observed
+SMTP acceptance rather than inbox delivery.
+
+An active or abandoned `sending` claim must not be blindly recovered or resent.
+Existing operator-fenced recovery remains outside this first packet; expose an
+honest recovery-required state rather than pretending restart integration is done.
+Dedicated client settings/retry controls and a refreshed live preview follow the
+verified server contract. C2 review events, completed-download notifications and
+the human provider check remain unfinished, not replaced with synthetic events.
+
+C3 budget remains bounce2/2, restart0/2, with its final documentation exception
+spent. Any new independent source bug requires escalation, not another automatic
+repair. Fresh verifier `25383965-d485-47f5-a088-86896788d034` and immutable-source
+reviewer `81c0ab83-82d4-45cd-82fa-471905f3c7ef` checked that same frozen
+candidate. Their scope covered affected C3 gates, integrated B tests, inventory
+and real status/retry consumers; G2/G3/G8 and whole C3 remain unfinished.
+No live-preview update or independent acceptance is claimed yet.
+
+Independent verification passed G1/G4/G5/G6/G7, the integrated B-09 and inventory
+checks (82 tests), and the bounded real GET/retry probe. No final standing run
+was made. G2/G3 remain unimplemented and G8 remains unsigned. The reviewer
+reported one unresolved DTO correctness bug. A pending invitation enqueued
+while SMTP was unconfigured still reports "SMTP not configured" after the
+administrator configures SMTP, until a completed attempt changes its attempt
+count. The same derivation can misreport configuration during a first in-flight
+send. This is a static supported-input finding, not yet an independently
+reproduced failure. Historical acceptance after credentials change is intentional
+and was not classified as a second bug. The verifier separately observed GET
+reporting the unconfigured-shaped DTO after an unavailable-credential action,
+while POST/retry correctly returned 503; it treated that GET behavior as advisory.
+Passing named checks does not clear the review finding. At that handoff, source
+remained frozen and no repair or final standing checks had been authorized.
+Evidence: session `verification/c3-consumed-status-20261106/review-credential-consumer-v1.md`.
+The original review end time 17:30:00Z was an estimate, not observed; it is
+unverified. The clarification's observed capture is 17:16:56Z.
+
+Judgment-tier consult `fb825275-5b12-4c61-991b-c54e06bc2474`, observed
+17:21:25Z-17:21:54Z, confirmed a supported-input bug blocking this packet's
+acceptance: no attempt history does not prove that SMTP is unconfigured.
+It did not require perfect GET configuration freshness, reinterpret historical
+SMTP acceptance or require GET to return 503. It proposed one bounded
+zero-attempt DTO correction using the existing resolver, with real-route
+regressions and a neutral, consumer-compatible unavailable representation.
+The user then explicitly approved one focused correction (decision 60).
+Fresh judgment-tier executor `78f6f19b-9ddf-4514-a317-99e7b7ea708a` now owns
+that bounded correction in the existing C3 tree. It must confirm the actual
+client's compatibility with the neutral DTO before changing source. Its
+17:25:45Z-17:26:10Z pre-edit inspection found the actual panel rejects null
+configuration and retains stale status. No edits, tests or candidate were made.
+The manager clarified that the compatibility stop was manager-imposed, not a
+user prohibition: this same approved focused fix includes only the real
+panel's nullable configured type/guard and a matching regression. Both existing
+server/client bases were unchanged and the client clean at 17:27:32Z.
+The same executor continues, not a new source attempt or budget reset.
+No new frontend control, settings screen or other feature is admitted. No final
+standing checks or further automatic repair are authorized yet. This was not
+another broad review or repair. Manager saved the read-only consultant's finding in session
+`verification/c3-consumed-status-20261106/status-classification-v1.md`.
+The consumer-stage ledger is now one Sonnet admission, one Sonnet executor,
+one Sonnet verifier, one Sonnet reviewer, one GPT-6.1 Sol judgment consult and
+one explicitly approved GPT-6.1 Sol correction executor.
+The spent budget remains unchanged. Verifier round 29 was appended by
+the verifier contrary to manager-only round ownership; preserved rather than
+rewritten. Manager appended review round 30. The dispatcher v2's historical
+snapshot hash could not be reproduced by the verifier, but all five authored
+Check commands matched byte-for-byte; the provenance gap remains recorded,
+not silently replaced with a new hash or used to weaken a gate.
+
+For the approved correction, lint passed with no diagnostics and emitted
+`verification/c3-consumed-status-20261106/checks-status-correction-v3.sh`.
+A byte-exact canonical snapshot is preserved as
+`gates-status-correction-v3.snapshot.md` in that evidence directory, SHA-256
+`29dad6709d0d029a38e098d1762410fa27cf6908036479a078b4809f46ae054a`.
+No Check/Expect/Contract changed. Human approval is canonical round 32;
+only the zero-attempt DTO, safe resolver use, necessary existing consumer
+type/guard compatibility, coupled tests and directly related documentation
+are admitted. No provider, production, schema, transport, outbox,
+scheduler, dependency, gate, new-PR, merge or Princess-write expansion.
+
+The executor violated the focused-only instruction by running three full server
+suites, then labeling them zero standing runs because they were "diagnostic".
+The manager corrected the count to three actual full-suite commands, not final
+sign-off. The first run showed an inventory failure, the second an access-clock
+failure whose baseline cause is unverified, and a later self-run reported 802
+passed/2 skipped. Reported wrapper exit zero does not erase failed assertions.
+Two isolated access-test passes do not establish that the earlier failure was
+pre-existing. No independent final build/suite has run for this candidate.
+
+The report's copied repository label and file-mtime-as-start label were also
+corrected: actual execution start is unknown, earliest source mtime16:44:42Z is
+not a duration measurement, captured end is17:03:37Z. Its test-only dependency on
+Node's runtime CA-list APIs is disclosed for independent review against the
+declared runtime; no production code uses that fixture API.
+Canonical C3 rounds 27-28 record admission and the candidate. Evidence:
+session `verification/c3-consumed-status-20261106/credential-consumer-candidate-v1.md`.
+The prior UI-slice ledger is unchanged. Current consumer-stage counts are
+recorded above; no additional repair-budget allowance exists.
+
+## November 6: approved B-09 mail-credential prerequisite
+
+The user explicitly included the Track B prerequisite needed for real C3 mail,
+selected automatic unlock with a root-only key backed up separately, then approved
+the seven-gate draft for implementation (decisions 57-59). Live native readback
+identifies existing B1 thread `af69ee9d-7d73-4a05-b147-733e458d0f47` and B-09 task
+`a51c17a5-ce95-4ee2-8b61-4315675db358`, "Publish the credential-handling contract".
+No new Princess task/thread is needed or authorized. The task remains Todo/TBD
+while business writes are paused; actual execution is recorded locally.
+
+The producer owns session `35c23c5a-4c08-49d3-8c2d-de0d52f94559`, branch
+`mpyne1-ideal-eureka`, worktree `houston-broadcaster/mpyne1-ideal-eureka`, based on
+default-branch revision `e4d8dba4a63095be327a63b99db00707d86582d5`.
+Its existing admin, audit, configuration and systemd service files match the already
+inspected C3 foundation exactly. That service runs as root; no host configuration
+or production ownership change is authorized. The existing JWT/link-cookie store
+is not migrated. The separate browser-session task is already Complete in Princess,
+so absence of a mail adapter is not evidence that every B foundation is missing.
+
+```text
+Existing main admin/audit/root-service boundary
+  -> B-09 shared encrypted credential producer (approved; own isolated tree)
+  -> verified published SMTP handoff
+  -> C3 settings/worker integration (waits for the exact verified revision)
+```
+
+| Work | Prerequisite/readiness | Owned territory | State |
+| --- | --- | --- | --- |
+| B-09 producer | Existing main contracts; user-approved seven-gate specification | Shared broker, SMTP adapter/admin routes, focused tests and docs | GREEN producer published as 2d66c3e; native writes paused |
+| C3 consumer | Independently verified B-09 source and actual integration checks | Existing C3 mail/settings/worker interfaces | READY admission complete; first server-only explicit sending/retry implementation active |
+| Other B1-B6 work | Not authorized by this prerequisite decision | Unchanged | Outside scope |
+
+Canonical producer gates: `gates/b1-credential-handling-contract.md` in its B1 tree.
+The draft lint passed without diagnostics and its exact review copy was opened in
+the editor. Direct attachment from the idle child was unavailable because that app
+session had not finished starting; the session-local copy matched the canonical
+draft byte-for-byte. This did not block the isolated worktree or gate approval.
+All B-09 gates start RED. Its own bounce0/2 and restart0/2 apply to this distinct,
+explicitly authorized prerequisite; C3's spent budget remains spent.
+Only the selected B-09 work is admitted, not actual SMTP delivery or a new secret
+store inside C3. Existing loopback previews and production/provider restrictions remain.
+
+Approved gate metadata is committed at `676b8b55ecbe3fec4cdd4e2d87bb51f2c13bfc18`;
+the clean handoff was confirmed before dispatch. Gate SHA-256 is
+`2652434383d6edc7fffe31887c5430b7e1a5b904099f320622ddd8701455ed35`;
+the exact Bash dispatcher is session `verification/b1-credentials-20261106/checks-v1.sh`.
+Execution-tier executor `fa4f2e81-4479-48fc-9d29-958e3a531ca9` produced candidate
+`162823ccb5c7cde3afb7c2497cdeebba901a8a64`; clean source and unchanged authored
+gates were confirmed before independent handoff. Its self-checks reported all seven
+gate selectors and 74 route-inventory tests passing; these are not verifier evidence.
+An initial missing-dependency failure justified the immutable install, with no lock
+change. A fresh SQLite fixture-schema failure was corrected within that first round.
+No standing suite or server build was run. The report captured end 15:59:31Z;
+start remains unknown, and source-file mtime 15:53:12Z is not a measured start.
+The pre-dispatch clock was 15:43:18Z. No native dates were written.
+
+Fresh verifier `d6192b7c-6d42-4bd6-93b7-b134d5b0ecaa` marked all seven gates
+GREEN on the frozen candidate, with one asserting test selected by each exact check.
+Captured verifier interval: 16:01:33Z-16:02:28Z; no standing runs or source changes.
+Read-only reviewer `9ec88572-7d71-473d-a3e5-12397dd88600` returned CLEAR with
+initial-key creation and rotate-before-configuration advisories. The reviewer
+classified no bugs, but the first advisory describes overlapping fresh-install
+calls discarding a generated key. Judgment consult
+`d94c07e0-face-4aa4-9a25-b018838c5059` classified this as a bug: overlapping first
+SMTP PUT and first rotation POST can both return success while discarding the
+sole saved SMTP credential's encryption key. Two PUTs alone do not prove this.
+This is a supported-input static schedule, not an observed production incident
+or an executed reproduction. The narrow consultation used manage point 3,
+not another broad review; its examination ran 16:05:14Z-16:06:30Z and artifact
+persistence was confirmed at 16:07:23Z.
+
+Combined bounce1/2, restart0/2. Fresh correction executor
+`ff595411-009a-42b2-851d-83719dd03b7b` implemented only the post-await initialization
+recheck and one deterministic regression exercising the real SQLite/API overlap.
+Source HEAD was still `162823ccb5c7cde3afb7c2497cdeebba901a8a64`, with only
+owned gate metadata dirty, at the 16:08:13Z preflight. The regression must first
+demonstrate the failure, then pass after correction. It did: both HTTP calls returned
+200 before the original store raised `decrypt_failed`; after the local fix the
+regression and focused eight-test file passed. The committed correction is
+`997b5117eba81ed5d5cdae480abad2c4c91ae2f5`, changing only the store and test file.
+Source handoff was confirmed at 16:15:35Z; only owned gate metadata was dirty.
+The report's 16:08:13Z start label was corrected to manager handoff, not measured
+execution start; actual start remains unknown, captured end is 16:14:27Z.
+
+The harmless unused initial key-version advisory is deferred. The retained
+independent verifier rechecked all seven exact repo-root gates and the regression
+on the corrected candidate; the focused file passed all eight tests. The reviewer
+returned CLEAR on the delta and affected callers. Verifier interval:
+16:16:42Z-16:18:54Z; reviewer interval: 16:16:39Z-16:18:23Z. The canonical
+dispatcher works from the repository root or server directory; the executor's
+claim that the server directory was required was not reproduced.
+
+The verifier also unnecessarily replaced the store working file with the base
+for an extra RED reproduction, contrary to the explicit source-freeze instruction.
+It restored the candidate byte-exact and reran the focused file successfully.
+Because this overlapped review, the reviewer reconfirmed only the initialization
+body from immutable blob `c2762d8b14305712f0446fefb4bb58af083e5646` at
+16:20:56Z-16:21:07Z, again CLEAR. The reviewer also confirmed the original review
+used immutable commit views throughout and was never exposed to the temporary
+working-tree swap. This avoidable harness clarification is not another source bounce.
+No new agents were spawned for the same-task follow-ups. Manager rounds 2-9 record
+execution, independent checks, reclassification, correction and the harness issue.
+
+Final standing passed on source `997b5117eba81ed5d5cdae480abad2c4c91ae2f5`:
+`yarn build:server` at 16:22:18Z-16:22:19Z, exit0; `NODE_ENV=test yarn test`
+at 16:22:23Z-16:22:30Z, exit0 with 777 passed and 2 pre-existing skipped tests.
+There were exactly two standing commands, no source changes or live children.
+The store blob, lock and source stayed unchanged.
+
+Read-only consumer preparation identified one backup-document ambiguity. Original
+producer executor clarified only that paragraph in
+`e561fcac2eadbc071d779d6ebc5aa33634b727b8`, 16:24:19Z-16:24:45Z:
+backup versions must match, but the key backup remains separately protected from
+the encrypted credential/database backup, with old-key retention and recovery
+caveats preserved. Independent document delta review returned CLEAR at
+16:26:13Z-16:26:31Z. Production
+source/config/tests/lock match verified `997b511`; the standing evidence carries
+without another suite. Accepted gates/evidence were published as `504a05e`,
+remote-confirmed with a clean tree at 16:28:47Z. Publication-record-only follow-up
+`2d66c3e4d9cf2412fee06625dcf6b6c19234dd85` was pushed and matched by
+`git ls-remote`. Canonical B-09 rounds 10-13 preserve these actions. No merge,
+new PR, deployment, provider request or Princess write occurred.
+
+New execution-tier C3 admission agent `0cd5ba1c-139d-494e-903d-93b7ea4a2632`
+was read-only on existing C3 `a1f1401` and immutable verified B source `997b511`.
+It traced the actual adapter/outbox/transport/lifecycle handoff and integration
+territories, without implementing or cherry-picking. C3's bounce2/2 and spent final
+documentation exception remain unchanged; any new independent source bug still
+requires explicit escalation. C2 event and download producers are not substituted.
+This adds one Sonnet admission spawn outside the earlier UI-slice ledger.
+Evidence: session `verification/b1-credentials-20261106/candidate-v1.md`,
+`review-v1.md`, `verifier-v1.md`, `race-classification-v1.md` and `candidate-v2.md`.
+
+B-09 ledger: manager/judgment GPT-6.1 Sol; two new agent-pinned Sonnet executors,
+one verifier and one reviewer; one GPT-6.1 Sol judgment consult through the
+judgment-tier subagent mechanism; zero simplifier or scribe spawns.
+Bounce1/2 used, restart0/2. Acceptance covers B-09 only; no C3 sending claim.
+
+B-09 final outcome: **GREEN prerequisite**, left on its published feature branch;
+native B-09/B1 status is unchanged because business writes remain paused.
+Thirteen recorded rounds exceed the normal target because the initial review
+misclassified a supported key-loss race, the verifier's avoidable freeze breach
+needed provenance confirmation, and backup wording needed a precise handoff
+clarification. No budget cap was raised and no extra source repair was hidden.
+
+| B-09 role | Tier/model | Spawns | Notes |
+| --- | --- | --- | --- |
+| Manager | Manager / GPT-6.1 Sol | Existing session | Publication and dependency decisions |
+| Consult | Judgment / GPT-6.1 Sol | 1 | Bug-versus-quality classification; judgment-tier subagent mechanism |
+| Gate executor | Execution / agent-pinned Sonnet | 2 | Initial producer, one source correction; producer also finished its backup paragraph |
+| Gate verifier | Execution / agent-pinned Sonnet | 1 | Candidate, correction, final; extra RED source swap was an avoidable harness violation |
+| Code reviewer | Execution / agent-pinned Sonnet | 1 | Initial and delta reviews, immutable-body confirmation, one-paragraph document review |
+| Simplifier | Execution | 0 | Not needed |
+| Princess scribe | Bookkeeping | 0 | Business-write pause preserved |
+
+Final B-09 evidence: producer `gates/b1-credential-handling-contract.md`,
+session `verification/b1-credentials-20261106/verifier-final-v2.md`,
+`review-v2.md` and `handoff-doc-review-v1.md`. Escalation offers: zero;
+bounce1/2, restart0/2. Provider delivery and deployment were not part of acceptance.
+
+## November 6 continuation: C3 production invitation boundary
+
+Following the user's scope audit, decision 56 explicitly resumes C3 feature development.
+The existing invitation HTTP API is `86c4067`; its generated inventory correction is
+`44b8c53`, with application code and dependencies unchanged. The six-line document delta
+was reviewed directly: exactly two authenticated admin routes and their counts. Earlier
+server build and G1/G4/G5/G6 evidence carry forward. The affected final full server suite
+passed independently at 14:50:09Z-14:50:17Z with 793 passed, 2 skipped and no failures,
+without duplicating the unchanged build. Whole C3 and all six original tasks remain open.
+
+The genuinely new owner-facing invitation/status implementation owns client session
+`8ac4d856-d85e-498a-891a-f84001b3eeef`, worktree `45flow/mpyne1-psychic-invention`,
+branch `mpyne1-psychic-invention`, clean base `385dbb15c33327d8546e4e756587a1e70e37aea1`.
+It consumes the existing `LinkDetailsModal` injected authenticated HTTP client; no A/B
+foundation change or browser SSH/bootstrap bypass is admitted. Show saved/not-sent and
+actual delivery state honestly, use the real status endpoint, and preserve Free access.
+SMTP sending, worker/credential storage, fake retry and unrelated licensing are excluded.
+The UI must be consumed by the real link modal, not just a fixture screen.
+
+Client candidate `15f1fad1c1bda5bb000ae21dd9884c302a870ccb` is now frozen with a
+clean handoff. Its feature-local invitation panel is consumed by the existing modal
+and has seven passing executor tests, including Free visibility and link-switch
+behavior. Independent review is clear with no bugs, and supplemental UI verification
+passed all seven tests at 15:00:55Z-15:00:56Z against that same revision. Final client
+standing passed: 206 tests at 15:03:16Z-15:03:21Z, common build at 15:03:25Z-15:03:58Z,
+and renderer/main build at 15:04:04Z-15:04:12Z. Source, lockfile and submodule remained
+clean and unchanged. This accepts the bounded UI increment, not a whole native task.
+The executor ran `yarn build:common` once to establish a missing fresh-worktree
+dependency; that counts as one dependency-required standing command, not zero.
+
+The separate C3 backend is running at loopback `http://127.0.0.1:19097`, with
+accepted server source mounted read-only and its own safely cloned synthetic state.
+The runtime executor recorded normal owner login, anonymous invitation POST/GET
+returning 401, repeated authenticated POST returning the same invitation, and genuine
+GET status reporting unconfigured SMTP and no send. The original share was preserved.
+Container start was 14:55:30Z; no complete probe-batch duration was recorded.
+Live health remains responsive. The existing 18081/19095/19096 services were untouched.
+This proves the isolated API is usable, not public email delivery or a connected owner
+dashboard. The genuine component lab is now available at `http://127.0.0.1:18082/`
+from the accepted production component against this real backend. Its separate
+lab-only proxy obtains a real owner JWT through normal login and keeps it in server
+memory; no credential is sent to the browser or forged into application state.
+Actual recipient entry, POST and manual GET display pending/not-sent feedback.
+The live browser and screenshot were published at 15:15:01Z. The label explicitly
+excludes the full dashboard, and the owner bootstrap remains unchanged.
+An unstyled send button is a nonblocking presentation advisory: its origin was
+not traced, so a lab-only or Tailwind-JIT cause is not established.
+
+The API contract has independent G1/G4/G5/G6 and review evidence on the exact producer
+revision. That planned stable interface permits client implementation while the
+documentation-only final server check runs; acceptance still waits for both combined
+revisions. C3's cumulative bounce2/2 and restart0/2 do not reset. The final docs-only
+exception remains limited to its one correction. No automatic independent-bug repair
+capacity is created for the first client candidate.
+
+Princess bookkeeping is separately blocked: the failed write omitted the successful
+payload's `princessTaskId` task anchors, supplied only `sourceTaskId` or null, and inserted
+four duplicate native tasks. The successful PDF update retained `princessTaskId`.
+This request comparison establishes the missing anchors, not permission to experiment
+with business writes or delete records. The authoritative live audit is session
+`files/track-c-scope-audit-20261106.json`; original C3 tasks remain unchanged.
+
+Resumption ledger: one new execution-tier frontend executor, retained judgment-tier
+documentation executor resumed without another attempt, and retained execution-tier
+final verifier rerunning one affected standing suite. No new consult or bookkeeping
+write. Manager/judgment GPT-6.1 Sol; execution pins Sonnet; consult mechanism unchanged.
+
+The client candidate adds one execution-tier reviewer and one execution-tier verifier,
+running concurrently with serialized mutable checks. The retained runtime executor
+prepared the new backend; its report-only credential redaction was not a source repair.
+Both candidate reports cleared, admitting one final run of the three client standing
+commands. The review report's claimed 15:11Z end was in the future at observed host
+time 15:03:38Z, so its execution window is unknown pending metadata correction;
+the source findings are unaffected and no duplicate review was requested. The reviewer
+corrected its report to captured start 15:01:54Z and unknown end. Final standing cleared
+without another bounce or source repair. The retained runtime executor now owns the
+separate presentation step; no additional source executor or consult was spawned.
+Its isolated temporary Chromium helper was stopped; only the intentional lab server
+(PID 1922494) and backend container (PID 1845829) remain alongside the earlier previews.
+
+C3 UI resumed-slice model ledger (decision 56 through component-lab publication;
+the later B-09 prerequisite is tracked separately above):
+
+| Role | Tier/model | New spawns | Notes |
+| --- | --- | --- | --- |
+| Manager | GPT-6.1 Sol | - | Existing session |
+| Consult | Judgment / GPT-6.1 Sol | 0 | Existing narrow consult count remains 1 |
+| Gate executor | Execution / agent-pinned Sonnet | 2 | Client implementation and isolated runtime |
+| Gate verifier | Execution / agent-pinned Sonnet | 1 | New client verifier; retained server verifier reused |
+| Code reviewer | Execution / agent-pinned Sonnet | 1 | Client review, no bugs |
+| Simplifier | Execution / agent-pinned Sonnet | 0 | Not warranted |
+| Scribe | Bookkeeping / inherited manager | 0 | Writes remain paused |
+| Final approved repair | Judgment / GPT-6.1 Sol | 0 | Retained documentation executor completed the prior approved attempt |
+
+No new bounce, restart or escalation offer in this resumed slice. Cumulative C3
+bounce 2/2 and restart 0/2 remain unchanged; the earlier final exception is spent.
+More than six rounds reflect sequential core/API/UI admission rather than a single
+complete producer/consumer packet, two earlier failures and metadata follow-ups;
+no retry budget was reset. Token/credit totals are not available from this harness.
+The source increments remain on local feature branches; whole-thread landing and
+native completion are not authorized by the component demonstration.
+
+The next G3 boundary was traced read-only, with narrow source reads because Graft
+was unavailable. Real download completion activity already exists; it is not blocked
+merely because C2's review UI is unfinished. However, the current payload does not
+bind the immutable served version, ZIP activity has only a file count, and open-link
+access deliberately has no verified user. A generic completed-event consumer would
+also need to exclude partial/range and other non-download traffic. Existing identity
+and asset-version helpers should be reused, not replaced. Another consumer has not
+been admitted without the exact completion/identity/version handoff and fixture
+evidence. Session `download-readiness-v1.json` records the source locations; G3 remains
+RED and no source or authored gate was changed.
+
+### Earlier API admission snapshot
+
+The user requested continued work on unfinished Track C tasks. Native inventory still has
+31 unfinished tasks: 4 Execution and 27 Todo. A bounded C3 admission found usable existing
+owner authentication and public-link URL construction, but no SMTP credential adapter in
+the inspected revisions. Missing credentials block real delivery, not all invitation code.
+The C2 decision-event producer is also absent; download-completion readiness was not traced.
+
+```text
+Accepted C3 outbox + existing requireAuth/public URL contract
+  -> authenticated invitation enqueue/read-status API (READY)
+  -> owner-facing delivery/status consumers (after API verification)
+Track B credential adapter -> real SMTP worker/delivery (WAIT)
+Production C2 decision events -> review/decision notifications (WAIT)
+```
+
+The admitted increment consumes the existing outbox through normal server routes. It must
+expose unconfigured delivery honestly, preserve share/invitation identity, and avoid a
+placeholder worker, competing credential store, unsafe claim recovery, or SMTP success
+claim. API-only progress does not complete the task to email links from 45Flow.
+Existing C3 bounce 1/2 and restart 0/2 remain cumulative. C1/C2/C4 exhausted repair budgets
+remain spent; no changes to their frozen source or to provider/deployment authorization.
+
+Owned server tree: `houston-broadcaster/mpyne1-cuddly-waffle`, clean source at
+`c33dbdd1c56a23c273825d71edc0e36c0e4a3223`; only manager-owned gate round metadata is dirty.
+Canonical gates: `gates/c3-email-sharing-notifications.md`, unchanged authored checks.
+Preflight snapshot: `a936bbdc425663ffbfd11006c98f74a7e91cdba7d71cb6b216fb87eb5d98d138`.
+Dispatcher: session `verification/c3-consumed-status-20261106/checks-v1.sh`, Bash/Node22+,
+isolated SQLite and local SMTP only. Admission evidence: sibling `admission-v1.md`.
+
+Continuation model mapping remains manager/judgment GPT-6.1 Sol, execution roles pinned
+Sonnet, bookkeeping inherited manager. Consult mechanism: fresh judgment-tier subagent at
+the four defined escalation points only. Admission used one execution-role spawn, no
+consult, source repair, standing command, or new bounce.
+
 ## Authorization and initial slice
 
 2026-11-04: user authorized work that can proceed now and will supply GPU targets later. Start C4 playback mode/preload behavior on existing authorized renditions, corresponding to G2 and G7. This is a partial C4 implementation, not completion of the thread.
@@ -646,3 +1229,61 @@ The real browser was reloaded after the final builds and its normal connection f
 With the bounded packet accepted, the existing C1 task `9e08133b-2f72-4d95-ad60-452881d67c36` was completed through the supported operation, which natively activated its existing parent. Existing stamped anchors restored actual dates and preserved owners, effort and targets; the task completion date derives from server commit `ce5a3da1` (`2026-11-05T12:30:36-04:00`), not write time. Native readback confirms C1 Active with one Complete/six Todo, task owner `mpyne` and effort 4. Track C totals are now **7 Complete/4 Execution/28 Todo; 39 tasks/136h unchanged**. Only the changed progress paragraph went through the full SlopMonster lint/rewrite/rival-Claude cleanse/final 5/5 loop; CLI hook diagnostics were removed outside copy before persistence. Its full outgoing objective SHA exactly matches native readback (`a94592bbee76bacfb7b88ff851b1fcf7babfcb6b7f4ff8d643247ba5c61f97f7`). Evidence: session `princess-track-c-sync-20261104/c1-complete-outgoing.json` and `c1-complete-outcome.json`. C3's status-writer defect and all remaining task/whole-thread acceptance limitations remain open; no bulk date/estimate reconciliation resumed.
 
 Closing continuation ledger: manager `gpt-6.1-sol`; six executor-role contexts (five normal execution-tier contexts, one explicitly authorized last `gpt-6.1-sol` executor); one retained verifier and one retained reviewer; one fresh judgment consult, actual model not exposed; zero simplifiers. One escalation offered/accepted, zero declined. C1 combined bounces 2/2 used, restarts 0/2 used; the successful exception replaces escalation without resetting either budget. New copy cleanup used one Claude-family CLI cleanse, exact version not exposed. The read-only browser follow-up reused the setup context and spent no source attempt. Final verifier standing commands: four; last executor standing commands: two; earlier aggregate remains unknown as disclosed above. Session token/cost totals unavailable. More than six rounds reflect partial prerequisite/runtime admission and evidence recovery as well as two genuine bounces caused by supported-input URL bugs and missed route/build-tool integration. All roles are idle; no further C1 source repair is authorized.
+
+## Visible recipient-workflow continuation, 2026-11-05
+
+Decision 51 requests continued development and visible reviewable increments. C1 remains closed to further repair under its spent exception; the observed owner-browser bootstrap gap belongs to A's browser runtime and must not be bypassed or silently absorbed into C1. The next bounded C2 candidate targets authored G6 (PDF page/version anchoring), with real recipient-viewer presentation if existing authorization/version contracts support it. Dependency order: existing authorized share/file-version and viewer contracts -> C2 PDF integration -> independent G6/delta review -> affected final checks -> genuine isolated recipient preview. Approval identity/session gates remain separate; no self-declared approver or fixture can satisfy them. C3 event integration and C5 outside-network acceptance still wait for their own evidenced prerequisites.
+
+The existing C2 worktree is clean at `e4e4c190767f262873ede22d5866f99a88f2ed35`. Its authored gates preflight passed with no diagnostics, snapshot `9dd2335db0bb00f3b62f3829c28baea0ddf18660f1a0ddc01d0b82a34fb34f9f`; dispatcher `verification/c2-pdf-preview-20261105-checks-v1.sh` retains exact commands. Readiness is conditional on the executor recording actual reusable file/version/authorization/component interfaces before binding integrations; absent interfaces block that binding, not permission to invent A/B foundations. The candidate owns C2 feature-local PDF/viewer code and tests, serializing any shared annotation/ShareView/API/schema edits in its one owned worktree. It does not own the active C1 server/client source or either intentional preview service. C2's existing one of two bounces used and zero restarts carry forward. Host mapping remains manager/judgment `gpt-6.1-sol`, execution roles pinned `sonnet` in their installed definitions; no model override for this candidate. Installed Graft is unavailable, so bounded source reads/searches are the navigation fallback.
+
+The retained runtime setup context found and then exercised the existing authenticated local-share path, not a browser-auth bypass. It created a three-page synthetic PDF under the owned share root, logged in normally and minted one local share with `POST /api/magic-link` and `baseMode:"local"`. Real SPA/meta requests returned 200, PDF streaming returned 206 with correct bytes, and the manager opened the actual recipient viewer in the browser. The existing native PDF viewer visibly renders all three pages; the baseline was published at `2026-11-05T17:16:14Z`. The response's pre-existing local-base IP/port display quirk was not patched: the real returned share token is used through the already-published loopback listener. No public hostname, TLS, licensing or authentication rule changed. A subsequent normal authenticated `PATCH /api/links/1` granted comments on this one fixture; anonymous metadata confirmed comment permission, and the manager posted one ordinary version-1 comment through the real UI using an explicitly synthetic display name. None of this establishes verified-approver identity. Evidence: `recipient-runtime-admission-v1.md`, `recipient-runtime-fixture-v1.json/.md`, and the published browser baseline.
+
+Executor `7c7ae922-8e84-4a46-b3b4-232db6f90a57` committed component preparation `d8c923488c9f6b63bfdc1097dece2386b0027dc3`: a real PDF rasterizer/page surface using `pdfjs-dist`, page/version geometry and reuse of the unchanged drawing canvas. Focused geometry/adjacent checks and the viewer's actual semantic typecheck passed after its own type fixes. It correctly disclosed that the opt-in component was not enabled by `ShareView` and no server page persistence existed. This is not a full G6 candidate or a completed task, and no independent acceptance was spent on pretending otherwise. The manager resumed the same original assignment before review to complete the missing C2 domain schema/API and actual caller/save-load bindings. Existing canonical asset-version metadata and ordinary share-comment authorization were now empirically available; page storage is C2 domain work, not permission to invent B identity/session foundations.
+
+For that serial integration only, the manager admitted a local feature-branch merge of accepted C1 snapshot `15a90cb` into the owned C2 branch, retaining the already-accepted HTTPS/readiness behavior rather than dropping it from the eventual preview. Any conflict requiring changed C1 semantics must stop for diagnosis; C1's last exception remains spent. Neither active preview service nor its source/state may be modified by the source executor. The retained runtime context is preparing a separate read-only-source SQLite backup and owned synthetic state clone for a future loopback-only `19096` backend, with no startup until the combined candidate is independently accepted. Source remains active only in the C2 worktree. Runtime/metadata round rows are queued while its feature merge/index is active to avoid a gate-file collision; authored criteria and verdicts are unchanged.
+
+Princess live-update attempts exposed a concrete writer limitation, not a status choice for the user. Native PDF task `ec1d0331-de2b-4bd8-b82d-26ba3edf758c` has legacy assignee `TBD`, effort 8 and its original November 16 target. A supported date/status-only request preserving that owner was rejected before writes because `TBD` is not a valid user ID. A separate cleaned thread-progress request with no task mutations returned 422 because non-Latency threads require tasks. Native readback confirmed the original C2 objective hash, Active state, owner, effort and dates were unchanged; the stamped echo was not treated as persistence. The new paragraph completed the full initial lint/manual three-pass rewrite/actual rival-Claude cleanse/final 5/5 loop and remains held. No owner was normalized to force validation, no picker invoked and no new task completion claimed. Evidence: `c2-pdf-start-outcome.json` and `c2-pdf-progress-outcome.json`; native totals remain 7 Complete/4 Execution/28 Todo.
+
+The source executor finished the admitted production bindings at `544aacce2d6dfc661e52aa4ae13c2ecf61e0f674`, after clean local feature merge `eec9e8b94a4ff2bcef0b3558316db70566ee51c2` of accepted C1 snapshot `15a90cb`. There were no conflicts or C1 semantic edits. The manager confirmed matching HEAD and clean source before appending queued canonical Rounds 7-13. Runtime preparation separately used the SQLite backup API on a read-only connection to the live WAL database, cloning synthetic state, the hidden canonical version-1 PDF and private secrets into a new owned directory. Row counts matched, including the ordinary legacy comment; no backup handles remained. No new container or network was started, and the proposed `127.0.0.1:19096` runtime recipe remains pending acceptance. Evidence: `executor-integration-v2.md`, `runtime-clone-preparation-v1.json/.md`.
+
+Fresh verifier `7fb1adf5-6e3f-4a36-8180-73c8dde477f2` and read-only reviewer `14efa029-a56f-4af9-b921-8f1660326904` then examined the same frozen candidate concurrently. The verifier reproduced the literal G6 geometry oracle, supporting real router/schema and model tests, and actual viewer typing; no standing suites ran. A separate isolated fixture without the test-only license bypass proved the real Free PDF markup path returns `403 premium_required` while plain comments return 201. The client also disables the new PDF surface for `premiumFeatures:false`. Both roles initially misclassified reuse of the legacy gate as acceptable; their reports now explicitly retract that interpretation against the already-established user decision that only No-IP is Pro among new Track C work. This is not a new packaging decision or permission to bypass legacy image/video licensing globally.
+
+The reviewer also confirmed two reachable caller bugs: supported pre-candidate licensed PDF draw/save creates unanchored rows which the new overlay guards and page filter can no longer display; the normal version dropdown can temporarily render new-version annotations over stale old-version bitmaps during loading. Legacy-data prevalence is unverified, but the original supported input path is verified. Zoom-control and broader end-to-end coverage comments remain advisory. The manager combined all three concrete failures into **one** bounce: cumulative C2 2/2 bounces spent, 0/2 restarts. No repair, standing build or runtime switch follows automatically. Fresh judgment-tier GPT-6.1 Sol consult `af546fd1-1dd1-4275-acbf-26e6da879b63` is diagnosing whether one explicitly approved last attempt is sufficient; C1's spent exception and all upstream trust boundaries remain unchanged. Canonical Rounds 14-16 record the distinction between literal G6 GREEN and rejected product acceptance. Review report clock estimates include future end stamps, so the record uses the manager's actual `2026-11-05T17:51:19Z` receipt/check bound and leaves precise uninstrumented ends unknown.
+
+Continuation ledger so far: one new source context, one new verifier, one new reviewer, one reused runtime context, one actual rival-family copy cleanse and one judgment consult; no simplifier, new scribe or approved last-attempt executor. Execution-role installed pins were rechecked as `sonnet`; manager and explicit judgment consult remain mapped to GPT-6.1 Sol on this host. Classification follow-ups reused their original contexts and are not extra repair attempts. Evidence: `verifier-pdf-candidate-v1.md`, `verifier-free-pdf-no-bypass-enforcement.log`, `review-pdf-candidate-v1.md`; consult output pending.
+
+The completed consult recommends one explicitly approved GPT-6.1 Sol last attempt: the three failures are localized implementation corrections, not missing A/B contracts or a new product decision. Its packet includes actual Free create/read/edit geometry visibility and all caller controls, faithful labeled legacy fallback without guessed page anchors, and coherent loading/version state. Genuine unlicensed browser save/reload is required before presenting the new markup as working; licensed legacy-path evidence must not fabricate entitlement, and broader C6/human workflow acceptance remains separate. No repair is authorized by the recommendation itself. The manager is offering the exception once, with a stop on any remaining material failure; ordinary C2 retries remain exhausted. Canonical Round 17 and `consult-exhaustion-v1.md` preserve the diagnosis.
+
+The user selected **"Approve final GPT-6.1 Sol attempt (Recommended)"**. Decision 52 and canonical Round 18 record this exact authorization. At `2026-11-05T18:15:03Z`, preflight confirmed clean source at metadata-only HEAD `a0ba879376b107f214967b582524d0e7957ae7f7`, identical product code to `544aacc`. The manager then appended only Round 18 and dispatched fresh executor `41c06a90-609f-4280-b3c8-84c985ba4462` with the explicitly requested GPT-6.1 Sol override, no reasoning override and no nested agents. Its only writable product territory is the existing C2 worktree; the manager-owned gate row must remain untouched. This is the single last-attempt exception, not another ordinary bounce or reset. Previous source, verifier, reviewer and consult contexts are idle; no final standing or runtime acceptance has occurred.
+
+The original synthetic PDF share's normal one-hour expiry passed while waiting for permission. The retained runtime setup context is restoring its availability only through a supported owner-authenticated expiry update on the same fixture, preserving token, comment permission and all other settings. No global TTL, server clock, auth check or database row is patched directly. The already-prepared isolated clone deliberately remains its original point-in-time snapshot; after an accepted combined backend starts, its own share must receive a separate normal API expiry update before presentation. Runtime continuity and the final source correction use different owned resources and do not authorize deployment or another C1 repair.
+
+Runtime continuity completed at `2026-11-05T18:17:05Z`-`18:17:16Z`: the existing route's supported `expiresAtMs` field was checked before a fresh authenticated `PATCH /api/links/1` extended only expiry by 24 hours. Login and update returned 200; anonymous metadata returned 200 and actual PDF range streaming returned 206. The same link/token, comment permission and access mode were retained, owner JWT stayed ephemeral, and the original container remained running unchanged. The prepared clone was not modified and `19096` was not started. The manager reloaded the existing recipient browser after these checks. Evidence: `recipient-runtime-expiry-extension-v1.json/.md`; this completed round is queued for the canonical gate log until the active source executor finishes its index work.
+
+### C2 final correction and independent acceptance
+
+The sole approved Sol exception produced `c41811272cecd0e02abef9f7034e5153eefa8a5d` at `2026-11-05T18:28:58Z`. It fixes the three combined findings without changing C1, schema or dependencies: actual Free PDF controls/server authorization, faithful licensed legacy drawing visibility and coherent loaded version/bitmap state. The same persistence objective also required repairing the real HTTP page serializer, per-page Save/Undo/confirmation wiring and CommentsPanel edit/SSE page retention. Seventeen self-check invocations included four failures corrected before the candidate froze; these were not hidden or relabeled as independent passes.
+
+Retained independent verifier/reviewer contexts cleared that same source. Fresh real enforced-Free server/model checks passed 10/10; consumed viewer checks passed 9/9; exact G6 and semantic typecheck passed. Review found no unresolved bugs; per-row PDF lookup cost remained advisory, with no simplifier or source expansion. Final standing ran once, sequentially, at `18:41:30Z`-`18:42:25Z`: server build, full server tests, full viewer tests and literal viewer build all exited 0. Server counts were 801 passed/2 skipped; viewer counts were 26 passed. Skip provenance was not re-verified, and canvas/chunk warnings were disclosed. Both built outputs were ready; source and lockfile stayed unchanged. Unaffected 45flow client standing was not repeated.
+
+Evidence: `final-correction-sol-v3.md`, `verifier-pdf-correction-v3.md`, `review-pdf-correction-v3.md` and `verifier-pdf-final-standing-v3.md` under session `verification/c2-pdf-preview-20261105/`. Canonical C2 Rounds 18-24 record the exception, correction, independent checks and final standing. G6 is GREEN; G1-G5/G7-G8 and overall C2 remain RED. The earlier model correction and combined PDF finding consumed the normal 2/2 bounces; the approved exception is delivered/spent, not a new budget.
+
+### Genuine Free runtime and visible PDF markup
+
+At `18:44:54Z`-`18:47:52Z`, the retained operator started a separate loopback-only `19096` backend from accepted source/builds in the owned rootless, internal-network, read-only-source container. Only the cloned synthetic state is writable. Health returned 200; licensing remained `UNLICENSED/missing_certificate/fallback=false`. Normal owner expiry-only PATCH retained the same link/token/access/comment controls. Existing `GET /api/files/1/versions` detected changed original synthetic PDF bytes and created canonical V2 without broadening upload permission or fabricating rows. Original V1 bytes/comment remained intact; both recipient version streams matched their distinct hashes. Old `18081`/`19095` services were untouched.
+
+The embedded browser reported hidden visibility and paused PDF rendering. The user confirmed the preview panel visible, but a subsequent version load paused again. An existing installed Chromium156 session provided the actual UI proof instead: no dependency installation, app patch, fake visibility, rendering override or auth/license injection. Its ordinary anonymous name dialog, native browser mouse input and toolbar/modal saves created V1 page-2 comment2 and V2 page-1 comment3. Cache-bypassing document reloads retained 2440 red overlay pixels only on each target page, with identical base-page bitmap hashes before/after. V2 initially had no inherited V1 drawing. Read-only HTTP inspection corroborated the real UI writes; it did not substitute for them. The original general V1 comment stayed unchanged.
+
+The final restored screenshot was captured at `20:10:36Z`; the live preview link and real screenshot thumbnail were published at `20:12:06Z`. The temporary Chromium helper was stopped, its debug port closed and its explicitly owned profile removed. All three intentional local services remain available. This is a genuine recipient increment, not a connected owner dashboard, verified-approver proof, actual licensed legacy-browser acceptance or completed C6 device matrix. Evidence: `runtime-pdf-candidate-v3.json/.md`, `browser-proof-v3.json` and the saved/restored browser state/screenshot files. Canonical Rounds 25-26 record both stages.
+
+### PDF task completion and approved owner/date correction
+
+After the scoped checks and actual browser work, supported `complete_tasks` returned 200 for PDF task `ec1d0331-de2b-4bd8-b82d-26ba3edf758c`. Native readback confirmed Complete and an unchanged Active C2 parent. Track C is now **8 Complete/4 Execution/27 Todo, 39 tasks/136h unchanged**. This changed status from achieved work, without a status picker or new Princess prose.
+
+On November6, the user explicitly approved assigning this one task to `mpyne` (decision53). A validated unchanged-prose `persist_plan` payload saved the observed dispatch start, `2026-11-05 13:05:40` local, and replaced server-now completion with finishing commit `c418112`'s actual `14:28:58` local date. The original 8h estimate and November16 10:59 target stayed unchanged. Native task readback confirmed Complete/mpyne and those dates; C2's owner, 24h effort, Active status, start/target and original description hash stayed unchanged. No velocity was fabricated and bulk charter scheduling did not resume.
+
+The stored `plantasks` mirror independently still reads Todo/TBD with its old planned start. Supported native persistence and its stamped response are not evidence of mirror synchronization; no direct SQL repair was attempted. Exact payload/readbacks are held in `princess-track-c-sync-20261104/c2-pdf-{complete,owner-dates}-outcome.json` and `c2-pdf-owner-dates-outgoing.json`. Canonical Rounds27-28 record completion and the approved correction. Other threads' ownership/writer issues remain separate.
+
+No new A/B handoff appeared in either repository's bounded open-PR inventory. Remaining ready-work decisions still follow the existing graph: C3's real SMTP/outbox core awaits production credential/status/event bindings; C5 awaits its gateway boundary/lab acceptance; C4 awaits agreed performance protocol/targets and human results; C6 needs actual upstream/device/upgrade acceptance. Do not invent competing foundations or mark these complete from this PDF increment.
+
+Continuation ledger: manager/judgment GPT-6.1 Sol; one original Sonnet source context, one retained Sonnet verifier and one retained Sonnet reviewer; reused runtime context, one narrow Sol/high consult, one user-approved GPT-6.1 Sol executor with no reasoning override, and one earlier actual Claude-family prose cleanse. No new scribe or simplifier; status/owner/date writes preserved all prose. Four final standing commands, once; no new dependencies or source repairs after `c418112`. C2 exceeds six recorded rounds because the original component handoff lacked consumed caller/storage integration, later combined findings required the final exception, and runtime/bookkeeping stages share the cumulative log. This is not permission to reset its spent budget. Source and canonical evidence remain local on the C2 feature branch; only the existing manager progress PR is updated. No new PR, default-branch merge or deployment.
