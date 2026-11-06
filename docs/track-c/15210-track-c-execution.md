@@ -101,6 +101,17 @@ no retry budget was reset. Token/credit totals are not available from this harne
 The source increments remain on local feature branches; whole-thread landing and
 native completion are not authorized by the component demonstration.
 
+The next G3 boundary was traced read-only, with narrow source reads because Graft
+was unavailable. Real download completion activity already exists; it is not blocked
+merely because C2's review UI is unfinished. However, the current payload does not
+bind the immutable served version, ZIP activity has only a file count, and open-link
+access deliberately has no verified user. A generic completed-event consumer would
+also need to exclude partial/range and other non-download traffic. Existing identity
+and asset-version helpers should be reused, not replaced. Another consumer has not
+been admitted without the exact completion/identity/version handoff and fixture
+evidence. Session `download-readiness-v1.json` records the source locations; G3 remains
+RED and no source or authored gate was changed.
+
 ### Earlier API admission snapshot
 
 The user requested continued work on unfinished Track C tasks. Native inventory still has
