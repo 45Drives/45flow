@@ -226,6 +226,36 @@ This stage used one new execution-tier executor, one fresh verifier context
 (candidate plus final), one fresh reviewer and one judgment context with two
 narrow finding classifications. Bounce 2/2 and restart 0/2 remain unchanged.
 Princess writes remain paused.
+The accepted backend is now running in the private C3 lab: container
+`9607716d724e` restarted at 20:31:34Z and reported healthy. Normal user,
+password, share and access APIs provisioned a genuine owner and authenticated
+recipient; no direct protected-state injection was reported. A full single-
+file download created one owner notification at 20:33:04Z. The retained sink's
+controlled first-attempt 550 rejection stayed visible; an explicit retry at
+20:33:51Z was accepted by private TLS SMTP on attempt two. This is SMTP
+acceptance, not inbox receipt or first-attempt success.
+The same recipient's duplicate download left that row and attempt count
+unchanged. An expired anonymous link was renewed through the normal API,
+preserving identity, then downloaded successfully at 20:40:08Z with no new
+mail. Runtime duplicate evidence covers the same link only; cross-link
+deduplication/restart evidence remains the earlier independent test.
+No new frontend surface was added: this increment is demonstrated through
+real API/outbox/private SMTP evidence, not a new screenshot or invented UI.
+The runtime report wrongly says the candidate changes only one server file
+(it changes three) and includes share tokens despite claiming otherwise.
+Manager requested artifact-only correction/redaction; those artifacts are not
+published to the user as-is. The lack of client changes does not prove every
+possible application UI is absent; the current lab lacks this specific
+notification display. Canonical rounds 61-62 preserve publication and runtime
+observations. G2, G8, ZIP/collection work and the Princess write pause remain.
+Fresh execution-tier read-only handoff `da9a7888-8442-4d7b-bb8b-3250a94a8576`
+now traces only the authorized C2 review/decision producer contract for G2.
+It must establish real event identity, recipient authorization and an
+independent intended-recipient oracle, or return the precise missing product
+decision; no notification policy may be invented. This is not a source-
+repair attempt or budget reset. It owns no source writes and must leave the
+running private previews unchanged. Expected evidence:
+`verification/c3-consumed-status-20261106/review-event-handoff-v1.md`.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
