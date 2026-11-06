@@ -1,5 +1,45 @@
 # Project 15210: Track C execution record
 
+## November 6: C3 G7 first sending integration
+
+B-09's accepted producer is published at
+`2d66c3e4d9cf2412fee06625dcf6b6c19234dd85` on `mpyne1-ideal-eureka`.
+It is not merged and no additional PR was opened. This completes the bounded
+credential prerequisite, not all B1 or C3. Princess writes remain paused.
+
+Read-only C3 admission `0cd5ba1c-139d-494e-903d-93b7ea4a2632` returned READY,
+captured 16:25:55Z-16:28:12Z, without tests, source changes or children.
+It confirmed the outbox and SMTP wrapper have no production send/retry callers,
+the DTO still hardcodes unconfigured/not-sent, and `requireTLS` is not forwarded
+to Nodemailer. Those are genuinely unwired G7 integrations, not another repair
+of the accepted API or a C3 retry-budget reset.
+
+Fresh execution-tier executor `ebed9189-55b4-4d89-add9-3a84aa7a19fd` now owns
+the first server-only integration in the existing C3 tree. It will consume the
+exact published producer while preserving the C3 outbox, dependency lock and
+routes; actual integration conflicts and commit mappings must be recorded.
+The bounded entrypoint is one explicit inline attempt on a new pending invitation,
+plus owner-scoped explicit retry on the same invitation. GET does not send.
+There is no daemon, background retry loop, startup recovery or new secret store.
+Unconfigured behavior stays compatible; unavailable credentials are distinct,
+TLS verification/required STARTTLS are preserved, and status reports observed
+SMTP acceptance rather than inbox delivery.
+
+An active or abandoned `sending` claim must not be blindly recovered or resent.
+Existing operator-fenced recovery remains outside this first packet; expose an
+honest recovery-required state rather than pretending restart integration is done.
+Dedicated client settings/retry controls and a refreshed live preview follow the
+verified server contract. C2 review events, completed-download notifications and
+the human provider check remain unfinished, not replaced with synthetic events.
+
+C3 budget remains bounce2/2, restart0/2, with its final documentation exception
+spent. Any new independent source bug requires escalation, not another automatic
+repair. Only focused checks run during implementation; fresh independent review
+and affected-gate verification must clear the same candidate before final standing.
+Canonical C3 round 27 records admission. The prior UI-slice ledger is unchanged;
+this new consumer stage has one Sonnet admission and one Sonnet source-executor
+spawn, with no verifier/reviewer for the new source yet.
+
 ## November 6: approved B-09 mail-credential prerequisite
 
 The user explicitly included the Track B prerequisite needed for real C3 mail,
@@ -28,8 +68,8 @@ Existing main admin/audit/root-service boundary
 
 | Work | Prerequisite/readiness | Owned territory | State |
 | --- | --- | --- | --- |
-| B-09 producer | Existing main contracts; user-approved seven-gate specification | Shared broker, SMTP adapter/admin routes, focused tests and docs | One bounded correction active after review advisory reclassified as bug |
-| C3 consumer | Independently verified B-09 source and actual integration checks | Existing C3 mail/settings/worker interfaces | Waiting; not early-started |
+| B-09 producer | Existing main contracts; user-approved seven-gate specification | Shared broker, SMTP adapter/admin routes, focused tests and docs | GREEN producer published as 2d66c3e; native writes paused |
+| C3 consumer | Independently verified B-09 source and actual integration checks | Existing C3 mail/settings/worker interfaces | READY admission complete; first server-only explicit sending/retry implementation active |
 | Other B1-B6 work | Not authorized by this prerequisite decision | Unchanged | Outside scope |
 
 Canonical producer gates: `gates/b1-credential-handling-contract.md` in its B1 tree.
@@ -72,21 +112,93 @@ not another broad review; its examination ran 16:05:14Z-16:06:30Z and artifact
 persistence was confirmed at 16:07:23Z.
 
 Combined bounce1/2, restart0/2. Fresh correction executor
-`ff595411-009a-42b2-851d-83719dd03b7b` owns only the post-await initialization
+`ff595411-009a-42b2-851d-83719dd03b7b` implemented only the post-await initialization
 recheck and one deterministic regression exercising the real SQLite/API overlap.
 Source HEAD was still `162823ccb5c7cde3afb7c2497cdeebba901a8a64`, with only
 owned gate metadata dirty, at the 16:08:13Z preflight. The regression must first
-demonstrate the failure, then pass after correction. The harmless unused initial
-key-version advisory is deferred. All seven gates plus the regression will need
-verification and delta review; final standing remains reserved for a clear candidate.
-Manager rounds 2-5 record execution, independent checks and reclassification.
+demonstrate the failure, then pass after correction. It did: both HTTP calls returned
+200 before the original store raised `decrypt_failed`; after the local fix the
+regression and focused eight-test file passed. The committed correction is
+`997b5117eba81ed5d5cdae480abad2c4c91ae2f5`, changing only the store and test file.
+Source handoff was confirmed at 16:15:35Z; only owned gate metadata was dirty.
+The report's 16:08:13Z start label was corrected to manager handoff, not measured
+execution start; actual start remains unknown, captured end is 16:14:27Z.
+
+The harmless unused initial key-version advisory is deferred. The retained
+independent verifier rechecked all seven exact repo-root gates and the regression
+on the corrected candidate; the focused file passed all eight tests. The reviewer
+returned CLEAR on the delta and affected callers. Verifier interval:
+16:16:42Z-16:18:54Z; reviewer interval: 16:16:39Z-16:18:23Z. The canonical
+dispatcher works from the repository root or server directory; the executor's
+claim that the server directory was required was not reproduced.
+
+The verifier also unnecessarily replaced the store working file with the base
+for an extra RED reproduction, contrary to the explicit source-freeze instruction.
+It restored the candidate byte-exact and reran the focused file successfully.
+Because this overlapped review, the reviewer reconfirmed only the initialization
+body from immutable blob `c2762d8b14305712f0446fefb4bb58af083e5646` at
+16:20:56Z-16:21:07Z, again CLEAR. The reviewer also confirmed the original review
+used immutable commit views throughout and was never exposed to the temporary
+working-tree swap. This avoidable harness clarification is not another source bounce.
+No new agents were spawned for the same-task follow-ups. Manager rounds 2-9 record
+execution, independent checks, reclassification, correction and the harness issue.
+
+Final standing passed on source `997b5117eba81ed5d5cdae480abad2c4c91ae2f5`:
+`yarn build:server` at 16:22:18Z-16:22:19Z, exit0; `NODE_ENV=test yarn test`
+at 16:22:23Z-16:22:30Z, exit0 with 777 passed and 2 pre-existing skipped tests.
+There were exactly two standing commands, no source changes or live children.
+The store blob, lock and source stayed unchanged.
+
+Read-only consumer preparation identified one backup-document ambiguity. Original
+producer executor clarified only that paragraph in
+`e561fcac2eadbc071d779d6ebc5aa33634b727b8`, 16:24:19Z-16:24:45Z:
+backup versions must match, but the key backup remains separately protected from
+the encrypted credential/database backup, with old-key retention and recovery
+caveats preserved. Independent document delta review returned CLEAR at
+16:26:13Z-16:26:31Z. Production
+source/config/tests/lock match verified `997b511`; the standing evidence carries
+without another suite. Accepted gates/evidence were published as `504a05e`,
+remote-confirmed with a clean tree at 16:28:47Z. Publication-record-only follow-up
+`2d66c3e4d9cf2412fee06625dcf6b6c19234dd85` was pushed and matched by
+`git ls-remote`. Canonical B-09 rounds 10-13 preserve these actions. No merge,
+new PR, deployment, provider request or Princess write occurred.
+
+New execution-tier C3 admission agent `0cd5ba1c-139d-494e-903d-93b7ea4a2632`
+was read-only on existing C3 `a1f1401` and immutable verified B source `997b511`.
+It traced the actual adapter/outbox/transport/lifecycle handoff and integration
+territories, without implementing or cherry-picking. C3's bounce2/2 and spent final
+documentation exception remain unchanged; any new independent source bug still
+requires explicit escalation. C2 event and download producers are not substituted.
+This adds one Sonnet admission spawn outside the earlier UI-slice ledger.
 Evidence: session `verification/b1-credentials-20261106/candidate-v1.md`,
-`review-v1.md`, `verifier-v1.md` and `race-classification-v1.md`.
+`review-v1.md`, `verifier-v1.md`, `race-classification-v1.md` and `candidate-v2.md`.
 
 B-09 ledger: manager/judgment GPT-6.1 Sol; two new agent-pinned Sonnet executors,
 one verifier and one reviewer; one GPT-6.1 Sol judgment consult through the
 judgment-tier subagent mechanism; zero simplifier or scribe spawns.
-Bounce1/2 used, restart0/2. No final acceptance or sending claim.
+Bounce1/2 used, restart0/2. Acceptance covers B-09 only; no C3 sending claim.
+
+B-09 final outcome: **GREEN prerequisite**, left on its published feature branch;
+native B-09/B1 status is unchanged because business writes remain paused.
+Thirteen recorded rounds exceed the normal target because the initial review
+misclassified a supported key-loss race, the verifier's avoidable freeze breach
+needed provenance confirmation, and backup wording needed a precise handoff
+clarification. No budget cap was raised and no extra source repair was hidden.
+
+| B-09 role | Tier/model | Spawns | Notes |
+| --- | --- | --- | --- |
+| Manager | Manager / GPT-6.1 Sol | Existing session | Publication and dependency decisions |
+| Consult | Judgment / GPT-6.1 Sol | 1 | Bug-versus-quality classification; judgment-tier subagent mechanism |
+| Gate executor | Execution / agent-pinned Sonnet | 2 | Initial producer, one source correction; producer also finished its backup paragraph |
+| Gate verifier | Execution / agent-pinned Sonnet | 1 | Candidate, correction, final; extra RED source swap was an avoidable harness violation |
+| Code reviewer | Execution / agent-pinned Sonnet | 1 | Initial and delta reviews, immutable-body confirmation, one-paragraph document review |
+| Simplifier | Execution | 0 | Not needed |
+| Princess scribe | Bookkeeping | 0 | Business-write pause preserved |
+
+Final B-09 evidence: producer `gates/b1-credential-handling-contract.md`,
+session `verification/b1-credentials-20261106/verifier-final-v2.md`,
+`review-v2.md` and `handoff-doc-review-v1.md`. Escalation offers: zero;
+bounce1/2, restart0/2. Provider delivery and deployment were not part of acceptance.
 
 ## November 6 continuation: C3 production invitation boundary
 
