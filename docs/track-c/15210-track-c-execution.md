@@ -2,6 +2,33 @@
 
 ## November 6: C3 G7 first sending integration
 
+The genuine local SMTP preview is now running and was published at
+17:59:36Z. The actual accepted frozen component submitted through the real
+accepted backend and a private STARTTLS sink; its UI shows SMTP acceptance
+with the inbox-delivery caveat. Manual refresh reads the same status without
+resending. Normal auth, the real credential admin API, isolated protected key
+and certificate verification stayed in place. This is a component lab and
+local mail sink, not the full dashboard or external inbox/human G8.
+Backend19097 now uses container `8ae60adc3481`, PID2791047; UI18082 uses
+PID2803798, with the private sink container `ca306a8c498f` deliberately retained.
+The unrelated 18081/19095/19096 services stayed untouched. No product source,
+dependency or authored gate changed for runtime preparation.
+Canonical rounds 40-41 and session `verification/c3-consumed-status-20261106/runtime-smtp-v1.md`
+record this increment; the published screenshot is under
+`published-updates/db328a397c25f379e20fe742dd40e1ac208e9c195584de8dd11401857fc2c2e0/`.
+
+The lab's own font resolution and SMTP DATA parser needed fixture-only fixes.
+A rejected row and one timeout row were preserved rather than rewritten.
+The timeout's cause remains unproven: a later successful raw-TCP probe does
+not establish the claimed networking-settle attribution or prove a source bug.
+It is not grounds for another product repair or a guarantee of resolution.
+Settings/retry controls, authorized review/download notification producers and
+real-inbox acceptance remain unfinished; Princess writes are still paused.
+Fresh execution-tier read-only admission `98cfd911-e957-4187-b5ff-d7874dfcf5b3`
+is mapping only the production SMTP settings home/admin patterns and existing
+invitation retry control, with the verified producer as prerequisite. It does
+not change gates, reset the correction budget or edit source while mapping.
+
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
 `a8f25134daba9019b5cb867bc0f21a6eac15dc55`. Retained independent delta review
@@ -29,6 +56,12 @@ normal auth, the real credential API and a trusted local TLS SMTP sink.
 The component must be frozen to its accepted bytes before handoff so later
 source edits cannot silently alter a published preview. No real provider
 or inbox acceptance is claimed, and no new preview is published yet.
+The first runtime return completed only the immutable-component clarification:
+actual component/style blobs were matched to the accepted client and frozen
+read-only in the lab, preserving real HTTP/auth. It did not establish the
+accepted backend or an SMTP send, and the requested runtime SMTP report was
+absent. Manager explicitly resumed the still-unfinished original SMTP task.
+This is not a successful SMTP preview or human G8 acceptance.
 Evidence: session `verification/c3-consumed-status-20261106/verifier-status-final-v1.md`.
 The executor observed
 17:28:16Z-17:31:16Z, directly reproduced the stale server diagnosis and the
