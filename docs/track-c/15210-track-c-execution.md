@@ -256,6 +256,24 @@ decision; no notification policy may be invented. This is not a source-
 repair attempt or budget reset. It owns no source writes and must leave the
 running private previews unchanged. Expected evidence:
 `verification/c3-consumed-status-20261106/review-event-handoff-v1.md`.
+Runtime artifact corrections have now returned: share tokens are redacted,
+three changed server files are correctly named, UI scope is limited to the
+current lab, and same-link runtime dedup is distinguished from independently
+tested cross-link durability. No runtime/source changes or reruns occurred.
+The bounded G2 handoff returned NOT READY (actual UTC
+20:43:25Z-20:45:44Z). C2's real decision model exists on its separate branch,
+but no production API calls it; actor/approver references explicitly are not
+verified identities. C3 does not contain those review tables, and existing
+comments emit browser SSE rather than durable mail events. No authorized
+recipient golden fixture or trigger policy exists. The handoff references
+pre-metadata-publication C3 HEAD `0019142f`; later metadata-only publication
+does not change the traced product source `ddb9eb99`.
+This is a genuine missing prerequisite, not a failed implementation or a
+reason to fabricate completion. G2 remains RED. Before implementation,
+the user must decide which review activity should generate email; recipient
+policy and verified C2 producer integration must then be explicit as well.
+Canonical rounds 63-64 preserve corrections and the blocker. No new product
+source, tests, builds, Princess writes or provider calls ran for the handoff.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
