@@ -28,7 +28,7 @@ Existing main admin/audit/root-service boundary
 
 | Work | Prerequisite/readiness | Owned territory | State |
 | --- | --- | --- | --- |
-| B-09 producer | Existing main contracts; user-approved seven-gate specification | Shared broker, SMTP adapter/admin routes, focused tests and docs | First implementation active |
+| B-09 producer | Existing main contracts; user-approved seven-gate specification | Shared broker, SMTP adapter/admin routes, focused tests and docs | One bounded correction active after review advisory reclassified as bug |
 | C3 consumer | Independently verified B-09 source and actual integration checks | Existing C3 mail/settings/worker interfaces | Waiting; not early-started |
 | Other B1-B6 work | Not authorized by this prerequisite decision | Unchanged | Outside scope |
 
@@ -46,11 +46,47 @@ Approved gate metadata is committed at `676b8b55ecbe3fec4cdd4e2d87bb51f2c13bfc18
 the clean handoff was confirmed before dispatch. Gate SHA-256 is
 `2652434383d6edc7fffe31887c5430b7e1a5b904099f320622ddd8701455ed35`;
 the exact Bash dispatcher is session `verification/b1-credentials-20261106/checks-v1.sh`.
-Execution-tier executor `fa4f2e81-4479-48fc-9d29-958e3a531ca9` is implementing
-the first candidate. The pre-dispatch clock was 15:43:18Z; actual executor
-start/end must come from its captured report. No native dates were written.
-B-09 ledger: manager/judgment GPT-6.1 Sol, one new agent-pinned Sonnet executor,
-zero verifier/reviewer/consult spawns so far. No candidate or GREEN claim yet.
+Execution-tier executor `fa4f2e81-4479-48fc-9d29-958e3a531ca9` produced candidate
+`162823ccb5c7cde3afb7c2497cdeebba901a8a64`; clean source and unchanged authored
+gates were confirmed before independent handoff. Its self-checks reported all seven
+gate selectors and 74 route-inventory tests passing; these are not verifier evidence.
+An initial missing-dependency failure justified the immutable install, with no lock
+change. A fresh SQLite fixture-schema failure was corrected within that first round.
+No standing suite or server build was run. The report captured end 15:59:31Z;
+start remains unknown, and source-file mtime 15:53:12Z is not a measured start.
+The pre-dispatch clock was 15:43:18Z. No native dates were written.
+
+Fresh verifier `d6192b7c-6d42-4bd6-93b7-b134d5b0ecaa` marked all seven gates
+GREEN on the frozen candidate, with one asserting test selected by each exact check.
+Captured verifier interval: 16:01:33Z-16:02:28Z; no standing runs or source changes.
+Read-only reviewer `9ec88572-7d71-473d-a3e5-12397dd88600` returned CLEAR with
+initial-key creation and rotate-before-configuration advisories. The reviewer
+classified no bugs, but the first advisory describes overlapping fresh-install
+calls discarding a generated key. Judgment consult
+`d94c07e0-face-4aa4-9a25-b018838c5059` classified this as a bug: overlapping first
+SMTP PUT and first rotation POST can both return success while discarding the
+sole saved SMTP credential's encryption key. Two PUTs alone do not prove this.
+This is a supported-input static schedule, not an observed production incident
+or an executed reproduction. The narrow consultation used manage point 3,
+not another broad review; its examination ran 16:05:14Z-16:06:30Z and artifact
+persistence was confirmed at 16:07:23Z.
+
+Combined bounce1/2, restart0/2. Fresh correction executor
+`ff595411-009a-42b2-851d-83719dd03b7b` owns only the post-await initialization
+recheck and one deterministic regression exercising the real SQLite/API overlap.
+Source HEAD was still `162823ccb5c7cde3afb7c2497cdeebba901a8a64`, with only
+owned gate metadata dirty, at the 16:08:13Z preflight. The regression must first
+demonstrate the failure, then pass after correction. The harmless unused initial
+key-version advisory is deferred. All seven gates plus the regression will need
+verification and delta review; final standing remains reserved for a clear candidate.
+Manager rounds 2-5 record execution, independent checks and reclassification.
+Evidence: session `verification/b1-credentials-20261106/candidate-v1.md`,
+`review-v1.md`, `verifier-v1.md` and `race-classification-v1.md`.
+
+B-09 ledger: manager/judgment GPT-6.1 Sol; two new agent-pinned Sonnet executors,
+one verifier and one reviewer; one GPT-6.1 Sol judgment consult through the
+judgment-tier subagent mechanism; zero simplifier or scribe spawns.
+Bounce1/2 used, restart0/2. No final acceptance or sending claim.
 
 ## November 6 continuation: C3 production invitation boundary
 
