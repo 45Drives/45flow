@@ -374,6 +374,10 @@
               </div>
             </div>
 
+            <div v-if="link?.id" class="col-span-3 rounded-lg border border-default bg-default/20 p-3">
+              <EmailInvitationPanel :key="link.id" :link-id="link.id" :api-fetch="apiFetch" />
+            </div>
+
             <div class="col-span-3 rounded-lg border border-default bg-default/20 p-3 space-y-3">
               <div class="text-default font-semibold">Media Processing</div>
               <div class="flex flex-wrap items-center gap-3 min-w-0">
@@ -1032,6 +1036,7 @@ import CommentsReviewModal from './CommentsReviewModal.vue'
 import CategoryManagementModal from './CategoryManagementModal.vue'
 import PathInput from '../PathInput.vue'
 import LinkTranscodeStatus from '../LinkTranscodeStatus.vue'
+import EmailInvitationPanel from '../EmailInvitationPanel.vue'
 import WatermarkCustomizer from '../WatermarkCustomizer.vue'
 import WatermarkPreview from '../WatermarkPreview.vue'
 import type { LinkItem, LinkType, AccessRow, Status, ExistingUser } from '../../typings/electron'
