@@ -102,9 +102,44 @@ The retained runtime context was reused, with no additional runtime spawn.
 Review-event integration still needs the authorized C2 producer handoff.
 The saved `download-readiness-v1.json` already locates the real download seam,
 verified-user/anonymous split and version helpers; no broad retrace is needed.
-Before first-download email integration, clarify the anonymous-recipient
-policy rather than invent a verified identity or silently change open-link
-access. No anonymous-notification policy has been selected yet.
+The user selected verified-recipient-only first-download emails while leaving
+anonymous downloads available (decision 61, manager observed 19:23:58Z).
+The gates author compiled that confirmed policy inline without changing any
+Check, Expect or verdict. No identity may be guessed from an invitation
+address, public token, IP or browser session, and no new sign-in restriction
+is authorized. The next bounded handoff must establish immutable served-
+version binding, the actual owner destination and existing outbox/dispatch
+integration; the prior seam discovery is carried rather than repeated.
+Read-only handoff `8b94f8c6` located the real owner `users.user_email` and
+reusable generic outbox payload, but its first proposed packet is not admitted.
+Stamping a version ID before streaming a mutable path is not a demonstrated
+immutable-byte binding; including link ID in deduplication can over-notify
+the same owner/recipient/version through two links. A single retained-context
+clarification corrected owner-scoped dedup and explicit HEAD/Range eligibility,
+without a broad retrace or source implementation. The actual clarification
+UTC is 19:31:48Z-19:34:26Z. The actor now attests the first pass's start
+19:26:19Z was captured; its approximate end remains unknown.
+The remaining issue is the version oracle: the current route streams a live
+path, while the existing helper labels a version and schedules a separate
+snapshot. A narrow point-2 judgment consult `7ae48509` now determines the
+smallest contract-faithful binding, without inventing a cryptographic transfer
+guarantee, silently accepting wrong-version dedup or redesigning downloads.
+That consult admits a minimal stable-file-descriptor implementation: correlate
+the opened descriptor with the existing version mechanism's actual match/mint
+observation, then require EOF, full byte count, no read error and unchanged
+fingerprint at response completion. A changed/unbound observation gets honest
+audit feedback, no version email and no consumed dedup key. No snapshot-copy
+wait, immutable-serving conversion, cryptographic proof or new human decision
+is required. The helper's current latest-ID fallback is not positive version
+provenance, and otherwise bindable stable first downloads must not be skipped
+merely because their snapshot copy is pending. Canonical round 54 and session
+`download-version-oracle-judgment-v1.md` record the exact boundary.
+Missing/invalid owner email must not be guessed: no SMTP, explicit existing
+unavailable/audit feedback, and downloads remain usable. No opt-out product,
+automatic replay or sibling outbox solely for naming is authorized.
+This adds one execution-tier read-only handoff context plus its continuation,
+and one GPT-6.1 Sol gate-oracle judgment consult, not another implementation/
+repair round or correction-budget reset. No G3 source is implemented yet.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client

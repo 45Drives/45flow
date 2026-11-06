@@ -102,3 +102,15 @@ affected verification and final standing if cleared. This explicit exception
 does not reset C3's bounce2/2 or restart0/2 budgets, authorize another automatic
 repair, resume Princess writes, permit provider requests or allow deployment,
 merging or a new PR.
+
+## C3 first-download recipient policy
+
+Decision 61, 2026-11-06: the user selected "Verified recipients only; anonymous
+downloads remain available (Recommended)." Send first-download notification
+emails only for recipients whose identity is established by the existing
+verified-access contract. Downloads without a verified recipient identity
+remain available under their existing open-link permissions and do not
+trigger these emails. Do not guess identity from an invitation address,
+public token, IP address or browser session. This clarifies decision 15;
+it does not authorize an anonymous tracking scheme, new sign-in restriction,
+provider calls, native Princess writes or another source-repair attempt.
