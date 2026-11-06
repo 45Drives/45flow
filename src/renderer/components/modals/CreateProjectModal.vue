@@ -1,61 +1,73 @@
 <template>
-	<Teleport to="body">
-		<div v-if="modelValue" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 text-default" @click.self="close">
-			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-4xl mx-4 bg-accent">
-				<h3 class="text-lg font-semibold mb-4">Create New Project</h3>
-				<form @submit.prevent="submit" class="flex flex-col gap-4">
-					<div>
-						<label class="block text-sm font-medium mb-1">Project Name</label>
-						<input
-							v-model="name"
-							type="text"
-							class="input-textlike w-full px-3 py-2 rounded-lg border border-default"
-							placeholder="My Video Project"
-							required
-						/>
-					</div>
-					<div>
-						<label class="block text-sm font-medium mb-1">Project Root Directory</label>
-						<FolderPicker
-							v-model="rootDir"
-							:apiFetch="apiFetch"
-							useCase="upload"
-							subtitle="Choose the root directory for this project."
-							:auto-detect-roots="true"
-							:allow-entire-tree="true"
-							:is-root-user="isRootUser"
-							v-model:project="pickerBase"
-							v-model:dest="rootDir"
-						/>
-					</div>
-					<div>
-						<label class="block text-sm font-medium mb-1">Description (optional)</label>
-						<textarea
-							v-model="description"
-							class="input-textlike w-full px-3 py-2 rounded-lg border border-default resize-none"
-							rows="2"
-							placeholder="Brief description of this project…"
-						/>
-					</div>
-					<div class="flex items-center justify-end gap-2 mt-2">
-						<button type="button" class="btn btn-secondary px-4 py-2" @click="close">Cancel</button>
-						<button type="submit" class="btn btn-primary px-4 py-2" :disabled="!name.trim() || !rootDir.trim() || creating">
-							{{ creating ? 'Creating…' : 'Create Project' }}
-						</button>
-					</div>
-				</form>
-			</div>
-		</div>
-	</Teleport>
+	<FlowModal
+		:model-value="modelValue"
+		title="New Project"
+		description="A project is a folder on your server for one job or production. Everything you share for it lives in that folder."
+		size="xl"
+		hide-close
+		:busy="creating"
+		@update:model-value="(v) => emit('update:modelValue', v)"
+	>
+		<form id="create-project-form" @submit.prevent="submit" class="flex flex-col gap-4">
+			<FlowField label="Project name" id="new-project-name" required>
+				<template #default="{ id }">
+					<input
+						:id="id"
+						v-model="name"
+						type="text"
+						class="input-textlike w-full px-3 py-2 rounded-lg border border-default"
+						placeholder="e.g. Spring Campaign Edit"
+						required
+						autofocus
+					/>
+				</template>
+			</FlowField>
+			<FlowField label="Project folder" id="new-project-folder">
+				<p class="flow-field__help -mt-0.5 mb-1">Pick the folder that holds this project's media. Use <b>New Folder</b> in the browser below to make one.</p>
+				<FolderPicker
+					v-model="rootDir"
+					:apiFetch="apiFetch"
+					useCase="upload"
+					subtitle=""
+					:auto-detect-roots="true"
+					:allow-entire-tree="true"
+					:is-root-user="isRootUser"
+					v-model:project="pickerBase"
+					v-model:dest="rootDir"
+				/>
+				<FolderSpaceNotice :path="finalRootDir" :apiFetch="apiFetch" />
+			</FlowField>
+			<FlowField label="Notes" id="new-project-description" optional>
+				<template #default="{ id }">
+					<textarea
+						:id="id"
+						v-model="description"
+						class="input-textlike w-full px-3 py-2 rounded-lg border border-default resize-none"
+						rows="2"
+						placeholder="Client, deliverables, anything your team should know…"
+					/>
+				</template>
+			</FlowField>
+		</form>
+		<template #footer>
+			<button type="button" class="btn btn-dismiss px-4 py-2" :disabled="creating" @click="close">Cancel</button>
+			<button type="submit" form="create-project-form" class="btn btn-primary px-4 py-2" :disabled="!canCreate">
+				{{ creating ? 'Creating…' : 'Create Project' }}
+			</button>
+		</template>
+	</FlowModal>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Notification } from '@45drives/houston-common-ui'
 import { useApi } from '../../composables/useApi'
 import { useConnections } from '../../composables/useConnections'
 import { pushNotification } from '../../composables/useNotificationQueue'
 import FolderPicker from '../FolderPicker.vue'
+import FolderSpaceNotice from '../FolderSpaceNotice.vue'
+import FlowModal from '../../ui/FlowModal.vue'
+import FlowField from '../../ui/FlowField.vue'
 
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{
@@ -73,30 +85,40 @@ const pickerBase = ref('')
 const description = ref('')
 const creating = ref(false)
 
+const finalRootDir = computed(() => rootDir.value.trim())
+
+const canCreate = computed(() => !!name.value.trim() && !!finalRootDir.value && !creating.value)
+
+function reset() {
+	name.value = ''
+	rootDir.value = ''
+	pickerBase.value = ''
+	description.value = ''
+}
+
+watch(() => props.modelValue, (open) => { if (!open) reset() })
+
 function close() {
 	emit('update:modelValue', false)
 }
 
 async function submit() {
-	if (!name.value.trim() || !rootDir.value.trim()) return
+	if (!canCreate.value) return
 	creating.value = true
 	try {
 		const data = await apiFetch('/api/projects', {
 			method: 'POST',
 			body: JSON.stringify({
 				name: name.value.trim(),
-				rootDir: rootDir.value.trim(),
+				rootDir: finalRootDir.value,
 				description: description.value.trim() || null,
 			}),
 		})
-		name.value = ''
-		rootDir.value = ''
-		pickerBase.value = ''
-		description.value = ''
+		const project = data?.project
 		emit('update:modelValue', false)
-		emit('created', data?.project || { id: data?.project?.id, name: name.value, root_dir: rootDir.value, description: description.value })
+		if (project) emit('created', project)
 	} catch (e: any) {
-		pushNotification(new Notification('Failed to create project', e?.message || '', 'error', 8000))
+		pushNotification(new Notification('Couldn\'t create the project', e?.message || '', 'error', 8000))
 	} finally {
 		creating.value = false
 	}

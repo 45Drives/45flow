@@ -2,7 +2,7 @@
   <teleport to="body">
     <div
       v-if="isVisible"
-      class="fixed right-4 bottom-4 z-[1200] w-[560px] max-w-[calc(100vw-1.5rem)] rounded-xl border border-default bg-default shadow-2xl p-6 text-left"
+      class="fixed right-4 bottom-4 z-banner w-[560px] max-w-[calc(100vw-1.5rem)] rounded-xl border border-default bg-default shadow-2xl p-6 text-left"
     >
       <div class="text-xl font-semibold text-default">{{ title }}</div>
       <div 
@@ -48,7 +48,7 @@
           {{ state === 'installing' ? 'Installing…' : 'Restart & Install' }}
         </button>
         <button
-          class="btn btn-secondary px-4 py-2 text-sm"
+          class="btn btn-dismiss px-4 py-2 text-sm"
           :disabled="busy"
           @click="dismiss"
         >

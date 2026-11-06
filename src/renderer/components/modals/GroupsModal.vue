@@ -1,22 +1,14 @@
 <template>
-  <div v-if="modelValue" class="fixed inset-0 z-[2400] flex items-center justify-center">
-    <div class="absolute inset-0 bg-black/50" @click="close()"></div>
-
-    <div class="relative w-[96vw] max-w-3xl bg-accent rounded-lg shadow-xl p-4 flex flex-col max-h-[90vh]">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-semibold">Manage groups</h3>
-        <button class="btn btn-secondary" @click="close()">Close</button>
-      </div>
-
-      <div class="flex-1 overflow-auto pr-1 min-h-0">
+  <FlowModal :model-value="modelValue" title="Teams" size="lg" @close="close()">
+      <div>
         <div class="grid grid-cols-1 gap-4">
-          <!-- Create/Edit group -->
+          <!-- Create/Edit team -->
           <div class="border rounded p-3 bg-accent/60">
-            <div class="font-semibold text-sm mb-2">{{ editingGroup ? 'Edit group' : 'Create new group' }}</div>
+            <div class="font-semibold text-sm mb-2">{{ editingGroup ? 'Edit team' : 'New team' }}</div>
             <div class="flex flex-col gap-2 text-left">
               <div class="grid grid-cols-2 gap-2">
                 <div>
-                  <label class="text-xs opacity-80">Group name <span class="text-red-500">*</span></label>
+                  <label class="text-xs opacity-80">Team name <span class="text-flow-danger">*</span></label>
                   <input v-model.trim="form.name" class="input-textlike border rounded px-3 py-2 w-full"
                     placeholder="e.g. Design Team" />
                 </div>
@@ -47,7 +39,7 @@
                     <span>{{ u.name || u.username }}</span>
                     <span class="opacity-60 text-xs">@{{ u.username }}</span>
                   </div>
-                  <div v-if="!allUsers.length" class="px-3 py-2 text-sm opacity-70">No users available.</div>
+                  <div v-if="!allUsers.length" class="px-3 py-2 text-sm opacity-70">No clients yet.</div>
                 </div>
               </div>
 
@@ -56,18 +48,18 @@
                   :disabled="saving || !form.name.trim()">Save</button>
                 <button v-else class="btn btn-primary" @click="createNewGroup()"
                   :disabled="saving || !form.name.trim()">Create</button>
-                <button v-if="editingGroup" class="btn btn-secondary" @click="cancelEdit()">Cancel</button>
+                <button v-if="editingGroup" class="btn btn-dismiss" @click="cancelEdit()">Cancel</button>
                 <button v-else class="btn btn-secondary" @click="resetForm()">Reset</button>
               </div>
 
-              <div v-if="formError" class="text-sm text-red-500">{{ formError }}</div>
+              <div v-if="formError" class="text-sm text-flow-danger">{{ formError }}</div>
             </div>
           </div>
 
           <!-- Groups list -->
           <div class="border rounded p-3 bg-accent/60">
             <div class="flex items-center justify-between mb-2">
-              <div class="font-semibold text-sm">Existing groups</div>
+              <div class="font-semibold text-sm">Teams</div>
               <button class="btn btn-secondary" @click="fetchGroups()" :disabled="loading">
                 {{ loading ? 'Refreshing…' : 'Refresh' }}
               </button>
@@ -92,11 +84,11 @@
                       <FontAwesomeIcon :icon="expanded.has(g.id) ? faChevronUp : faChevronDown" />
                     </button>
                     <button class="px-2 py-1 text-xs border rounded hover:opacity-80"
-                      @click="startEdit(g)" title="Edit group">
+                      @click="startEdit(g)" title="Edit team">
                       <FontAwesomeIcon :icon="faEdit" />
                     </button>
-                    <button class="px-2 py-1 text-xs border rounded text-red-600 hover:bg-red-600/10"
-                      @click="deleteGroup(g)" title="Delete group">
+                    <button class="px-2 py-1 text-xs border rounded flow-tone-danger"
+                      @click="deleteGroup(g)" title="Delete team">
                       <FontAwesomeIcon :icon="faTrash" />
                     </button>
                   </div>
@@ -114,16 +106,15 @@
                   <div v-else class="text-xs opacity-60">No members</div>
                 </div>
               </div>
-              <div v-if="!groups.length && !loading" class="px-3 py-2 text-sm opacity-70">No groups yet.</div>
+              <div v-if="!groups.length && !loading" class="px-3 py-2 text-sm opacity-70">No teams yet.</div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
+  </FlowModal>
 
-  <ConfirmDeleteModal v-model="deleteOpen" :title="'Delete group'"
-    :message="groupToDelete ? `Delete group &quot;${groupToDelete.name}&quot;? Members will lose group-based access to any links.` : ''"
+  <ConfirmDeleteModal v-model="deleteOpen" :title="'Delete team'"
+    :message="groupToDelete ? `Delete team &quot;${groupToDelete.name}&quot;? Members will lose any link access they had through this team.` : ''"
     :danger="true" :busy="deleting" :error="deleteError" :clickOutsideCancels="true" confirmText="Delete"
     cancelText="Cancel" @confirm="performDelete" />
 </template>
@@ -134,6 +125,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { faEdit, faTrash, faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons'
 import type { Group, GroupMember, ExistingUser } from '../../typings/electron'
 import ConfirmDeleteModal from './ConfirmDeleteModal.vue'
+import FlowModal from '../../ui/FlowModal.vue'
 
 const props = defineProps<{
   modelValue: boolean
@@ -239,7 +231,7 @@ async function createNewGroup() {
     await fetchGroups()
     emit('updated')
   } catch (e: any) {
-    formError.value = e?.message || 'Failed to create group.'
+    formError.value = e?.message || 'Couldn\'t create the team.'
   } finally {
     saving.value = false
   }
@@ -287,7 +279,7 @@ async function saveGroup() {
     await fetchGroups()
     emit('updated')
   } catch (e: any) {
-    formError.value = e?.message || 'Failed to update group.'
+    formError.value = e?.message || 'Couldn\'t update the team.'
   } finally {
     saving.value = false
   }
@@ -325,7 +317,7 @@ async function performDelete() {
     await fetchGroups()
     emit('updated')
   } catch (e: any) {
-    deleteError.value = e?.message || 'Failed to delete group.'
+    deleteError.value = e?.message || 'Couldn\'t delete the team.'
   } finally {
     deleting.value = false
   }

@@ -1,0 +1,39 @@
+/* Utilities that must win over everything above; keep this file last. */
+
+/* Primary text matches primary button color */
+.text-primary {
+  color: var(--text-primary) !important;
+}
+
+/* Secondary text matches secondary button color */
+.text-secondary {
+  color: var(--text-secondary) !important;
+}
+
+/* Hover states for interactive elements using the same hover tokens as buttons */
+.text-primary.interactive:hover,
+a.text-primary:hover,
+button.text-primary:hover,
+.btn.text-primary:hover {
+  color: var(--text-primary-hover) !important;
+}
+
+.text-secondary.interactive:hover,
+a.text-secondary:hover,
+button.text-secondary:hover,
+.btn.text-secondary:hover {
+  color: var(--text-secondary-hover) !important;
+}
+
+a.text-primary:focus-visible,
+button.text-primary:focus-visible,
+a.text-secondary:focus-visible,
+button.text-secondary:focus-visible {
+  outline: 2px solid var(--outline-color);
+  outline-offset: 2px;
+}
+
+.theme-logo-tint {
+  filter: var(--studio-logo-filter, none);
+  transition: filter 180ms ease;
+}

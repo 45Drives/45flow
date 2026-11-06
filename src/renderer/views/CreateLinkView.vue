@@ -2,17 +2,30 @@
 	<div class="h-full min-h-0 flex items-start justify-center pt-2 overflow-y-auto">
 		<div class="mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8">
 			<div class="grid w-full grid-cols-1 gap-4 text-xl min-w-0">
-				<CardContainer class="w-full bg-well rounded-md shadow-xl min-w-0">
+				<FlowCard variant="plain" class="w-full bg-well rounded-md shadow-xl min-w-0">
 					<div class="ss-toned-panel flex flex-col gap-3 text-left min-w-0 p-3">
 						<!-- Header -->
-						<div class="flex items-center justify-between gap-3 min-w-0">
-							<div>
+						<div class="flex flex-wrap items-start justify-between gap-3 min-w-0" data-tour="create-link-capabilities">
+							<div class="min-w-0">
 								<h2 class="text-xl font-semibold">Create Link</h2>
 								<p class="text-sm opacity-80 -mt-0.5">
-									Create a combined link for uploading and/or sharing files.
+									Share files with a client, collect uploads from them, or both, in one link.
 								</p>
 							</div>
-							<button class="btn btn-secondary px-4 py-2 text-sm" @click="goBack">Back</button>
+							<div class="flex items-center gap-2">
+								<label v-if="projects.length" class="flex items-center gap-2 text-sm" data-tour="create-link-project">
+									<span class="font-semibold">Project</span>
+									<select
+										v-model="selectedProjectId"
+										class="input-textlike px-3 py-1.5 border border-default rounded-lg bg-default text-sm min-w-[12rem]"
+										@change="onProjectChange"
+									>
+										<option v-if="!selectedProjectId" :value="null" disabled>Choose a project</option>
+										<option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+									</select>
+								</label>
+								<button class="btn btn-dismiss px-4 py-2 text-sm" @click="goBack">Back</button>
+							</div>
 						</div>
 
 						<div v-if="initializing" class="border-t border-default pt-6 pb-4">
@@ -27,162 +40,128 @@
 
 						<template v-else>
 
-						<!-- ══════ Section: Project & Capabilities ══════ -->
-						<section class="border-t border-default pt-3" data-tour="create-link-capabilities">
-							<div class="flex flex-wrap items-start gap-6">
-								<!-- Project selector -->
-								<div v-if="projectModeEnabled" class="flex flex-col gap-2 min-w-[220px]" data-tour="create-link-project">
-									<h3 class="text-base font-semibold">Project</h3>
-									<div class="flex flex-wrap items-center gap-2">
-										<select
-											v-model="selectedProjectId"
-											class="input-textlike px-3 py-2 border border-default rounded-lg bg-default text-sm min-w-[200px]"
-											@change="onProjectChange"
-										>
-											<option :value="null">— No project —</option>
-											<option v-for="p in projects" :key="p.id" :value="p.id">
-												{{ p.name }}
-											</option>
-										</select>
-										<button type="button" class="btn btn-secondary text-sm px-3 py-1.5" @click="showNewProjectModal = true">
-											+ New Project
-										</button>
+						<!-- ══════ Section: Link title ══════ -->
+						<section class="border-t border-default pt-3">
+							<label class="flex flex-col gap-1.5 min-w-0">
+								<span class="text-base font-semibold">Link name <span class="text-xs font-normal opacity-70">(optional)</span></span>
+								<input
+									type="text"
+									v-model.trim="opts.linkTitle.value"
+									class="input-textlike border rounded-lg px-3 py-2 w-full text-sm"
+									placeholder="e.g. Rough Cut v2 for review"
+								/>
+							</label>
+						</section>
+
+						<!-- ══════ Section: Files to share ══════ -->
+						<section class="border-t border-default pt-3 min-w-0" data-tour="create-link-share-files">
+							<div class="flex flex-wrap items-baseline justify-between gap-2 mb-1">
+								<h3 class="text-base font-semibold">Files to share</h3>
+								<span class="text-xs opacity-75">
+									Pick what your client should review or download. Check a folder to include everything in it.
+									Leave this empty to make an upload-only link.
+								</span>
+							</div>
+							<FileExplorer
+								:apiFetch="apiFetch"
+								:modelValue="shareFiles"
+								@add="onShareAdd"
+								@remove="onShareRemove"
+								@error="onShareExplorerError"
+								:startDir="fileBrowserBase"
+								:compact="true"
+							/>
+
+							<!-- Selected files -->
+							<div v-if="shareFiles.length" class="mt-2 border border-default p-0.5 rounded bg-accent min-w-0">
+								<div class="flex flex-wrap items-center justify-between gap-2 px-2 py-1 min-w-0">
+									<div class="text-sm font-semibold">
+										Selected <span class="text-default">({{ shareFiles.length }})</span>
 									</div>
-									<p v-if="selectedProject" class="text-xs text-default truncate">
-										Root: {{ selectedProject.root_dir }}
-									</p>
+									<div class="flex flex-wrap items-center gap-2">
+										<button class="btn btn-secondary text-xs px-2 py-1" @click="showSelected = !showSelected">
+											{{ showSelected ? 'Hide' : 'Show' }}
+										</button>
+										<button class="btn btn-danger text-xs px-2 py-1" @click="shareFiles = []">Clear</button>
+									</div>
 								</div>
 
-								<!-- Link Title -->
-								<div class="flex flex-col gap-2 flex-1 min-w-[220px]">
-									<h3 class="text-base font-semibold">Link Title</h3>
-									<input
-										type="text"
-										v-model.trim="opts.linkTitle.value"
-										class="input-textlike border rounded-lg px-3 py-2 w-full text-sm"
-										placeholder="Optional title for the shared link"
-									/>
+								<div v-show="showSelected" class="max-h-40 overflow-auto min-w-0">
+									<div v-for="group in groupedShareFiles" :key="group.dir" class="border-t border-default">
+										<div v-if="group.files.length > 1" class="grid items-center grid-cols-[minmax(0,1fr)_auto] min-w-0 bg-well/30">
+											<div class="px-3 py-1.5 min-w-0 flex items-center gap-1.5" :title="group.dir">
+												<span aria-hidden="true">📁</span>
+												<span class="truncate font-medium text-default min-w-0">{{ group.dir.split('/').pop() || group.dir }}/</span>
+												<span class="text-default shrink-0">({{ group.files.length }} files)</span>
+											</div>
+											<button class="btn btn-danger m-1.5 px-2 py-1" @click="removeShareGroup(group.files)" title="Remove entire folder">✕</button>
+										</div>
+										<div v-for="f in group.files" :key="f"
+											class="grid items-center grid-cols-[minmax(0,1fr)_auto] border-t border-default first:border-t-0 text-sm min-w-0">
+											<div class="relative px-3 py-2 rounded-md bg-default min-w-0" :class="{ 'ml-4': group.files.length > 1 }" :title="f">
+												<span aria-hidden="true"
+													class="pointer-events-none absolute inset-0 rounded-md flow-tone-success animate-pulse z-0"></span>
+												<span class="truncate block text-default relative z-10 min-w-0">{{ group.files.length > 1 ? f.split('/').pop() : f }}</span>
+											</div>
+											<button class="btn btn-danger m-2 px-2 py-1" @click="removeShareFile(f)" title="Remove">✕</button>
+										</div>
+									</div>
 								</div>
 							</div>
 						</section>
 
-						<!-- ══════ Section: Upload & Share Columns ══════ -->
-						<section class="border-t border-default pt-3" data-tour="create-link-upload-dest">
-							<div class="create-link-capability-grid">
-								<!-- ─── Upload Destination Column ─── -->
-								<div
-									class="flex flex-col rounded-lg border p-3 transition-all text-sm min-w-0 overflow-hidden"
-									:class="opts.uploadEnabled.value
-										? 'border-default bg-default/40'
-										: 'border-default/50 bg-well/30'"
-								>
-									<label class="inline-flex items-center gap-2 select-none cursor-pointer font-semibold text-sm pointer-events-auto mb-1">
-										<input type="checkbox" v-model="opts.uploadEnabled.value" class="proxy-quality-checkbox" />
-										<span>Upload Destination</span>
-									</label>
-									<p class="text-xs text-default mb-2">Check this to send a client a link where <strong>they</strong> upload files to you (e.g. footage, assets). You do not need to also check "Files to Share / Review" — turn on <strong>Auto-share uploaded files</strong> in Link Options below if you want them to immediately view/download what they just sent.</p>
-
-									<template v-if="opts.uploadEnabled.value">
-										<FolderPicker
-											:key="uploadPickerKey"
-											v-model="uploadDest"
-											:apiFetch="apiFetch"
-											useCase="upload"
-											subtitle=""
-											:auto-detect-roots="false"
-											:allow-entire-tree="false"
-											:hide-project-controls="true"
-											:startDir="fileBrowserBase || undefined"
-											v-model:project="uploadProjectBase"
-											v-model:dest="uploadDest"
-											:uploadLink="true"
-											:compact="true"
-										/>
-										<p v-if="uploadDestIsFilesystemRoot" class="text-xs text-red-500 mt-1">
-											The filesystem root (/) can't be used as an upload destination. Choose a folder.
-										</p>
-									</template>
-									<div v-else class="flex flex-1 items-center justify-center opacity-50 text-sm italic py-8">
-										Enable to choose where reviewers can upload files.
-									</div>
-								</div>
-
-								<!-- ─── Share / Review Column ─── -->
-								<div
-									class="flex flex-col rounded-lg border p-3 transition-all text-sm min-w-0 overflow-hidden"
-									:class="opts.shareEnabled.value
-										? 'border-default bg-default/40'
-										: 'border-default/50 bg-well/30'"
-									data-tour="create-link-share-files"
-								>
-									<label class="inline-flex items-center gap-2 select-none cursor-pointer font-semibold text-sm pointer-events-auto mb-1">
-										<input type="checkbox" v-model="opts.shareEnabled.value" class="proxy-quality-checkbox" />
-										<span>Files to Share / Review</span>
-									</label>
-									<p class="text-xs text-default mb-2">Check this to send a client a link where <strong>they</strong> view or download files you pick below. Check a folder's box to include everything inside it.</p>
-
-									<template v-if="opts.shareEnabled.value">
-										<FileExplorer
-											:apiFetch="apiFetch"
-											:modelValue="shareFiles"
-											@add="onShareAdd"
-											@remove="onShareRemove"
-											@error="onShareExplorerError"
-											:startDir="fileBrowserBase"
-											:compact="true"
-										/>
-
-										<!-- Selected files -->
-										<div v-if="shareFiles.length" class="mt-2 border border-default p-0.5 rounded bg-accent min-w-0">
-											<div class="flex flex-wrap items-center justify-between gap-2 px-2 py-1 min-w-0">
-												<div class="text-sm font-semibold">
-													Selected <span class="text-default">({{ shareFiles.length }})</span>
-												</div>
-												<div class="flex flex-wrap items-center gap-2">
-													<button class="btn btn-secondary text-xs px-2 py-1" @click="showSelected = !showSelected">
-														{{ showSelected ? 'Hide' : 'Show' }}
-													</button>
-													<button class="btn btn-danger text-xs px-2 py-1" @click="shareFiles = []">Clear</button>
-												</div>
-											</div>
-
-											<div v-show="showSelected" class="max-h-40 overflow-auto min-w-0">
-												<div v-for="group in groupedShareFiles" :key="group.dir" class="border-t border-default">
-													<div v-if="group.files.length > 1" class="grid items-center grid-cols-[minmax(0,1fr)_auto] min-w-0 bg-well/30">
-														<div class="px-3 py-1.5 min-w-0 flex items-center gap-1.5" :title="group.dir">
-															<span aria-hidden="true">📁</span>
-															<span class="truncate font-medium text-default min-w-0">{{ group.dir.split('/').pop() || group.dir }}/</span>
-															<span class="text-default shrink-0">({{ group.files.length }} files)</span>
-														</div>
-														<button class="btn btn-danger m-1.5 px-2 py-1" @click="removeShareGroup(group.files)" title="Remove entire folder">✕</button>
-													</div>
-													<div v-for="f in group.files" :key="f"
-														class="grid items-center grid-cols-[minmax(0,1fr)_auto] border-t border-default first:border-t-0 text-sm min-w-0">
-														<div class="relative px-3 py-2 rounded-md bg-default min-w-0" :class="{ 'ml-4': group.files.length > 1 }">
-															<span aria-hidden="true"
-																class="pointer-events-none absolute inset-0 rounded-md bg-green-500/50 animate-pulse z-0"></span>
-															<span class="truncate block text-default relative z-10 min-w-0">{{ group.files.length > 1 ? f.split('/').pop() : f }}</span>
-														</div>
-														<button class="btn btn-danger m-2 px-2 py-1" @click="removeShareFile(f)" title="Remove">✕</button>
-													</div>
-												</div>
-											</div>
-										</div>
-									</template>
-									<div v-else class="flex flex-1 items-center justify-center opacity-50 text-sm italic py-8">
-										Enable to select files for sharing or review.
-									</div>
-								</div>
+						<!-- ══════ Section: Client uploads (single line) ══════ -->
+						<section class="border-t border-default pt-3 min-w-0" data-tour="create-link-upload-dest">
+							<h3 class="text-base font-semibold mb-2">Details</h3>
+							<div class="create-link-upload-row">
+								<label class="inline-flex items-center gap-2 select-none cursor-pointer font-semibold text-sm whitespace-nowrap">
+									<input type="checkbox" v-model="opts.uploadEnabled.value" class="proxy-quality-checkbox" />
+									<span>Let client upload to</span>
+								</label>
+								<fieldset :disabled="!opts.uploadEnabled.value" class="min-w-0 flex-1" :class="{ 'opacity-50': !opts.uploadEnabled.value }">
+									<PathInput
+										v-model="uploadDest"
+										:apiFetch="apiFetch"
+										:dirsOnly="true"
+										placeholder="Folder on the server, e.g. /tank/projects/spring/from-client"
+										class="create-link-upload-path"
+									/>
+								</fieldset>
+								<button
+									type="button"
+									class="btn btn-secondary text-sm px-3 py-1.5"
+									:disabled="!opts.uploadEnabled.value"
+									:aria-expanded="showUploadBrowser"
+									@click="showUploadBrowser = !showUploadBrowser"
+								>{{ showUploadBrowser ? 'Done' : 'Browse…' }}</button>
 							</div>
-
-							<p v-if="!opts.uploadEnabled.value && !opts.shareEnabled.value" class="text-sm italic font-bold text-red-400 mt-2 justify-self-center">
-								At least one capability must be enabled.
+							<p v-if="opts.uploadEnabled.value && uploadDestIsFilesystemRoot" class="text-xs text-flow-danger mt-1">
+								The filesystem root (/) can't receive uploads. Choose a folder.
 							</p>
+							<p v-else class="text-xs opacity-70 mt-1">
+								Client uploads land in this folder. If it doesn't exist yet, 45Flow creates it.
+							</p>
+							<div v-if="opts.uploadEnabled.value && showUploadBrowser" class="mt-2">
+								<FolderPicker
+									:key="uploadPickerKey"
+									v-model="uploadDest"
+									:apiFetch="apiFetch"
+									useCase="upload"
+									subtitle=""
+									:auto-detect-roots="false"
+									:allow-entire-tree="false"
+									:hide-project-controls="true"
+									:startDir="fileBrowserBase || undefined"
+									v-model:project="uploadProjectBase"
+									v-model:dest="uploadDest"
+									:uploadLink="true"
+									:compact="true"
+								/>
+							</div>
 						</section>
 
 						<!-- ══════ Section: Link Options ══════ -->
-						<section class="border-t border-default pt-3" data-tour="create-link-options">
-							<h3 class="text-base font-semibold mb-2">Link Options</h3>
+						<section class="pt-1" data-tour="create-link-options">
 							<CommonLinkControls>
 								<template #expiry>
 									<div class="flex flex-col gap-3 min-w-0">
@@ -214,7 +193,7 @@
 
 								<template #title>
 									<div class="flex flex-col gap-2 min-w-0" :class="{ 'opacity-40 pointer-events-none': !opts.uploadEnabled.value }">
-										<span class="font-semibold sm:whitespace-nowrap">After Upload</span>
+										<span class="font-semibold sm:whitespace-nowrap">After a client uploads</span>
 										<template v-if="opts.uploadEnabled.value">
 											<label class="flex items-start gap-2 select-none cursor-pointer min-w-0">
 												<input
@@ -223,10 +202,10 @@
 													class="proxy-quality-checkbox mt-0.5 shrink-0"
 												/>
 												<div class="min-w-0">
-													<div class="text-sm font-medium">Auto-share uploaded files</div>
+													<div class="text-sm font-medium">Share uploads back</div>
 													<div class="text-xs text-default">
-														<template v-if="opts.shareEnabled.value">Automatically add new uploads to this link's shared files.</template>
-														<template v-else>Let this same link switch to view/download mode for each file right after they upload it — no need to enable "Files to Share / Review" or send a second link.</template>
+														<template v-if="opts.shareEnabled.value">Add each upload to the files shared on this link.</template>
+														<template v-else>Let the client view and download each file right after they upload it, on this same link.</template>
 													</div>
 												</div>
 											</label>
@@ -237,7 +216,7 @@
 													class="proxy-quality-checkbox mt-0.5 shrink-0"
 												/>
 												<div class="min-w-0">
-													<div class="text-sm font-medium">Auto-watermark uploads</div>
+													<div class="text-sm font-medium">Watermark uploads</div>
 													<div class="text-xs text-default">
 														Apply this link's watermark settings to new uploads.
 													</div>
@@ -250,14 +229,14 @@
 													class="proxy-quality-checkbox mt-0.5 shrink-0"
 												/>
 												<div class="min-w-0">
-													<div class="text-sm font-medium">Auto-transcode uploads</div>
+													<div class="text-sm font-medium">Make proxy files for uploads</div>
 													<div class="text-xs text-default">
-														Automatically generate review-copy proxies (server-side) for each video uploaded to this link.
+														The server makes proxy files for each video the client uploads.
 													</div>
 												</div>
 											</label>
 											<div v-if="autoTranscodeUploads" class="ml-6 flex flex-col gap-1">
-												<span class="text-xs font-medium text-default">Proxy resolution</span>
+												<span class="text-xs font-medium text-default">Proxy sizes</span>
 												<div class="flex flex-wrap gap-x-3 gap-y-1">
 													<label class="inline-flex items-center gap-2 text-sm">
 														<input type="checkbox" class="proxy-quality-checkbox" value="720p"
@@ -281,7 +260,7 @@
 											</div>
 										</template>
 										<p v-else class="text-xs text-default italic">
-											Enable "Upload Destination" above to configure what happens after a client uploads a file.
+											Turn on "Let client upload to" above to choose what happens after a client uploads.
 										</p>
 									</div>
 								</template>
@@ -289,20 +268,20 @@
 								<template #access>
 									<div class="flex flex-col gap-1 min-w-0">
 										<div class="flex flex-wrap items-center gap-3 min-w-0">
-											<span class="font-semibold sm:whitespace-nowrap">Network Access:</span>
-											<div class="flex flex-wrap gap-2 min-w-0" role="radiogroup" aria-label="Network Access">
-												<label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer select-none transition border border-default bg-default hover:bg-well/40">
-													<input type="radio" name="create-link-access-network" :value="false" v-model="opts.usePublicBase.value" class="h-4 w-4" />
-													<span class="text-sm truncate">Share Locally (Over LAN)</span>
-												</label>
+											<span class="font-semibold sm:whitespace-nowrap">Network:</span>
+											<div class="flex flex-wrap gap-2 min-w-0" role="radiogroup" aria-label="Network">
 												<label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer select-none transition border border-default bg-default hover:bg-well/40">
 													<input type="radio" name="create-link-access-network" :value="true" v-model="opts.usePublicBase.value" class="h-4 w-4" />
 													<span class="text-sm truncate">Share Externally (Over Internet)</span>
 												</label>
+												<label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer select-none transition border border-default bg-default hover:bg-well/40">
+													<input type="radio" name="create-link-access-network" :value="false" v-model="opts.usePublicBase.value" class="h-4 w-4" />
+													<span class="text-sm truncate">Share Locally (Over LAN)</span>
+												</label>
 											</div>
 										</div>
 										<p class="text-xs text-default">
-											External sharing needs working port forwarding.
+											Clients outside your network need port forwarding set up on your router. Local links only work on your office network.
 										</p>
 									</div>
 								</template>
@@ -358,7 +337,7 @@
 							<!-- Transcoding mode hint -->
 							<div v-if="hasVideoSelected" class="text-xs text-default flex items-center gap-1.5 mt-2">
 								<template v-if="clientTranscodeEnabled">
-									<span class="text-green-600 dark:text-green-400">✓</span>
+									<span class="text-flow-success">✓</span>
 									<span>Client-side transcoding: <strong class="text-default">Enabled</strong> — files will be streamed from the server and transcoded locally</span>
 								</template>
 								<template v-else>
@@ -368,7 +347,7 @@
 							</div>
 
 							<!-- Existing watermark info message -->
-							<p v-if="existingFileWatermarkMessage && watermarkEnabled" class="text-xs text-emerald-500 mt-1.5 flex items-center gap-1.5">
+							<p v-if="existingFileWatermarkMessage && watermarkEnabled" class="text-xs text-flow-success mt-1.5 flex items-center gap-1.5">
 								<svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 									<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
 								</svg>
@@ -428,7 +407,7 @@
 
 						<!-- ══════ Generate Button ══════ -->
 						<section class="border-t border-default pt-4">
-							<div v-if="error" class="p-3 rounded bg-red-900/30 text-default border border-red-800 mb-3 text-sm text-center">
+							<div v-if="error" class="p-3 rounded flow-tone-danger text-default border mb-3 text-sm text-center">
 								{{ error }}
 							</div>
 
@@ -441,7 +420,7 @@
 									class="btn btn-primary flex-1 min-w-[14rem]"
 									:disabled="!canGenerate || loading"
 									@click="generateLink"
-									title="Create a Flow link with the selected options"
+									title="Create the link with these options"
 								>
 									<span v-if="loading" class="inline-flex items-center gap-2">
 										<span class="inline-block w-4 h-4 border-2 border-default border-t-transparent rounded-full animate-spin"></span>
@@ -450,9 +429,12 @@
 									<span v-else>Generate Flow link</span>
 								</button>
 							</div>
-							<div v-if="opts.shareEnabled.value && shareFiles.length === 0" class="text-xs text-red-400 mt-2">
-								Select at least one file to generate a share link.
-							</div>
+							<p class="text-xs mt-2" :class="linkKind ? 'opacity-80' : 'text-flow-danger'">
+								<template v-if="linkKind === 'both'">This link lets your client review {{ shareFiles.length }} file{{ shareFiles.length === 1 ? '' : 's' }} and upload files to you.</template>
+								<template v-else-if="linkKind === 'share'">This link lets your client review and download {{ shareFiles.length }} file{{ shareFiles.length === 1 ? '' : 's' }}.</template>
+								<template v-else-if="linkKind === 'upload'">No files selected, so this is an upload-only link: your client can send you files.</template>
+								<template v-else>Pick files to share, or turn on "Let client upload to", to create a link.</template>
+							</p>
 
 							<div v-if="resultUrl" class="p-3 border rounded flex flex-col items-center mt-1 min-w-0">
 								<code class="max-w-full break-all">{{ resultUrl }}</code>
@@ -464,62 +446,21 @@
 						</section>
 						</template>
 					</div>
-				</CardContainer>
+				</FlowCard>
 				<div class="button-group-row col-span-1 min-w-0">
-					<button @click="goBack" class="btn btn-danger justify-start">
-						Return to Dashboard
+					<button @click="goBack" class="btn btn-dismiss justify-start">
+						Back to Project
 					</button>
 				</div>
 			</div>
 		</div>
 	</div>
 
-	<!-- New Project Modal -->
-	<Teleport to="body">
-		<div v-if="showNewProjectModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="showNewProjectModal = false">
-			<div class="panel rounded-2xl shadow-2xl p-6 w-full max-w-lg mx-4">
-				<h3 class="text-lg font-semibold mb-4">Create New Project</h3>
-				<form @submit.prevent="createProject" class="flex flex-col gap-4">
-					<div>
-						<label class="block text-sm font-medium mb-1">Project Name</label>
-						<input
-							v-model="newProjectName"
-							type="text"
-							class="input-textlike w-full px-3 py-2 rounded-lg border border-default"
-							placeholder="My Video Project"
-							required
-						/>
-					</div>
-					<div>
-						<label class="block text-sm font-medium mb-1">Project Root Directory</label>
-						<FolderPicker
-							v-model="newProjectRoot"
-							:apiFetch="apiFetch"
-							useCase="upload"
-							subtitle="Choose the root directory for this project."
-							:auto-detect-roots="true"
-							:allow-entire-tree="true"
-							:is-root-user="isRootUser"
-							v-model:project="newProjectPickerBase"
-							v-model:dest="newProjectRoot"
-						/>
-					</div>
-					<div class="flex items-center justify-end gap-2 mt-2">
-						<button type="button" class="btn btn-secondary px-4 py-2" @click="showNewProjectModal = false">Cancel</button>
-						<button type="submit" class="btn btn-primary px-4 py-2" :disabled="!newProjectName.trim() || !newProjectRoot.trim() || creatingProject">
-							{{ creatingProject ? 'Creating…' : 'Create' }}
-						</button>
-					</div>
-				</form>
-			</div>
-		</div>
-	</Teleport>
-
 	<!-- Outputs Exist Modal -->
 	<ConfirmDeleteModal
 		v-model="showOutputsExistModal"
-		title="Outputs Already Exist"
-		message="Transcode outputs (stream/review copies) already exist for one or more selected files. Overwrite to restart output generation, or Generate Link to keep existing/in-progress outputs."
+		title="Proxy Files Already Exist"
+		message="Streams or proxy files already exist for one or more selected files. Overwrite to make them again, or choose Generate Link to keep the existing ones."
 		confirmText="Overwrite"
 		cancelText="Generate Link"
 		:danger="false"
@@ -558,26 +499,35 @@
 </template>
 
 <style scoped>
-.create-link-capability-grid {
-	display: grid;
-	grid-template-columns: minmax(20rem, 0.8fr) minmax(0, 1.2fr);
-	gap: 1rem;
-	align-items: stretch;
+.create-link-upload-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.6rem;
 	min-width: 0;
 }
 
-@media (max-width: 1280px) {
-	.create-link-capability-grid {
-		grid-template-columns: minmax(0, 1fr);
-	}
+.create-link-upload-row fieldset {
+	border: 0;
+	padding: 0;
+	margin: 0;
+	min-width: min(18rem, 100%);
+}
+
+.create-link-upload-row :deep(.create-link-upload-path input) {
+	border: 1px solid var(--border-default, currentColor);
+	border-radius: 0.5rem;
+	padding: 0.4rem 0.75rem;
+	font-size: 0.875rem;
 }
 </style>
 
 <script setup lang="ts">
+import FlowCard from '../ui/FlowCard.vue'
 import { writeClipboard } from '../clipboard'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { CardContainer } from '@45drives/houston-common-ui'
+
 import { Notification } from '@45drives/houston-common-ui'
 import { useApi } from '../composables/useApi'
 import { useResilientNav } from '../composables/useResilientNav'
@@ -586,14 +536,13 @@ import { useExternalAddressReadiness, describeExternalAddressNotReady, resolveCo
 import { useHeader } from '../composables/useHeader'
 import { pushNotification } from '../composables/useNotificationQueue'
 import { signalLinkCreated } from '../composables/useLinkRefresh'
-import { useConnections } from '../composables/useConnections'
 import { useActiveProject } from '../composables/useActiveProject'
-import { useProjectMode } from '../composables/useProjectMode'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { useRemoteTranscode } from '../composables/useRemoteTranscode'
 import { useClientTranscode } from '../composables/useClientTranscode'
 import FolderPicker from '../components/FolderPicker.vue'
 import FileExplorer from '../components/FileExplorer.vue'
+import PathInput from '../components/PathInput.vue'
 import CommonLinkControls from '../components/CommonLinkControls.vue'
 import LinkAccessMode from '../components/LinkAccessMode.vue'
 import CheckPortForwarding from '../components/CheckPortForwarding.vue'
@@ -613,10 +562,7 @@ useHeader('Create Link')
 const route = useRoute()
 const { apiFetch, meta } = useApi()
 const { to } = useResilientNav()
-const { activeConnection } = useConnections()
-const isRootUser = computed(() => activeConnection.value?.username === 'root')
 const { activeProject: globalActiveProject } = useActiveProject()
-const { projectModeEnabled } = useProjectMode()
 const transfer = useTransferProgress()
 const { runRemoteTranscode } = useRemoteTranscode()
 const { enabled: clientTranscodeEnabled } = useClientTranscode()
@@ -654,16 +600,12 @@ interface Project { id: number; name: string; root_dir: string; description: str
 const projects = ref<Project[]>([])
 const selectedProjectId = ref<number | null>(null)
 const selectedProject = computed(() => projects.value.find(p => p.id === selectedProjectId.value) || null)
-const showNewProjectModal = ref(false)
-const newProjectName = ref('')
-const newProjectRoot = ref('')
-const newProjectPickerBase = ref('')
-const creatingProject = ref(false)
 
 // ── Upload ──
 const uploadDest = ref('')
 const uploadProjectBase = ref('')
 const uploadPickerKey = ref(0)
+const showUploadBrowser = ref(false)
 const autoShareUploads = ref(false)
 const autoWatermarkUploads = ref(false)
 const autoTranscodeUploads = ref(false)
@@ -776,8 +718,20 @@ const uploadDestIsFilesystemRoot = computed(() => {
 	return !!raw && raw.replace(/\/+$/, '') === ''
 })
 
+// Sharing is implied by selecting files; with nothing selected the link is upload-only.
+watch(() => shareFiles.value.length, (n) => { opts.shareEnabled.value = n > 0 }, { immediate: true })
+
+const linkKind = computed<'both' | 'share' | 'upload' | null>(() => {
+	const share = shareFiles.value.length > 0
+	const upload = opts.uploadEnabled.value
+	if (share && upload) return 'both'
+	if (share) return 'share'
+	if (upload) return 'upload'
+	return null
+})
+
 const canGenerate = computed(() => {
-	if (!opts.uploadEnabled.value && !opts.shareEnabled.value) return false
+	if (!linkKind.value) return false
 	if (opts.passwordRequired.value) return false
 	if (!opts.accessSatisfied.value) return false
 	if (opts.uploadEnabled.value && !uploadDest.value.trim()) return false
@@ -1108,32 +1062,6 @@ async function fetchProjects() {
 	} catch {}
 }
 
-async function createProject() {
-	if (!newProjectName.value.trim() || !newProjectRoot.value.trim()) return
-	creatingProject.value = true
-	try {
-		const data = await apiFetch('/api/projects', {
-			method: 'POST',
-			body: JSON.stringify({
-				name: newProjectName.value.trim(),
-				rootDir: newProjectRoot.value.trim(),
-			}),
-		})
-		showNewProjectModal.value = false
-		newProjectName.value = ''
-		newProjectRoot.value = ''
-		await fetchProjects()
-		if (data?.project?.id) {
-			selectedProjectId.value = data.project.id
-			onProjectChange()
-		}
-	} catch (e: any) {
-		pushNotification(new Notification('Failed to create project', e?.message || '', 'error', 8000))
-	} finally {
-		creatingProject.value = false
-	}
-}
-
 async function generateLink() {
 	if (opts.uploadEnabled.value && autoTranscodeUploads.value && autoTranscodeProxyQualities.value.length === 0) {
 		error.value = 'Select at least one proxy resolution for auto-transcode.'
@@ -1417,7 +1345,7 @@ async function generateLink() {
 				if (proxyActive && canUsePlayback && !transfer.hasActiveTranscode({ assetVersionIds: [assetVersionId], file: filePath, jobKind: 'proxy_mp4' })) {
 					transfer.startPlaybackTranscodeTask({
 						title: `Transcoding: ${displayName}`,
-						detail: 'Review copy',
+						detail: 'Proxy file',
 						intervalMs: 1500,
 						jobKind: 'proxy_mp4',
 						context,
@@ -1506,6 +1434,8 @@ function openResult() {
 
 function resetAll() {
 	opts.resetOptions()
+	opts.uploadEnabled.value = false
+	showUploadBrowser.value = false
 	uploadDest.value = ''
 	uploadProjectBase.value = ''
 	autoShareUploads.value = false
@@ -1518,7 +1448,8 @@ function resetAll() {
 	watermarkSettings.value = createDefaultWatermarkSettings()
 	resultUrl.value = ''
 	error.value = null
-	selectedProjectId.value = null
+	// Stay in the current project; reset only the link options.
+	onProjectChange()
 }
 
 function goBack() {
@@ -1532,37 +1463,29 @@ const { onboarding, markDone } = useOnboarding()
 const createLinkTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="create-link-capabilities"]',
-		message: 'Welcome to Create Link!\n\nThis screen lets you create a combined link with Upload, Share/Review, or both capabilities in a single URL.\n\nUse the checkboxes to toggle Upload (clients send files) and Share/Review (clients view files). Enable both for a combined link.',
-	},
-	{
-		target: '[data-tour="create-link-project"]',
-		message: 'Select a project to scope the link.\n\nThis sets the root directory for browsing and uploading. Choose "No project" to use the server\'s default root instead.\n\nYou can also create a new project inline.',
-		beforeShow: () => { /* only shows if projectMode is enabled */ },
-	},
-	{
-		target: '[data-tour="create-link-upload-dest"]',
-		message: 'When Upload is enabled, pick the destination folder on the server.\n\nClients who access this link will upload files to this directory.',
-		beforeShow: () => { opts.uploadEnabled.value = true },
+		message: 'Welcome to Create Link!\n\nOne link can let your client review files, upload files to you, or both. The link is saved in the project shown at the top right.',
 	},
 	{
 		target: '[data-tour="create-link-share-files"]',
-		message: 'When Share/Review is enabled, browse and select files to include in the link.\n\nRecipients will be able to view, stream, and download these files.',
-		beforeShow: () => { opts.shareEnabled.value = true },
+		message: 'Pick the files your client should review or download. Check a folder to include everything in it.\n\nLeave this empty if you only want the client to send you files; the link becomes upload-only.',
+	},
+	{
+		target: '[data-tour="create-link-upload-dest"]',
+		message: 'Want files back from the client? Check "Let client upload to" and choose the folder their uploads should land in. Type a path or click Browse.',
 	},
 	{
 		target: '[data-tour="create-link-options"]',
-		message: 'Configure link settings: expiry time, title, network access (Local or External), and access mode (open, password, or invited users/groups).\n\nIf comments are enabled for open/password access, you can also define Comment Categories to organize review feedback.\n\nThese apply to the entire link regardless of capabilities.',
+		message: 'Set when the link expires, whether it works over the internet or only on your network, and who can open it: anyone with the link, anyone with a password, or only invited clients and teams.\n\nWith comments on, you can also set comment categories to organize feedback.',
 	},
 	{
 		target: '[data-tour="create-link-media-options"]',
 		message: isPremiumActive.value
-			? 'When sharing video or image files, media options appear here.\n\nFor video: choose review copy qualities (720p, 1080p, full-res) and toggle watermarks. A streaming version (HLS) is also generated for smooth browser playback.\nFor images: toggle watermark overlays to protect your content.\n\nWatermarks support PNG, JPG, and SVG with full customization — position, size, opacity, and tiling (Pro).'
-			: 'When sharing video or image files, media options appear here.\n\nFor video: choose review copy qualities (720p, 1080p, full-res) and toggle watermarks. A streaming version (HLS) is also generated for smooth browser playback.\nFor images: toggle watermark overlays to protect your content.\n\nA basic watermark is applied at bottom-right. Upgrade to Pro for full customization of position, size, and opacity.',
-		beforeShow: () => { opts.shareEnabled.value = true },
+			? 'Sharing video or images? Media options appear here.\n\nFor video, choose proxy file sizes (720p, 1080p, full res) your client can download. A stream is also made so it plays smoothly in the browser.\n\nWatermarks support PNG, JPG and SVG with full control over position, size, opacity and tiling (Pro).'
+			: 'Sharing video or images? Media options appear here.\n\nFor video, choose proxy file sizes (720p, 1080p, full res) your client can download. A stream is also made so it plays smoothly in the browser.\n\nA basic watermark goes in the bottom-right corner. Upgrade to Pro to control position, size and opacity.',
 	},
 	{
 		target: '[data-tour="create-link-generate-btn"]',
-		message: 'Click here to generate your Flow link.\n\nThe resulting URL handles both upload and review in one link — share it with your collaborators.',
+		message: 'Click here to create the link, then copy it and send it to your client.',
 	},
 ])
 
@@ -1576,6 +1499,8 @@ onMounted(async () => {
 			opts.loadLinkDefaults(),
 			fetchProjects(),
 		])
+		// Client uploads are opt-in on this screen; selecting files alone makes a review link.
+		opts.uploadEnabled.value = false
 		await loadExistingWatermarks()
 		// Auto-select project from query param (passed from Dashboard)
 		const qProjectId = Number(route.query.projectId)

@@ -7,7 +7,7 @@
             and never sent back to any client once saved.
         </p>
         <p v-if="loading" role="status">Loading SMTP settings…</p>
-        <p v-if="error" role="alert" class="text-sm text-danger">{{ error }}</p>
+        <p v-if="error" role="alert" class="text-sm text-flow-danger">{{ error }}</p>
         <button type="button" class="btn btn-secondary" :disabled="saving || loading || deleting" @click="load">
             Reload
         </button>
@@ -90,13 +90,13 @@
                     <button type="button" class="btn btn-danger" :disabled="deleting" @click="confirmDelete">
                         {{ deleting ? 'Deleting…' : 'Confirm delete' }}
                     </button>
-                    <button type="button" class="btn btn-secondary" :disabled="deleting" @click="confirmingDelete = false">
+                    <button type="button" class="btn btn-dismiss" :disabled="deleting" @click="confirmingDelete = false">
                         Cancel
                     </button>
                 </div>
             </div>
-            <p v-if="saved" role="status" class="text-sm text-success">SMTP settings saved.</p>
-            <p v-if="deleted" role="status" class="text-sm text-success">SMTP credentials deleted.</p>
+            <p v-if="saved" role="status" class="text-sm text-flow-success">SMTP settings saved.</p>
+            <p v-if="deleted" role="status" class="text-sm text-flow-success">SMTP credentials deleted.</p>
         </template>
     </section>
 </template>

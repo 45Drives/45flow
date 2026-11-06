@@ -30,16 +30,36 @@
           <ConnectionSwitcher v-if="route.name !== 'server-selection' && isPremiumActive && !isWeb" />
           <BasicServerBadge v-else-if="route.name !== 'server-selection'" />
         </div>
-        <span v-if="isFallback && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 font-medium whitespace-nowrap" title="Pro legacy mode: premium features remain available at your current version. Renew your license to restore app and server updates.">
+        <span v-if="isFallback && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="flow-chip flow-chip--warning whitespace-nowrap" title="Pro legacy mode: premium features remain available at your current version. Renew your license to restore app and server updates.">
           License Expired
         </span>
-        <span v-else-if="isTrial && trialDaysRemaining !== null && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 font-medium whitespace-nowrap">
+        <span v-else-if="isTrial && trialDaysRemaining !== null && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="flow-chip flow-chip--warning whitespace-nowrap">
           Pro Trial — {{ trialDaysRemaining }} {{ trialDaysRemaining === 1 ? 'day' : 'days' }} left
         </span>
-        <span v-else-if="isTrialExpired && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-800 dark:text-red-300 font-medium whitespace-nowrap">
+        <span v-else-if="isTrialExpired && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="flow-chip flow-chip--danger whitespace-nowrap">
           Trial Expired
         </span>
         <NotificationBell />
+        <button
+          v-if="hasActiveSession && route.name !== 'server-selection'"
+          class="p-1.5 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          title="Activity Log"
+          aria-label="Activity Log"
+          data-tour="view-logs"
+          @click="showLogs = true"
+        >
+          <ClipboardDocumentListIcon class="w-5 h-5 text-default" />
+        </button>
+        <button
+          v-if="hasActiveSession && route.name !== 'server-selection'"
+          class="p-1.5 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          title="Settings"
+          aria-label="Settings"
+          data-tour="settings"
+          @click="showSettings = true"
+        >
+          <Cog6ToothIcon class="w-5 h-5 text-default" />
+        </button>
         <GlobalMenu />
         <button
           class="theme-icon-btn"
@@ -60,6 +80,8 @@
       <router-view v-if="hasActiveSession || route.name === 'server-selection'" />
     </main>
     <QuickShareOverlay v-if="hasActiveSession && route.name !== 'server-selection'" />
+    <SettingsModal v-if="showSettings" @close="showSettings = false" />
+    <LogViewModal v-if="showLogs" @close="showLogs = false" />
     <GlobalModalConfirm />
     <NotificationView />
     <SessionIdlePrompt v-if="isWeb" />
@@ -73,7 +95,7 @@
 import { ref, provide, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 import { DynamicBrandingLogo, GlobalModalConfirm, NotificationView, toggleDarkMode, useDarkModeState } from '@45drives/houston-common-ui'
 import { reportError, reportSuccess } from '../renderer/composables/useNotificationQueue'
-import { MoonIcon, SunIcon } from '@heroicons/vue/24/outline'
+import { MoonIcon, SunIcon, Cog6ToothIcon, ClipboardDocumentListIcon } from '@heroicons/vue/24/outline'
 import { divisionCodeInjectionKey, currentServerInjectionKey, discoveryStateInjectionKey, thisOsInjectionKey, connectionMetaInjectionKey } from '../renderer/keys/injection-keys'
 import type { Server, DivisionType, DiscoveryState, ConnectionMeta } from '../renderer/types'
 import { useServerDiscovery } from '../renderer/composables/useServerDiscovery'
@@ -98,6 +120,8 @@ import SessionIdlePrompt from '../renderer/components/SessionIdlePrompt.vue'
 import { useSessionIdle } from '../renderer/composables/useSessionIdle'
 import { useDesktopSession } from '../renderer/composables/useDesktopSession'
 import NotificationBell from '../renderer/components/NotificationBell.vue'
+import SettingsModal from '../renderer/components/modals/SettingsModal.vue'
+import LogViewModal from '../renderer/components/modals/LogViewModal.vue'
 import { initNotificationCenter } from '../renderer/composables/useNotificationCenter'
 import { useTourManager } from '../renderer/composables/useTourManager'
 import flowLogo from '../../assets/logos/45Flow-w.png'
@@ -178,6 +202,10 @@ const darkMode = useDarkModeState()
 const hasActiveSession = computed(() =>
   !!activeConnection.value?.token && activeConnection.value.status === 'connected'
 )
+
+// Global utility modals opened from the header icon buttons
+const showSettings = ref(false)
+const showLogs = ref(false)
 
 // Browser sessions end after a period of inactivity; keep them alive while the user is active.
 const sessionIdle = useSessionIdle()

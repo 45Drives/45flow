@@ -4,7 +4,7 @@
     role="alertdialog"
     aria-live="assertive"
     aria-label="Session about to expire"
-    class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[3000] flex items-center gap-4 px-5 py-3 rounded-lg border border-default bg-accent shadow-xl"
+    class="fixed bottom-6 left-1/2 -translate-x-1/2 z-critical flex items-center gap-4 px-5 py-3 rounded-lg border border-default bg-accent shadow-xl"
   >
     <p class="text-sm text-default">
       You will be signed out in <strong>{{ clock }}</strong> because of inactivity.

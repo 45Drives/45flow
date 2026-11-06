@@ -68,6 +68,7 @@ vi.mock('../WatermarkPreview.vue', () => ({ default: {} }))
 
 let app
 let host
+let modal
 async function flush() {
   for (let i = 0; i < 5; i++) await nextTick()
 }
@@ -95,6 +96,8 @@ async function mount() {
   app = createApp(LinkDetailsModal, { modelValue: true, link, apiFetch: mocks.apiFetch })
   app.mount(host)
   await flush()
+  // FlowModal teleports its panel to <body>, so query the real modal panel.
+  modal = document.querySelector('.flow-modal__panel')
 }
 afterEach(() => {
   app?.unmount()
@@ -106,10 +109,10 @@ afterEach(() => {
 describe('LinkDetailsModal hosts the real email invitation panel', () => {
   it('renders Invite by Email always visible (Free, isPremiumActive=false), not standalone', async () => {
     await mount()
-    expect(host.textContent).toContain('Invite by Email')
-    // Confirm it is inside the real modal DOM (host), not a separately
-    // mounted/mocked screen: its own input/button live under the same host.
-    const emailInput = host.querySelector('input[type="email"]')
+    expect(modal.textContent).toContain('Invite by Email')
+    // Confirm it is inside the real modal DOM, not a separately
+    // mounted/mocked screen: its own input/button live under the same modal panel.
+    const emailInput = modal.querySelector('input[type="email"]')
     expect(emailInput).not.toBeNull()
   })
 
@@ -124,19 +127,19 @@ describe('LinkDetailsModal hosts the real email invitation panel', () => {
         mail: { configured: false, sent: false, message: 'SMTP delivery is not configured for this installation; the invitation has been queued but not sent.' },
       },
     })
-    const emailInput = host.querySelector('input[type="email"]')
+    const emailInput = modal.querySelector('input[type="email"]')
     emailInput.value = 'reviewer@external.test'
     emailInput.dispatchEvent(new Event('input'))
     await flush()
-    const sendButton = [...host.querySelectorAll('button')].find(b => b.textContent.includes('Send Invitation'))
+    const sendButton = [...modal.querySelectorAll('button')].find(b => b.textContent.includes('Send Invitation'))
     sendButton.click()
     await flush()
     expect(mocks.apiFetch).toHaveBeenCalledWith('/api/links/42/invite', {
       method: 'POST',
       body: JSON.stringify({ recipientEmail: 'reviewer@external.test' }),
     })
-    expect(host.textContent).toContain('Not sent')
-    expect(host.textContent).toContain('SMTP delivery is not configured')
-    expect(host.textContent).not.toContain('Invitation sent')
+    expect(modal.textContent).toContain('Not sent')
+    expect(modal.textContent).toContain('SMTP delivery is not configured')
+    expect(modal.textContent).not.toContain('Invitation sent')
   })
 })

@@ -470,7 +470,7 @@ export class FullTranscodeManager {
           fps,
           speed,
           eta,
-          message: `Review copy ${quality}${canFastRemux ? ' (remux)' : ''} — ${Math.round(pct)}%`,
+          message: `Proxy file ${quality}${canFastRemux ? ' (remux)' : ''} — ${Math.round(pct)}%`,
           encoder: canFastRemux ? 'copy' : proxyCodec,
         });
       }, canFastRemux ? 'copy' : proxyCodec, softwareArgs);
@@ -486,7 +486,7 @@ export class FullTranscodeManager {
         fps: 0,
         speed: '1.0x',
         eta: '00:00:00',
-        message: `Review copy ${quality} — 100%`,
+        message: `Proxy file ${quality} — 100%`,
         encoder: canFastRemux ? 'copy' : proxyCodec,
       });
 

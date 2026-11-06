@@ -1,20 +1,8 @@
 <template>
-  <div v-if="modelValue" class="fixed inset-0 z-[150]">
-    <div class="absolute inset-0 bg-black/60" @click="close"></div>
-
-    <div
-      class="absolute inset-4 mx-auto max-w-[95vw] max-h-[92vh] bg-accent border border-default rounded-lg shadow-2xl z-[151] flex flex-col">
-      <!-- Header -->
-      <div class="flex items-center justify-between px-5 py-4 border-b border-default shrink-0 bg-well">
-        <div class="flex-1 min-w-0">
-          <h3 class="text-xl font-bold">
-            Comments Review
-          </h3>
-          <p class="text-xs text-muted mt-0.5">
-            {{ link?.title || 'Untitled' }} • {{ filteredComments.length }} comment{{ filteredComments.length !== 1 ? 's' : '' }} across {{ filteredFileNames.length }} file{{ filteredFileNames.length !== 1 ? 's' : '' }}
-          </p>
-        </div>
-        <div class="flex items-center gap-2 shrink-0">
+  <FlowModal :model-value="modelValue" title="Comments Review" size="full" header-class="bg-well" flush body-class="flex flex-col"
+    :description="`${link?.title || 'Untitled'} • ${filteredComments.length} comment${filteredComments.length !== 1 ? 's' : ''} across ${filteredFileNames.length} file${filteredFileNames.length !== 1 ? 's' : ''}`"
+    @close="close">
+      <template #header-actions>
           <button
             @click="loadComments"
             :disabled="loading"
@@ -43,9 +31,7 @@
             </svg>
             Open in Browser
           </button>
-          <button class="btn btn-danger" @click="close">Close</button>
-        </div>
-      </div>
+      </template>
 
       <!-- Export Section -->
       <div v-if="!loading && comments.length > 0" class="px-5 py-4 border-b border-default bg-default/5 shrink-0">
@@ -100,7 +86,7 @@
 
       <!-- Error State -->
       <div v-else-if="error" class="flex-1 flex items-center justify-center">
-        <div class="p-4 rounded bg-red-900/30 text-default border border-red-800 max-w-md">
+        <div class="p-4 rounded flow-tone-danger text-default border max-w-md">
           <div class="font-semibold mb-1">Failed to load comments</div>
           <div class="text-sm opacity-80">{{ error }}</div>
         </div>
@@ -238,11 +224,11 @@
               </div>
               <div class="flex justify-between">
                 <span class="opacity-70">Resolved:</span>
-                <span class="font-semibold text-green-500">{{ stats.resolved }}</span>
+                <span class="font-semibold text-flow-success">{{ stats.resolved }}</span>
               </div>
               <div class="flex justify-between">
                 <span class="opacity-70">Unresolved:</span>
-                <span class="font-semibold text-yellow-500">{{ stats.unresolved }}</span>
+                <span class="font-semibold text-flow-warning">{{ stats.unresolved }}</span>
               </div>
               <div v-if="stats.withAnnotations" class="flex justify-between">
                 <span class="opacity-70">With Drawings:</span>
@@ -377,7 +363,7 @@
                             <ClockIcon class="w-3 h-3" />
                             {{ formatTimecodeRange(comment.start_seconds, comment.end_seconds) }}
                           </span>
-                          <span v-if="comment.version_index != null" class="inline-flex items-center px-2 py-0.5 bg-blue-500/15 text-blue-500 rounded text-xs font-bold" :title="`Version ${comment.version_index}`">V{{ comment.version_index }}</span>
+                          <span v-if="comment.version_index != null" class="inline-flex items-center px-2 py-0.5 flow-tone-info rounded text-xs font-bold" :title="`Version ${comment.version_index}`">V{{ comment.version_index }}</span>
                           <span v-if="comment.category_name" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border" :style="categoryBadgeStyle(comment.category_color)" :title="`Category: ${comment.category_name}`">
                             <span class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: comment.category_color || '#9CA3AF' }" />
                             {{ comment.category_name }}
@@ -442,14 +428,14 @@
                         <PencilIcon class="w-3 h-3" />
                         View Annotation
                       </button>
-                      <span v-if="comment.resolved_at" class="text-green-400 flex items-center gap-1 opacity-60">
+                      <span v-if="comment.resolved_at" class="text-flow-success flex items-center gap-1 opacity-60">
                         <CheckIcon class="w-3 h-3" />
                         Resolved {{ formatDate(comment.resolved_at) }}
                       </span>
                       <button
                         @click.stop="deleteComment(comment)"
                         :disabled="deletingIds.has(comment.id)"
-                        class="ml-auto flex items-center gap-1 px-2 py-1 rounded text-red-500 hover:bg-red-500/15 transition-colors font-semibold disabled:opacity-50"
+                        class="ml-auto flex items-center gap-1 px-2 py-1 rounded flow-tone-danger transition-colors font-semibold disabled:opacity-50"
                         :title="comment.draw_data ? 'Delete this comment and its annotation' : 'Delete this comment'"
                       >
                         <TrashIcon class="w-3 h-3" />
@@ -463,8 +449,9 @@
           </div>
         </div>
       </div>
-    </div>
+  </FlowModal>
 
+  <template v-if="modelValue">
     <!-- Annotation Viewer Modal -->
     <AnnotationViewerModal
       v-model="showAnnotationViewer"
@@ -481,7 +468,7 @@
       @close="showCategoryManagement = false"
       @categories-updated="onCategoriesUpdated"
     />
-  </div>
+  </template>
 </template>
 
 <script setup lang="ts">
@@ -504,6 +491,7 @@ import {
 import AnnotationViewerModal from './AnnotationViewerModal.vue'
 import CategoryManagementModal from './CategoryManagementModal.vue'
 import { useCommentCategories } from '../../composables/useCommentCategories'
+import FlowModal from '../../ui/FlowModal.vue'
 
 const props = defineProps<{
   modelValue: boolean

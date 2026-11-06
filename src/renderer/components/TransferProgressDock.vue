@@ -37,7 +37,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <button class="btn btn-secondary px-2 py-1 text-xs" @click="clearFinished">Clear finished</button>
-                    <button class="btn btn-secondary px-2 py-1 text-xs" @click="setOpen(false)">Close</button>
+                    <button class="btn btn-dismiss px-2 py-1 text-xs" @click="setOpen(false)">Close</button>
                 </div>
             </div>
 
@@ -72,7 +72,7 @@
                                 <span class="drawer-status-badge" :class="statusClass(bestOfTasks(fg.tasks))">
                                     {{ statusLabel(bestOfTasks(fg.tasks)) }}
                                 </span>
-                                <button class="btn btn-secondary px-2 py-0.5 text-[10px]" @click="dismissFileGroup(fg)">
+                                <button class="btn btn-dismiss px-2 py-0.5 text-[10px]" @click="dismissFileGroup(fg)">
                                     Dismiss
                                 </button>
                             </div>
@@ -85,12 +85,14 @@
                                     <div class="flex items-center gap-1.5 min-w-0">
                                         <span class="text-[11px] font-semibold opacity-80">{{ taskRowLabel(t) }}</span>
                                         <span v-if="t.kind === 'transcode' && transcodeMethodLabel(t)" class="text-[9px] opacity-50 whitespace-nowrap">{{ transcodeMethodLabel(t) }}</span>
+                                        <!-- flow-ui-allow: "Cancel" stops a running upload, so it is a danger action -->
                                         <button
                                             v-if="t.kind === 'upload' && (t.status === 'uploading' || t.status === 'queued' || t.status === 'transcoding')"
                                             class="btn btn-danger px-1.5 py-0 text-[9px] leading-tight"
                                             @click="cancelUpload(t.taskId)">
                                             Cancel
                                         </button>
+                                        <!-- flow-ui-allow: "Cancel" stops a running transcode, so it is a danger action -->
                                         <button
                                             v-if="t.kind === 'transcode' && (t.status === 'running' || t.status === 'queued')"
                                             class="btn btn-danger px-1.5 py-0 text-[9px] leading-tight"
@@ -122,7 +124,7 @@
 
                         <!-- Errors (collapsed) -->
                         <template v-for="t in fg.tasks" :key="'err:' + t.taskId">
-                            <div v-if="t.error" class="mt-1.5 text-xs text-red-400">
+                            <div v-if="t.error" class="mt-1.5 text-xs text-flow-danger">
                                 <details class="cursor-pointer">
                                     <summary class="select-none">{{ taskRowLabel(t) }}: {{ errorSummary(t.error) }}</summary>
                                     <pre class="mt-1 whitespace-pre-wrap break-all opacity-80 max-h-24 overflow-y-auto text-[11px] leading-tight">{{ t.error }}</pre>
@@ -328,7 +330,7 @@ function taskRowLabel(t: any) {
             const qualitySuffix = (status === 'running' && m)
                 ? ` (${m[1]})`
                 : multiRes ? ' (Multiple Resolutions)' : (m ? ` (${m[1]})` : '')
-            const baseLabel = `Review Copy${qualitySuffix}`
+            const baseLabel = `Proxy File${qualitySuffix}`
             if (status === 'queued') {
                 return `${baseLabel} (Queued)`
             }

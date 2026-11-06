@@ -1,24 +1,17 @@
 <template>
-  <div v-if="modelValue" class="fixed inset-0 z-[2200] flex items-center justify-center">
-    <div class="absolute inset-0 bg-black/50" @click="close()"></div>
+  <FlowModal :model-value="modelValue" :title="linkMode ? 'Invite clients & teams' : 'Client Access'" size="xl"
+    :header-attrs="{ 'data-tour': 'users-modal-header' }" @close="close()">
+      <template #header-actions>
+          <button class="btn btn-secondary" @click="openGroups()">Teams</button>
+          <button class="btn btn-secondary" @click="openRoles()">Roles</button>
+      </template>
 
-    <div class="relative w-[96vw] max-w-4xl bg-accent rounded-lg shadow-xl p-4 flex flex-col max-h-[90vh]">
-      <div class="flex items-center justify-between mb-3" data-tour="users-modal-header">
-        <h3 class="text-lg font-semibold">{{ linkMode ? 'Manage link access' : 'Manage users' }}</h3>
-
-        <div class="flex items-center gap-2">
-          <button class="btn btn-secondary" @click="openGroups()">Manage groups</button>
-          <button class="btn btn-secondary" @click="openRoles()">Manage roles</button>
-          <button class="btn btn-secondary" @click="close()">Close</button>
-        </div>
-      </div>
-
-      <div class="flex-1 overflow-auto pr-1 min-h-0">
+      <div>
         <div class="grid grid-cols-1 gap-4">
           <!-- Existing users -->
           <div class="border rounded p-3 bg-accent/60" data-tour="users-modal-list">
             <div class="flex items-center justify-between mb-2">
-              <div class="font-semibold text-sm">{{ linkMode ? 'Select existing users' : 'Existing users' }}</div>
+              <div class="font-semibold text-sm">{{ linkMode ? 'Choose clients' : 'Clients' }}</div>
               <input type="text" v-model.trim="userSearch"
                 class="input-textlike border rounded px-2 py-1 text-sm  w-80"
                 placeholder="Search by name/username/email/company/tag" @input="debouncedFetchUsers()" />
@@ -77,16 +70,16 @@
                     </option>
                   </select>
                   <button class="px-2 py-1 text-xs border rounded hover:opacity-80" @click.stop="startEdit(u)"
-                    title="Edit user">
+                    title="Edit client">
                     <FontAwesomeIcon :icon="faEdit" />
                   </button>
-                  <button class="px-2 py-1 text-xs border rounded text-red-600 hover:bg-red-600/10"
-                    @click.stop="deleteUser(u)" title="Delete user">
+                  <button class="px-2 py-1 text-xs border rounded flow-tone-danger"
+                    @click.stop="deleteUser(u)" title="Delete client">
                     <FontAwesomeIcon :icon="faTrash" />
                   </button>
                 </div>
               </div>
-              <div v-if="!users.length" class="px-3 py-2 text-sm opacity-70">No users.</div>
+              <div v-if="!users.length" class="px-3 py-2 text-sm opacity-70">No clients yet.</div>
             </div>
 
             <div v-if="linkMode" class="flex gap-2 mt-2">
@@ -99,7 +92,7 @@
 
           <!-- Groups section (link mode) -->
           <div v-if="linkMode && groups.length" class="border rounded p-3 bg-accent/60" data-tour="users-modal-groups">
-            <div class="font-semibold text-sm mb-2">Select groups</div>
+            <div class="font-semibold text-sm mb-2">Choose teams</div>
             <div class="max-h-[30vh] overflow-auto border rounded">
               <div v-for="g in groups" :key="g.id"
                 class="border-b border-default text-sm">
@@ -120,7 +113,7 @@
                     <select v-model.number="groupRoleById[g.id]"
                       :disabled="!selectedGroupIds.includes(g.id) || rolesLoading || !roles.length"
                       class="input-textlike border rounded px-2 py-1 text-xs min-w-[140px]"
-                      title="Role for this group">
+                      title="Role for this team">
                       <option v-if="rolesLoading" disabled value="">Loading roles…</option>
                       <option v-else-if="!roles.length" disabled value="">No roles</option>
                       <option v-else v-for="r in roles" :key="r.id" :value="r.id">
@@ -149,37 +142,37 @@
             </div>
           </div>
 
-          <!-- Create new user -->
+          <!-- Add client -->
           <div class="flex flex-col gap-2" data-tour="users-modal-create">
             <div class="mr-auto">
               <button v-if="!showCreate"
                 class="btn btn-primary"
-                @click="openCreate()">Create new user</button>
+                @click="openCreate()">Add client</button>
               <button v-else
-                class="btn btn-danger"
+                class="btn btn-dismiss"
                 @click="closeCreate()">
-                Close create form
+                Cancel
               </button>
             </div>
             <div v-if="showCreate" class="border rounded p-3 bg-accent/60 max-h-[50vh] overflow-auto">
-              <div class="font-semibold text-sm mb-2">Create new user</div>
+              <div class="font-semibold text-sm mb-2">Add client</div>
               <div class="flex flex-col gap-2">
-                <div class="text-xs opacity-70 mb-1">A temporary password is required. Share it securely with the user.</div>
+                <div class="text-xs opacity-70 mb-1">Set a temporary password and send it to your client securely.</div>
                 <div class="grid grid-cols-2 gap-2 text-left">
                   <div>
-                    <label class="text-xs opacity-80">Name <span class="text-red-500">*</span></label>
+                    <label class="text-xs opacity-80">Name <span class="text-flow-danger">*</span></label>
                     <input type="text" v-model.trim="newUser.name" tabindex="1"
                       class="input-textlike border rounded px-3 py-2 w-full" placeholder="Jane Doe" />
                   </div>
                   <div>
-                    <label class="text-xs opacity-80">Username <span class="text-red-500">*</span></label>
+                    <label class="text-xs opacity-80">Username <span class="text-flow-danger">*</span></label>
                     <input type="text" v-model.trim="newUser.username" tabindex="2"
                       class="input-textlike border rounded px-3 py-2 w-full" placeholder="jane" />
                   </div>
                   <div>
                     <div class="relative">
                       <label class="text-xs opacity-80 pr-28 inline-block">
-                        Temporary Password <span class="text-red-500">*</span>
+                        Temporary Password <span class="text-flow-danger">*</span>
                       </label>
                       <button type="button"
                         class="absolute right-0 top-0 text-xs underline opacity-80 hover:opacity-100 mt-1.5"
@@ -190,7 +183,7 @@
                     <div class="relative">
                       <input :type="showTempPassword ? 'text' : 'password'"
                         v-model.trim="tempPassword" tabindex="3"
-                        :class="['input-textlike border rounded px-3 py-2 w-full pr-12', (passwordFormatInvalid ? 'border-red-500' : '')]"
+                        :class="['input-textlike border rounded px-3 py-2 w-full pr-12', (passwordFormatInvalid ? 'border-flow-danger' : '')]"
                         placeholder="4–64 characters" aria-invalid="true"
                         v-bind="passwordFormatInvalid ? { 'aria-describedby': 'password-format-error' } : {}" />
                       <button type="button"
@@ -199,16 +192,16 @@
                         {{ showTempPassword ? 'Hide' : 'Show' }}
                       </button>
                     </div>
-                    <p v-if="passwordFormatInvalid" id="password-format-error" class="mt-1 text-xs text-red-500">
+                    <p v-if="passwordFormatInvalid" id="password-format-error" class="mt-1 text-xs text-flow-danger">
                       Password must be 4–64 characters.
                     </p>
                   </div>
                    <div>
-                    <label class="text-xs opacity-80">Confirm Password <span class="text-red-500">*</span></label>
+                    <label class="text-xs opacity-80">Confirm Password <span class="text-flow-danger">*</span></label>
                     <div class="relative">
                       <input :type="showTempPasswordConfirm ? 'text' : 'password'"
                         v-model.trim="tempPasswordConfirm" tabindex="4"
-                        :class="['input-textlike border rounded px-3 py-2 w-full pr-12', (passwordMismatch ? 'border-red-500' : '')]"
+                        :class="['input-textlike border rounded px-3 py-2 w-full pr-12', (passwordMismatch ? 'border-flow-danger' : '')]"
                         placeholder="Re-enter password" aria-invalid="true"
                         v-bind="passwordMismatch ? { 'aria-describedby': 'password-mismatch-error' } : {}" />
                       <button type="button"
@@ -217,7 +210,7 @@
                         {{ showTempPasswordConfirm ? 'Hide' : 'Show' }}
                       </button>
                     </div>
-                    <p v-if="passwordMismatch" id="password-mismatch-error" class="mt-1 text-xs text-red-500">Passwords do not match.</p>
+                    <p v-if="passwordMismatch" id="password-mismatch-error" class="mt-1 text-xs text-flow-danger">Passwords do not match.</p>
                   </div>
                   <div>
                     <label class="text-xs opacity-80">Email (optional)</label>
@@ -259,9 +252,9 @@
                   </div>
                   <div class="col-span-2">
                     <div class="flex items-center justify-between">
-                      <label class="text-xs opacity-80">Groups (optional)</label>
+                      <label class="text-xs opacity-80">Teams (optional)</label>
                       <button type="button" class="text-xs underline opacity-80 hover:opacity-100" @click="openGroups()">
-                        New group
+                        New team
                       </button>
                     </div>
                     <div v-if="groups.length" class="mt-1 border rounded p-2 max-h-32 overflow-auto">
@@ -274,7 +267,7 @@
                         <span class="opacity-50 text-xs">({{ g.member_count ?? 0 }})</span>
                       </label>
                     </div>
-                    <div v-else class="mt-1 text-xs opacity-60">No groups yet.</div>
+                    <div v-else class="mt-1 text-xs opacity-60">No teams yet.</div>
                   </div>
                 </div>
              
@@ -286,15 +279,15 @@
                     <input type="text" v-model.trim="newUser.display_color" tabindex="10"
                       class="input-textlike border rounded px-3 py-2 w-full" placeholder="#aabbcc" />
                   </div>
-                  <div class="text-xs opacity-70 mt-1">Used to tint this user’s comments.</div>
+                  <div class="text-xs opacity-70 mt-1">Used to color this client’s comments.</div>
                 </div>
 
-                <div v-if="error" class="text-sm text-red-500">{{ error }}</div>
+                <div v-if="error" class="text-sm text-flow-danger">{{ error }}</div>
 
                 <div class="flex flex-row w-full justify-between mt-2 sticky bottom-0 bg-accent/95 py-2 border-t border-default -mb-1">
 
                   <button class="btn btn-secondary" @click="resetNewUser()">Reset</button>
-                  <button class="btn btn-primary" @click="createUser()" tabindex="11" :disabled="!canSubmit">{{linkMode ? 'Create & Select User' : 'Create User'}}</button>
+                  <button class="btn btn-primary" @click="createUser()" tabindex="11" :disabled="!canSubmit">{{linkMode ? 'Add & Invite Client' : 'Add Client'}}</button>
                 </div>
               </div>
             </div>
@@ -302,28 +295,23 @@
         </div>
       </div>
 
-      <div class="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-default" data-tour="users-modal-actions">
+      <template #footer>
+      <div class="flex items-center justify-between gap-2 w-full" data-tour="users-modal-actions">
         <span v-if="linkMode" class="text-xs opacity-60">
           {{ selectedKeys.length + selectedGroupIds.length }} user{{ selectedKeys.length + selectedGroupIds.length === 1 ? '' : 's'}}/group{{ selectedKeys.length + selectedGroupIds.length === 1 ? '' : 's'}} selected
         </span>
         <span v-else></span>
         <div class="flex gap-2">
-          <button class="btn btn-secondary" @click="close()">{{ linkMode ? 'Cancel' : 'Close' }}</button>
+          <button class="btn btn-dismiss" @click="close()">{{ linkMode ? 'Cancel' : 'Close' }}</button>
           <button v-if="linkMode" class="btn btn-success" @click="apply()" :disabled="!selectedKeys.length && !selectedGroupIds.length">Add selected to link</button>
         </div>
       </div>
-    </div>
-  </div>
+      </template>
+  </FlowModal>
 
   <!-- Edit modal -->
-  <div v-if="editing" class="fixed inset-0 z-[2300] flex items-center justify-center text-left">
-    <div class="absolute inset-0 bg-black/50" @click="editing = null"></div>
-    <div class="relative w-full max-w-md bg-accent rounded-lg shadow-xl p-4">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-semibold">Edit user</h3>
-        <button class="btn btn-secondary" @click="editing = null">Close</button>
-      </div>
-      <div class="space-y-3">
+  <FlowModal :model-value="!!editing" title="Edit client" size="sm" @close="editing = null">
+      <div v-if="editing" class="space-y-3">
         <div>
           <label class="text-xs opacity-80">Username</label>
           <input class="input-textlike border rounded px-3 py-2 w-full bg-gray-600/20 opacity-70"
@@ -372,7 +360,7 @@
           <div class="flex items-center justify-between">
             <label class="text-xs opacity-80">Groups</label>
             <button type="button" class="text-xs underline opacity-80 hover:opacity-100" @click="openGroups()">
-              New group
+              New team
             </button>
           </div>
           <div v-if="groups.length" class="mt-1 border rounded p-2 max-h-32 overflow-auto">
@@ -385,24 +373,23 @@
               <span class="opacity-50 text-xs">({{ g.member_count ?? 0 }})</span>
             </label>
           </div>
-          <div v-else class="mt-1 text-xs opacity-60">No groups yet.</div>
+          <div v-else class="mt-1 text-xs opacity-60">No teams yet.</div>
         </div>
         <div class="items-center text-center">
-          <button class="btn btn-primary" @click="openReset(editing)" title="Reset password for this user">
+          <button class="btn btn-primary" @click="openReset(editing)" title="Reset this client’s password">
             Reset Password
           </button>
         </div>
       </div>
 
-      <div class="flex justify-end gap-2 mt-4">
-        <button class="btn btn-secondary" @click="editing = null">Cancel</button>
+      <template #footer>
+        <button class="btn btn-dismiss" @click="editing = null">Cancel</button>
         <button class="btn btn-success" @click="saveEdit()" :disabled="!(hasProfileEdits || pendingResetPassword)">
           Save
         </button>
-      </div>
-    </div>
-  </div>
-  <ConfirmDeleteModal v-model="deleteOpen" :title="'Delete user'"
+      </template>
+  </FlowModal>
+  <ConfirmDeleteModal v-model="deleteOpen" :title="'Delete client'"
     :message="userToDelete ? `Delete “${userToDelete.name || userToDelete.username}”? This cannot be undone.` : ''"
     :danger="true" :busy="deleting" :error="deleteError" :clickOutsideCancels="true" confirmText="Delete"
     cancelText="Cancel" @confirm="performDelete" />
@@ -426,6 +413,7 @@ import RolesModal from './RolesModal.vue'
 import GroupsModal from './GroupsModal.vue'
 import { useTourManager, type TourStep } from '../../composables/useTourManager'
 import { useOnboarding } from '../../composables/useOnboarding'
+import FlowModal from '../../ui/FlowModal.vue'
 
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()
@@ -433,19 +421,19 @@ const { onboarding, markDone } = useOnboarding()
 const usersTourSteps: TourStep[] = [
 	{
 		target: '[data-tour="users-modal-header"]',
-		message: 'This is the User Management panel.\n\nWhen opened from a link, it works in "link mode" — you select which users get access. From the dashboard, it\'s a general user manager.',
+		message: 'This is Client Access.\n\nWhen opened from a link, it works in "link mode" — you choose which clients get access. From the dashboard, it\'s a general user manager.',
 	},
 	{
 		target: '[data-tour="users-modal-list"]',
-		message: 'Existing users appear here.\n\nSearch by name, username, email, company, or tags. In link mode, check the box next to each user to grant them access, and assign a role from the dropdown.',
+		message: 'Your clients appear here.\n\nSearch by name, username, email, company, or tags. In link mode, check the box next to each client to give them access, and assign a role from the dropdown.',
 	},
 	{
 		target: '[data-tour="users-modal-create"]',
-		message: 'Create new user accounts here.\n\nFill in name, username, and a temporary password (use "Generate password" for a random one). Optionally add email, company, tags, and a comment color.\n\nIn link mode, newly created users are auto-selected for the link.',
+		message: 'Add client accounts here.\n\nFill in name, username, and a temporary password (use "Generate password" for a random one). Optionally add email, company, tags, and a comment color.\n\nIn link mode, newly created users are auto-selected for the link.',
 	},
 	{
 		target: '[data-tour="users-modal-actions"]',
-		message: 'When in link mode, click "Add to link" to assign the selected users.\n\nUse "Manage roles" in the header to create or edit permission roles that control what users can do.',
+		message: 'When in link mode, click "Add to link" to give the selected clients access.\n\nUse "Roles" in the header to create or edit permission roles that control what users can do.',
 	},
 ]
 
@@ -939,7 +927,7 @@ async function createUser() {
     if (newUserGroupIds.value.length) fetchGroups()
     resetNewUser()
   } catch (e: any) {
-    error.value = e?.message || 'Failed to create user.'
+    error.value = e?.message || 'Couldn\'t add the client.'
   }
 }
 
@@ -1081,7 +1069,7 @@ async function saveEdit() {
     if (groupsChanged) fetchGroups()
     editing.value = null
   } catch (e: any) {
-    error.value = e?.message || 'Failed to update user.'
+    error.value = e?.message || 'Couldn\'t update the client.'
   }
 }
 
@@ -1110,7 +1098,7 @@ async function performDelete() {
     deleteOpen.value = false
     userToDelete.value = null
   } catch (e: any) {
-    deleteError.value = e?.message || 'Failed to delete user.'
+    deleteError.value = e?.message || 'Couldn\'t delete the client.'
   } finally {
     deleting.value = false
   }

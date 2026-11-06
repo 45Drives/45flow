@@ -7,16 +7,16 @@
       class="flex items-center gap-2 px-3 py-2 rounded-md border border-default hover:border-primary transition-colors"
       :class="{
         'border-primary bg-well': isOpen,
-        'border-danger': activeConnection?.status === 'error' || activeConnection?.status === 'disconnected'
+        'border-flow-danger': activeConnection?.status === 'error' || activeConnection?.status === 'disconnected'
       }"
       @click="toggle"
       title="Switch active server for operations"
     >
-      <span v-if="isAllServers" class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-500 text-white text-[9px] font-bold">{{ allConnectedServers.length }}</span>
+      <span v-if="isAllServers" class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-flow-info text-white text-[9px] font-bold">{{ allConnectedServers.length }}</span>
       <span v-else class="inline-block w-2 h-2 rounded-full" :class="{
-        'bg-green-500': activeConnection?.status === 'connected',
-        'bg-red-500': activeConnection?.status === 'disconnected' || activeConnection?.status === 'error',
-        'bg-yellow-500': activeConnection?.status === 'checking'
+        'bg-flow-success': activeConnection?.status === 'connected',
+        'bg-flow-danger': activeConnection?.status === 'disconnected' || activeConnection?.status === 'error',
+        'bg-flow-warning': activeConnection?.status === 'checking'
       }" />
       <span class="text-sm font-medium w-[120px] truncate text-default">
         {{ isAllServers ? 'All Servers' : (activeConnection?.name || 'No Connection') }}
@@ -37,7 +37,7 @@
       <transition name="dropdown" appear>
         <div
           ref="menuRef"
-          class="fixed z-[1000] w-80 bg-accent border border-default rounded-lg shadow-xl overflow-hidden"
+          class="fixed z-dropdown w-80 bg-accent border border-default rounded-lg shadow-xl overflow-hidden"
           :style="menuStyle"
         >
           <!-- Quick Switch -->
@@ -55,7 +55,7 @@
                 @click="switchToAll"
               >
                 <span class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold"
-                  :class="isAllServers ? 'bg-white/20 text-white' : 'bg-blue-500 text-white'">{{ allConnectedServers.length }}</span>
+                  :class="isAllServers ? 'bg-white/20 text-white' : 'bg-flow-info text-white'">{{ allConnectedServers.length }}</span>
                 <span class="flex-1 text-sm truncate" :class="isAllServers ? 'text-white' : 'text-default'">All Servers</span>
               </button>
 
@@ -70,17 +70,17 @@
                 @click="switchTo(conn.connectionId)"
               >
                 <span class="inline-block w-2 h-2 rounded-full" :class="{
-                  'bg-green-300': conn.status === 'connected' && !isAllServers && conn.isActive,
-                  'bg-green-500': conn.status === 'connected' && (isAllServers || !conn.isActive),
-                  'bg-red-500': conn.status === 'disconnected' || conn.status === 'error',
-                  'bg-yellow-500': conn.status === 'checking'
+                  'bg-flow-success': conn.status === 'connected',
+                  'ring-1 ring-white': !isAllServers && conn.isActive,
+                  'bg-flow-danger': conn.status === 'disconnected' || conn.status === 'error',
+                  'bg-flow-warning': conn.status === 'checking'
                 }" />
                 <span class="flex-1 text-sm truncate" :class="!isAllServers && conn.isActive ? 'text-white' : 'text-default'">{{ conn.name }}</span>
                 <span v-if="!conn.token || conn.status !== 'connected'" class="text-[10px] whitespace-nowrap" :class="!isAllServers && conn.isActive ? 'text-white' : 'text-muted'">
                   {{ !conn.token ? 'Logged out' : 'Reconnect required' }}
                 </span>
                 <span class="text-[10px] font-medium px-1.5 py-0.5 rounded text-white" :class="licenseBadgeClass(conn)">{{ licenseBadgeLabel(conn) }}</span>
-                <span v-if="conn.isFavorite" class="text-yellow-500">★</span>
+                <span v-if="conn.isFavorite" class="text-flow-warning">★</span>
               </button>
             </div>
           </div>

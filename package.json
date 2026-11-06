@@ -29,6 +29,7 @@
     "build:web": "node scripts/web/build.mjs",
     "package:web": "node scripts/web/package.mjs",
     "test": "vitest run",
+    "check:ui": "node scripts/design-system-guard.cjs",
     "test:security-hygiene": "node scripts/test-security-hygiene.cjs",
     "test:hardening": "yarn build:common && node scripts/build.js && node scripts/test-hardening.cjs",
     "test:admin-networks": "bash scripts/test-admin-networks.sh",

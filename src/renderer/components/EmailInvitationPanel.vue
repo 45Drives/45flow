@@ -23,7 +23,7 @@
             </button>
         </div>
 
-        <p v-if="submitError" role="alert" class="text-sm text-danger">{{ submitError }}</p>
+        <p v-if="submitError" role="alert" class="text-sm text-flow-danger">{{ submitError }}</p>
 
         <div v-if="invitation" class="rounded-lg border border-default bg-default/20 p-3 space-y-1.5 text-sm">
             <div class="flex flex-wrap items-center justify-between gap-2">
@@ -53,8 +53,8 @@
                 received it. There is no guarantee of exactly-once delivery: the mail server may have
                 accepted an earlier attempt even when this panel could not confirm the outcome.
             </p>
-            <p v-if="refreshError" role="alert" class="text-sm text-danger">{{ refreshError }}</p>
-            <p v-if="retryError" role="alert" class="text-sm text-danger">{{ retryError }}</p>
+            <p v-if="refreshError" role="alert" class="text-sm text-flow-danger">{{ refreshError }}</p>
+            <p v-if="retryError" role="alert" class="text-sm text-flow-danger">{{ retryError }}</p>
         </div>
     </div>
 </template>

@@ -1,13 +1,5 @@
 <template>
-    <div v-if="modelValue" class="fixed inset-0 z-[3000] flex items-center justify-center">
-      <div class="absolute inset-0 bg-black/50" @click="close"></div>
-  
-      <div class="relative w-full max-w-md bg-accent rounded-lg shadow-xl p-4">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-lg font-semibold">Reset Password</h3>
-          <button class="btn btn-secondary" @click="close">Close</button>
-        </div>
-  
+    <FlowModal :model-value="modelValue" title="Reset Password" size="sm" @close="close">
         <div class="space-y-3 text-left">
           <p class="text-sm">
             Enter a temporary password for
@@ -16,10 +8,12 @@
           </p>
   
           <!-- New Password -->
-          <div>
-            <label class="text-xs opacity-80">Temporary Password (4–64 chars)</label>
+          <FlowField label="Temporary Password (4–64 chars)" :error="ResetPasswordInvalid ? 'Password must be 4–64 characters.' : null">
+            <template #default="{ id, describedBy }">
             <div class="relative">
               <input
+                :id="id"
+                :aria-describedby="describedBy"
                 :type="showResetPassword ? 'text' : 'password'"
                 v-model.trim="ResetPasswordInput"
                 class="input-textlike border rounded px-3 py-2 w-full pr-16"
@@ -35,16 +29,16 @@
                 <FontAwesomeIcon :icon="showResetPassword ? faEyeSlash : faEye" />
               </button>
             </div>
-            <p v-if="ResetPasswordInvalid" class="text-xs text-red-500 mt-1">
-              Password must be 4–64 characters.
-            </p>
-          </div>
+            </template>
+          </FlowField>
   
           <!-- Confirm Password -->
-          <div>
-            <label class="text-xs opacity-80">Confirm Password</label>
+          <FlowField label="Confirm Password" :error="resetMismatch ? 'Passwords do not match.' : null">
+            <template #default="{ id, describedBy }">
             <div class="relative">
               <input
+                :id="id"
+                :aria-describedby="describedBy"
                 :type="showResetConfirm ? 'text' : 'password'"
                 v-model.trim="ResetPasswordConfirm"
                 class="input-textlike border rounded px-3 py-2 w-full pr-16"
@@ -60,16 +54,14 @@
                 <FontAwesomeIcon :icon="showResetConfirm ? faEyeSlash : faEye" />
               </button>
             </div>
-            <p v-if="resetMismatch" class="text-xs text-red-500 mt-1">
-              Passwords do not match.
-            </p>
-          </div>
+            </template>
+          </FlowField>
   
-          <div class="text-sm text-red-500" v-if="error">{{ error }}</div>
+          <div class="text-sm text-flow-danger" v-if="error">{{ error }}</div>
         </div>
   
-        <div class="flex justify-end gap-2 mt-4">
-          <button class="btn btn-secondary" @click="close">Cancel</button>
+        <template #footer>
+          <button class="btn btn-dismiss" @click="close">Cancel</button>
           <button
             class="btn btn-primary"
             :disabled="ResetPasswordInvalid || resetMismatch || !ResetPasswordInput || !ResetPasswordConfirm"
@@ -77,12 +69,13 @@
           >
             Reset Password
           </button>
-        </div>
-      </div>
-    </div>
+        </template>
+    </FlowModal>
 </template>
   
   <script setup lang="ts">
+import FlowModal from '../../ui/FlowModal.vue'
+import FlowField from '../../ui/FlowField.vue'
   import { ref, computed, watch } from 'vue'
   import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
   import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'

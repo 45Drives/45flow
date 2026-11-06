@@ -1,0 +1,187 @@
+/* Brand + theme-driven button tokens. Semantic design tokens live at the bottom. See docs/design-system.md. */
+
+/* =====================
+   Design tokens
+   ===================== */
+:root {
+  /* Primary (default theme) */
+  --btn-primary-bg: #D92B2F;
+  --btn-primary-border: #D92B2F;
+  --btn-primary-hover-bg: #b02428;
+  --btn-primary-hover-border: #b02428;
+  --btn-primary-fill: var(--btn-primary-bg);
+  --btn-primary-hover-fill: var(--btn-primary-hover-bg);
+  --flow-logo-theme-fill: var(--btn-primary-fill);
+
+  /* Secondary (default theme) */
+  --btn-secondary-bg: #a02226;
+  --btn-secondary-border: #a02226;
+  --btn-secondary-hover-bg: #821b1f;
+  --btn-secondary-hover-border: #821b1f;
+  --btn-secondary-fill: var(--btn-secondary-bg);
+  --btn-secondary-hover-fill: var(--btn-secondary-hover-bg);
+
+  /* Other tokens */
+  --checkbox-border: #737373;
+  --outline-color: black;
+  --wizard-glow-color: rgba(255, 255, 255, 0.7);
+
+  /* Derived: checkboxes follow primary automatically */
+  --checkbox-checked-border: var(--btn-primary-border);
+  --checkbox-checked-bg: var(--btn-primary-bg);
+
+  /* Row backgrounds */
+  --row-hover-bg: rgba(0, 0, 0, 0.03);
+  /* Derive a subtle selected color from the theme primary */
+  --row-selected-bg: color-mix(in srgb, var(--btn-primary-bg) 12%, transparent);
+  --explorer-hover-bg: color-mix(in srgb, var(--btn-primary-bg) 16%, transparent);
+  --explorer-hover-border: color-mix(in srgb, var(--btn-primary-bg) 34%, #b7bfcd);
+
+
+  --btn-success-bg: #22C55E;
+  /* green */
+  --btn-success-border: #22C55E;
+  --btn-success-hover-bg: #16A34A;
+  /* darker on hover */
+  --btn-success-hover-border: #16A34A;
+
+  --ui-shadow: 0 12px 28px rgba(17, 33, 52, 0.14);
+  --ui-ring: color-mix(in srgb, var(--btn-primary-bg) 65%, white);
+    --ui-panel-bg: color-mix(in srgb, color-mix(in srgb, #ffffff 94%, var(--btn-primary-bg) 6%) 86%, transparent);
+  /* --ui-panel-bg: color-mix(in srgb, #ffffff 88%, var(--btn-primary-bg) 12%); */
+  --ui-panel-border: color-mix(in srgb, var(--btn-primary-bg) 22%, #c7cedb);
+  --ui-subtle-text: color-mix(in srgb, currentColor 72%, transparent);
+  --ui-app-texture-image: url('../../../assets/textures/gplay.png');
+  --ui-app-texture-size: auto;
+  --ui-app-bg:
+    radial-gradient(80rem 40rem at -10% -12%, color-mix(in srgb, var(--btn-primary-bg) 7%, transparent), transparent 56%),
+    radial-gradient(72rem 38rem at 112% -12%, color-mix(in srgb, var(--btn-secondary-bg) 6%, transparent), transparent 62%),
+    linear-gradient(180deg, #f3f5f8, #e8ebef 58%, #e3e8ee);
+}
+
+/* =====================
+   Semantic tokens (theme-independent)
+   Themes never override these, so "danger", "warning" and "dismiss" mean the
+   same thing in every theme. Use them through the src/renderer/ui pieces or
+   the .flow-* / .btn-* classes in components.css, not directly in screens.
+   ===================== */
+:root {
+  /* Danger: removes, deletes, disables or stops something. Mirrors houston-common's
+     rose .btn-danger (rose-500 / rose-600; dark rose-700 / rose-800). */
+  --flow-danger-bg: #f43f5e;
+  --flow-danger-hover-bg: #e11d48;
+
+  /* Dismiss: Close / Cancel / Back / Log out. A fixed tonal red (red text and edge on a
+     light tint) so it reads as "leave" without matching a red theme's solid primary
+     or the solid rose danger button. */
+  --flow-dismiss-fg: #b91c1c;
+  --flow-dismiss-bg: #fef2f2;
+  --flow-dismiss-border: #fca5a5;
+  --flow-dismiss-hover-bg: #fee2e2;
+  --flow-dismiss-hover-border: #f87171;
+
+  /* Status tones: used by Notice, Chip, status dots and status text. */
+  --flow-info-fg: #1d4f91;
+  --flow-info-bg: #eaf3fd;
+  --flow-info-border: #b6d4f5;
+  --flow-info-solid: #3b82f6;
+
+  --flow-success-fg: #14653b;
+  --flow-success-bg: #dcf8e8;
+  --flow-success-border: #9fdfbe;
+  --flow-success-solid: #22c55e;
+
+  --flow-warning-fg: #8a4c04;
+  --flow-warning-bg: #fff2d9;
+  --flow-warning-border: #f3d49d;
+  --flow-warning-solid: #f59e0b;
+
+  --flow-danger-fg: #991b1b;
+  --flow-danger-tint: #fee2e2;
+  --flow-danger-border: #f9a8a8;
+  --flow-danger-solid: #ef4444;
+
+  --flow-neutral-fg: #334155;
+  --flow-neutral-bg: #e8edf3;
+  --flow-neutral-border: #cfd9e4;
+  --flow-neutral-solid: #94a3b8;
+
+  --flow-muted-fg: #4b5563;
+  --flow-muted-bg: #eceff4;
+  --flow-muted-border: #d6dde7;
+
+  /* Shape */
+  --flow-radius-sm: 0.375rem;
+  --flow-radius-md: 0.5rem;
+  --flow-radius-lg: 0.75rem;
+  --flow-radius-xl: 0.9rem;
+  --flow-radius-pill: 999px;
+
+  /* Spacing (matches Tailwind's 0.25rem scale) */
+  --flow-space-1: 0.25rem;
+  --flow-space-2: 0.5rem;
+  --flow-space-3: 0.75rem;
+  --flow-space-4: 1rem;
+  --flow-space-5: 1.25rem;
+  --flow-space-6: 1.5rem;
+
+  /* Type */
+  --flow-text-xs: 0.75rem;
+  --flow-text-sm: 0.875rem;
+  --flow-text-base: 1rem;
+  --flow-text-lg: 1.125rem;
+  --flow-text-xl: 1.25rem;
+
+  /* Stacking layers. Use the Tailwind names (z-header, z-modal, …) from tailwind.config.cjs.
+     Modals stack above --flow-z-modal in the order they open (ui/useModalStack.ts). */
+  --flow-z-raised: 10;
+  --flow-z-header: 30;
+  --flow-z-dropdown: 50;
+  --flow-z-dock: 50;
+  --flow-z-banner: 1200;
+  --flow-z-overlay: 1500;
+  --flow-z-modal: 2000;
+  --flow-z-popover: 3500;
+  --flow-z-tour: 4000;
+  --flow-z-critical: 5000;
+}
+
+.dark {
+  --flow-danger-bg: #be123c;
+  --flow-danger-hover-bg: #9f1239;
+
+  --flow-dismiss-fg: #fca5a5;
+  --flow-dismiss-bg: color-mix(in srgb, #ef4444 12%, transparent);
+  --flow-dismiss-border: color-mix(in srgb, #ef4444 45%, transparent);
+  --flow-dismiss-hover-bg: color-mix(in srgb, #ef4444 22%, transparent);
+  --flow-dismiss-hover-border: color-mix(in srgb, #ef4444 65%, transparent);
+
+  --flow-info-fg: #a9cdf7;
+  --flow-info-bg: color-mix(in srgb, #3b82f6 16%, transparent);
+  --flow-info-border: color-mix(in srgb, #3b82f6 42%, transparent);
+  --flow-info-solid: #60a5fa;
+
+  --flow-success-fg: #9de5be;
+  --flow-success-bg: color-mix(in srgb, #22c55e 18%, transparent);
+  --flow-success-border: color-mix(in srgb, #22c55e 44%, transparent);
+  --flow-success-solid: #4ade80;
+
+  --flow-warning-fg: #f4cf8b;
+  --flow-warning-bg: color-mix(in srgb, #f59e0b 20%, transparent);
+  --flow-warning-border: color-mix(in srgb, #f59e0b 42%, transparent);
+  --flow-warning-solid: #fbbf24;
+
+  --flow-danger-fg: #fca5a5;
+  --flow-danger-tint: color-mix(in srgb, #ef4444 18%, transparent);
+  --flow-danger-border: color-mix(in srgb, #ef4444 44%, transparent);
+  --flow-danger-solid: #f87171;
+
+  --flow-neutral-fg: #d8e1ec;
+  --flow-neutral-bg: color-mix(in srgb, #8aa0ba 16%, transparent);
+  --flow-neutral-border: color-mix(in srgb, #8aa0ba 40%, transparent);
+  --flow-neutral-solid: #94a3b8;
+
+  --flow-muted-fg: #cfd6df;
+  --flow-muted-bg: color-mix(in srgb, #94a3b8 12%, transparent);
+  --flow-muted-border: color-mix(in srgb, #94a3b8 34%, transparent);
+}

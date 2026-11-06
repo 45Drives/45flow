@@ -1,50 +1,68 @@
 <template>
     <form @submit.prevent="connectToServer" class="connect-page" :class="{ 'is-dark': darkMode }" :aria-busy="anyBusy">
-        <div class="connect-shell ss-page-frame">
-            <section data-tour="connect-hero" class="connect-hero ss-surface">
-                <h1>Share files through secure review links</h1>
-                <p v-if="!isWeb">Connect this client to your server, then create and manage links from the dashboard.</p>
-                <p v-else>Sign in to the server hosting this browser app, then manage links from the dashboard.</p>
-                <p v-if="!isWeb" class="connect-note">
-                    Servers appear automatically when <b class="text-primary">houston-broadcaster</b> is running. If not, use manual IP connection.
-                </p>
-                <p v-else class="connect-note">
-                    Browser mode: desktop transcoding, SSH setup, and desktop updates are only available in the 45Flow desktop app. Videos you upload are transcoded by the server.
-                </p>
-            </section>
+        <div class="connect-center">
+            <FlowCard variant="plain" class="connect-card rounded-xl shadow-xl text-black" :style="{ background: connectMainCardBackground }">
+                <div class="connect-panel">
+                    <header data-tour="connect-hero" class="connect-header">
+                        <h1>Sign in to 45Flow</h1>
+                        <p v-if="!isWeb">Use the username and password for your media server.</p>
+                        <p v-else>Signing in to <b>{{ browserHost }}</b>. You stay signed in until you sign out or step away for a while.</p>
+                    </header>
 
-            <CardContainer class="connect-main-card rounded-md shadow-xl text-black" :style="{ background: connectMainCardBackground }">
-                <div class="connect-main-grid" :class="{ 'connect-main-grid--single': isWeb }">
-                    <section v-if="!isWeb" data-tour="connect-server-selection" class="connect-panel">
-                        <div class="connect-section-title">Server Selection</div>
+                    <section data-tour="connect-auth" class="connect-section">
+                        <div class="connect-section-title">Login</div>
+                        <FlowField label="Username">
+                            <template #default="{ id }">
+                            <input :id="id" v-model="username" type="text" autocomplete="username" placeholder="root" :disabled="anyBusy"
+                                class="connect-control h-[2.75rem] text-default input-textlike px-4 rounded-lg text-base w-full border" />
+                            </template>
+                        </FlowField>
+                        <FlowField label="Password" id="password">
+                            <template #default="{ id }">
+                            <div class="w-full relative">
+                                <input v-model="password" :type="showPassword ? 'text' : 'password'" :id="id"
+                                    autocomplete="current-password" :disabled="anyBusy"
+                                    class="connect-control h-[2.75rem] text-default input-textlike pl-4 pr-11 rounded-lg text-base w-full border"
+                                    placeholder="••••••••" />
+                                <button type="button" @click="togglePassword" :disabled="anyBusy"
+                                    :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                                    class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted">
+                                    <EyeIcon v-if="!showPassword" class="w-5 h-5" />
+                                    <EyeSlashIcon v-else class="w-5 h-5" />
+                                </button>
+                            </div>
+                            </template>
+                        </FlowField>
+                        <label v-if="!isWeb" class="connect-check">
+                            <input type="checkbox" v-model="rememberPassword" class="proxy-quality-checkbox" :disabled="anyBusy" />
+                            <span>Remember my password on this computer</span>
+                        </label>
+                    </section>
 
-                        <div class="flex flex-col text-left">
-                            <span class="connect-label">Select a server</span>
-                            <select v-model="selectedServerIp" :disabled="anyBusy || manualIp !== ''"
-                                class="connect-control h-[2.9rem] text-default rounded-lg px-4 flex-1 border border-default w-full">
+                    <section v-if="!isWeb" data-tour="connect-server-selection" class="connect-section">
+                        <div class="connect-section-title">Server</div>
+                        <FlowField label="Choose a server">
+                            <template #default="{ id }">
+                            <select :id="id" v-model="selectedServerIp" :disabled="anyBusy || manualIp !== ''"
+                                class="connect-control h-[2.75rem] text-default rounded-lg px-3 border border-default w-full">
+                                <option v-if="!discoveryState.servers.length" value="" disabled>Looking for servers on your network…</option>
                                 <option v-for="server in discoveryState.servers" :key="server.ip" :value="server.ip">
                                     {{ server.name }} ({{ server.ip }})
                                 </option>
                             </select>
-                        </div>
+                            </template>
+                        </FlowField>
+                        <FlowField label="Or enter the server address">
+                            <template #default="{ id }">
+                            <input :id="id" v-model="manualIp" type="text" placeholder="192.168.1.123" :disabled="anyBusy"
+                                class="connect-control h-[2.75rem] text-default input-textlike border px-4 rounded-lg text-base w-full" />
+                            </template>
+                        </FlowField>
 
-                        <div class="connect-or mt-2">OR</div>
-
-                        <div class="flex flex-col text-left">
-                            <span class="connect-label">Connect manually via IP</span>
-                            <input v-model="manualIp" type="text" placeholder="192.168.1.123" :disabled="anyBusy"
-                                class="connect-control h-[2.9rem] text-default input-textlike border px-4 rounded-lg text-lg w-full" />
-                        </div>
-
-                        <details ref="portsDetailsRef" data-tour="connect-ports" class="py-2 gap-3 my-2 text-left group" :open="Boolean(portError || portWarning) || tourPortsOpen">
-                            <summary
-                                class="list-none flex w-full items-center justify-between text-left cursor-pointer select-none">
-                                <div class="min-w-0">
-                                    <p class="text-sm font-semibold">Configure Ports</p>
-                                    <p class="text-xs opacity-75">Optional. Leave collapsed unless you need custom ports.</p>
-                                </div>
-                                <svg
-                                    class="h-5 w-5 opacity-70 transition-transform duration-200 group-open:rotate-180"
+                        <details ref="portsDetailsRef" data-tour="connect-ports" class="connect-advanced group" :open="Boolean(portError || portWarning) || tourPortsOpen">
+                            <summary class="list-none flex w-full items-center justify-between text-left cursor-pointer select-none">
+                                <span class="text-sm font-semibold">Advanced: custom ports</span>
+                                <svg class="h-5 w-5 opacity-70 transition-transform duration-200 group-open:rotate-180"
                                     viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                     <path fill-rule="evenodd"
                                         d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.938a.75.75 0 1 1 1.08 1.04l-4.25 4.51a.75.75 0 0 1-1.08 0l-4.25-4.51a.75.75 0 0 1 .02-1.06Z"
@@ -59,17 +77,13 @@
                                         class="connect-control text-default input-textlike border px-3 py-1.5 rounded text-base w-full"
                                         placeholder="22" />
                                 </label>
-
                                 <label class="flex flex-col">
-                                    <span class="mb-1 opacity-80">
-                                        API <span class="text-xs">(houston-broadcaster)</span>
-                                    </span>
+                                    <span class="mb-1 opacity-80">Setup API</span>
                                     <input v-model.number="broadcasterPort" type="number" min="1" max="65535"
                                         :disabled="anyBusy"
                                         class="connect-control text-default input-textlike border px-3 py-1.5 rounded text-base w-full"
                                         placeholder="9095" />
                                 </label>
-
                                 <label class="flex flex-col">
                                     <span class="mb-1 opacity-80">HTTPS</span>
                                     <input v-model.number="httpsPort" type="number" min="1" max="65535" :disabled="anyBusy"
@@ -77,100 +91,58 @@
                                         placeholder="443" />
                                 </label>
                             </div>
-
                             <p class="mt-2 text-xs opacity-75">
-                                Leave blank to use defaults: SSH 22, API 9095, HTTPS 443. Ports must be different.
-                                The app connects over HTTPS; the API port is only used for setup.
+                                Leave blank for the defaults (SSH 22, setup API 9095, HTTPS 443). Each port must be different.
                             </p>
-
-                            <p v-if="portError" class="mt-1 text-xs text-danger">
-                                {{ portError }}
-                            </p>
-                            <p v-else-if="portWarning" class="mt-1 text-xs text-warning">
-                                {{ portWarning }}
-                            </p>
+                            <p v-if="portError" class="mt-1 text-xs text-flow-danger" role="alert">{{ portError }}</p>
+                            <p v-else-if="portWarning" class="mt-1 text-xs text-flow-warning">{{ portWarning }}</p>
                         </details>
                     </section>
 
-                    <section data-tour="connect-auth" class="connect-panel connect-panel-auth">
-                        <div class="connect-section-title">Authentication</div>
-                        <p v-if="isWeb" class="connect-note">
-                            Signing in to {{ browserHost }}. You stay signed in across reloads until you sign out or are inactive for a while.
+                    <div data-tour="connect-submit" class="connect-submit">
+                        <button type="submit"
+                            class="btn btn-success connect-submit-btn flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                            :disabled="anyBusy">
+                            <svg v-if="isBusy" class="animate-spin h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity=".25" />
+                                <path d="M4 12a8 8 0 0 1 8-8" stroke="currentColor" stroke-width="4" fill="none" />
+                            </svg>
+                            <span>{{ isBusy ? 'Signing in…' : 'Sign In' }}</span>
+                        </button>
+                        <div v-if="statusLine" class="mt-2 text-sm opacity-85 flex items-center gap-2 justify-center text-center" role="status">
+                            <svg v-if="isBootstrapping" class="animate-spin h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity=".25" />
+                                <path d="M4 12a8 8 0 0 1 8-8" stroke="currentColor" stroke-width="4" fill="none" />
+                            </svg>
+                            <span>{{ statusLine }}</span>
+                        </div>
+                    </div>
+
+                    <footer class="connect-footer">
+                        <p v-if="!isWeb">First-time setup needs an account with <b>sudo</b> or <b>root</b> access so 45Flow can install what it needs on the server.</p>
+                        <p v-else>Video you upload here is processed by the server. Local processing and server setup are available in the 45Flow desktop app.</p>
+                        <p data-tour="connect-port-forwarding">
+                            Sharing with clients outside your network?
+                            <button type="button" class="connect-link" @click.prevent="togglePortFwdModal" :disabled="anyBusy">Set up port forwarding</button>
                         </p>
-                        <label class="connect-auth-row flex flex-col">
-                            <span class="connect-label">Username</span>
-                            <input v-model="username" type="text" placeholder="root" :disabled="anyBusy"
-                                class="connect-control h-[2.9rem] text-default input-textlike px-4 py-2 rounded-lg text-lg w-full border" />
-                        </label>
-
-                        <div class="connect-or connect-or--ghost" aria-hidden="true"></div>
-
-                        <label class="connect-auth-row flex flex-col">
-                            <span class="connect-label">Password</span>
-                            <div class="w-full relative">
-                                <input v-model="password" :type="showPassword ? 'text' : 'password'" id="password"
-                                    :disabled="anyBusy"
-                                    class="connect-control h-[2.9rem] text-default input-textlike px-4 py-2 rounded-lg text-lg w-full border"
-                                    placeholder="••••••••" />
-                                <button type="button" @click="togglePassword" :disabled="anyBusy"
-                                    class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted">
-                                    <EyeIcon v-if="!showPassword" class="w-5 h-5" />
-                                    <EyeSlashIcon v-else class="w-5 h-5" />
-                                </button>
-                            </div>
-                        </label>
-                        <label v-if="!isWeb" class="inline-flex items-center gap-2 select-none cursor-pointer text-sm mt-2 text-left">
-                            <input type="checkbox" v-model="rememberPassword" class="proxy-quality-checkbox" :disabled="anyBusy" tabindex="-1" />
-                            <span>Remember password securely (re-login when session expires)</span>
-                        </label>
-                        <p v-if="!isWeb" class="text-xs opacity-70 mt-2 text-left">
-                            First-time setup requires a user with <b>sudo</b> or <b>root</b> privileges to install server dependencies.
-                        </p>
-                    </section>
+                    </footer>
                 </div>
-            </CardContainer>
-
-            <section data-tour="connect-port-forwarding" class="connect-warning ss-surface">
-                <p class="text-danger text-sm text-left">
-                    <b>External sharing requires port forwarding:</b> HTTPS port 443 (or your custom HTTPS port) must be open/forwarded on your router.
-                </p>
-                <button type="button" @click.prevent="togglePortFwdModal" :disabled="anyBusy"
-                    class="btn btn-secondary w-fit text-sm">
-                    How to set this up
-                </button>
-            </section>
-
-            <div data-tour="connect-submit" class="connect-submit">
-                <button type="submit"
-                    class="btn btn-success connect-submit-btn flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                    :disabled="anyBusy">
-                    <svg v-if="isBusy" class="animate-spin h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity=".25" />
-                        <path d="M4 12a8 8 0 0 1 8-8" stroke="currentColor" stroke-width="4" fill="none" />
-                    </svg>
-                    <span>{{ isBusy ? 'Connecting…' : 'Connect to Server' }}</span>
-                </button>
-                <div v-if="statusLine" class="mt-2 text-sm opacity-85 flex items-center gap-2 justify-center text-center">
-                    <svg v-if="isBootstrapping" class="animate-spin h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity=".25" />
-                        <path d="M4 12a8 8 0 0 1 8-8" stroke="currentColor" stroke-width="4" fill="none" />
-                    </svg>
-                    <span>{{ statusLine }}</span>
-                </div>
-            </div>
+            </FlowCard>
         </div>
     </form>
     <PortForwardingModal v-if="showPortFwdModal" @close="togglePortFwdModal" />
 </template>
 
 <script setup lang="ts">
+import FlowCard from '../ui/FlowCard.vue'
+import FlowField from '../ui/FlowField.vue'
 import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHeader } from '../composables/useHeader'
 import { currentServerInjectionKey, discoveryStateInjectionKey, connectionMetaInjectionKey } from '../keys/injection-keys'
 import { EyeIcon, EyeSlashIcon } from "@heroicons/vue/20/solid";
 import type { DiscoveryState, Server } from '../types'
-import { pushNotification, Notification, CardContainer, useDarkModeState } from '@45drives/houston-common-ui'
+import { pushNotification, Notification, useDarkModeState } from '@45drives/houston-common-ui'
 import PortForwardingModal from '../components/modals/PortForwardingModal.vue' 
 import { useResilientNav } from '../composables/useResilientNav';
 import { signInWithSession, restoreSession, WEB_SESSION_TOKEN, type WebSessionInfo } from '../web-session';
@@ -218,15 +190,19 @@ const portsDetailsRef = ref<HTMLDetailsElement | null>(null)
 const connectTourSteps: TourStep[] = [
 	{
 		target: '[data-tour="connect-hero"]',
-		message: 'Welcome to 45Flow!\n\nThis is your starting point. From here you\'ll connect this client application to your media server — then you can create share links, upload files, and manage access from the dashboard.',
+		message: 'Welcome to 45Flow!\n\nSign in here to reach your media server. Once you\'re in, you\'ll land on your Projects, where you can share files with clients and collect uploads from them.',
+	},
+	{
+		target: '[data-tour="connect-auth"]',
+		message: 'Enter your server login.\n\nUse the same username and password you use to log in to the server itself.',
 	},
 	{
 		target: '[data-tour="connect-server-selection"]',
-		message: 'Pick a server to connect to.\n\nServers running houston-broadcaster appear automatically in the dropdown. If your server doesn\'t show up, type its IP address in the manual field below instead.',
+		message: 'Pick your server.\n\nServers on your network appear in the list automatically. If yours isn\'t there, type its address in the box below instead.',
 	},
 	{
 		target: '[data-tour="connect-ports"]',
-		message: 'You can customise the connection ports here.\n\n• SSH (default 22) — used for secure file operations and server setup.\n• API / houston-broadcaster (default 9095) — used to find and set up the server.\n• HTTPS (default 443) — the encrypted connection the app uses, and the address share links use.\n\nLeave these blank to use the defaults. Only change them if your server uses non-standard ports.',
+		message: 'Only open this if your server uses non-standard ports.\n\n• SSH (default 22): server setup and file operations.\n• Setup API (default 9095): used to find and set up the server.\n• HTTPS (default 443): the encrypted connection the app and share links use.\n\nLeave them blank to use the defaults.',
 		beforeShow: () => {
 			tourPortsOpen.value = true
 			if (portsDetailsRef.value) portsDetailsRef.value.open = true
@@ -237,16 +213,12 @@ const connectTourSteps: TourStep[] = [
 		},
 	},
 	{
-		target: '[data-tour="connect-auth"]',
-		message: 'Enter your server credentials.\n\nUse the same username and password you\'d use to login into the machine. These are used to authenticate the connection and log in to the 45Flow API.',
+		target: '[data-tour="connect-submit"]',
+		message: 'Click Sign In when you\'re ready.\n\nThe first time, 45Flow checks the server and sets up anything it needs. You\'ll be taken to your Projects when it\'s done.',
 	},
 	{
 		target: '[data-tour="connect-port-forwarding"]',
-		message: 'If you plan to share links externally (over the internet), your router must forward HTTPS traffic (port 443 by default) to the server.\n\nClick "How to set this up" for step-by-step instructions. This isn\'t needed for local/LAN sharing.',
-	},
-	{
-		target: '[data-tour="connect-submit"]',
-		message: 'Once you\'ve selected a server and entered credentials, click here to connect.\n\n45Flow will verify the SSH connection, check that houston-broadcaster is installed (and set it up if needed), validate your license, and log you in. You\'ll be taken to the dashboard when everything\'s ready.',
+		message: 'Planning to share with clients outside your office network? Your router needs to forward HTTPS (port 443 by default) to the server.\n\nThis link walks you through it. You don\'t need it for sharing on your local network.',
 	},
 ]
 
@@ -1507,68 +1479,89 @@ async function checkBroadcasterUpdateInBackground(apiBase: string, token: string
     --connect-control-placeholder: #8a93a3;
     height: 100%;
     overflow-y: auto;
-    padding-top: 1.2rem;
-    padding-bottom: 1rem;
+    padding: clamp(0.75rem, 3vh, 2rem) 1rem 1rem;
 }
 
-.connect-shell {
-    display: grid;
-    gap: 0.95rem;
+/* Top-anchored (not centered) so opening "Advanced" only grows the card downward. */
+.connect-center {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
 }
 
-.connect-hero {
-    padding: 1rem 1.1rem;
-}
-
-.connect-hero h1 {
-    font-size: 1.36rem;
-    line-height: 1.2;
-    font-weight: 700;
-}
-
-.connect-hero p {
-    margin-top: 0.35rem;
-    font-size: 0.95rem;
-    opacity: 0.9;
-}
-
-.connect-note {
-    margin-top: 0.65rem;
-    font-size: 0.8rem !important;
-    opacity: 0.82 !important;
-}
-
-.connect-main-card {
-    min-width: 0;
+.connect-card {
+    width: min(46rem, 100%);
     padding: 0.5rem;
     border: 1px solid color-mix(in srgb, var(--btn-primary-bg) 42%, #7f86b6);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, white 12%, transparent);
 }
 
-.connect-main-grid {
-    display: grid;
-    /* grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr); */
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.65rem;
-}
-
-.connect-main-grid--single {
-    grid-template-columns: minmax(0, 30rem);
-    justify-content: center;
-}
-
 .connect-panel {
-    min-width: 0;
-    padding: 0.6rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    padding: 1.6rem 2.4rem 1.4rem;
     border: 1px solid color-mix(in srgb, var(--btn-primary-bg) 22%, #8f98a5);
     border-radius: 0.7rem;
     background: color-mix(in srgb, #ffffff 50%, transparent);
     backdrop-filter: blur(1.5px);
+    text-align: left;
 }
 
 .connect-page.is-dark .connect-panel {
     background: rgba(248, 238, 251, 0.50);
     border-color: color-mix(in srgb, #ffffff 22%, #c389c7);
+}
+
+.connect-header h1 {
+    font-size: 1.4rem;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.connect-header p {
+    margin-top: 0.3rem;
+    font-size: 0.9rem;
+    opacity: 0.85;
+}
+
+.connect-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+
+.connect-section + .connect-section {
+    padding-top: 1.1rem;
+    border-top: 1px solid color-mix(in srgb, #8f98a5 35%, transparent);
+}
+
+.connect-section-title {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.75;
+    font-weight: 700;
+}
+
+.connect-panel :deep(.flow-field__label) {
+    margin-bottom: 0.1rem;
+    font-size: 0.86rem;
+    font-weight: 600;
+    opacity: 0.9;
+}
+
+.connect-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.connect-advanced {
+    padding-top: 0.15rem;
 }
 
 .connect-page.is-dark {
@@ -1596,9 +1589,9 @@ async function checkBroadcasterUpdateInBackground(apiBase: string, token: string
     border-color: color-mix(in srgb, var(--connect-control-border) 78%, #a5afbd) !important;
 }
 
+.connect-page.is-dark .connect-panel h1,
 .connect-page.is-dark .connect-panel .connect-section-title,
-.connect-page.is-dark .connect-panel .connect-label,
-.connect-page.is-dark .connect-panel .connect-or,
+.connect-page.is-dark .connect-panel :deep(.flow-field__label),
 .connect-page.is-dark .connect-panel p,
 .connect-page.is-dark .connect-panel span {
     color: #2f3340;
@@ -1619,73 +1612,46 @@ async function checkBroadcasterUpdateInBackground(apiBase: string, token: string
     color: #5f6878 !important;
 }
 
-.connect-section-title {
-    font-size: 0.93rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    opacity: 0.85;
-    font-weight: 700;
-}
-
-.connect-label {
-    margin-bottom: 0.26rem;
-    font-size: 0.86rem;
-    font-weight: 600;
-    opacity: 0.9;
-}
-
-.connect-panel-auth .connect-section-title {
-    margin-bottom: 0.2rem;
-}
-
-.connect-or {
-    text-align: center;
-    font-size: 0.78rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    opacity: 0.7;
-    min-height: 1rem;
-    line-height: 1;
-}
-
-.connect-or--ghost {
-    visibility: hidden;
-}
-
 .connect-port-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.65rem;
 }
 
-.connect-warning {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.7rem;
-    padding: 0.75rem 1rem;
-}
-
 .connect-submit {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    padding-top: 0.2rem;
+    align-items: stretch;
 }
 
 .connect-submit-btn {
-    width: min(26rem, 100%);
-    min-height: 3rem;
+    width: 100%;
+    min-height: 2.9rem;
+    font-size: 1rem;
+    font-weight: 600;
 }
 
-@media (max-width: 980px) {
-    .connect-main-grid {
-        grid-template-columns: minmax(0, 1fr);
-    }
+.connect-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    opacity: 0.8;
 }
 
-@media (max-width: 720px) {
+.connect-link {
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.connect-link:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
     .connect-port-grid {
         grid-template-columns: minmax(0, 1fr);
     }

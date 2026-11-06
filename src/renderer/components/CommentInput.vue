@@ -50,7 +50,7 @@
       <button
         type="button"
         @click="resetForm"
-        class="btn btn-secondary text-sm px-3 py-1.5"
+        class="btn btn-dismiss text-sm px-3 py-1.5"
       >
         Cancel
       </button>

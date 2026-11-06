@@ -1,7 +1,7 @@
 <template>
   <!-- Visual "drop here" overlay — purely presentational, all events handled on document -->
   <Transition name="qs-fade">
-    <div v-if="dragging" class="fixed inset-0 z-[1500] flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none">
+    <div v-if="dragging" data-flow-overlay class="fixed inset-0 z-overlay flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none">
       <div class="flex flex-col items-center gap-3 text-white text-xl font-semibold select-none">
         <ArrowUpTrayIcon class="w-16 h-16 text-white/80 animate-bounce" />
         <span>Drop files to quick-share</span>
@@ -12,9 +12,9 @@
   <!-- Minimized floating bar -->
   <Transition name="qs-fade">
     <div v-if="showModal && minimized"
-      class="fixed bottom-4 right-4 z-[2200] flex items-center gap-3 rounded-lg shadow-xl px-4 py-3 cursor-pointer select-none transition-all duration-300 w-72"
+      class="fixed bottom-4 right-4 z-banner flex items-center gap-3 rounded-lg shadow-xl px-4 py-3 cursor-pointer select-none transition-all duration-300 w-72"
       :class="[
-        uploadPhase === 'done' ? 'bg-green-600/90 border-green-400 text-white qs-flash-green' : 'bg-accent border-default hover:bg-well/40',
+        uploadPhase === 'done' ? 'bg-flow-success border-flow-success text-white qs-flash-green' : 'bg-accent border-default hover:bg-well/40',
         'border'
       ]"
       @click="minimized = false">
@@ -30,30 +30,19 @@
   </Transition>
 
   <!-- Modal: shown after files are dropped -->
-  <div v-if="showModal && !minimized" class="fixed inset-0 z-[2100] flex items-center justify-center">
-    <div class="absolute inset-0 bg-black/50" @click="cancel" />
-    <div
-      class="relative w-full max-w-6xl h-[85vh] flex flex-col bg-accent rounded-lg shadow-xl p-5"
-      role="dialog"
-      aria-label="Quick upload and share"
-      data-tour="qs-modal"
-      @keydown.esc.prevent.stop="cancel"
-    >
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-4 shrink-0">
-        <h2 class="text-lg font-semibold">
-          Upload {{ droppedFiles.length === 1 ? `"${droppedFiles[0].name}"` : `${droppedFiles.length} files` }} to server
+  <FlowModal :model-value="showModal && !minimized" size="2xl" class="h-[85vh]" data-tour="qs-modal" :busy="busy"
+    body-class="flex flex-col" @close="cancel">
+      <template #title>
+          Upload {{ droppedFiles.length === 1 ? `"${droppedFiles[0]?.name}"` : `${droppedFiles.length} files` }} to server
           <span v-if="activeConnection" class="text-sm text-muted font-normal ml-2">
             ({{ activeConnection.name }})
           </span>
-        </h2>
-        <div class="flex items-center gap-2">
-          <button class="btn btn-secondary flex items-center gap-1" @click="minimized = true" title="Minimize">
+      </template>
+      <template #header-actions>
+          <button class="btn btn-secondary flex items-center gap-1" @click="minimized = true" title="Minimize" aria-label="Minimize">
             <MinusIcon class="w-4 h-4" />
           </button>
-          <button class="btn btn-secondary" @click="cancel" :disabled="busy">Close</button>
-        </div>
-      </div>
+      </template>
 
       <!-- Step indicator -->
       <div class="flex items-center gap-2 text-sm mb-4 shrink-0" data-tour="qs-steps">
@@ -76,15 +65,16 @@
         <span :class="wizardStep === 3 ? 'font-semibold' : 'text-muted'">Upload &amp; Share</span>
       </div>
 
-      <!-- Scrollable content area -->
-      <div class="flex-1 min-h-0 overflow-y-auto">
-      <!-- Dropped files list -->
-      <div class="border border-default rounded-md p-2 mb-4 max-h-32 overflow-y-auto">
+      <!-- Dropped files list (pinned above the step content, scrolls on its own) -->
+      <div class="shrink-0 border border-default rounded-md p-2 mb-4 max-h-24 overflow-y-auto" aria-label="Files to upload">
         <div v-for="f in droppedFiles" :key="f.path" class="flex items-center justify-between text-sm py-0.5 min-w-0">
           <span class="truncate min-w-0 flex-1" :title="f.path">{{ f.name }}</span>
           <span class="text-muted ml-2 shrink-0">{{ formatSize(f.size) }}</span>
         </div>
       </div>
+
+      <!-- Step content area -->
+      <div class="flex-1 min-h-0 flex flex-col overflow-y-auto">
 
       <!-- ===== STEP 1: Destination ===== -->
       <section v-show="wizardStep === 1" data-tour="qs-step-destination">
@@ -105,7 +95,7 @@
       </section>
 
       <!-- ===== STEP 2: Link Options ===== -->
-      <section v-show="wizardStep === 2" class="qs-lane flex flex-col gap-4" data-tour="qs-step-options">
+      <section v-show="wizardStep === 2" class="qs-lane min-h-0 flex flex-col gap-4" data-tour="qs-step-options">
         <!-- ── Essential options (always visible) ── -->
         <div class="flex flex-col gap-3">
           <!-- Expiry -->
@@ -133,12 +123,12 @@
             <span class="font-semibold whitespace-nowrap shrink-0">Network:</span>
             <div class="flex gap-2" role="radiogroup" aria-label="Network Access">
               <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer select-none transition border border-default bg-default hover:bg-well/40">
-                <input type="radio" name="qs-link-access" :value="false" :checked="usePublicBase === false" @change="usePublicBase = false" class="h-4 w-4" />
-                <span class="text-sm">Local (LAN)</span>
-              </label>
-              <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer select-none transition border border-default bg-default hover:bg-well/40">
                 <input type="radio" name="qs-link-access" :value="true" :checked="usePublicBase === true" @change="usePublicBase = true" class="h-4 w-4" />
                 <span class="text-sm">External (Internet)</span>
+              </label>
+              <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer select-none transition border border-default bg-default hover:bg-well/40">
+                <input type="radio" name="qs-link-access" :value="false" :checked="usePublicBase === false" @change="usePublicBase = false" class="h-4 w-4" />
+                <span class="text-sm">Local (LAN)</span>
               </label>
             </div>
             <button type="button" @click="showPortFwdModal = true" class="text-xs text-primary hover:underline whitespace-nowrap">
@@ -149,8 +139,8 @@
 
         <!-- ── Summary of current settings ── -->
         <div class="text-xs text-muted flex flex-wrap gap-x-4 gap-y-1">
-          <span>Access: {{ accessMode === 'open' ? 'Anyone' : accessMode === 'open_password' ? 'Password' : `${accessUsers.length} user(s)${accessGroups.length ? `, ${accessGroups.length} group(s)` : ''}` }}</span>
-          <span v-if="hasVideo">Review Copies: {{ proxyQualities.join(', ') || 'none' }}</span>
+          <span>Access: {{ accessMode === 'open' ? 'Anyone' : accessMode === 'open_password' ? 'Password' : `${accessUsers.length} client(s)${accessGroups.length ? `, ${accessGroups.length} team(s)` : ''}` }}</span>
+          <span v-if="hasVideo">Proxy Files: {{ proxyQualities.join(', ') || 'none' }}</span>
           <span v-if="hasMedia">Watermark: {{ watermarkEnabled ? 'on' : 'off' }}</span>
         </div>
 
@@ -213,7 +203,7 @@
             <!-- Client-side transcoding status hint -->
             <div v-if="hasVideo" class="text-xs text-muted flex items-center gap-1.5 mt-1">
               <template v-if="_clientTranscodeOn">
-                <span class="text-green-600 dark:text-green-400">✓</span>
+                <span class="text-flow-success">✓</span>
                 <span>Client-side transcoding: <strong class="text-default">Enabled</strong>{{ _clientHwAccelOn ? ' (GPU)' : ' (CPU)' }}</span>
               </template>
               <template v-else-if="_isWebView">
@@ -221,7 +211,7 @@
                 <span>Client-side transcoding: <strong>Unavailable in the web view</strong> — the server will handle transcoding. Use 45Flow Desktop for local processing.</span>
               </template>
               <template v-else>
-                <span class="text-amber-500">ⓘ</span>
+                <span class="text-flow-warning">ⓘ</span>
                 <span>Client-side transcoding: <strong>Off</strong> — enable in Settings → Performance for faster processing</span>
               </template>
             </div>
@@ -283,7 +273,7 @@
             <progress
               class="w-full h-2 rounded-lg overflow-hidden"
               :class="{
-                '[&::-webkit-progress-value]:bg-amber-500 [&::-moz-progress-bar]:bg-amber-500': perFileStatus[f.path] === 'transcoding',
+                '[&::-webkit-progress-value]:bg-flow-warning [&::-moz-progress-bar]:bg-flow-warning': perFileStatus[f.path] === 'transcoding',
                 '[&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary': perFileStatus[f.path] === 'uploading',
               }"
               :value="perFileProgress[f.path] ?? 0" max="100"
@@ -297,7 +287,7 @@
         </div>
 
         <div v-else-if="uploadPhase === 'done'" class="flex flex-col gap-3">
-          <div class="text-sm font-semibold text-green-500">Upload complete &amp; link generated!</div>
+          <div class="text-sm font-semibold text-flow-success">Upload complete &amp; link generated!</div>
           <div class="p-3 border rounded flex flex-col items-center min-w-0 bg-default">
             <code class="max-w-full break-all">{{ viewUrl }}</code>
             <div class="flex flex-wrap gap-2 mt-2">
@@ -308,15 +298,16 @@
         </div>
 
         <div v-else-if="uploadPhase === 'error'" class="flex flex-col gap-2">
-          <div class="text-sm font-semibold text-red-500">Error</div>
-          <p class="text-sm text-red-400 whitespace-pre-wrap break-words">{{ errorMsg }}</p>
+          <div class="text-sm font-semibold text-flow-danger">Error</div>
+          <p class="text-sm text-flow-danger whitespace-pre-wrap break-words">{{ errorMsg }}</p>
         </div>
       </section>
 
-      </div> <!-- end scrollable content area -->
+      </div> <!-- end step content area -->
 
       <!-- Footer buttons -->
-      <div class="flex justify-end gap-2 mt-4 border-t border-default pt-3 shrink-0" data-tour="qs-footer">
+      <template #footer>
+      <div class="flex justify-end gap-2 w-full" data-tour="qs-footer">
         <button v-if="wizardStep > 1 && uploadPhase === 'idle'" class="btn btn-secondary" @click="wizardStep--" :disabled="busy">
           Back
         </button>
@@ -326,12 +317,12 @@
         <button v-else-if="wizardStep === 2" class="btn btn-primary" :disabled="!canProceed" @click="startUploadAndShare">
           Upload &amp; Share
         </button>
-        <button v-else-if="uploadPhase === 'done' || uploadPhase === 'error'" class="btn btn-secondary" @click="cancel">
+        <button v-else-if="uploadPhase === 'done' || uploadPhase === 'error'" class="btn btn-dismiss" @click="cancel">
           Close
         </button>
       </div>
-    </div>
-  </div>
+      </template>
+  </FlowModal>
 </template>
 
 <script setup lang="ts">
@@ -348,7 +339,6 @@ import { useExternalAddressReadiness, describeExternalAddressNotReady, resolveCo
 import { validateUploadBatch } from '../utils/uploadPreflight'
 import { useConnections } from '../composables/useConnections'
 import { useActiveProject } from '../composables/useActiveProject'
-import { useProjectMode } from '../composables/useProjectMode'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { useClientTranscode } from '../composables/useClientTranscode'
 import { useUploadTranscode } from '../composables/useUploadTranscode'
@@ -369,6 +359,7 @@ import { useCommentCategories } from '../composables/useCommentCategories'
 import type { WatermarkSettings, Default45FlowWatermark } from '../types/watermark'
 import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../types/watermark'
 import type { Commenter } from '../typings/electron'
+import FlowModal from '../ui/FlowModal.vue'
 
 // Cast to avoid TS plugin resolution issues with global Window augmentation
 const electron = window.electron as any
@@ -388,8 +379,7 @@ const { checkExternalAddressReady } = useExternalAddressReadiness()
 const { activeConnection } = useConnections()
 const isRootUser = computed(() => activeConnection.value?.username === 'root')
 const { activeProject: rawActiveProject } = useActiveProject()
-const { projectModeEnabled } = useProjectMode()
-const activeProject = computed(() => projectModeEnabled.value ? rawActiveProject.value : null)
+const activeProject = computed(() => rawActiveProject.value)
 const transfer = useTransferProgress()
 const currentServer = inject(currentServerInjectionKey)!
 const connectionMeta = inject(connectionMetaInjectionKey)!
@@ -509,8 +499,8 @@ const quickShareTourSteps = computed<TourStep[]>(() => [
   {
     target: '[data-tour="qs-video-options"]',
     message: isPremiumActive.value
-      ? 'When sharing video or image files, media processing options appear here.\n\nFor video:\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Review copies (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nFor images and video:\n• Watermarks can be overlaid with full customization — position, size, opacity, and tiling (Pro).' + clientTranscodeTourTip
-      : 'When sharing video or image files, media processing options appear here.\n\nFor video:\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Review copies (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nFor images and video:\n• A basic watermark can be applied (bottom-right). Upgrade to Pro for full customization of position, size, and opacity.' + clientTranscodeTourTip,
+      ? 'When sharing video or image files, media processing options appear here.\n\nFor video:\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Proxy files (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nFor images and video:\n• Watermarks can be overlaid with full customization — position, size, opacity, and tiling (Pro).' + clientTranscodeTourTip
+      : 'When sharing video or image files, media processing options appear here.\n\nFor video:\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Proxy files (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nFor images and video:\n• A basic watermark can be applied (bottom-right). Upgrade to Pro for full customization of position, size, and opacity.' + clientTranscodeTourTip,
     beforeShow: async () => {
       tourQuickShareOpen.value = true
       tourQuickShareStep.value = 2
@@ -787,7 +777,7 @@ const minimizedStatusText = computed(() => {
       // Determine what kind of transcode step
       const details = Object.values(perFileDetail.value)
       if (details.some(d => d.startsWith('Stream'))) return `Generating Stream… ${overallProgress.value.toFixed(0)}%`
-      if (details.some(d => d.startsWith('Review'))) return `Review Copy… ${overallProgress.value.toFixed(0)}%`
+      if (details.some(d => d.startsWith('Review'))) return `Proxy File… ${overallProgress.value.toFixed(0)}%`
       return `Transcoding… ${overallProgress.value.toFixed(0)}%`
     }
     if (anyUploading) return `Uploading… ${overallProgress.value.toFixed(0)}%`
@@ -1337,7 +1327,7 @@ async function startUploadAndShare() {
             context: transcodeContext,
             onProgress: (phase, percent) => {
               perFileProgress.value[f.path] = percent
-              perFileDetail.value[f.path] = phase === 'hls' ? `Stream: ${percent.toFixed(0)}%` : `Review copy: ${percent.toFixed(0)}%`
+              perFileDetail.value[f.path] = phase === 'hls' ? `Stream: ${percent.toFixed(0)}%` : `Proxy file: ${percent.toFixed(0)}%`
             },
           })
 
@@ -1647,7 +1637,7 @@ async function startUploadAndShare() {
         if (proxyActive && canUsePlayback && !alreadyTrackingProxy) {
           transfer.startPlaybackTranscodeTask({
             title: `Transcoding: ${displayName}`,
-            detail: 'Review copy',
+            detail: 'Proxy file',
             intervalMs: 1500,
             jobKind: 'proxy_mp4',
             context,
@@ -1837,7 +1827,7 @@ function openInBrowser() {
   border: 1px solid color-mix(in srgb, var(--btn-primary-bg) 25%, #585867);
   border-radius: 0.8rem;
   padding: 0.8rem;
-  overflow: hidden;
+  overflow-y: auto;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--btn-primary-bg) 9%, transparent), transparent 58%);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, white 3%, transparent);
