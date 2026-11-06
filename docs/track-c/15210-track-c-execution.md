@@ -25,9 +25,22 @@ It is not grounds for another product repair or a guarantee of resolution.
 Settings/retry controls, authorized review/download notification producers and
 real-inbox acceptance remain unfinished; Princess writes are still paused.
 Fresh execution-tier read-only admission `98cfd911-e957-4187-b5ff-d7874dfcf5b3`
-is mapping only the production SMTP settings home/admin patterns and existing
-invitation retry control, with the verified producer as prerequisite. It does
-not change gates, reset the correction budget or edit source while mapping.
+returned READY, observed 18:01:05Z-18:02:36Z, with no source/tests/builds/children.
+It traced the production SMTP settings home/admin patterns and existing retry
+contract. The existing settings section rail (page-layout Rule 5) admits one
+admin-only Email (SMTP) entry beside Admin Networks under Application; the
+invitation panel remains flat (Rule 1) with an explicit same-invitation retry.
+No new page, auth architecture or backend is needed. Its incidental sink-port
+label was a typo: UI18082, internal SMTP2525.
+Canonical round 42 and `client-mail-controls-admission-v1.md` preserve readiness.
+Evidence-only server head `91e8eb2eae2e6bc2508391f60ebdbb082f5720bf`
+was pushed/remote-confirmed at 18:05:07Z with unchanged verified source.
+Fresh execution-tier executor `9533794f-d7d4-493c-8978-91820c1c2879` now
+implements only that admitted client slice from clean `a8f2513`.
+The published preview stays frozen to accepted bytes. This is first UI
+implementation, not a correction-budget reset or whole-C3 completion.
+The consumer-stage model ledger adds one Sonnet admission and one Sonnet
+implementation spawn; existing verifier/reviewer/runtime contexts were reused.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
