@@ -87,3 +87,18 @@ The earlier stop on Princess schedule/estimate changes remains in effect. Decisi
 | 57 | Include the Track B mail-credential prerequisite | User selected "Yes—include the prerequisite Track B integration." Take on the prerequisite needed for real C3 mail sending under the existing B1 credential-handling task, rather than invent a C3-only secret store. Establish the shared contract and executable gates before implementation. | Native B1 task `a51c17a5-ce95-4ee2-8b61-4315675db358` is Todo: No-IP/mail secrets encrypted at rest, root-only, never returned, audited and rotatable (B-09). This does not authorize unrelated B1-B6 work, real provider requests, production changes, a new Princess record, resumed business writes, merges or a C3 retry-budget reset. |
 | 58 | Unlock saved mail credentials after restart | User selected "Use a root-only key file and unlock automatically (Recommended)". Use an automatically available root-only master-key file, backed up separately from encrypted credentials, rather than requiring interactive unlock or introducing an external secret-manager dependency. | Mail must run unattended after restart. This protects stored credentials and backups, not against an attacker who controls root. Preserve existing JWT/link-cookie secret behavior; define missing-key and recovery failures explicitly rather than silently replacing protected data. |
 | 59 | Approve the B-09 implementation gates | User selected "Approve these gates and implement (Recommended)" after reviewing the seven-gate draft `b26afcbb673c1bca0fa2cca70e5b799f94d4264485a6d0cf1f53df7ccccfad29`. Implement the shared encrypted credential boundary, protected files, admin metadata/write APIs, redacted audit, credential/key rotation, fail-closed recovery and server-only SMTP adapter in the isolated B1 worktree. | This is the existing B-09 prerequisite, not all B1 or a C3 correction-budget reset. C3 consumes the independently verified producer later; mail delivery, other B tasks, provider calls, production changes, merges, new Princess records and resumed business writes remain excluded. |
+
+## C3 delivery-status correction
+
+Decision 60, 2026-11-06: after the independent review and judgment diagnosis, the
+user selected "Approve one focused correction (Recommended)". Authorize one
+additional, narrowly scoped correction of the zero-attempt invitation DTO and
+its regression tests. Pending invitations must not keep diagnosing SMTP as
+unconfigured after setup changes; unavailable configuration needs an honest,
+consumer-compatible representation. Preserve historical SMTP outcomes, action
+errors, delivery/retry behavior, share identity, credentials and the agreed
+gates. Use a fresh judgment-tier executor, followed by independent delta review,
+affected verification and final standing if cleared. This explicit exception
+does not reset C3's bounce2/2 or restart0/2 budgets, authorize another automatic
+repair, resume Princess writes, permit provider requests or allow deployment,
+merging or a new PR.

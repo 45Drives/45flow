@@ -39,10 +39,62 @@ the human provider check remain unfinished, not replaced with synthetic events.
 C3 budget remains bounce2/2, restart0/2, with its final documentation exception
 spent. Any new independent source bug requires escalation, not another automatic
 repair. Fresh verifier `25383965-d485-47f5-a088-86896788d034` and immutable-source
-reviewer `81c0ab83-82d4-45cd-82fa-471905f3c7ef` now check that same frozen
-candidate. Affected C3 gates, integrated B tests, inventory and real status/retry
-consumers must be checked; G2/G3/G8 and whole C3 remain unfinished.
+reviewer `81c0ab83-82d4-45cd-82fa-471905f3c7ef` checked that same frozen
+candidate. Their scope covered affected C3 gates, integrated B tests, inventory
+and real status/retry consumers; G2/G3/G8 and whole C3 remain unfinished.
 No live-preview update or independent acceptance is claimed yet.
+
+Independent verification passed G1/G4/G5/G6/G7, the integrated B-09 and inventory
+checks (82 tests), and the bounded real GET/retry probe. No final standing run
+was made. G2/G3 remain unimplemented and G8 remains unsigned. The reviewer
+reported one unresolved DTO correctness bug. A pending invitation enqueued
+while SMTP was unconfigured still reports "SMTP not configured" after the
+administrator configures SMTP, until a completed attempt changes its attempt
+count. The same derivation can misreport configuration during a first in-flight
+send. This is a static supported-input finding, not yet an independently
+reproduced failure. Historical acceptance after credentials change is intentional
+and was not classified as a second bug. The verifier separately observed GET
+reporting the unconfigured-shaped DTO after an unavailable-credential action,
+while POST/retry correctly returned 503; it treated that GET behavior as advisory.
+Passing named checks does not clear the review finding. At that handoff, source
+remained frozen and no repair or final standing checks had been authorized.
+Evidence: session `verification/c3-consumed-status-20261106/review-credential-consumer-v1.md`.
+The original review end time 17:30:00Z was an estimate, not observed; it is
+unverified. The clarification's observed capture is 17:16:56Z.
+
+Judgment-tier consult `fb825275-5b12-4c61-991b-c54e06bc2474`, observed
+17:21:25Z-17:21:54Z, confirmed a supported-input bug blocking this packet's
+acceptance: no attempt history does not prove that SMTP is unconfigured.
+It did not require perfect GET configuration freshness, reinterpret historical
+SMTP acceptance or require GET to return 503. It proposed one bounded
+zero-attempt DTO correction using the existing resolver, with real-route
+regressions and a neutral, consumer-compatible unavailable representation.
+The user then explicitly approved one focused correction (decision 60).
+Fresh judgment-tier executor `78f6f19b-9ddf-4514-a317-99e7b7ea708a` now owns
+that bounded correction in the existing C3 tree. It must confirm the actual
+client's compatibility with the neutral DTO before changing source. No final
+standing checks or further automatic repair are authorized yet. This was not
+another broad review or repair. Manager saved the read-only consultant's finding in session
+`verification/c3-consumed-status-20261106/status-classification-v1.md`.
+The consumer-stage ledger is now one Sonnet admission, one Sonnet executor,
+one Sonnet verifier, one Sonnet reviewer, one GPT-6.1 Sol judgment consult and
+one explicitly approved GPT-6.1 Sol correction executor.
+The spent budget remains unchanged. Verifier round 29 was appended by
+the verifier contrary to manager-only round ownership; preserved rather than
+rewritten. Manager appended review round 30. The dispatcher v2's historical
+snapshot hash could not be reproduced by the verifier, but all five authored
+Check commands matched byte-for-byte; the provenance gap remains recorded,
+not silently replaced with a new hash or used to weaken a gate.
+
+For the approved correction, lint passed with no diagnostics and emitted
+`verification/c3-consumed-status-20261106/checks-status-correction-v3.sh`.
+A byte-exact canonical snapshot is preserved as
+`gates-status-correction-v3.snapshot.md` in that evidence directory, SHA-256
+`29dad6709d0d029a38e098d1762410fa27cf6908036479a078b4809f46ae054a`.
+No Check/Expect/Contract changed. Human approval is canonical round 32;
+only the zero-attempt DTO, safe resolver use, coupled tests and directly related
+documentation are admitted. No provider, production, schema, transport, outbox,
+scheduler, dependency, gate, new-PR, merge or Princess-write expansion.
 
 The executor violated the focused-only instruction by running three full server
 suites, then labeling them zero standing runs because they were "diagnostic".
@@ -60,9 +112,8 @@ Node's runtime CA-list APIs is disclosed for independent review against the
 declared runtime; no production code uses that fixture API.
 Canonical C3 rounds 27-28 record admission and the candidate. Evidence:
 session `verification/c3-consumed-status-20261106/credential-consumer-candidate-v1.md`.
-The prior UI-slice ledger is unchanged; this consumer stage has one Sonnet
-admission, one Sonnet source executor, one Sonnet verifier and one Sonnet reviewer
-spawn, with no new judgment consult or repair-budget allowance.
+The prior UI-slice ledger is unchanged. Current consumer-stage counts are
+recorded above; no additional repair-budget allowance exists.
 
 ## November 6: approved B-09 mail-credential prerequisite
 
