@@ -35,6 +35,9 @@
                         <AdminNetworksPanel v-if="activeSection === 'adminNetworks' && adminSession && activeConnection"
                             :key="activeConnection.connectionId" :connection-id="activeConnection.connectionId" />
 
+                        <AdminSmtpPanel v-if="activeSection === 'adminMail' && adminSession && activeConnection"
+                            :key="activeConnection.connectionId" :connection-id="activeConnection.connectionId" />
+
                         <!-- Loading state: show skeleton until settings loaded from server -->
                         <div v-if="!settingsLoaded && (activeSection === 'sharing' || activeSection === 'linkOptions')" class="flex flex-col items-center justify-center h-full gap-3 py-12">
                             <svg class="animate-spin h-6 w-6 text-muted" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -1604,8 +1607,8 @@
                         <div v-else class="text-xs text-accent">New shares will use these settings automatically.</div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button v-if="activeSection !== 'adminNetworks'" class="btn btn-secondary" type="button" @click="reload" :disabled="busy">Reload</button>
-                        <button v-if="activeSection !== 'adminNetworks'" class="btn btn-success" type="button" @click="save" :disabled="busy || !!validationError">
+                        <button v-if="activeSection !== 'adminNetworks' && activeSection !== 'adminMail'" class="btn btn-secondary" type="button" @click="reload" :disabled="busy">Reload</button>
+                        <button v-if="activeSection !== 'adminNetworks' && activeSection !== 'adminMail'" class="btn btn-success" type="button" @click="save" :disabled="busy || !!validationError">
                             <span v-if="busy">Saving…</span>
                             <span v-else>Save Settings</span>
                         </button>
@@ -1644,6 +1647,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { Switch } from "@headlessui/vue";
 import { useApi } from "../../composables/useApi";
 import AdminNetworksPanel from "../AdminNetworksPanel.vue";
+import AdminSmtpPanel from "../AdminSmtpPanel.vue";
 import { isAdminSession } from "../../composables/adminSession";
 import { pushNotification, Notification } from '@45drives/houston-common-ui';
 import PathInput from "../PathInput.vue";
@@ -1745,7 +1749,7 @@ const settingsTourSteps = computed<TourStep[]>(() => [
 ])
 
 // ── Section navigation ──────────────────────────────────────────────────
-type Section = 'sharing' | 'publicSharing' | 'app' | 'performance' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade' | 'adminNetworks';
+type Section = 'sharing' | 'publicSharing' | 'app' | 'performance' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade' | 'adminNetworks' | 'adminMail';
 const activeSection = ref<Section>((props.initialSection as Section) || 'sharing');
 
 const navGroups = computed(() => {
@@ -1774,6 +1778,7 @@ const navGroups = computed(() => {
                 { key: 'health' as Section, label: 'Server Health' },
                 { key: 'maintenance' as Section, label: 'Maintenance' },
                 ...(adminSession.value ? [{ key: 'adminNetworks' as Section, label: 'Admin Networks' }] : []),
+                ...(adminSession.value ? [{ key: 'adminMail' as Section, label: 'Email (SMTP)' }] : []),
             ],
         },
         // Show Go Pro when unlicensed or on trial

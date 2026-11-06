@@ -30,10 +30,16 @@
                 <div>
                     <span class="font-semibold">Recipient:</span> {{ invitation.recipientEmail }}
                 </div>
-                <button type="button" class="btn btn-secondary text-xs px-2 py-1"
-                    :disabled="refreshing" @click="refreshStatus">
-                    {{ refreshing ? 'Refreshing…' : 'Refresh status' }}
-                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" class="btn btn-secondary text-xs px-2 py-1"
+                        :disabled="!canRetry" @click="retryInvite">
+                        {{ retrying ? 'Retrying…' : 'Retry' }}
+                    </button>
+                    <button type="button" class="btn btn-secondary text-xs px-2 py-1"
+                        :disabled="refreshing" @click="refreshStatus">
+                        {{ refreshing ? 'Refreshing…' : 'Refresh status' }}
+                    </button>
+                </div>
             </div>
             <div><span class="font-semibold">Status:</span> {{ invitation.status }}</div>
             <div v-if="invitation.lastOutcome">
@@ -44,9 +50,11 @@
             </div>
             <p v-if="invitation.status === 'accepted'" class="text-xs opacity-70">
                 "Accepted" means the mail server accepted the attempt, not that the recipient's inbox
-                received it.
+                received it. There is no guarantee of exactly-once delivery: the mail server may have
+                accepted an earlier attempt even when this panel could not confirm the outcome.
             </p>
             <p v-if="refreshError" role="alert" class="text-sm text-danger">{{ refreshError }}</p>
+            <p v-if="retryError" role="alert" class="text-sm text-danger">{{ retryError }}</p>
         </div>
     </div>
 </template>
@@ -79,7 +87,16 @@ const submitting = ref(false)
 const submitError = ref('')
 const refreshing = ref(false)
 const refreshError = ref('')
+const retrying = ref(false)
+const retryError = ref('')
 const invitation = ref<Invitation | null>(null)
+
+// Statuses the server itself never retries (see server RETRY_BLOCKED_STATUSES):
+// 'sending' means a claim is active right now; 'accepted' means delivery
+// already succeeded. Mirrored here only to keep the button disabled for an
+// obviously-blocked call, not as a new client-side policy — the server is
+// the actual authority and still re-validates on every retry request.
+const RETRY_BLOCKED_STATUSES: InvitationStatus[] = ['sending', 'accepted']
 
 // Bumped on every link switch so an in-flight response from the PREVIOUS
 // link can never land on the panel now showing a different link — avoids
@@ -92,13 +109,18 @@ watch(() => props.linkId, () => {
     invitation.value = null
     submitError.value = ''
     refreshError.value = ''
+    retryError.value = ''
     submitting.value = false
     refreshing.value = false
+    retrying.value = false
 }, { flush: 'sync' })
 
 function normalizeEmail(raw: string) {
     return raw.trim().toLowerCase()
 }
+
+const canRetry = computed(() => !!invitation.value && !retrying.value
+    && !RETRY_BLOCKED_STATUSES.includes(invitation.value.status))
 
 const canSubmit = computed(() => {
     if (submitting.value || !recipientEmail.value.trim()) return false
@@ -111,6 +133,28 @@ const canSubmit = computed(() => {
 
 function message(e: unknown) {
     return e instanceof Error ? e.message : 'Unexpected invitation request failure.'
+}
+
+function errorCode(e: unknown) {
+    return typeof e === 'object' && e !== null && 'code' in e ? (e as any).code : undefined
+}
+
+// The server is the actual retry authority (it re-validates the row's real
+// status at request time); these messages only explain a real rejection it
+// already returned, never a new client-invented policy.
+function retryErrorMessage(e: unknown) {
+    switch (errorCode(e)) {
+        case 'already_sent':
+            return 'This invitation was already accepted by the mail server; retry is blocked to avoid a duplicate send.'
+        case 'recovery_required':
+            return 'A delivery attempt is already in progress for this invitation; retry is blocked until it completes.'
+        case 'retry_conflict':
+            return 'Another retry or delivery attempt is already in progress for this invitation. Refresh status and try again shortly.'
+        case 'credential_store_unavailable':
+            return 'SMTP credential store is unavailable; the invitation was not retried.'
+        default:
+            return message(e)
+    }
 }
 
 const invitationStatuses: InvitationStatus[] = ['pending', 'sending', 'accepted', 'rejected', 'timeout', 'ambiguous']
@@ -199,6 +243,31 @@ async function refreshStatus() {
         refreshError.value = message(e)
     } finally {
         if (myGeneration === generation) refreshing.value = false
+    }
+}
+
+async function retryInvite() {
+    if (!canRetry.value || !invitation.value) return
+    const myGeneration = generation
+    const myLinkId = props.linkId
+    const invitationId = invitation.value.id
+    retrying.value = true
+    retryError.value = ''
+    try {
+        const data = await props.apiFetch(`/api/links/${myLinkId}/invite/${invitationId}/retry`, { method: 'POST' })
+        if (myGeneration !== generation) return
+        // Success here means the server either attempted (or skipped, when
+        // genuinely unconfigured) the retry; it never means the inbox
+        // received it. Consume the returned DTO rather than optimistically
+        // claiming a send.
+        invitation.value = readInvitation(data)
+    } catch (e: unknown) {
+        if (myGeneration !== generation) return
+        // Preserve the last known DTO on failure — never manufacture a new
+        // invitation/share and never fall back to the enqueue route.
+        retryError.value = retryErrorMessage(e)
+    } finally {
+        if (myGeneration === generation) retrying.value = false
     }
 }
 </script>
