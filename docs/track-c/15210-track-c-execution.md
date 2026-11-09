@@ -1,5 +1,42 @@
 # Project 15210: Track C execution record
 
+## November 9: user-directed pause and Track A handoff
+
+The user requested saving and pushing all project work, then pausing ahead
+of Track A integration. This authorizes backup publication of the latest C3
+candidate, not acceptance, a merge, another repair or a new pull request.
+No new development or final standing checks should start. The already
+assigned verifier and reviewer were told to finish only their bounded reports
+and freeze their evidence. Princess writes remain paused. No session
+automation is attached; existing private preview services are left intact.
+
+All project work stays on these separate feature branches. Do not treat
+them as disjoint patches: the server branches share history and overlapping
+database, route and media changes. C3 now contains a scoped port of the C2
+decision producer, not the entire C2/PDF branch. Future Track A integration
+must reconcile those overlaps and check the actual combined source.
+
+| Repository | Scope | Remote branch | Saved product or preparation revision |
+| --- | --- | --- | --- |
+| 45flow | Management and handoff | `mpyne1-project-15210-schedule` | This execution record |
+| 45flow | C1 owner application | `mpyne1-refactored-fortnight` | `385dbb15c33327d8546e4e756587a1e70e37aea1` |
+| 45flow | C3 email controls | `mpyne1-psychic-invention` | `0cf5b5b280bb178b52f9afaa336df51fd1d4c162` |
+| houston-broadcaster | C1 public address | `mpyne1-legendary-carnival` | `15a90cbeb90f313a6b5d89f9bc99e0e72858f84d` |
+| houston-broadcaster | C2 review and approvals | `mpyne1-fantastic-waffle` | Producer `03f3d4067f65c056fac24cdda7580e19feb10451`; publication note `14a35860507dbe01884e583bfdd784d147c2b970` |
+| houston-broadcaster | C3 email notifications | `mpyne1-cuddly-waffle` | Candidate `d77fcbdcbbac147edaa774d24b74deec94f1f93c`, not yet accepted |
+| houston-broadcaster | C4 playback | `mpyne1-c4-playback-transcoding-bandwidth` | `09fea15cc5fd5253e6cc97b240753b48c467d3a0` |
+| houston-broadcaster | C5 share gateway | `mpyne1-literate-carnival` | `d01228f90e25569feead68680b316e9888b91376` |
+| houston-broadcaster | C6 preparation only | `mpyne1-effective-system` | `43fee2cacc7dc4cc613b9b9a050f2fe2d7c90e26` |
+| houston-broadcaster | B1 credential prerequisite | `mpyne1-ideal-eureka` | `2d66c3e4d9cf2412fee06625dcf6b6c19234dd85` |
+
+Remote hashes were checked after publication. The C1 client/server and C6
+refs were newly created remotely from their existing local branches; no
+extra local branch, omnibus merge or change to a default branch was needed.
+C3 source backup is published while its independent reports remain pending;
+final gate metadata and report conclusions still need saving when those
+writers finish. The remaining C2/C3 work and unsigned human checks recorded
+below are not made complete by pushing these branches.
+
 ## November 6: C3 G7 first sending integration
 
 The genuine local SMTP preview is now running and was published at
@@ -473,6 +510,21 @@ is authorized. Expected first-candidate artifact:
 `review-mail-integration-candidate-v1.md`. Source stays in the feature branch
 locally until fresh integrated verification/review clears it; no runtime
 update is authorized yet.
+The executor returned frozen candidate
+`d77fcbdcbbac147edaa774d24b74deec94f1f93c` (two local commits), with
+ported model/producer, real owner/approver outbox wiring and a declared
+recipient fixture. Four targeted self-checks passed; no standing command,
+installation, push or runtime update ran. Its exact overall start/end are
+unknown: approximate/incomplete report timestamps are not exact evidence.
+Its fixture lists approved/rejected/rejected-again, so the report's
+three-verdict wording does not establish changes-requested coverage.
+Canonical round 68 records that boundary. Fresh verifier
+`f762cbe3-9151-482b-b3b1-03d2c357d7c6` now checks C3 G1-G7 and affected
+C2 G1-G4 on the combined source; fresh source-read-only reviewer
+`ed4b3ddb-e5da-428f-9839-8861641669e5` checks the same frozen delta.
+Only the verifier may write C3 gate evidence while those checks run.
+Both reports must clear before final standing or publication; no correction
+or spent-budget reset is authorized by this dispatch.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
