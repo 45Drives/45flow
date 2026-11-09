@@ -9,7 +9,6 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { build } from 'vite'
-import fixCss from '../fix-css.js'
 import { versionInfo } from './lib.mjs'
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
@@ -33,7 +32,6 @@ export async function buildWeb() {
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
   // The vite config resolves paths from the working directory.
   process.chdir(root)
-  fixCss()
   await build({
     configFile: path.join(root, 'vite.config.mjs'),
     logLevel: 'warn',
