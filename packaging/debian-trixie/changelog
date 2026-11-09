@@ -1,4 +1,4 @@
-45flow-web (1.0.9) trixie; urgency=medium
+45flow-web (1.0.9-1trixie) trixie; urgency=medium
 
   * Initial browser UI package.
 

@@ -1,4 +1,4 @@
-45flow-web (1.0.9) bookworm; urgency=medium
+45flow-web (1.0.9-1bookworm) bookworm; urgency=medium
 
   * Initial browser UI package.
 

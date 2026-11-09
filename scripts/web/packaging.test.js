@@ -48,8 +48,36 @@ describe('repository packaging', () => {
         expect(read(`${base}/rules`)).toContain('include packaging/debian.rules')
         expect(read(`${base}/source/format`)).toContain('3.0 (native)')
         expect(read(`${base}/copyright.j2`)).toContain('GPL-3.0')
-        expect(read(`${base}/changelog`)).toContain('45flow-web (')
+        const codename = build.os_name.split('-')[1]
+        // update-repo publishes 45flow-web_<version>-<build><codename>_all.deb; any other
+        // changelog version builds fine but is silently never added to the repo.
+        expect(read(`${base}/changelog`).split('\n')[0])
+          .toBe(`45flow-web (${manifest.version}-${manifest.build_number}${codename}) ${codename}; urgency=medium`)
       }
+    }
+  })
+
+  it('ci-prepare rewrites every debian changelog to the version update-repo publishes', () => {
+    work = fs.mkdtempSync(path.join(os.tmpdir(), '45flow-web-prepare-'))
+    fs.mkdirSync(path.join(work, 'scripts/web'), { recursive: true })
+    fs.copyFileSync(path.join(root, 'scripts/web/ci-prepare.sh'), path.join(work, 'scripts/web/ci-prepare.sh'))
+    fs.writeFileSync(path.join(work, 'package.json'), '{\n  "name": "45flow",\n  "version": "2.0.0-beta.1"\n}\n')
+    fs.writeFileSync(path.join(work, 'manifest.json'), read('manifest.json').replaceAll('"build_number": "1"', '"build_number": "3"'))
+    const debBuilds = manifest.builds.filter((b) => b.group !== 'rocky')
+    for (const build of debBuilds) {
+      fs.mkdirSync(path.join(work, 'packaging', build.os_name), { recursive: true })
+      fs.writeFileSync(path.join(work, 'packaging', build.os_name, 'changelog'), 'stale\n')
+    }
+    const git = (...args) => execFileSync('git', args, { cwd: work, encoding: 'utf8', stdio: 'pipe' }).trim()
+    git('init', '-q')
+    git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'release')
+    execFileSync('sh', ['scripts/web/ci-prepare.sh', git('rev-parse', 'HEAD'), '2.0.0-beta.1'], { cwd: work, stdio: 'pipe' })
+
+    for (const build of debBuilds) {
+      const codename = build.os_name.split('-')[1]
+      const changelog = fs.readFileSync(path.join(work, 'packaging', build.os_name, 'changelog'), 'utf8')
+      expect(changelog.split('\n')[0]).toBe(`45flow-web (2.0.0~beta.1-3${codename}) ${codename}; urgency=medium`)
+      expect(changelog).toMatch(/^ -- 45Drives <info@45drives\.com>  \w{3}, \d{2} \w{3} \d{4} \d{2}:\d{2}:\d{2} [+-]\d{4}$/m)
     }
   })
 

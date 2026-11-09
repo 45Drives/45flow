@@ -1,4 +1,4 @@
-45flow-web (1.0.9) jammy; urgency=medium
+45flow-web (1.0.9-1jammy) jammy; urgency=medium
 
   * Initial browser UI package.
 

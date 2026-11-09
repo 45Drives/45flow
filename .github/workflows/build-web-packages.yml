@@ -79,12 +79,27 @@ jobs:
           become: true
           host_key_checking: true
           extra_vars: sign_key_name=prod uuid=${{ needs.prebuild.outputs.uuid }}
+      # update-repo builds these exact paths from manifest.json and reports success even
+      # when a file is missing, so check the names it will publish, not just a count.
       - name: Verify signed web packages before repository publication
         env:
-          SIGNED_DIR: /mnt/ci_artifacts/${{ needs.prebuild.outputs.uuid }}/sign
+          SIGNED_DIR: /mnt/ci_artifacts/${{ needs.prebuild.outputs.uuid }}/sign/prod
+          MANIFEST: ${{ runner.workspace }}/run-${{ needs.prebuild.outputs.uuid }}/manifest.json
         run: |
-          test "$(find "$SIGNED_DIR" -type f -name '45flow-web*_all.deb' | wc -l)" -eq 4
-          test "$(find "$SIGNED_DIR" -type f -name '45flow-web*.noarch.rpm' | wc -l)" -eq 2
+          field() { sed -n -E "0,/\"$1\"[[:space:]]*:/s/^[[:space:]]*\"$1\"[[:space:]]*:[[:space:]]*\"([^\"]+)\".*/\1/p" "$MANIFEST"; }
+          VERSION="$(field version)"
+          BUILD="$(field build_number)"
+          [ -n "$VERSION" ] && [ -n "$BUILD" ] || { echo "::error::cannot read version/build_number from $MANIFEST"; exit 1; }
+          missing=0
+          for OS in ubuntu-focal ubuntu-jammy debian-bookworm debian-trixie; do
+            f="$SIGNED_DIR/$OS/debs/45flow-web_${VERSION}-${BUILD}${OS##*-}_all.deb"
+            [ -f "$f" ] || { echo "::error::missing $f"; ls -la "$SIGNED_DIR/$OS/debs" || true; missing=1; }
+          done
+          for EL in el8 el9; do
+            f="$SIGNED_DIR/rocky-$EL/rpms/noarch/45flow-web-${VERSION}-${BUILD}.$EL.noarch.rpm"
+            [ -f "$f" ] || { echo "::error::missing $f"; ls -la "$SIGNED_DIR/rocky-$EL/rpms/noarch" || true; missing=1; }
+          done
+          exit $missing
 
   update_repositories:
     needs: [prebuild, build, sign]
