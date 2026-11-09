@@ -217,8 +217,9 @@
                         <span class="sr-only">Category</span>
                         <select :value="comment.category_id ?? ''"
                           @change="updateCommentCategory(comment.id, ($event.target as HTMLSelectElement).value)">
-                          <option value="">No category</option>
-                          <option v-for="cat in linkCategories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                          <!-- The select itself is transparent, so give the dropdown list the theme's surface and text colours -->
+                          <option value="" class="bg-default text-default">No category</option>
+                          <option v-for="cat in linkCategories" :key="cat.id" :value="cat.id" class="bg-default text-default">{{ cat.name }}</option>
                         </select>
                       </label>
                       <span v-for="tag in parseTags(comment.tags)" :key="tag" class="flow-chip flow-chip--muted flow-chip--sm">#{{ tag }}</span>
@@ -306,7 +307,6 @@ import { useApi } from '../../composables/useApi'
 import { useTimeFormat } from '../../composables/useTimeFormat'
 import type { LinkItem } from '../../typings/electron'
 import type { CommentExport, CommentStats } from '../../types/comments'
-import type { Comment } from '../../composables/useComments'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import {
   ArrowDownTrayIcon,
@@ -353,7 +353,7 @@ const linkToken = computed(() => {
 const loading = ref(false)
 const error = ref<string | null>(null)
 const showAnnotationViewer = ref(false)
-const selectedAnnotationComment = ref<Comment | null>(null)
+const selectedAnnotationComment = ref<CommentExport | null>(null)
 const comments = ref<CommentExport[]>([])
 const stats = ref<CommentStats | null>(null)
 const selectedFileFilter = ref('')
@@ -530,10 +530,10 @@ const filteredComments = computed(() => {
   // Filter by search text — include parent if any of its replies match
   if (searchText.value.trim()) {
     const search = searchText.value.toLowerCase()
-    const matchesSearch = (c: CommentExport) =>
+    const matchesSearch = (c: CommentExport) => !!(
       c.body?.toLowerCase().includes(search) ||
       c.author_name?.toLowerCase().includes(search) ||
-      c.user_name?.toLowerCase().includes(search)
+      c.user_name?.toLowerCase().includes(search))
     result = result.filter(c => {
       if (matchesSearch(c)) return true
       return anyInThread(c.id, matchesSearch)
@@ -895,8 +895,9 @@ async function applyBulkCategory() {
   }
 }
 
-function onCategoriesUpdated(categories: Array<{ id: number; name: string; color: string | null }>) {
-  linkCategories.value = categories
+function onCategoriesUpdated(categories: Array<{ id?: number; name: string; color: string | null }>) {
+  // Unsaved categories have no id yet and can't be assigned to comments
+  linkCategories.value = categories.filter((c): c is { id: number; name: string; color: string | null } => c.id != null)
 }
 
 function applyResolvedLocally(ids: number[], resolved: boolean) {
@@ -1106,7 +1107,7 @@ async function handleExport() {
   }
 }
 
-function viewAnnotation(comment: Comment) {
+function viewAnnotation(comment: CommentExport) {
   selectedAnnotationComment.value = comment
   showAnnotationViewer.value = true
 }

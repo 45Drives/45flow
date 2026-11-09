@@ -288,9 +288,14 @@ import { useApi } from '../../composables/useApi'
 import { useTimeFormat } from '../../composables/useTimeFormat'
 import FlowModal from '../../ui/FlowModal.vue'
 
+// Only the fields this viewer reads, so both Comment and CommentExport rows can be passed in.
+type AnnotatedComment = Pick<Comment,
+  'id' | 'file_id' | 'file_name' | 'body' | 'author_name' | 'user_name' | 'start_seconds' |
+  'start_frame' | 'created_at' | 'draw_data' | 'annotation_type'>
+
 const props = defineProps<{
   modelValue: boolean
-  comment: Comment | null
+  comment: AnnotatedComment | null
   link: any
 }>()
 
