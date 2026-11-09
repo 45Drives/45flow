@@ -291,6 +291,44 @@ diagnostics. Snapshot `gates-review-policy-v5.snapshot.md` and dispatcher
 `checks-review-policy-v5.sh` preserve the authored commands; snapshot SHA-256
 is `3765039e3a9ba7df9027a505abb9fa8b88a538ddd1b15a1b0b60c1919cc25918`.
 No gate test was executed by preflight, and no verdict changed.
+Handoff v2 returned at actual UTC 13:09:51Z-13:11:33Z on November 9.
+The existing verified-access foundation is real and byte-identical in the
+C2/C3 branches: server-resolved user IDs/email, signed restricted-link
+sessions, current link/grant/account checks, and existing production comment
+authorship binding. No new Track B identity product is needed. The missing
+piece is wiring that authority into C2's real decision model.
+Manager selects the existing contract's designated approver as decision
+authority; a new `can_approve` role flag is unnecessary and not authorized.
+The packet's claim that a fresh retry budget is needed or available is
+incorrect: this is first implementation of the unwritten producer under the
+existing continuation scope, not a budget reset. Both C2 and C3 retain their
+spent budgets; a new independent material defect cannot trigger automatic
+repair. Canonical C3 round 66 records the handoff and this qualification.
+
+| Work | Prerequisite | Ownership and integration | State |
+| --- | --- | --- | --- |
+| C2 verified decision producer | Existing verified-access contract at C2 `4ec76a2` | C2 worktree owns assignment/API/decision binding and real-route G1-G4 tests | Ready for first implementation |
+| C3 review mail consumer | Independently verified C2 producer revision and Decisions 62-63 | Integrate verified producer into C3 serially, then reuse existing durable mail boundary | Waiting |
+| Combined notification acceptance | Integrated source plus affected C2/C3 gates and final standing | Freeze source, fresh verification/review before private runtime update | Waiting |
+
+C2 gates preflight also passed with zero diagnostics; saved snapshot
+`gates-c2-producer-v1.snapshot.md` SHA-256
+`62f533c06f9c26a2633cd75ee6173a860341c80377909e50b7e54b245473b9a4`
+and dispatcher `checks-c2-producer-v1.sh` preserve existing commands.
+No tests ran during this preflight. Existing PDF, invitation and download
+increments remain unchanged; no old live-service readiness is assumed.
+Fresh execution-tier executor `8afb239d-cf62-40c3-b68e-666c31360fd5` now owns
+the first production C2 decision-producer implementation in the existing
+clean C2 worktree at `4ec76a2`. Scope is owner/admin-controlled assignment,
+verified designated-approver decisions, share/version isolation and immutable
+history, using the existing authentication foundation. No new role flag,
+mail consumer, UI/export expansion or retry budget is authorized. It must
+freeze a local candidate with real-route targeted checks before fresh
+independent verification/review; C3 integration waits for that verified
+revision. Expected report: `c2-review-producer-candidate-v1.md` in the same
+session verification directory. Source and live previews elsewhere stay
+unchanged. This replaces the handoff's misleading "NOT READY" label with
+actual implementation, not another admission round.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
