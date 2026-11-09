@@ -350,6 +350,34 @@ gate-evidence writes; no source edit or manager round append runs while it
 is active. The review specifically retains the owner-assignment HTTP evidence
 boundary rather than assuming authenticated means authorized. No C3 source
 integration or mail implementation starts before both reports are reconciled.
+Verifier `99c930c0` returned G1-G4 GREEN on the frozen producer at actual UTC
+13:31:39Z-13:33:53Z: four exact named checks and one combined C2/inventory
+command passed. Snapshot and dispatcher matched; source/lock stayed frozen,
+no standing suite/build ran, G6 PDF evidence carried unaffected and
+G5/G7/G8 remain RED. Owner-side assignment HTTP coverage is still absent and
+not inferred from fixture DB setup or route inventory. Canonical C2 round 30
+records this pass. Immutable review remains pending; no acceptance, C3
+integration, repair or preview update is authorized yet.
+Reviewer `50e8c4dd` returned one concrete producer bug (captured end
+13:35:01Z, start unknown). The GET history route shares the POST's current-
+version-only guard: after V2 replaces V1, a legitimate V1 history GET returns
+409 instead of the preserved decisions. Rejecting stale writes is correct;
+blocking authorized historical reads contradicts the retained-history
+contract. The passing named checks do not cover superseded-version reads.
+This is source-traced, not an empirically executed failure by the reviewer.
+Owner-side assignment's missing HTTP test remains advisory: source inspection
+confirms existing single-server owner/admin auth conventions and target-user
+access checks, not a newly introduced authorization bug.
+Canonical C2 round 31 records the blocker. Both independent reports are now
+collected; no final standing, publication or C3 integration is authorized.
+C2's repair allowance and prior PDF exception are already spent. No new
+automatic correction or reset is permitted; a narrow judgment diagnosis must
+precede escalation of this precise failure.
+Fresh GPT-6.1 Sol consult `eb8bc887-124e-46a5-b7ce-7b34ff26e887` owns only
+that exhausted-budget diagnosis: practical reachability, smallest correction
+concept and affected checks, no source changes or tests. Expected artifact:
+`c2-review-history-diagnosis-v1.md`. Any further correction needs an explicit
+user decision; the previous final PDF allowance is not available again.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
