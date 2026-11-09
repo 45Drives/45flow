@@ -23,7 +23,7 @@ must reconcile those overlaps and check the actual combined source.
 | 45flow | C3 email controls | `mpyne1-psychic-invention` | `0cf5b5b280bb178b52f9afaa336df51fd1d4c162` |
 | houston-broadcaster | C1 public address | `mpyne1-legendary-carnival` | `15a90cbeb90f313a6b5d89f9bc99e0e72858f84d` |
 | houston-broadcaster | C2 review and approvals | `mpyne1-fantastic-waffle` | Producer `03f3d4067f65c056fac24cdda7580e19feb10451`; publication note `14a35860507dbe01884e583bfdd784d147c2b970` |
-| houston-broadcaster | C3 email notifications | `mpyne1-cuddly-waffle` | Candidate `d77fcbdcbbac147edaa774d24b74deec94f1f93c`, not yet accepted |
+| houston-broadcaster | C3 email notifications | `mpyne1-cuddly-waffle` | Candidate `d77fcbdcbbac147edaa774d24b74deec94f1f93c`; saved evidence `7843469e32cdd08ef8f9a1c6aa0b5edfe683188c`; final acceptance deferred |
 | houston-broadcaster | C4 playback | `mpyne1-c4-playback-transcoding-bandwidth` | `09fea15cc5fd5253e6cc97b240753b48c467d3a0` |
 | houston-broadcaster | C5 share gateway | `mpyne1-literate-carnival` | `d01228f90e25569feead68680b316e9888b91376` |
 | houston-broadcaster | C6 preparation only | `mpyne1-effective-system` | `43fee2cacc7dc4cc613b9b9a050f2fe2d7c90e26` |
@@ -32,10 +32,10 @@ must reconcile those overlaps and check the actual combined source.
 Remote hashes were checked after publication. The C1 client/server and C6
 refs were newly created remotely from their existing local branches; no
 extra local branch, omnibus merge or change to a default branch was needed.
-C3 source backup is published while its independent reports remain pending;
-final gate metadata and report conclusions still need saving when those
-writers finish. The remaining C2/C3 work and unsigned human checks recorded
-below are not made complete by pushing these branches.
+C3 source and final candidate-review metadata are now published, with both
+independent writers idle and no follow-on assignment. The remaining C2/C3
+work and unsigned human checks recorded below are not made complete by
+pushing these branches.
 
 The independent reviewer finished at 14:47:06Z on unchanged `d77fcbdc`
 with no concrete bugs found. It source-confirmed all three verdicts are
@@ -44,8 +44,26 @@ earlier report-summary caveat was incomplete, not a missing implementation.
 The only new observation is an unreproduced, synthetic multi-database
 schema-cache concern, not a supported production failure or repair request.
 Review evidence is `review-mail-integration-review-v1.md` in the session
-verification directory. Candidate verification is still pending; this
-review alone does not establish acceptance.
+verification directory.
+
+The independent verifier subsequently reported C3 G1-G7 and affected C2
+G1-G4 passing on that same combined source; G8 remains unsigned/RED and
+the whole C3 file remains RED. Its actual checks ended at 14:46:35Z;
+report-writing end is unknown. Comment/security-only exclusion is a static
+source check, not a dynamic fixture scenario. Neither a full final standing
+run nor a new live demonstration was performed: both are deferred by the
+user-directed pause. No further repair, final-check dispatch or human
+sign-off is inferred from this candidate pass.
+
+Canonical C3 rounds 69-71 preserve both reports and the pause instruction.
+Metadata `7843469e32cdd08ef8f9a1c6aa0b5edfe683188c` is remote-confirmed on
+`mpyne1-cuddly-waffle`; source is still `d77fcbdc`, unchanged by those
+evidence-only commits. The candidate verifier artifact is
+`review-mail-integration-verifier-v1.md`. This latest integration used one
+role-pinned executor, one verifier and one reviewer, without model
+overrides, consults, additional bounces/restarts, simplification or scribe
+work. Prior spent budgets remain spent. All ten project branches are saved;
+no merge, additional PR or Princess write occurred.
 
 ## November 6: C3 G7 first sending integration
 
