@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, h, nextTick } from 'vue'
 import RolesPanel from './RolesPanel.vue'
 import TeamsPanel from './TeamsPanel.vue'
+import LinkAccessList from './LinkAccessList.vue'
 import { initials, normalizeHex } from './accessUi'
 
 vi.mock('../../composables/useTourManager', () => ({ useTourManager: () => ({ requestTour: vi.fn() }) }))
@@ -108,5 +109,46 @@ describe('TeamsPanel', () => {
     const body = JSON.parse(post[1].body)
     expect(body.name).toBe('Acme Marketing')
     expect(body.member_ids).toEqual([7])
+  })
+})
+
+describe('LinkAccessList', () => {
+  const users = [
+    { user_id: 5, user_name: 'dana', name: 'Dana Ortiz', role_name: 'Reviewer' },
+    { user_id: 6, user_name: 'lee', name: 'Lee Park', role_name: 'Viewer', pending: 'removed' },
+    { user_id: -1, user_name: 'sam', name: 'Sam Reid', role_name: 'Viewer', pending: 'added' },
+  ]
+  const groups = [{ group_id: 2, group_name: 'Acme Marketing', member_count: 3, role_name: 'Commenter', pending: 'changed' }]
+
+  it('is read-only and shows no edit tags when not editable', async () => {
+    const host = mount(LinkAccessList, { users: [users[0]], groups: [] })
+    await flush()
+    expect(host.textContent).toContain('Dana Ortiz')
+    expect(host.querySelectorAll('button')).toHaveLength(0)
+  })
+
+  it('marks unsaved changes and offers Undo for removed rows', async () => {
+    const onRemoveUser = vi.fn()
+    const onUndoUser = vi.fn()
+    const host = mount(LinkAccessList, { users, groups, editable: true, onRemoveUser, onUndoUser })
+    await flush()
+    const rowFor = (name) => [...host.querySelectorAll('.flow-list__row')].find(r => r.textContent.includes(name))
+    expect(rowFor('Lee Park').textContent).toContain('Will be removed')
+    expect(rowFor('Sam Reid').textContent).toContain('New')
+    expect(rowFor('Acme Marketing').textContent).toContain('Role changed')
+
+    rowFor('Lee Park').querySelector('button').click()
+    rowFor('Dana Ortiz').querySelector('button').click()
+    expect(onUndoUser).toHaveBeenCalledWith(6)
+    expect(onRemoveUser).toHaveBeenCalledWith(5)
+  })
+
+  it('says loading only while there is nothing to show yet', async () => {
+    const loadingEmpty = mount(LinkAccessList, { users: [], groups: [], loading: true })
+    await flush()
+    expect(loadingEmpty.textContent).toContain('Loading')
+    const loadingWithRows = mount(LinkAccessList, { users: [users[0]], groups: [], loading: true })
+    await flush()
+    expect(loadingWithRows.textContent).toContain('Dana Ortiz')
   })
 })

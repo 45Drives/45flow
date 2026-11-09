@@ -585,3 +585,77 @@
   scrollbar-width: thin;
   scrollbar-color: var(--flow-neutral-border) transparent;
 }
+
+/* =====================
+   Section label + group — a titled block of label/value rows (settings, details pages)
+   ===================== */
+.flow-subhead {
+  margin: 1.5rem 0 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ui-subtle-text);
+}
+
+.flow-subhead--first {
+  margin-top: 0;
+}
+
+.flow-group {
+  border: 1px solid var(--flow-line);
+  border-radius: var(--flow-radius-lg);
+  padding: 0 var(--flow-space-4);
+}
+
+.flow-group > * + * {
+  border-top: 1px solid var(--flow-line);
+}
+
+/* =====================
+   Data table — quiet header, lines between rows, no cell borders
+   ===================== */
+.flow-table-wrap {
+  border: 1px solid var(--flow-line);
+  border-radius: var(--flow-radius-lg);
+  overflow-x: auto;
+}
+
+.flow-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--flow-text-sm);
+  text-align: left;
+}
+
+.flow-table th {
+  padding: 0.5rem 0.875rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ui-subtle-text);
+  background: var(--flow-surface-sunken);
+  border-bottom: 1px solid var(--flow-line);
+}
+
+.flow-table td {
+  padding: 0.6rem 0.875rem;
+  vertical-align: top;
+  border-top: 1px solid var(--flow-line);
+}
+
+.flow-table tbody tr:first-child td {
+  border-top: 0;
+}
+
+.flow-table tbody tr:hover > td {
+  background: var(--flow-surface-hover);
+}
+
+.flow-table .flow-table__num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

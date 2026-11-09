@@ -157,6 +157,20 @@ For people, teams and other records in a dialog, use one bordered list with line
 
 The quiet line and surface colours come from `--flow-line`, `--flow-surface-sunken`, `--flow-surface-hover`, `--flow-accent-soft` and `--flow-accent-line` in `tokens.css` (app only; the share player does not use them). Dialogs (`.flow-modal__panel`) also get thin, theme-neutral scrollbars.
 
+## Grouped rows and data tables
+
+For a details or settings page, put label/value rows in a `flow-group` under a `flow-subhead`. Each row is a label (plus optional help line) on the left and a value or control on the right; the group draws one border with lines between rows.
+
+```vue
+<p class="flow-subhead flow-subhead--first">Who can open it</p>
+<div class="flow-group">
+  <div class="grid grid-cols-[1fr_auto] items-center gap-x-6 py-3">…label…<FlowSwitch v-model="on" label="Allow comments" /></div>
+  <div class="grid grid-cols-[1fr_auto] items-center gap-x-6 py-3">…</div>
+</div>
+```
+
+`LinkDetailsModal` builds these rows with its `DetailRow`; `SettingsModal` still has its own scoped `settings-group` / `SettingRow` with the same look. For tabular records (files, activity, versions) use `div.flow-table-wrap > table.flow-table`: a quiet uppercase header, lines between rows and no cell borders. `flow-table__num` right-aligns numbers.
+
 ## Status colour helpers
 
 For things that aren't a whole notice or chip:
