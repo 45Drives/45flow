@@ -21,7 +21,7 @@ Evidence: commits in `45flow-premium-dev` (client) and `houston-broadcaster` (se
 | **D-22** (part) | Default authentication and session baseline | Session values are built: 15 min idle, 12 h absolute, rotation every 60 min with a 5 min grace period. All can be changed with env vars (section 4, B3 #4). | Built, needs sign-off (Project lead + IT) | Password length, lockout after 5 attempts with admin unlock, and staff MFA (B3 #1, #3, #6). |
 | **D-03** (part) | Defaults for new links | New links default to **Only invited clients & teams** when no admin has saved a choice (`default_restrict_access` → true). Servers with a saved choice keep it. Quick Share follows the server default. Separately, an unset `default_link_access` now falls back to **external**, which needs port forwarding. | Built, needs sign-off (Project lead + IT + Sales) | Expiry and inactivity values. Treatment of old links. The external fallback (see open questions). |
 | **D-05** | What is in the client workflow? | No new system. "Clients" are the existing share users and "Teams" are the existing groups (renamed). **The client-focused view (A3, A-07) is the projects-first restructure** (A4-1, A4-11 to A4-13): a project is the place where a client's files, links, Client Access, comments and activity come together. No separate per-client screen will be built; **A3 is complete**. | Built | None for A3. Review and approval status will show in the project when the C2 screens are built (C2 work). |
-| **D-16 / D-20** | Priority tasks, labels and visual direction for the refresh | The A1 feedback was applied as a projects-first workflow and creative-team vocabulary (section 3), plus the shared design system (section 3, A5). | Built, needs sign-off (design leads + Track A developer) | The written direction and approval record (A1 task 4), the baseline step counts (A1 #2, needed for A6) and the validation method are not recorded. |
+| **D-16 / D-20** | Priority tasks, labels and visual direction for the refresh | The A1 feedback was applied as a projects-first workflow and creative-team vocabulary (section 3), plus the shared design system (section 3, A5). | Built, needs sign-off (design leads + Track A developer) | The written direction and approval record (A1 #4) and the pain-point list (A1 #2) are not recorded. Baseline step counts are recorded (section 3, A1 #2). |
 | **D-33** | How is the web UI packaged and served? | As recorded, with additions: six-distro repository packages, a version taken from the desktop app, automatic installation on entitled servers, and publication driven by the desktop release orchestrator (section 2, A2-8 to A2-11). | Built | First signed repository publication and live install on licensed Debian and Rocky servers. |
 | **D-37** | How is the web UI split between tracks? | Kept. Stage 1 (A2) is done. Because both clients share one session store, B3's session rules (#4) were built together with A2 rather than later, so A7's integration work for session rules is mostly already done. | Built | A7 still covers two-step login in the browser and the review of Track C screens. |
 
@@ -51,6 +51,23 @@ Docs: `docs/browser-foundation.md`, `docs/browser-handoff.md`, broadcaster `docs
 
 ## 3. A3–A5: UI/UX refresh (started 6 Nov, ahead of the 9 Nov plan start)
 
+### A1 #2: Baseline step counts
+
+Six everyday tasks were run on the desktop build before the refresh and on the refreshed build against a lab server, 9 Nov. The refresh saves one step on two tasks and adds one on a third; the other three count the same. This is the A1 #2 baseline and the first A6 #1 before/after record (A-02, A-12).
+
+| Task | Old | New | What changed |
+|---|---|---|---|
+| 1. Create a project | 4 | 4 | Wording only |
+| 2. Add files to a project | 6 | 6 | "Add Files" now sits inside the project; exit returns to the project |
+| 3. Create a review link and invite a client | 10 | **9** | Old ticks "Upload Destination" by default, so a review-only link needs an untick |
+| 4. Quick Share a file | 5 | 5 | Outside a project, new requires choosing a project; old needs a folder click, so +1 either way |
+| 5. Find and resolve a comment | 5 | **4** | New has a Resolve button on each comment; old needed select-then-bulk-resolve |
+| 6. Add a client | 6 | **7** | "Client Access" now appears only inside a project, not on the Projects list |
+
+Still open for A1 #2: the pain-point list from Support, Sales and customers. For A6: decide whether task 6 (+1 step) needs a shortcut, such as Client Access on the Projects list.
+
+Fixed after the run (9 Nov): the first Quick Share after install opened invite-only with nobody invited, so Upload & Share stayed disabled (the tour path never loaded the server's link defaults). Invitee role and username changes are A4-14 and A4-15. With A4-15, task 6 drops back to 6 steps; confirm on the A6 #1 re-run.
+
 ### A3/A4: Workflow, navigation and vocabulary
 
 Commit `31b1df6` ("per the A1 design feedback"), plus `d217b34`, `ddfeee0`, `82b6065`, `67cf33f`.
@@ -70,6 +87,8 @@ Commit `31b1df6` ("per the A1 design feedback"), plus `d217b34`, `ddfeee0`, `82b
 | A4-11 | **Link Details:** a status header (Active/Expired/Disabled, Copy link, who can open it, expiry, created date, project) and tabs: Overview, Files, Activity, Versions. **Edit** is one form grouped like Settings. Invitation changes are marked (New, Role changed, Will be removed, with Undo) and only apply on **Save & close**. A blank password keeps the existing one. Closing with unsaved changes asks for confirmation. | Built |
 | A4-12 | **Comments Review:** comments are grouped by file, with threaded replies. Filters cover text, person, status, file, category (including none) and version (including none). Bulk Resolve, Reopen and Set category act only on the selected comments that the current filters still show. Delete asks for confirmation and says when replies and drawings will go too. | Built |
 | A4-13 | **Client Access roles** use four permissions: View, Comment, Download and Upload, each with a one-line description. Avatars use initials and ignore punctuation such as "(Editor)". | Built |
+| A4-14 | **Invitee role default:** a client or team with no saved default role is invited to a share or review link as **feedback** (view and comment) instead of **viewer** (view only, no comments or downloads). Upload links still get a role that can upload. A saved default role always wins. Custom role sets fall back to a comment-without-upload role, then viewer. | Built, needs sign-off (changes what invited clients can do by default) |
+| A4-15 | **Add client** suggests a username from the name (for example "Jane Doe" → `jane.doe`) until the user types their own. | Built |
 
 ### A5: Design system
 
@@ -154,7 +173,7 @@ Remaining: B2 #2 onward.
 ## 5. Open questions raised during development
 
 1. **External link default.** An unset `default_link_access` now means "external", which needs port forwarding. A new server that hasn't set this up may create links that don't open. Choose: keep external, revert to local, or make the setup flow ask.
-2. **A1 record.** The design direction was implemented without a written direction, an approval record or the baseline step counts. A6 needs the baseline (A-12).
+2. **A1 record.** The design direction was implemented without a written direction or an approval record. The baseline step counts are now recorded (section 3); the pain-point list is still missing.
 3. ~~**A3 client-focused view.**~~ Resolved: the projects-first restructure is the client view; no separate screen. A3 is complete (D-05).
 4. **Access removal.** Removing a user's access does not yet revoke their sessions (B3 #5, B-17).
 5. **Port 9095 default.** When to make `HOST=127.0.0.1` the default (B1-7).
