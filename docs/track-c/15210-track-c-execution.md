@@ -37,6 +37,16 @@ final gate metadata and report conclusions still need saving when those
 writers finish. The remaining C2/C3 work and unsigned human checks recorded
 below are not made complete by pushing these branches.
 
+The independent reviewer finished at 14:47:06Z on unchanged `d77fcbdc`
+with no concrete bugs found. It source-confirmed all three verdicts are
+covered, including `changes_requested` in the mail-failure scenario; the
+earlier report-summary caveat was incomplete, not a missing implementation.
+The only new observation is an unreproduced, synthetic multi-database
+schema-cache concern, not a supported production failure or repair request.
+Review evidence is `review-mail-integration-review-v1.md` in the session
+verification directory. Candidate verification is still pending; this
+review alone does not establish acceptance.
+
 ## November 6: C3 G7 first sending integration
 
 The genuine local SMTP preview is now running and was published at
