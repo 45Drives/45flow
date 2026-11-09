@@ -274,6 +274,23 @@ the user must decide which review activity should generate email; recipient
 policy and verified C2 producer integration must then be explicit as well.
 Canonical rounds 63-64 preserve corrections and the blocker. No new product
 source, tests, builds, Princess writes or provider calls ran for the handoff.
+The user has now resolved both G2 product questions: every recorded decision
+only generates an email, and recipients are the share owner plus designated
+approver. Decisions 62-63 and canonical round 65 compile that exact policy;
+comment activity alone is excluded, and a repeated verdict is still eligible
+when it is a newly recorded decision. Exact click times were not captured;
+manager observed both answers at 2026-11-09T13:08:07Z after the conversation
+delay. Earlier November 6 lab readiness is historical, not freshly rechecked.
+The policy does not supply missing verified C2 API/identity integration.
+Next work must reuse the genuine access/session contract, establish a
+production decision producer and verify it before consuming its events in
+C3. No fake decision event or guessed reference-to-email mapping is allowed.
+No repair budget, Princess write pause or provider boundary changes.
+The clarified C3 gates preflight passed at 2026-11-09T13:09:00Z with zero
+diagnostics. Snapshot `gates-review-policy-v5.snapshot.md` and dispatcher
+`checks-review-policy-v5.sh` preserve the authored commands; snapshot SHA-256
+is `3765039e3a9ba7df9027a505abb9fa8b88a538ddd1b15a1b0b60c1919cc25918`.
+No gate test was executed by preflight, and no verdict changed.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
