@@ -102,3 +102,33 @@ affected verification and final standing if cleared. This explicit exception
 does not reset C3's bounce2/2 or restart0/2 budgets, authorize another automatic
 repair, resume Princess writes, permit provider requests or allow deployment,
 merging or a new PR.
+
+## C3 first-download recipient policy
+
+Decision 61, 2026-11-06: the user selected "Verified recipients only; anonymous
+downloads remain available (Recommended)." Send first-download notification
+emails only for recipients whose identity is established by the existing
+verified-access contract. Downloads without a verified recipient identity
+remain available under their existing open-link permissions and do not
+trigger these emails. Do not guess identity from an invitation address,
+public token, IP address or browser session. This clarifies decision 15;
+it does not authorize an anonymous tracking scheme, new sign-in restriction,
+provider calls, native Princess writes or another source-repair attempt.
+
+## C3 review-decision notification policy
+
+Decision 62, 2026-11-09: the user selected "Every recorded decision only
+(Recommended)" when asked which review activity should generate an email.
+Each recorded approval, changes-requested or rejection decision is eligible,
+not only changes to the current approval status. Comment activity alone does
+not trigger these notifications. This supplies G2's missing trigger policy;
+it does not establish a verified production decision producer.
+
+Decision 63, 2026-11-09: the user selected "Share owner and designated
+approver" as the recipients of each recorded decision email. Resolve those
+roles through actual authorized user records and their email addresses;
+do not infer identity or email from opaque model references or comment names.
+This does not authorize emailing all reviewers, guessing a missing address,
+new provider access, resumed Princess writes or a correction-budget reset.
+Exact click times were not captured; manager observed both selections at
+2026-11-09T13:08:07Z.

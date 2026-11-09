@@ -102,9 +102,282 @@ The retained runtime context was reused, with no additional runtime spawn.
 Review-event integration still needs the authorized C2 producer handoff.
 The saved `download-readiness-v1.json` already locates the real download seam,
 verified-user/anonymous split and version helpers; no broad retrace is needed.
-Before first-download email integration, clarify the anonymous-recipient
-policy rather than invent a verified identity or silently change open-link
-access. No anonymous-notification policy has been selected yet.
+The user selected verified-recipient-only first-download emails while leaving
+anonymous downloads available (decision 61, manager observed 19:23:58Z).
+The gates author compiled that confirmed policy inline without changing any
+Check, Expect or verdict. No identity may be guessed from an invitation
+address, public token, IP or browser session, and no new sign-in restriction
+is authorized. The next bounded handoff must establish immutable served-
+version binding, the actual owner destination and existing outbox/dispatch
+integration; the prior seam discovery is carried rather than repeated.
+Read-only handoff `8b94f8c6` located the real owner `users.user_email` and
+reusable generic outbox payload, but its first proposed packet is not admitted.
+Stamping a version ID before streaming a mutable path is not a demonstrated
+immutable-byte binding; including link ID in deduplication can over-notify
+the same owner/recipient/version through two links. A single retained-context
+clarification corrected owner-scoped dedup and explicit HEAD/Range eligibility,
+without a broad retrace or source implementation. The actual clarification
+UTC is 19:31:48Z-19:34:26Z. The actor now attests the first pass's start
+19:26:19Z was captured; its approximate end remains unknown.
+The remaining issue is the version oracle: the current route streams a live
+path, while the existing helper labels a version and schedules a separate
+snapshot. A narrow point-2 judgment consult `7ae48509` now determines the
+smallest contract-faithful binding, without inventing a cryptographic transfer
+guarantee, silently accepting wrong-version dedup or redesigning downloads.
+That consult admits a minimal stable-file-descriptor implementation: correlate
+the opened descriptor with the existing version mechanism's actual match/mint
+observation, then require EOF, full byte count, no read error and unchanged
+fingerprint at response completion. A changed/unbound observation gets honest
+audit feedback, no version email and no consumed dedup key. No snapshot-copy
+wait, immutable-serving conversion, cryptographic proof or new human decision
+is required. The helper's current latest-ID fallback is not positive version
+provenance, and otherwise bindable stable first downloads must not be skipped
+merely because their snapshot copy is pending. Canonical round 54 and session
+`download-version-oracle-judgment-v1.md` record the exact boundary.
+Missing/invalid owner email must not be guessed: no SMTP, explicit existing
+unavailable/audit feedback, and downloads remain usable. No opt-out product,
+automatic replay or sibling outbox solely for naming is authorized.
+This adds one execution-tier read-only handoff context plus its continuation,
+and one GPT-6.1 Sol gate-oracle judgment consult, not another implementation/
+repair round or correction-budget reset. No G3 source is implemented yet.
+The first G3 source implementation is now dispatched to fresh execution-tier
+executor `90455b5c` in the same clean C3 worktree at
+`d7a9db0952f2eb9fcee5c4a27eb941561f062961`. It owns the bounded production
+download/version/outbox integration and meaningful failed-before/passed-after
+checks, not more admission. Existing anonymous access, mail credentials,
+invitation outcomes and intentional preview services must stay unchanged.
+No implementation is accepted or claimed complete yet; independent review
+and verification follow the frozen first candidate. The existing G3 source-
+repair budget is not reset. No new PR, provider call or Princess write is
+authorized.
+
+Executor `90455b5c` returned frozen candidate
+`ddb9eb99c20f3ac528852e3974d12862722cc0b4`, reported UTC
+20:03:14Z-20:13:11Z. Manager confirmed matching clean source before adding
+round 55. The three changed files implement the single-file production route,
+version observation/descriptor binding and a real local-SMTP test through the
+existing durable outbox. The executor reports final targeted passes and an
+eight-test focused-file pass, with three earlier failed self-check iterations.
+Its exact failed-command attribution is inconsistent and syntax-check count
+is unknown; those are not independent acceptance evidence. ZIP/collection
+notifications remain an explicit gap. Fresh independent verification and
+immutable review now examine the same candidate; source stays frozen.
+G2, G3, G8 and whole C3 remain RED until the relevant independent evidence.
+No source push, runtime update or Princess write has occurred.
+Independent verifier `a1369d67-67e7-41cc-b132-96e0cdbf9d22` owns isolated
+candidate checks; reviewer `84f6c1c8-47c6-4999-8f3b-5a7d298f4080` is
+read-only. Both use the same frozen commit and saved v4 dispatcher/oracle.
+No further source work is authorized while either check is active.
+Reviewer `84f6c1c8` finished read-only review without tests/builds; UTC
+start/end unknown. It nominated one reasoned, unmeasured latency regression:
+the new pre-stream version lookup can hash an entire large file after
+same-size mtime drift and serialize same-file requests. Dedup does not avoid
+that preceding work. Other repeated-work and provenance-comment findings
+are advisory; the reviewer found no identity/dedup/descriptor lifecycle bug.
+Narrow point-3 judgment consult `375c24af-c525-4ce4-a5ed-7f9e10b0d56d`
+classifies that one bug-versus-quality question without tests or repairs.
+Independent verification remains pending; both reports must be reconciled
+before acceptance. No gate round append races the verifier's evidence writes.
+Verification has now returned: G3's named test passed independently twice;
+the eight-test focused file also passed twice. Snapshot/dispatcher provenance
+was reproduced, source stayed frozen, and no standing suite/build ran.
+G2 and G8 remain RED. Judgment classifies the latency finding as advisory:
+the hash is real added identity work, but material delay/timeout is unmeasured.
+Acceptance still waits on one precise conflict: the verifier reports a
+null-hash provenance risk explicitly covered by the approved oracle, while
+the reviewer says the atomic snapshot writer makes that state unreachable.
+The same judgment context is resolving actual production reachability without
+tests, repairs or broader review. Passing the named test alone does not waive
+that correctness boundary. Canonical rounds 56-58 preserve both reports and
+the latency classification; bounce 2/2 and restart 0/2 are unchanged pending
+classification. No final-standing dispatch, source push or runtime update yet.
+The conflict is resolved by the current producer/persistence chain: snapshot
+path and usable SHA are published together in one SQL update after hashing
+finishes; pending/error/invalidation paths retain null/null and stay unbound.
+No legitimate current writer creates the verifier's inconsistent path-without-
+hash state. Historical/imported deployment rows remain uninspected, so this is
+an accepted defensive-invariant advisory, not a universal database guarantee.
+The verifier's "out of scope" explanation is rejected: such a real stale-ID
+path would violate the oracle even with passing tests. Canonical round 59 and
+`download-binding-classification-v1.md` preserve the narrower classification.
+Both independent reports are reconciled on the unchanged source; manager
+permits final server standing once (`yarn test`, `yarn build:server`) before
+any publication. No repair, budget reset or whole-C3 completion is authorized.
+Final standing cleared the same frozen source: server suite and build each
+ran once, serial, both exit 0. The suite reported 803 passed and two existing
+skips. Actual command UTC intervals are 20:23:48Z-20:24:01Z and
+20:24:04Z-20:24:05Z. The report's overall start 20:20:00Z conflicts with the
+later final dispatch/judgment chronology; manager records overall start as
+unknown rather than adopting it. Source/lockfile stayed unchanged; no install
+or client/viewer rerun. Round 60 records acceptance of this bounded single-
+file increment with the classified advisories, not whole C3. Publication may
+now proceed on the existing feature branch; no merge or new PR authorized.
+The accepted source and canonical evidence are now published as server
+`0019142f0f4a9faf82c1f8144fad828f899415c6`, remote-confirmed at
+20:26:05Z on `mpyne1-cuddly-waffle`; product candidate remains `ddb9eb99`.
+No merge or new PR occurred. Retained runtime owner `0683e851` is now
+preparing the genuine private-lab download increment on that accepted
+backend, preserving frozen client `0cf5b5b2` and unrelated previews.
+Normal verified-recipient auth, actual owner destination, private TLS SMTP,
+same-version dedup and anonymous availability must be observed rather than
+fabricated. The preview has not yet been claimed updated. Runtime report is
+expected at session `verification/c3-consumed-status-20261106/runtime-download-notification-v1.md`.
+This stage used one new execution-tier executor, one fresh verifier context
+(candidate plus final), one fresh reviewer and one judgment context with two
+narrow finding classifications. Bounce 2/2 and restart 0/2 remain unchanged.
+Princess writes remain paused.
+The accepted backend is now running in the private C3 lab: container
+`9607716d724e` restarted at 20:31:34Z and reported healthy. Normal user,
+password, share and access APIs provisioned a genuine owner and authenticated
+recipient; no direct protected-state injection was reported. A full single-
+file download created one owner notification at 20:33:04Z. The retained sink's
+controlled first-attempt 550 rejection stayed visible; an explicit retry at
+20:33:51Z was accepted by private TLS SMTP on attempt two. This is SMTP
+acceptance, not inbox receipt or first-attempt success.
+The same recipient's duplicate download left that row and attempt count
+unchanged. An expired anonymous link was renewed through the normal API,
+preserving identity, then downloaded successfully at 20:40:08Z with no new
+mail. Runtime duplicate evidence covers the same link only; cross-link
+deduplication/restart evidence remains the earlier independent test.
+No new frontend surface was added: this increment is demonstrated through
+real API/outbox/private SMTP evidence, not a new screenshot or invented UI.
+The runtime report wrongly says the candidate changes only one server file
+(it changes three) and includes share tokens despite claiming otherwise.
+Manager requested artifact-only correction/redaction; those artifacts are not
+published to the user as-is. The lack of client changes does not prove every
+possible application UI is absent; the current lab lacks this specific
+notification display. Canonical rounds 61-62 preserve publication and runtime
+observations. G2, G8, ZIP/collection work and the Princess write pause remain.
+Fresh execution-tier read-only handoff `da9a7888-8442-4d7b-bb8b-3250a94a8576`
+now traces only the authorized C2 review/decision producer contract for G2.
+It must establish real event identity, recipient authorization and an
+independent intended-recipient oracle, or return the precise missing product
+decision; no notification policy may be invented. This is not a source-
+repair attempt or budget reset. It owns no source writes and must leave the
+running private previews unchanged. Expected evidence:
+`verification/c3-consumed-status-20261106/review-event-handoff-v1.md`.
+Runtime artifact corrections have now returned: share tokens are redacted,
+three changed server files are correctly named, UI scope is limited to the
+current lab, and same-link runtime dedup is distinguished from independently
+tested cross-link durability. No runtime/source changes or reruns occurred.
+The bounded G2 handoff returned NOT READY (actual UTC
+20:43:25Z-20:45:44Z). C2's real decision model exists on its separate branch,
+but no production API calls it; actor/approver references explicitly are not
+verified identities. C3 does not contain those review tables, and existing
+comments emit browser SSE rather than durable mail events. No authorized
+recipient golden fixture or trigger policy exists. The handoff references
+pre-metadata-publication C3 HEAD `0019142f`; later metadata-only publication
+does not change the traced product source `ddb9eb99`.
+This is a genuine missing prerequisite, not a failed implementation or a
+reason to fabricate completion. G2 remains RED. Before implementation,
+the user must decide which review activity should generate email; recipient
+policy and verified C2 producer integration must then be explicit as well.
+Canonical rounds 63-64 preserve corrections and the blocker. No new product
+source, tests, builds, Princess writes or provider calls ran for the handoff.
+The user has now resolved both G2 product questions: every recorded decision
+only generates an email, and recipients are the share owner plus designated
+approver. Decisions 62-63 and canonical round 65 compile that exact policy;
+comment activity alone is excluded, and a repeated verdict is still eligible
+when it is a newly recorded decision. Exact click times were not captured;
+manager observed both answers at 2026-11-09T13:08:07Z after the conversation
+delay. Earlier November 6 lab readiness is historical, not freshly rechecked.
+The policy does not supply missing verified C2 API/identity integration.
+Next work must reuse the genuine access/session contract, establish a
+production decision producer and verify it before consuming its events in
+C3. No fake decision event or guessed reference-to-email mapping is allowed.
+No repair budget, Princess write pause or provider boundary changes.
+The clarified C3 gates preflight passed at 2026-11-09T13:09:00Z with zero
+diagnostics. Snapshot `gates-review-policy-v5.snapshot.md` and dispatcher
+`checks-review-policy-v5.sh` preserve the authored commands; snapshot SHA-256
+is `3765039e3a9ba7df9027a505abb9fa8b88a538ddd1b15a1b0b60c1919cc25918`.
+No gate test was executed by preflight, and no verdict changed.
+Handoff v2 returned at actual UTC 13:09:51Z-13:11:33Z on November 9.
+The existing verified-access foundation is real and byte-identical in the
+C2/C3 branches: server-resolved user IDs/email, signed restricted-link
+sessions, current link/grant/account checks, and existing production comment
+authorship binding. No new Track B identity product is needed. The missing
+piece is wiring that authority into C2's real decision model.
+Manager selects the existing contract's designated approver as decision
+authority; a new `can_approve` role flag is unnecessary and not authorized.
+The packet's claim that a fresh retry budget is needed or available is
+incorrect: this is first implementation of the unwritten producer under the
+existing continuation scope, not a budget reset. Both C2 and C3 retain their
+spent budgets; a new independent material defect cannot trigger automatic
+repair. Canonical C3 round 66 records the handoff and this qualification.
+
+| Work | Prerequisite | Ownership and integration | State |
+| --- | --- | --- | --- |
+| C2 verified decision producer | Existing verified-access contract at C2 `4ec76a2` | C2 worktree owns assignment/API/decision binding and real-route G1-G4 tests | Ready for first implementation |
+| C3 review mail consumer | Independently verified C2 producer revision and Decisions 62-63 | Integrate verified producer into C3 serially, then reuse existing durable mail boundary | Waiting |
+| Combined notification acceptance | Integrated source plus affected C2/C3 gates and final standing | Freeze source, fresh verification/review before private runtime update | Waiting |
+
+C2 gates preflight also passed with zero diagnostics; saved snapshot
+`gates-c2-producer-v1.snapshot.md` SHA-256
+`62f533c06f9c26a2633cd75ee6173a860341c80377909e50b7e54b245473b9a4`
+and dispatcher `checks-c2-producer-v1.sh` preserve existing commands.
+No tests ran during this preflight. Existing PDF, invitation and download
+increments remain unchanged; no old live-service readiness is assumed.
+Fresh execution-tier executor `8afb239d-cf62-40c3-b68e-666c31360fd5` now owns
+the first production C2 decision-producer implementation in the existing
+clean C2 worktree at `4ec76a2`. Scope is owner/admin-controlled assignment,
+verified designated-approver decisions, share/version isolation and immutable
+history, using the existing authentication foundation. No new role flag,
+mail consumer, UI/export expansion or retry budget is authorized. It must
+freeze a local candidate with real-route targeted checks before fresh
+independent verification/review; C3 integration waits for that verified
+revision. Expected report: `c2-review-producer-candidate-v1.md` in the same
+session verification directory. Source and live previews elsewhere stay
+unchanged. This replaces the handoff's misleading "NOT READY" label with
+actual implementation, not another admission round.
+The first C2 producer candidate is frozen locally at
+`52f8939aac7237273bf0ab3f7f238d972ccb8283`. Five files add four real registered
+assignment/decision routes, their mount/allowlist, generated inventory and
+real-route G1-G4 assertions. No schema, identity primitive, role flag or
+dependency changed. The executor reports four exact named selectors passing
+and a combined C2/inventory pass after two first-draft conflict-assertion
+failures; its UTC start is unknown and captured end is 13:28:38Z. Manager
+confirmed clean matching source at 13:30:36Z before canonical C2 round 29.
+The self-tests use the real database setter to assign the fixture approver,
+not the new owner-side HTTP assignment routes. That is an explicit coverage
+gap, not proof of those routes' owner/admin enforcement. Fresh independent
+verification and immutable review must examine the frozen producer before
+any C3 integration or mail-consumer work. No self-GREEN, source push, preview
+update, status write or retry-budget reset is claimed.
+Fresh verifier `99c930c0-3ce3-4e60-bef7-241e2bd93ff4` and immutable reviewer
+`50e8c4dd-c092-4d83-8133-83940eeeabc0` now examine the same frozen C2
+candidate concurrently. The verifier alone owns isolated checks and permitted
+gate-evidence writes; no source edit or manager round append runs while it
+is active. The review specifically retains the owner-assignment HTTP evidence
+boundary rather than assuming authenticated means authorized. No C3 source
+integration or mail implementation starts before both reports are reconciled.
+Verifier `99c930c0` returned G1-G4 GREEN on the frozen producer at actual UTC
+13:31:39Z-13:33:53Z: four exact named checks and one combined C2/inventory
+command passed. Snapshot and dispatcher matched; source/lock stayed frozen,
+no standing suite/build ran, G6 PDF evidence carried unaffected and
+G5/G7/G8 remain RED. Owner-side assignment HTTP coverage is still absent and
+not inferred from fixture DB setup or route inventory. Canonical C2 round 30
+records this pass. Immutable review remains pending; no acceptance, C3
+integration, repair or preview update is authorized yet.
+Reviewer `50e8c4dd` returned one concrete producer bug (captured end
+13:35:01Z, start unknown). The GET history route shares the POST's current-
+version-only guard: after V2 replaces V1, a legitimate V1 history GET returns
+409 instead of the preserved decisions. Rejecting stale writes is correct;
+blocking authorized historical reads contradicts the retained-history
+contract. The passing named checks do not cover superseded-version reads.
+This is source-traced, not an empirically executed failure by the reviewer.
+Owner-side assignment's missing HTTP test remains advisory: source inspection
+confirms existing single-server owner/admin auth conventions and target-user
+access checks, not a newly introduced authorization bug.
+Canonical C2 round 31 records the blocker. Both independent reports are now
+collected; no final standing, publication or C3 integration is authorized.
+C2's repair allowance and prior PDF exception are already spent. No new
+automatic correction or reset is permitted; a narrow judgment diagnosis must
+precede escalation of this precise failure.
+Fresh GPT-6.1 Sol consult `eb8bc887-124e-46a5-b7ce-7b34ff26e887` owns only
+that exhausted-budget diagnosis: practical reachability, smallest correction
+concept and affected checks, no source changes or tests. Expected artifact:
+`c2-review-history-diagnosis-v1.md`. Any further correction needs an explicit
+user decision; the previous final PDF allowance is not available again.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
