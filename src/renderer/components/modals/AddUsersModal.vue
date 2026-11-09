@@ -397,7 +397,7 @@ import FlowField from '../../ui/FlowField.vue'
 import FlowEmpty from '../../ui/FlowEmpty.vue'
 import TeamsPanel from '../access/TeamsPanel.vue'
 import RolesPanel from '../access/RolesPanel.vue'
-import { avatarStyle, initials, normalizeHex, randomPastel } from '../access/accessUi'
+import { avatarStyle, initials, normalizeHex, pickLinkRoleId, randomPastel, usernameFromName } from '../access/accessUi'
 
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()
@@ -472,6 +472,11 @@ const expandedGroupIds = new Set<number>()
 const groupMembersCache = ref<Record<number, GroupMember[]>>({})
 
 const newUser = ref<ExistingUser>({ username: '', name: '', user_email: '', company: '', display_color: randomPastel(), tags: [] })
+// Suggest a username from the name until the user types their own.
+watch(() => newUser.value.name, (name, previousName) => {
+  const current = (newUser.value.username || '').trim()
+  if (!current || current === usernameFromName(previousName)) newUser.value.username = usernameFromName(name)
+})
 const newUserTagsInput = ref('')
 const newUserGroupIds = ref<number[]>([])
 const error = ref('')
@@ -533,17 +538,7 @@ const hasProfileEdits = computed(() => {
   return nameChanged || emailChanged || companyChanged || tagsChanged || colorChanged || defaultRoleChanged || groupsChanged
 })
 
-const defaultRoleId = computed(() => {
-  if (!roles.value.length) return null
-  if (props.roleHint === 'upload') {
-    return roles.value.find(r => r.can_upload)?.id ?? roles.value[0].id
-  }
-  if (props.roleHint === 'comment') {
-    return roles.value.find(r => r.can_comment)?.id ?? roles.value[0].id
-  }
-  const viewer = roles.value.find(r => r.name?.toLowerCase() === 'viewer')
-  return viewer?.id ?? roles.value[0].id
-})
+const defaultRoleId = computed(() => pickLinkRoleId(roles.value, props.roleHint))
 
 const linkMode = computed(() => !!props.link || props.roleHint != null)
 

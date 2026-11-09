@@ -654,11 +654,11 @@ function onDocDrop(e: DragEvent) {
       pendingDropFiles = []
       tourQuickShareShowDone.value = false
       tourQuickShareStep.value = 1
-      droppedFiles.value = realFiles.length ? realFiles : []
-      wizardStep.value = 1
-      uploadPhase.value = 'idle'
-      viewUrl.value = ''
       tourQuickShareOpen.value = false
+      droppedFiles.value = realFiles
+      // Same reset as a normal drop: clears the tour's sample state and loads
+      // the server's link defaults (otherwise access stays invite-only with nobody invited).
+      resetWizard()
       showModal.value = realFiles.length > 0
     })
     // If requestTour actually started the tour, wait for it to finish

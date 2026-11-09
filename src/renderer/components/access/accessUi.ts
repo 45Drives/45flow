@@ -42,6 +42,35 @@ export function normalizeHex(x?: string | null): string | undefined {
   return `#${full.toLowerCase()}`
 }
 
+type RoleFlags = { id: number; name?: string | null; can_comment?: unknown; can_upload?: unknown }
+
+// Role picked for an invitee with no saved default role. Review links get a
+// role that can comment but not upload (the system "feedback" role).
+export function pickLinkRoleId(roles: RoleFlags[], hint?: 'upload' | 'comment' | 'view' | null): number | null {
+  if (!roles.length) return null
+  const named = (n: string) => roles.find(r => r.name?.toLowerCase() === n)
+  if (hint === 'upload') return (roles.find(r => r.can_upload) ?? roles[0]).id
+  const reviewer = named('feedback') ?? roles.find(r => r.can_comment && !r.can_upload)
+  if (reviewer) return reviewer.id
+  if (hint === 'comment') return (roles.find(r => r.can_comment) ?? roles[0]).id
+  return (named('viewer') ?? roles[0]).id
+}
+
+const USERNAME_MAX = 32
+
+export function usernameFromName(name?: string | null): string {
+  return String(name || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .split(/\s+/)
+    .map(word => word.replace(/[^a-z0-9_-]/g, ''))
+    .filter(Boolean)
+    .join('.')
+    .slice(0, USERNAME_MAX)
+    .replace(/[.]+$/, '')
+}
+
 export const ROLE_PERMISSIONS = [
   { key: 'can_view', api: 'view', label: 'View', help: 'Open the link and play or preview files.' },
   { key: 'can_comment', api: 'comment', label: 'Comment', help: 'Leave comments and review notes.' },

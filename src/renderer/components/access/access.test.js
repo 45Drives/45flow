@@ -3,7 +3,7 @@ import { createApp, h, nextTick } from 'vue'
 import RolesPanel from './RolesPanel.vue'
 import TeamsPanel from './TeamsPanel.vue'
 import LinkAccessList from './LinkAccessList.vue'
-import { initials, normalizeHex } from './accessUi'
+import { initials, normalizeHex, pickLinkRoleId, usernameFromName } from './accessUi'
 
 vi.mock('../../composables/useTourManager', () => ({ useTourManager: () => ({ requestTour: vi.fn() }) }))
 vi.mock('../../composables/useOnboarding', () => ({
@@ -42,6 +42,45 @@ describe('accessUi helpers', () => {
     expect(normalizeHex('ABC')).toBe('#aabbcc')
     expect(normalizeHex('#A1B2C3')).toBe('#a1b2c3')
     expect(normalizeHex('red')).toBeUndefined()
+  })
+
+  // The system roles a fresh Broadcaster ships with
+  const systemRoles = [
+    { id: 1, name: 'editor', can_view: 1, can_comment: 1, can_download: 1, can_upload: 1 },
+    { id: 2, name: 'viewer', can_view: 1, can_comment: 0, can_download: 0, can_upload: 0 },
+    { id: 3, name: 'feedback', can_view: 1, can_comment: 1, can_download: 0, can_upload: 0 },
+  ]
+
+  it('invites reviewers as feedback so they can comment without uploading', () => {
+    expect(pickLinkRoleId(systemRoles, 'view')).toBe(3)
+    expect(pickLinkRoleId(systemRoles, 'comment')).toBe(3)
+    expect(pickLinkRoleId(systemRoles, undefined)).toBe(3)
+  })
+
+  it('invites upload-link clients with a role that can upload', () => {
+    expect(pickLinkRoleId(systemRoles, 'upload')).toBe(1)
+  })
+
+  it('falls back to a comment-only role, then viewer, when feedback is missing', () => {
+    const custom = [
+      { id: 7, name: 'Producer', can_view: 1, can_comment: 1, can_download: 1, can_upload: 1 },
+      { id: 8, name: 'Client review', can_view: 1, can_comment: 1, can_download: 1, can_upload: 0 },
+      { id: 9, name: 'viewer', can_view: 1, can_comment: 0, can_download: 0, can_upload: 0 },
+    ]
+    expect(pickLinkRoleId(custom, 'view')).toBe(8)
+    expect(pickLinkRoleId(custom.filter(r => r.id !== 8), 'view')).toBe(9)
+    expect(pickLinkRoleId(custom.filter(r => r.id !== 8), 'comment')).toBe(7)
+    expect(pickLinkRoleId([], 'view')).toBeNull()
+  })
+
+  it('suggests a username from the client name', () => {
+    expect(usernameFromName('Jane Doe')).toBe('jane.doe')
+    expect(usernameFromName('  José   Núñez ')).toBe('jose.nunez')
+    expect(usernameFromName("Mary-Ann O'Neil")).toBe('mary-ann.oneil')
+    expect(usernameFromName('Acme Corp (Post)')).toBe('acme.corp.post')
+    expect(usernameFromName('')).toBe('')
+    expect(usernameFromName('李雷')).toBe('')
+    expect(usernameFromName('a'.repeat(50)).length).toBe(32)
   })
 })
 

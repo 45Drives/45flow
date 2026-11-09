@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   notify: vi.fn(),
   logError: vi.fn(),
   state: { suppressAutoOpen: false, tasks: [] },
+  onboarding: { quickShareTourDone: true },
+  requestTour: vi.fn(),
 }))
 vi.mock('vue-router', () => ({ useRoute: () => ({ path: '/' }) }))
 vi.mock('@45drives/houston-common-ui', () => ({
@@ -32,9 +34,9 @@ vi.mock('../composables/useTransferProgress', () => ({
   }),
 }))
 vi.mock('../composables/useLinkRefresh', () => ({ signalLinkCreated: vi.fn() }))
-vi.mock('../composables/useTourManager', () => ({ useTourManager: () => ({ requestTour: vi.fn(), cancelTour: vi.fn() }) }))
+vi.mock('../composables/useTourManager', () => ({ useTourManager: () => ({ requestTour: mocks.requestTour, cancelTour: vi.fn() }) }))
 vi.mock('../composables/useOnboarding', () => ({
-  useOnboarding: () => ({ onboarding: { value: { quickShareTourDone: true } }, markDone: vi.fn() }),
+  useOnboarding: () => ({ onboarding: { value: mocks.onboarding }, markDone: vi.fn() }),
 }))
 vi.mock('../composables/useLicenseStatus', () => ({ useLicenseStatus: () => ({ isPremiumActive: { value: false } }) }))
 vi.mock('../composables/useCommentCategories', () => ({ useCommentCategories: () => ({ getDefaultCategories: vi.fn() }) }))
@@ -50,6 +52,7 @@ vi.mock('./WatermarkPreview.vue', () => ({ default: {} }))
 let app
 let host
 let state
+let server
 const files = [
   { path: '/local/document.pdf', name: 'document.pdf', size: 100 },
   { path: '/local/report.xlsx', name: 'report.xlsx', size: 200 },
@@ -58,12 +61,14 @@ const files = [
 beforeEach(async () => {
   vi.clearAllMocks()
   mocks.state.suppressAutoOpen = false
+  mocks.onboarding.quickShareTourDone = true
   mocks.apiFetch.mockResolvedValue({})
   window.electron = { httpUploadStart: mocks.httpUploadStart }
   host = document.createElement('div')
   app = createApp({ ...QuickShareOverlay, render: () => null })
   app.provide(connectionMetaInjectionKey, ref({ apiBase: 'http://server', token: 'test-token' }))
-  app.provide(currentServerInjectionKey, ref(null))
+  server = ref(null)
+  app.provide(currentServerInjectionKey, server)
   const vm = app.mount(host)
   await nextTick()
   state = vm.$.setupState
@@ -138,5 +143,29 @@ describe('Quick Share defaults', () => {
     expect(state.activeProject).toBeNull()
     state.pickedProjectId = 4
     expect(state.activeProject).toEqual({ id: 4, name: 'Beta', root_dir: '/tank/beta' })
+  })
+
+  it('loads the server link defaults when the first drop opens the wizard after the tour', async () => {
+    let finishTour
+    mocks.onboarding.quickShareTourDone = false
+    mocks.requestTour.mockImplementation((_name, _steps, onDone) => { finishTour = onDone; return true })
+    mocks.apiFetch.mockImplementation(async (url) => (
+      url === '/api/settings' ? { defaultRestrictAccess: false } : { projects: [] }
+    ))
+    server.value = { ip: '10.0.0.5' }
+    state.accessMode = 'restricted'
+    state.droppedFiles = []
+
+    state.onDocDrop({
+      preventDefault() {},
+      dataTransfer: { files: [{ name: 'clip.mp4', size: 10, path: '/local/clip.mp4' }], items: [] },
+    })
+    expect(state.showModal).toBe(false)
+    finishTour()
+    await vi.waitFor(() => expect(state.accessMode).toBe('open'))
+
+    expect(state.showModal).toBe(true)
+    expect(state.droppedFiles).toEqual([{ path: '/local/clip.mp4', name: 'clip.mp4', size: 10 }])
+    expect(mocks.apiFetch).toHaveBeenCalledWith('/api/settings', expect.anything())
   })
 })
