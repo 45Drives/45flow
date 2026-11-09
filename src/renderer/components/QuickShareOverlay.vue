@@ -78,8 +78,23 @@
 
       <!-- ===== STEP 1: Destination ===== -->
       <section v-show="wizardStep === 1" data-tour="qs-step-destination">
+        <div v-if="!rawActiveProject" class="mb-3 flex flex-col gap-1">
+          <label for="qs-project-select" class="font-semibold">Project</label>
+          <p class="text-xs text-muted">Quick Share uploads into a project. Pick the project these files belong to.</p>
+          <p v-if="projectsLoading" class="text-sm text-muted">Loading projects…</p>
+          <p v-else-if="!projectOptions.length" class="text-sm text-muted">
+            No projects yet. Close this, create a project from the Projects screen, then drop your files again.
+          </p>
+          <select v-else id="qs-project-select" v-model="pickedProjectId"
+            class="input-textlike px-3 py-2 border border-default rounded-lg bg-default text-sm max-w-md"
+            @change="onPickedProjectChange">
+            <option :value="null" disabled>Choose a project</option>
+            <option v-for="p in projectOptions" :key="p.id" :value="p.id">{{ p.name }}</option>
+          </select>
+        </div>
         <FolderPicker
-          :key="destPickerKey"
+          v-if="activeProject"
+          :key="`${destPickerKey}-${activeProject.id}`"
           v-model="destFolder"
           :apiFetch="apiFetch"
           useCase="upload"
@@ -117,6 +132,9 @@
               <button type="button" class="btn btn-secondary px-2 py-1" @click="setNever()">Never</button>
             </div>
           </div>
+          <p class="text-xs text-muted -mt-1">
+            After this time the link stops working and clients can no longer open it. Your files stay on the server.
+          </p>
 
           <!-- Network access -->
           <div class="flex items-center gap-3 min-w-0" data-tour="qs-network">
@@ -128,7 +146,7 @@
               </label>
               <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer select-none transition border border-default bg-default hover:bg-well/40">
                 <input type="radio" name="qs-link-access" :value="false" :checked="usePublicBase === false" @change="usePublicBase = false" class="h-4 w-4" />
-                <span class="text-sm">Local (LAN)</span>
+                <span class="text-sm">Local Network</span>
               </label>
             </div>
             <button type="button" @click="showPortFwdModal = true" class="text-xs text-primary hover:underline whitespace-nowrap">
@@ -311,7 +329,7 @@
         <button v-if="wizardStep > 1 && uploadPhase === 'idle'" class="btn btn-secondary" @click="wizardStep--" :disabled="busy">
           Back
         </button>
-        <button v-if="wizardStep === 1" class="btn btn-primary" :disabled="!destFolder" @click="wizardStep = 2">
+        <button v-if="wizardStep === 1" class="btn btn-primary" :disabled="!destFolder || !activeProject" @click="wizardStep = 2">
           Next
         </button>
         <button v-else-if="wizardStep === 2" class="btn btn-primary" :disabled="!canProceed" @click="startUploadAndShare">
@@ -379,7 +397,35 @@ const { checkExternalAddressReady } = useExternalAddressReadiness()
 const { activeConnection } = useConnections()
 const isRootUser = computed(() => activeConnection.value?.username === 'root')
 const { activeProject: rawActiveProject } = useActiveProject()
-const activeProject = computed(() => rawActiveProject.value)
+
+// Outside a project (e.g. the Projects list) the user must pick the target project first.
+type ProjectOption = { id: number; name: string; root_dir: string }
+const projectOptions = ref<ProjectOption[]>([])
+const projectsLoading = ref(false)
+const pickedProjectId = ref<number | null>(null)
+const pickedProject = computed(() => projectOptions.value.find(p => p.id === pickedProjectId.value) || null)
+const activeProject = computed<ProjectOption | null>(() => rawActiveProject.value || pickedProject.value)
+
+async function loadProjectOptions() {
+  if (rawActiveProject.value) return
+  projectsLoading.value = true
+  try {
+    const data = await apiFetch('/api/projects')
+    projectOptions.value = (data?.projects || [])
+      .filter((p: any) => !p.is_disabled && !p.archived && p.root_dir)
+      .map((p: any) => ({ id: Number(p.id), name: String(p.name), root_dir: String(p.root_dir) }))
+    if (projectOptions.value.length === 1) pickedProjectId.value = projectOptions.value[0].id
+  } catch {
+    projectOptions.value = []
+  } finally {
+    projectsLoading.value = false
+  }
+}
+
+function onPickedProjectChange() {
+  destFolder.value = ''
+  projectBase.value = ''
+}
 const transfer = useTransferProgress()
 const currentServer = inject(currentServerInjectionKey)!
 const connectionMeta = inject(connectionMetaInjectionKey)!
@@ -421,7 +467,7 @@ const quickShareTourSteps = computed<TourStep[]>(() => [
   // ── Quick Share Step 1: Destination picker ──
   {
     target: '[data-tour="qs-step-destination"]',
-    message: 'In Step 1, you pick a destination folder on the server.\n\nUse the folder browser to navigate your project directories. Once you\'ve selected a folder, click Next to continue.',
+    message: 'In Step 1, you pick where the files go.\n\nIf you are not inside a project, choose the project first. Then use the folder browser to pick a folder inside it. Once you\'ve selected a folder, click Next to continue.',
     beforeShow: () => {
       tourQuickShareStep.value = 1
       tourQuickShareOpen.value = true
@@ -448,7 +494,7 @@ const quickShareTourSteps = computed<TourStep[]>(() => [
   // ── Quick Share Step 2: Network ──
   {
     target: '[data-tour="qs-network"]',
-    message: 'Choose the network for your share link.\n\nLocal (LAN) generates an internal URL for your network. External (Internet) uses your public domain or IP so anyone outside your network can access it (this requires port forwarding to be set up to your server).\n\nClick "Learn how to set up port forwarding" to see detailed setup instructions.',
+    message: 'Choose the network for your share link.\n\nLocal Network generates an internal URL that only works on the same network as the server. External (Internet) uses your public domain or IP so anyone outside your network can access it (this requires port forwarding to be set up to your server).\n\nClick "Learn how to set up port forwarding" to see detailed setup instructions.',
     beforeShow: () => {
       tourQuickShareOpen.value = true
       tourQuickShareStep.value = 2
@@ -484,8 +530,8 @@ const quickShareTourSteps = computed<TourStep[]>(() => [
   {
     target: '[data-tour="qs-access-mode"]',
     message: isPremiumActive.value
-      ? 'Control who can access your shared files.\n\n• Anyone with the link — no sign-in needed.\n• Password protected — recipients enter a shared password.\n• Invited users and groups only — only specific user accounts and groups can access it.\n\nComments can be toggled for open and password-protected links.\n\nWhen comments are enabled, you can stage Comment Categories so review notes are organized from the start.'
-      : 'Control who can access your shared files.\n\n• Anyone with the link — no sign-in needed.\n• Password protected — recipients enter a shared password.\n• Invited users and groups only — only specific user accounts and groups can access it.',
+      ? 'Control who can access your shared files.\n\n• Invited clients & teams (default) — only specific client accounts and teams can open it.\n• Anyone with the link — no sign-in needed.\n• Password protected — recipients enter a shared password.\n\nComments can be toggled for open and password-protected links.\n\nWhen comments are enabled, you can stage Comment Categories so review notes are organized from the start.'
+      : 'Control who can access your shared files.\n\n• Invited clients & teams (default) — only specific client accounts and teams can open it.\n• Anyone with the link — no sign-in needed.\n• Password protected — recipients enter a shared password.',
     beforeShow: async () => {
       tourQuickShareOpen.value = true
       tourQuickShareStep.value = 2
@@ -707,7 +753,7 @@ const linkTitle = ref('')
 const usePublicBase = ref(false)
 const externalHttpsPort = ref(443)
 type AccessMode = 'open' | 'open_password' | 'restricted'
-const accessMode = ref<AccessMode>('open')
+const accessMode = ref<AccessMode>('restricted')
 const password = ref('')
 const showPassword = ref(false)
 const allowOpenComments = ref(true)
@@ -847,13 +893,15 @@ function resetWizard() {
   minimized.value = false
   destFolder.value = ''
   projectBase.value = ''
+  pickedProjectId.value = null
+  void loadProjectOptions()
   destPickerKey.value++
   expiresValue.value = 1
   expiresUnit.value = 'days'
   linkTitle.value = ''
   linkDefaultsLoaded = false
   usePublicBase.value = false
-  accessMode.value = 'open'
+  accessMode.value = 'restricted'
   password.value = ''
   showPassword.value = false
   allowOpenComments.value = true
@@ -1146,6 +1194,9 @@ async function loadLinkDefaults() {
     const isInternal = s?.defaultLinkAccess === 'internal'
     usePublicBase.value = !isInternal
     externalHttpsPort.value = Number(s?.externalHttpsPort ?? 443)
+    const restrict = typeof s?.defaultRestrictAccess === 'boolean' ? s.defaultRestrictAccess : true
+    accessMode.value = restrict ? 'restricted' : 'open'
+    allowOpenComments.value = typeof s?.defaultAllowComments === 'boolean' ? s.defaultAllowComments : true
   } catch {
     usePublicBase.value = false
   }

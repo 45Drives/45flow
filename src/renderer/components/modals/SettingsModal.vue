@@ -1,100 +1,81 @@
 <template>
-    <FlowModal :model-value="true" title="45Flow Settings" description="Adjust global settings for share links." size="xl"
-        surface="default" class="h-[min(36rem,calc(100vh-2rem))]" :header-attrs="{ 'data-tour': 'settings-modal-header' }"
-        flush body-class="flex flex-col !overflow-hidden" footer-class="justify-between" @close="close">
+    <FlowModal :model-value="true" title="Settings" description="Settings for this server and for 45Flow on this computer." size="xl"
+        surface="default" class="h-[min(46rem,calc(100vh-2rem))]" :header-attrs="{ 'data-tour': 'settings-modal-header' }"
+        flush body-class="flex flex-col !overflow-hidden" footer-class="justify-between" :before-close="confirmDiscard" @close="close">
 
                 <!-- Body: sidebar + content -->
                 <div class="flex flex-1 min-h-0">
                     <!-- Sidebar nav -->
-                    <nav class="w-44 shrink-0 border-r border-default py-3 overflow-y-auto" data-tour="settings-modal-nav">
-                        <template v-for="group in navGroups" :key="group.label">
+                    <nav class="settings-nav" aria-label="Settings sections" data-tour="settings-modal-nav">
+                        <div class="relative px-3 pb-2">
+                            <MagnifyingGlassIcon class="w-4 h-4 absolute left-5 top-1/2 -translate-y-[calc(50%+0.25rem)] opacity-60" aria-hidden="true" />
+                            <input v-model.trim="navQuery" type="search" aria-label="Find a setting"
+                                class="input-textlike w-full pl-8 pr-2 py-1.5 text-xs" placeholder="Find a setting" />
+                        </div>
+                        <template v-for="group in filteredNavGroups" :key="group.label">
                             <p class="settings-nav-group-label">{{ group.label }}</p>
-                            <button v-for="item in group.items" :key="item.key"
+                            <button v-for="item in group.items" :key="item.key" type="button"
                                 class="settings-nav-btn" :class="{ 'settings-nav-btn-active': activeSection === item.key }"
+                                :aria-current="activeSection === item.key ? 'page' : undefined"
                                 @click="activeSection = item.key">
-                                {{ item.label }}
+                                <component :is="item.icon" class="settings-nav-icon" aria-hidden="true" />
+                                <span class="truncate">{{ item.label }}</span>
                             </button>
                         </template>
+                        <p v-if="!filteredNavGroups.length" class="px-4 py-2 text-xs text-muted">No settings match “{{ navQuery }}”.</p>
                     </nav>
 
                     <!-- Content -->
-                    <div class="flex-1 overflow-y-auto px-5 py-4 text-left" data-tour="settings-modal-urls">
+                    <div ref="contentRef" class="settings-content flex-1 overflow-y-auto px-6 py-5 text-left" data-tour="settings-modal-urls">
+                        <header class="settings-page-head">
+                            <h3 class="settings-page-title">{{ currentMeta.label }}</h3>
+                            <p class="settings-page-desc">{{ currentMeta.description }}</p>
+                        </header>
                         <AdminNetworksPanel v-if="activeSection === 'adminNetworks' && adminSession && activeConnection"
                             :key="activeConnection.connectionId" :connection-id="activeConnection.connectionId" />
 
                         <AdminSmtpPanel v-if="activeSection === 'adminMail' && adminSession && activeConnection"
                             :key="activeConnection.connectionId" :connection-id="activeConnection.connectionId" />
 
-                        <!-- Loading state: show skeleton until settings loaded from server -->
-                        <div v-if="!settingsLoaded && (activeSection === 'sharing' || activeSection === 'linkOptions')" class="flex flex-col items-center justify-center h-full gap-3 py-12">
-                            <svg class="animate-spin h-6 w-6 text-muted" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                            </svg>
-                            <span class="text-sm text-muted">Loading settings…</span>
+                        <!-- Loading state: shown until settings arrive from the server -->
+                        <div v-if="!settingsLoaded && (activeSection === 'sharing' || activeSection === 'linkOptions')" class="flex flex-col items-center justify-center gap-3 py-12">
+                            <template v-if="loadError">
+                                <FlowNotice tone="danger" title="Couldn't load settings">{{ loadError }}</FlowNotice>
+                                <button class="btn btn-secondary" type="button" :disabled="busy" @click="reload">Try again</button>
+                            </template>
+                            <template v-else>
+                                <svg class="animate-spin h-6 w-6 text-muted" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                                <span class="text-sm text-muted">Loading settings…</span>
+                            </template>
                         </div>
 
                         <!-- ═══ Link Sharing ══════════════════════════════════ -->
                         <template v-if="activeSection === 'sharing' && settingsLoaded">
-                            <div class="divide-y divide-default">
-                                <SettingRow label="Default Link Access" description="External uses your public domain or IP. Internal uses LAN or VPN routing.">
-                                    <div class="flex items-center gap-3">
-                                        <span class="text-sm" :class="!defaultAccessIsExternal ? 'font-semibold' : 'opacity-60'">Internal</span>
-                                        <Switch v-model="defaultAccessIsExternal" :class="[
-                                            defaultAccessIsExternal ? 'bg-primary' : 'bg-well',
-                                            'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                        ]">
-                                            <span class="sr-only">Toggle link access</span>
-                                            <span :class="[
-                                                defaultAccessIsExternal ? 'translate-x-4' : 'translate-x-0',
-                                                'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                            ]" />
-                                        </Switch>
-                                        <span class="text-sm" :class="defaultAccessIsExternal ? 'font-semibold' : 'opacity-60'">External</span>
-                                    </div>
+                            <p class="settings-subhead settings-subhead--first">Internet address</p>
+                            <div class="settings-group">
+                                <SettingRow label="Detect automatically" description="Use this server's public IP address.">
+                                    <FlowSwitch v-model="externalAuto" :disabled="busy" label="Toggle external auto-detect" />
                                 </SettingRow>
-                            </div>
-
-                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">External Share URL (Public)</p>
-                            <div class="divide-y divide-default">
-                                <SettingRow label="Auto-detect" description="Use the detected public WAN IP.">
-                                    <Switch v-model="externalAuto" :disabled="busy" :class="[
-                                        externalAuto ? 'bg-primary' : 'bg-well',
-                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                    ]">
-                                        <span class="sr-only">Toggle external auto-detect</span>
-                                        <span :class="[
-                                            externalAuto ? 'translate-x-4' : 'translate-x-0',
-                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                        ]" />
-                                    </Switch>
-                                </SettingRow>
-                                <SettingRow label="External base" description="Hostname or public IP only. No path. A domain requires a valid certificate.">
+                                <SettingRow v-if="!externalAuto" label="Custom address" description="A domain name or public IP, with no path. A domain needs a trusted certificate (see HTTPS certificate).">
                                     <input v-model="externalBase" type="text" :disabled="busy || externalAuto"
                                         class="input-textlike border border-default px-2 py-1 rounded text-sm w-56"
                                         placeholder="https://example.ddns.net" />
                                 </SettingRow>
-                                <SettingRow label="HTTPS port" description="Port users enter in their browser.">
+                                <SettingRow label="HTTPS port" description="The port clients reach from the internet. Forward it on your router.">
                                     <input v-model.number="externalHttpsPort" type="number" min="1" max="65535" :disabled="busy"
                                         class="input-textlike border border-default px-2 py-1 rounded text-sm w-20 text-right" />
                                 </SettingRow>
                             </div>
 
-                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Internal Share URL (LAN / VPN)</p>
-                            <div class="divide-y divide-default">
-                                <SettingRow label="Auto-detect" description="Use the detected LAN IP.">
-                                    <Switch v-model="internalAuto" :disabled="busy" :class="[
-                                        internalAuto ? 'bg-primary' : 'bg-well',
-                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                    ]">
-                                        <span class="sr-only">Toggle internal auto-detect</span>
-                                        <span :class="[
-                                            internalAuto ? 'translate-x-4' : 'translate-x-0',
-                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                        ]" />
-                                    </Switch>
+                            <p class="settings-subhead">Local network address</p>
+                            <div class="settings-group">
+                                <SettingRow label="Detect automatically" description="Use this server's local IP address.">
+                                    <FlowSwitch v-model="internalAuto" :disabled="busy" label="Toggle internal auto-detect" />
                                 </SettingRow>
-                                <SettingRow label="Internal base" description="Private IP or internal hostname.">
+                                <SettingRow v-if="!internalAuto" label="Custom address" description="A private IP or internal hostname.">
                                     <input v-model="internalBase" type="text" :disabled="busy || internalAuto"
                                         class="input-textlike border border-default px-2 py-1 rounded text-sm w-56"
                                         placeholder="http://192.168.1.123" />
@@ -103,10 +84,10 @@
 
                             <!-- URL Preview -->
                             <div class="mt-5 rounded-lg border border-default bg-default/40 p-3 space-y-2">
-                                <div class="text-xs font-semibold text-accent uppercase tracking-wide">URL Preview</div>
+                                <div class="settings-subhead !mt-0">Links will look like</div>
                                 <div class="grid grid-cols-2 gap-3 text-sm">
                                     <div>
-                                        <div class="text-xs text-accent">External</div>
+                                        <div class="text-xs text-accent">Internet</div>
                                         <div class="font-mono text-xs break-all mt-0.5">{{ externalPreview || '—' }}</div>
                                         <div v-if="externalAuto && externalEffectivePreview"
                                             class="mt-1 text-xs opacity-60 break-all">
@@ -114,7 +95,7 @@
                                         </div>
                                     </div>
                                     <div>
-                                        <div class="text-xs text-accent">Internal</div>
+                                        <div class="text-xs text-accent">Local network</div>
                                         <div class="font-mono text-xs break-all mt-0.5">{{ internalPreview || '—' }}</div>
                                     </div>
                                 </div>
@@ -156,7 +137,7 @@
                             </div>
 
                             <!-- Status Rows -->
-                            <div class="divide-y divide-default">
+                            <div class="settings-group">
                                 <SettingRow label="Share URL" description="The public URL recipients use to view your shared content.">
                                     <span class="font-mono text-xs">{{ publicSharingStatus?.settings?.externalBaseEffective || '(not configured)' }}</span>
                                 </SettingRow>
@@ -185,22 +166,19 @@
                             </div>
 
                             <!-- Action Buttons -->
-                            <div class="flex flex-wrap items-center gap-2 mt-4">
-                                <button class="btn btn-secondary text-sm" type="button"
-                                    :disabled="publicSharingBusy" @click="checkPublicSharing">
-                                    {{ publicSharingBusy ? 'Checking…' : 'Check Public Sharing' }}
-                                </button>
+                            <p class="settings-subhead">Fix problems</p>
+                            <div class="flex flex-wrap items-center gap-2">
                                 <button class="btn btn-secondary text-sm" type="button"
                                     :disabled="publicSharingBusy" @click="repairPublicSharing">
-                                    {{ publicSharingRepairBusy ? 'Repairing…' : 'Repair Public Sharing' }}
+                                    {{ publicSharingRepairBusy ? 'Repairing…' : 'Repair internet sharing' }}
                                 </button>
                                 <button class="btn btn-secondary text-sm" type="button"
                                     @click="activeSection = 'certificate'">
-                                    Install Trusted Certificate
+                                    Install a trusted certificate…
                                 </button>
                                 <button class="btn btn-secondary text-sm" type="button"
                                     :disabled="publicSharingBusy" @click="regenerateLocalCert">
-                                    {{ publicSharingRegenBusy ? 'Regenerating…' : 'Regenerate Local Certificate' }}
+                                    {{ publicSharingRegenBusy ? 'Regenerating…' : 'Regenerate local certificate' }}
                                 </button>
                             </div>
 
@@ -264,107 +242,58 @@
                             </details>
                         </template>
 
-                        <!-- ═══ Default Link Options ══════════════════════════ -->
+                        <!-- ═══ New link defaults ═════════════════════════════ -->
                         <template v-if="activeSection === 'linkOptions' && settingsLoaded">
-                            <div class="divide-y divide-default">
-                                <SettingRow label="Invite-only links"
-                                    description="New links only let invited clients and teams in by default.">
-                                    <Switch v-model="defaultRestrictAccess" :disabled="busy" :class="[
-                                        defaultRestrictAccess ? 'bg-primary' : 'bg-well',
-                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                    ]">
-                                        <span class="sr-only">Toggle restrict access</span>
-                                        <span :class="[
-                                            defaultRestrictAccess ? 'translate-x-4' : 'translate-x-0',
-                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                        ]" />
-                                    </Switch>
+                            <p class="settings-subhead">Who can open new links</p>
+                            <div class="settings-group">
+                                <SettingRow label="Network" description="Internet links work anywhere (needs port forwarding). Local Network links only work on the same network or VPN as this server.">
+                                    <div class="settings-segmented" role="radiogroup" aria-label="Default link network">
+                                        <button type="button" role="radio" :aria-checked="!defaultAccessIsExternal"
+                                            :class="{ 'is-on': !defaultAccessIsExternal }" @click="defaultAccessIsExternal = false">Local Network</button>
+                                        <button type="button" role="radio" :aria-checked="defaultAccessIsExternal"
+                                            :class="{ 'is-on': defaultAccessIsExternal }" @click="defaultAccessIsExternal = true">Internet</button>
+                                    </div>
+                                </SettingRow>
+                                <SettingRow label="Invite-only links (recommended)"
+                                    description="New links start as “Only invited clients &amp; teams”. Turn off to start them as “Anyone with the link”.">
+                                    <FlowSwitch v-model="defaultRestrictAccess" :disabled="busy" label="Invite-only links" />
                                 </SettingRow>
                                 <SettingRow label="Allow comments on open links"
-                                    description="Enable commenting for links accessible without sign-in.">
-                                    <Switch v-model="defaultAllowComments" :disabled="busy" :class="[
-                                        defaultAllowComments ? 'bg-primary' : 'bg-well',
-                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                    ]">
-                                        <span class="sr-only">Toggle allow comments</span>
-                                        <span :class="[
-                                            defaultAllowComments ? 'translate-x-4' : 'translate-x-0',
-                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                        ]" />
-                                    </Switch>
-                                </SettingRow>
-                                <SettingRow label="Generate proxy files by default"
-                                    description="Create streamable proxy files of video files when sharing.">
-                                    <Switch v-model="defaultUseProxyFiles" :disabled="busy" :class="[
-                                        defaultUseProxyFiles ? 'bg-primary' : 'bg-well',
-                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                    ]">
-                                        <span class="sr-only">Toggle proxy files</span>
-                                        <span :class="[
-                                            defaultUseProxyFiles ? 'translate-x-4' : 'translate-x-0',
-                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                        ]" />
-                                    </Switch>
+                                    description="Let people comment on links that don't need a sign-in.">
+                                    <FlowSwitch v-model="defaultAllowComments" :disabled="busy" label="Allow comments on open links" />
                                 </SettingRow>
                             </div>
 
-                            <!-- Default Link Expiry -->
-                            <div class="mt-4 pt-4 border-t border-default">
-                                <div class="px-1 py-2">
-                                    <p class="font-semibold text-sm mb-2">Default Expiry</p>
-                                    <div class="flex items-center justify-between mb-3">
-                                        <p class="text-xs text-muted">Set links to never expire by default.</p>
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-xs text-accent">Never expire</span>
-                                            <Switch
-                                                :model-value="defaultExpiryNever"
-                                                @update:model-value="defaultExpiryNever = $event"
-                                                :class="defaultExpiryNever ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'"
-                                                class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                                            >
-                                                <span
-                                                    :class="defaultExpiryNever ? 'translate-x-4' : 'translate-x-0'"
-                                                    class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out"
-                                                />
-                                            </Switch>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center gap-2 transition-all" :class="defaultExpiryNever ? 'opacity-30 pointer-events-none' : ''">
-                                        <span class="text-xs text-accent">Expire after</span>
-                                        <input v-model.number="defaultExpiryValue" type="number" min="1"
-                                            :disabled="busy || defaultExpiryNever"
-                                            class="bg-default text-default rounded-md w-20 text-sm text-center"
-                                            placeholder="1" />
-                                        <select v-model="defaultExpiryUnit" :disabled="busy || defaultExpiryNever"
-                                            class="bg-default text-default rounded-md w-24 text-sm">
+                            <p class="settings-subhead">Expiry</p>
+                            <div class="settings-group">
+                                <SettingRow label="Links never expire" description="Turn off to give new links an end date.">
+                                    <FlowSwitch v-model="defaultExpiryNever" :disabled="busy" label="Links never expire" />
+                                </SettingRow>
+                                <SettingRow v-if="!defaultExpiryNever" label="Expire after"
+                                    description="After this time the link stops working and clients can no longer open it.">
+                                    <div class="flex items-center gap-2">
+                                        <input v-model.number="defaultExpiryValue" type="number" min="1" :disabled="busy"
+                                            aria-label="Expire after" class="input-textlike px-2 py-1 w-20 text-sm text-center" placeholder="1" />
+                                        <select v-model="defaultExpiryUnit" :disabled="busy" aria-label="Unit"
+                                            class="input-textlike px-2 py-1 w-28 text-sm">
                                             <option value="hours">Hours</option>
                                             <option value="days">Days</option>
                                             <option value="weeks">Weeks</option>
                                         </select>
                                     </div>
-                                </div>
+                                </SettingRow>
                             </div>
-                            
-                            <!-- Default Watermark -->
-                            <div class="mt-4 pt-4 border-t border-default">
-                                <div class="px-1 py-2">
-                                    <p class="font-semibold text-sm mb-3">Default Watermark</p>
-                                    
-                                    <div class="flex items-center gap-3 mb-3">
-                                        <Switch v-model="defaultWatermarkEnabled" :disabled="busy" :class="[
-                                            defaultWatermarkEnabled ? 'bg-primary' : 'bg-well',
-                                            'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                        ]">
-                                            <span class="sr-only">Toggle default watermark</span>
-                                            <span :class="[
-                                                defaultWatermarkEnabled ? 'translate-x-4' : 'translate-x-0',
-                                                'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                            ]" />
-                                        </Switch>
-                                        <span class="text-sm text-default">Apply watermark to new video links</span>
-                                    </div>
-                                    
-                                    <div v-if="defaultWatermarkEnabled" class="space-y-2">
+
+                            <p class="settings-subhead">Video</p>
+                            <div class="settings-group">
+                                <SettingRow label="Make proxy files"
+                                    description="Create smaller copies of videos that stream smoothly in the browser.">
+                                    <FlowSwitch v-model="defaultUseProxyFiles" :disabled="busy" label="Make proxy files" />
+                                </SettingRow>
+                                <SettingRow label="Watermark videos" description="Stamp an image on videos in new links.">
+                                    <FlowSwitch v-model="defaultWatermarkEnabled" :disabled="busy" label="Watermark videos" />
+                                </SettingRow>
+                                <div v-if="defaultWatermarkEnabled" class="py-3 space-y-2">
                                         <div class="flex items-center gap-2 mb-2">
                                             <label class="inline-flex items-center gap-1.5 text-xs">
                                                 <input type="checkbox" v-model="showDefaultWatermarksInSettings" class="proxy-quality-checkbox" />
@@ -408,33 +337,18 @@
                                                 label="Watermark (bottom-right)"
                                             />
                                         </div>
-                                    </div>
                                 </div>
                             </div>
-                            
-                            <p class="text-xs text-accent mt-3">
-                                These defaults apply when creating new links and can be changed per link.
-                            </p>
                         </template>
 
                         <!-- ═══ Application / Preferences ═════════════════════ -->
                         <template v-if="activeSection === 'app'">
-                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Display</p>
-                            <div class="divide-y divide-default">
+                            <p class="settings-subhead">Display</p>
+                            <div class="settings-group">
                                 <SettingRow label="Time format" description="How timestamps are displayed throughout the app.">
-                                    <div class="flex items-center gap-3">
-                                        <span class="text-sm" :class="!hour12 ? 'font-semibold' : 'opacity-60'">24-hour</span>
-                                        <Switch v-model="hour12" :class="[
-                                            hour12 ? 'bg-primary' : 'bg-well',
-                                            'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                        ]">
-                                            <span class="sr-only">Toggle time format</span>
-                                            <span :class="[
-                                                hour12 ? 'translate-x-4' : 'translate-x-0',
-                                                'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                            ]" />
-                                        </Switch>
-                                        <span class="text-sm" :class="hour12 ? 'font-semibold' : 'opacity-60'">12-hour</span>
+                                    <div class="settings-segmented" role="radiogroup" aria-label="Time format">
+                                        <button type="button" role="radio" :aria-checked="!hour12" :class="{ 'is-on': !hour12 }" @click="hour12 = false">24-hour</button>
+                                        <button type="button" role="radio" :aria-checked="hour12" :class="{ 'is-on': hour12 }" @click="hour12 = true">12-hour</button>
                                     </div>
                                 </SettingRow>
                                 <SettingRow label="Default link list view" description="Choose which links are shown by default when viewing the Manage Links list.">
@@ -455,32 +369,22 @@
                                 </SettingRow>
                             </div>
 
-                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Path Defaults</p>
-                            <div class="divide-y divide-default">
-                                <SettingRow label="Use default server folder" description="Start folder pickers in the default server folder below. Projects keep their own folders.">
-                                    <Switch v-model="forceProjectRoot" :disabled="busy" :class="[
-                                        forceProjectRoot ? 'bg-primary' : 'bg-well',
-                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                    ]">
-                                        <span class="sr-only">Toggle default server folder</span>
-                                        <span :class="[
-                                            forceProjectRoot ? 'translate-x-4' : 'translate-x-0',
-                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                        ]" />
-                                    </Switch>
-                                </SettingRow>
-                            </div>
-
-                            <div class="mt-4">
-                                <label class="block text-sm font-medium text-default mb-1">Default server folder</label>
-                                <PathInput
-                                    v-model="projectRoot"
-                                    :apiFetch="apiFetch"
-                                    :dirsOnly="true"
-                                />
-                                <div class="text-xs text-accent mt-1">
-                                    Holds the hidden .45flow folder (proxy files and streams) for links that are not in a project. Each project keeps its own .45flow folder inside its project folder.
+                            <p class="settings-subhead">Server folders</p>
+                            <div class="settings-group">
+                                <div class="py-3">
+                                    <p class="text-sm font-medium text-default">Default server folder</p>
+                                    <p class="text-xs text-accent mt-0.5 mb-2">
+                                        Holds the hidden .45flow folder (proxy files and streams) for links that aren't in a project. Each project keeps its own .45flow folder inside its project folder.
+                                    </p>
+                                    <PathInput
+                                        v-model="projectRoot"
+                                        :apiFetch="apiFetch"
+                                        :dirsOnly="true"
+                                    />
                                 </div>
+                                <SettingRow label="Start folder pickers here" description="Folder pickers open in the default server folder. Projects still use their own folders.">
+                                    <FlowSwitch v-model="forceProjectRoot" :disabled="busy" label="Start folder pickers in the default server folder" />
+                                </SettingRow>
                             </div>
 
                         </template>
@@ -490,9 +394,9 @@
                             <p class="text-sm text-muted">Client-side transcoding and hardware detection require 45Flow Desktop. Browser mode does not access your workstation's filesystem or GPU.</p>
                         </template>
                         <template v-else-if="activeSection === 'performance'">
-                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Client-Side Transcoding</p>
+                            <p class="settings-subhead">Client-Side Transcoding</p>
                             <p class="text-xs text-muted mb-3">When enabled, video processing (proxy files and browser streams) happens on this computer using your CPU or GPU before uploading. When disabled, the server handles all transcoding after files are uploaded.</p>
-                            <div class="divide-y divide-default">
+                            <div class="settings-group">
                                 <SettingRow 
                                     label="Enable client-side transcoding" 
                                     description="Process videos locally to create proxy files faster and reduce server load. Requires FFmpeg — works best with a modern GPU."
@@ -501,16 +405,7 @@
                                         <span class="text-sm" :class="!clientTranscodeEnabled ? 'opacity-60' : 'font-semibold'">
                                             {{ clientTranscodeEnabled ? 'Enabled' : 'Disabled' }}
                                         </span>
-                                        <Switch v-model="clientTranscodeEnabled" :class="[
-                                            clientTranscodeEnabled ? 'bg-primary' : 'bg-well',
-                                            'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                        ]">
-                                            <span class="sr-only">Toggle client-side transcoding</span>
-                                            <span :class="[
-                                                clientTranscodeEnabled ? 'translate-x-4' : 'translate-x-0',
-                                                'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                            ]" />
-                                        </Switch>
+                                        <FlowSwitch v-model="clientTranscodeEnabled" label="Toggle client-side transcoding" />
                                     </div>
                                 </SettingRow>
                                 <SettingRow 
@@ -523,16 +418,7 @@
                                                 ? (hwAccelEnabled ? '✓ GPU' : '⚠ CPU only') 
                                                 : '⚠ No GPU detected' }}
                                         </span>
-                                        <Switch v-model="hwAccelEnabled" :class="[
-                                            hwAccelEnabled ? 'bg-primary' : 'bg-well',
-                                            'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                        ]" :disabled="!hardwareCapabilities?.hasHardwareAccel">
-                                            <span class="sr-only">Toggle hardware acceleration</span>
-                                            <span :class="[
-                                                hwAccelEnabled ? 'translate-x-4' : 'translate-x-0',
-                                                'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                            ]" />
-                                        </Switch>
+                                        <FlowSwitch v-model="hwAccelEnabled" :disabled="!hardwareCapabilities?.hasHardwareAccel" label="Use hardware acceleration" />
                                     </div>
                                 </SettingRow>
                                 <SettingRow 
@@ -562,7 +448,7 @@
 
                         <!-- ═══ Help ══════════════════════════════════════════ -->
                         <template v-if="activeSection === 'help'">
-                            <div class="divide-y divide-default">
+                            <div class="settings-group">
                                 <SettingRow label="User Guide" description="Open the full 45Flow documentation in your browser.">
                                     <button
                                         class="btn btn-secondary text-sm px-3 py-1"
@@ -583,19 +469,10 @@
                                 </SettingRow>
                             </div>
 
-                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Guided Tours</p>
-                            <div class="divide-y divide-default">
+                            <p class="settings-subhead">Guided Tours</p>
+                            <div class="settings-group">
                                 <SettingRow label="Disable guided tours" description="Turn off all onboarding walkthroughs and first-time guides.">
-                                    <Switch v-model="toursDisabled" :class="[
-                                        toursDisabled ? 'bg-primary' : 'bg-well',
-                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                    ]">
-                                        <span class="sr-only">Toggle guided tours</span>
-                                        <span :class="[
-                                            toursDisabled ? 'translate-x-4' : 'translate-x-0',
-                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                        ]" />
-                                    </Switch>
+                                    <FlowSwitch v-model="toursDisabled" label="Disable guided tours" />
                                 </SettingRow>
                                 <SettingRow label="Re-enable guided tours" description="Reset onboarding walkthroughs so they show again on each page.">
                                     <button
@@ -843,7 +720,7 @@
                                     </p>
                                 </div>
 
-                                <div class="divide-y divide-default">
+                                <div class="settings-group">
                                     <!-- Trial Request Section -->
                                     <div class="py-3">
                                         <label class="block text-sm font-medium text-default mb-1">Start Free 30-Day Trial</label>
@@ -935,9 +812,9 @@
                             </div>
 
                             <!-- Setup form -->
-                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Set Up Trusted Certificate</p>
+                            <p class="settings-subhead">Set Up Trusted Certificate</p>
 
-                            <div class="divide-y divide-default">
+                            <div class="settings-group">
                                 <SettingRow label="Domain *" description="Your custom domain name (e.g. studio.yourcompany.com). Auto-synced from External Base if set.">
                                     <input v-model="certDomainInput" type="text" :disabled="certBusy"
                                         class="input-textlike border border-default px-2 py-1 rounded text-sm w-56"
@@ -1050,7 +927,7 @@
                                     <template v-else>
                                         <!-- License Status -->
                                         <div v-if="server.license" class="rounded-lg border border-default bg-default/40 p-3">
-                                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">License Status</p>
+                                            <p class="settings-subhead">License Status</p>
                                             <div class="grid grid-cols-2 gap-3 text-sm">
                                                 <div>
                                                     <span class="text-muted">Status:</span>
@@ -1111,7 +988,7 @@
                                         
                                         <!-- Uptime -->
                                         <div v-if="server.health" class="rounded-lg border border-default bg-default/40 p-3">
-                                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Uptime</p>
+                                            <p class="settings-subhead">Uptime</p>
                                             <div class="grid grid-cols-2 gap-3 text-sm">
                                                 <div>
                                                     <span class="text-muted">Process:</span>
@@ -1126,7 +1003,7 @@
 
                                         <!-- CPU -->
                                         <div v-if="server.health" class="rounded-lg border border-default bg-default/40 p-3">
-                                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">CPU</p>
+                                            <p class="settings-subhead">CPU</p>
                                             <div class="grid grid-cols-2 gap-3 text-sm">
                                                 <div>
                                                     <span class="text-muted">Cores:</span>
@@ -1141,7 +1018,7 @@
 
                                         <!-- Memory -->
                                         <div v-if="server.health" class="rounded-lg border border-default bg-default/40 p-3">
-                                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Memory</p>
+                                            <p class="settings-subhead">Memory</p>
                                             <div class="grid grid-cols-2 gap-3 text-sm">
                                                 <div>
                                                     <span class="text-muted">System:</span>
@@ -1156,7 +1033,7 @@
 
                                         <!-- Transcoding / Hardware Encoder -->
                                         <div v-if="server.health?.hardware" class="rounded-lg border border-default bg-default/40 p-3">
-                                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">Transcoding (Server)</p>
+                                            <p class="settings-subhead">Transcoding (Server)</p>
                                             <div class="grid grid-cols-2 gap-3 text-sm">
                                                 <div>
                                                     <span class="text-muted">Encoder:</span>
@@ -1185,7 +1062,7 @@
                             <div v-if="!serverHealthData.length" class="space-y-4">
                                 <!-- Uptime -->
                                 <div class="rounded-lg border border-default bg-default/40 p-3">
-                                    <p class="text-xs font-semibold text-accent uppercase tracking-wide mb-2">No health data</p>
+                                    <p class="settings-subhead">No health data</p>
                                     <p class="text-xs text-muted">Click Refresh to load server health information.</p>
                                 </div>
                             </div>
@@ -1197,34 +1074,16 @@
                                 Scan for orphaned transcode folders and missing-file metadata, then optionally apply cleanup.
                             </p>
 
-                            <div class="divide-y divide-default">
+                            <div class="settings-group">
                                 <SettingRow label="Delete orphan transcode directories" description="Remove transcode output folders no longer linked to any file.">
-                                    <Switch v-model="cleanupDeleteOrphans" :disabled="busy || cleanupBusy" :class="[
-                                        cleanupDeleteOrphans ? 'bg-primary' : 'bg-well',
-                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                    ]">
-                                        <span class="sr-only">Toggle delete orphans</span>
-                                        <span :class="[
-                                            cleanupDeleteOrphans ? 'translate-x-4' : 'translate-x-0',
-                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                        ]" />
-                                    </Switch>
+                                    <FlowSwitch v-model="cleanupDeleteOrphans" :disabled="busy || cleanupBusy" label="Toggle delete orphans" />
                                 </SettingRow>
                                 <SettingRow label="Prune missing source files" description="Remove database rows referencing files that no longer exist.">
-                                    <Switch v-model="cleanupPruneMissingFiles" :disabled="busy || cleanupBusy" :class="[
-                                        cleanupPruneMissingFiles ? 'bg-primary' : 'bg-well',
-                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                    ]">
-                                        <span class="sr-only">Toggle prune missing files</span>
-                                        <span :class="[
-                                            cleanupPruneMissingFiles ? 'translate-x-4' : 'translate-x-0',
-                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                        ]" />
-                                    </Switch>
+                                    <FlowSwitch v-model="cleanupPruneMissingFiles" :disabled="busy || cleanupBusy" label="Toggle prune missing files" />
                                 </SettingRow>
                             </div>
 
-                            <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Parameters</p>
+                            <p class="settings-subhead">Parameters</p>
                             <div class="grid grid-cols-2 gap-3">
                                 <div class="flex items-center justify-between gap-2 rounded-lg border border-default bg-default/40 px-3 py-2">
                                     <div class="text-sm text-default">Orphan min age</div>
@@ -1296,24 +1155,16 @@
 
                         <!-- ═══ White Label / Branding ═══════════════════════ -->
                         <template v-if="activeSection === 'branding'">
-                            <div class="divide-y divide-default">
+                            <FlowNotice v-if="brandingError" tone="danger" size="sm" class="mb-3" live>{{ brandingError }}</FlowNotice>
+                            <div class="settings-group">
                                 <SettingRow label="Enable custom branding" description="Apply your company name, logo, and brand colors to share and upload pages.">
-                                    <Switch v-model="brandingEnabled" :disabled="brandingBusy" :class="[
-                                        brandingEnabled ? 'bg-primary' : 'bg-well',
-                                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                    ]">
-                                        <span class="sr-only">Toggle custom branding</span>
-                                        <span :class="[
-                                            brandingEnabled ? 'translate-x-4' : 'translate-x-0',
-                                            'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                        ]" />
-                                    </Switch>
+                                    <FlowSwitch v-model="brandingEnabled" :disabled="brandingBusy" label="Toggle custom branding" />
                                 </SettingRow>
                             </div>
 
                             <template v-if="brandingEnabled">
-                                <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Company Identity</p>
-                                <div class="divide-y divide-default">
+                                <p class="settings-subhead">Company Identity</p>
+                                <div class="settings-group">
                                     <SettingRow label="Company name" description="Used in headers and link previews. Max 200 characters.">
                                         <input v-model="brandingCompanyName" type="text" :disabled="brandingBusy"
                                             class="input-textlike border border-default px-2 py-1 rounded text-sm w-56"
@@ -1321,9 +1172,9 @@
                                     </SettingRow>
                                 </div>
 
-                                <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Recipient Experience</p>
+                                <p class="settings-subhead">Recipient Experience</p>
                                 <p class="text-xs text-accent mb-3">Choose what recipients see on share and upload pages. When set, the theme picker will be hidden from them.</p>
-                                <div class="divide-y divide-default">
+                                <div class="settings-group">
                                     <SettingRow label="Recipient theme" description="Theme shown to recipients on link pages.">
                                         <div class="flex flex-col gap-2">
                                             <select v-model="brandingEnforcedTheme" :disabled="brandingBusy"
@@ -1343,9 +1194,9 @@
                                 <p class="text-xs text-accent mt-2">When custom branding is enabled, recipients see your company branding with a small "Powered by 45Flow" attribution.</p>
 
                                 <template v-if="brandingEnforcedTheme === 'custom'">
-                                    <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Brand Colors</p>
+                                    <p class="settings-subhead">Brand Colors</p>
                                     <p class="text-xs text-accent mb-3">Define your brand colors. These will be available as a "Custom" theme in your palette and can be shown to recipients.</p>
-                                    <div class="divide-y divide-default">
+                                    <div class="settings-group">
                                         <SettingRow label="Primary brand color" description="Used for primary branded actions, highlights, and gradient start.">
                                             <div class="flex flex-col items-end">
                                                 <div class="flex items-center gap-2">
@@ -1393,9 +1244,9 @@
                                     </div>
                                 </template>
 
-                                <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Company Logo</p>
+                                <p class="settings-subhead">Company Logo</p>
                                 <p class="text-xs text-accent mb-3">Replaces the 45Studio logo on link pages. Supports PNG, JPEG, SVG, and WebP. Max 2 MB. <br/><b>Recommended: transparent background, at least 200px tall.</b></p>
-                                <div class="divide-y divide-default">
+                                <div class="settings-group">
                                     <SettingRow label="Default logo" description="Shown on share and upload pages.">
                                         <div class="flex flex-col gap-2">
                                             <div class="flex items-center gap-2">
@@ -1425,16 +1276,7 @@
                                         </div>
                                     </SettingRow>
                                     <SettingRow label="Use separate logo for dark backgrounds" description="Recommended if your default logo has poor contrast on dark backgrounds.">
-                                        <Switch v-model="brandingSplitLogos" :disabled="brandingBusy" :class="[
-                                            brandingSplitLogos ? 'bg-primary' : 'bg-well',
-                                            'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors'
-                                        ]">
-                                            <span class="sr-only">Toggle split logos</span>
-                                            <span :class="[
-                                                brandingSplitLogos ? 'translate-x-4' : 'translate-x-0',
-                                                'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-default shadow ring-0 transition-transform'
-                                            ]" />
-                                        </Switch>
+                                        <FlowSwitch v-model="brandingSplitLogos" :disabled="brandingBusy" label="Toggle split logos" />
                                     </SettingRow>
                                     <SettingRow v-if="brandingSplitLogos" label="Dark background logo" description="Shown when recipients use dark mode or dark themes.">
                                         <div class="flex flex-col gap-2">
@@ -1466,9 +1308,9 @@
                                     </SettingRow>
                                 </div>
 
-                                <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Support & Contact</p>
+                                <p class="settings-subhead">Support & Contact</p>
                                 <p class="text-xs text-accent mb-3">Optional. Provide help resources for recipients viewing share and upload pages.</p>
-                                <div class="divide-y divide-default">
+                                <div class="settings-group">
                                     <SettingRow label="Support email" description="Shown on link pages and error states for recipient assistance.">
                                         <input v-model="brandingSupportEmail" type="email" :disabled="brandingBusy"
                                             class="input-textlike border border-default px-2 py-1 rounded text-sm w-56"
@@ -1481,9 +1323,9 @@
                                     </SettingRow>
                                 </div>
 
-                                <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Link Previews</p>
+                                <p class="settings-subhead">Link Previews</p>
                                 <p class="text-xs text-accent mb-3">Customize how share links appear when pasted in Slack, Teams, or social media.</p>
-                                <div class="divide-y divide-default">
+                                <div class="settings-group">
                                     <SettingRow label="Link preview title" description="Defaults to company name if not set.">
                                         <input v-model="brandingLinkPreviewTitle" type="text" :disabled="brandingBusy"
                                             class="input-textlike border border-default px-2 py-1 rounded text-sm w-56"
@@ -1496,7 +1338,7 @@
                                     </SettingRow>
                                 </div>
 
-                                <p class="text-xs font-semibold text-accent uppercase tracking-wide mt-5 mb-2">Preview</p>
+                                <p class="settings-subhead">Preview</p>
                                 <p class="text-xs text-accent mb-3">How your branding will appear on recipient pages.</p>
                                 <div class="flex gap-3 p-3 border border-default rounded bg-well/30">
                                     <!-- Protected Page Preview -->
@@ -1581,19 +1423,22 @@
                     </div>
                 </div>
 
-                <!-- Footer -->
-                <template #footer>
-                    <div class="min-w-0">
-                        <div v-if="validationError" class="text-flow-danger text-sm">{{ validationError }}</div>
-                        <div v-else-if="saveError" class="text-flow-danger text-sm">{{ saveError }}</div>
-                        <div v-else-if="saveOk" class="text-flow-success text-sm">Saved.</div>
-                        <div v-else class="text-xs text-accent">New shares will use these settings automatically.</div>
+                <!-- Footer: only when there is something to save -->
+                <template v-if="showSaveBar" #footer>
+                    <div class="min-w-0 text-sm" aria-live="polite">
+                        <span v-if="validationError" class="text-flow-danger">{{ validationError }}</span>
+                        <span v-else-if="saveError" class="text-flow-danger">{{ saveError }}</span>
+                        <span v-else-if="saveOk" class="text-flow-success">Saved.</span>
+                        <span v-else-if="isDirty" class="inline-flex items-center gap-2 font-medium">
+                            <span class="flow-dot flow-dot--warning" aria-hidden="true" />You have unsaved changes
+                        </span>
+                        <span v-else class="text-xs text-muted">{{ currentMeta.saveHint || 'Changes are saved for the whole server.' }}</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button v-if="activeSection !== 'adminNetworks' && activeSection !== 'adminMail'" class="btn btn-secondary" type="button" @click="reload" :disabled="busy">Reload</button>
-                        <button v-if="activeSection !== 'adminNetworks' && activeSection !== 'adminMail'" class="btn btn-success" type="button" @click="save" :disabled="busy || !!validationError">
-                            <span v-if="busy">Saving…</span>
-                            <span v-else>Save Settings</span>
+                        <button v-if="isDirty" class="btn btn-secondary" type="button" @click="discardChanges" :disabled="busy">Discard changes</button>
+                        <button class="btn btn-success" type="button" @click="save" :disabled="busy || !!validationError || !isDirty">
+                            <span v-if="savingSettings">Saving…</span>
+                            <span v-else>Save changes</span>
                         </button>
                     </div>
                 </template>
@@ -1624,8 +1469,7 @@ const SettingRow = defineComponent({
 </script>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
-import { Switch } from "@headlessui/vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useApi } from "../../composables/useApi";
 import AdminNetworksPanel from "../AdminNetworksPanel.vue";
 import AdminSmtpPanel from "../AdminSmtpPanel.vue";
@@ -1648,6 +1492,13 @@ import WatermarkPreview from "../WatermarkPreview.vue";
 import type { WatermarkSettings } from "../../types/watermark";
 import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from "../../types/watermark";
 import FlowModal from '../../ui/FlowModal.vue';
+import FlowSwitch from '../../ui/FlowSwitch.vue';
+import FlowNotice from '../../ui/FlowNotice.vue';
+import type { Component } from 'vue';
+import {
+    AdjustmentsHorizontalIcon, EnvelopeIcon, FilmIcon, GlobeAltIcon, LinkIcon, LockClosedIcon, MagnifyingGlassIcon,
+    QuestionMarkCircleIcon, ServerIcon, ShieldCheckIcon, SignalIcon, SparklesIcon, SwatchIcon, WrenchScrewdriverIcon,
+} from '@heroicons/vue/24/outline';
 
 const props = withDefaults(defineProps<{
     initialSection?: string
@@ -1730,69 +1581,166 @@ onMounted(async () => {
 const settingsTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="settings-modal-header"]',
-		message: 'Welcome to 45Flow Settings.\n\nThis is where you configure global options that affect all new links and server behavior.',
+		message: 'Welcome to 45Flow Settings.\n\nThis is where you set defaults for new links, your share addresses, and how the app and server behave.',
 	},
 	{
 		target: '[data-tour="settings-modal-nav"]',
-        message: isPremiumActive.value
-            ? 'Use the sidebar to navigate between sections.\n\n• URLs & Access — configure external/internal share URLs.\n• Certificate — manage your SSL/TLS certificate.\n• Link Options — default access, comments, proxy file, and watermark settings.\n• White Label — customize branding, colors, logos, and recipient theming (Pro).\n• Preferences — time format, link list view, and default server folder.\n• Performance — client-side transcoding, hardware acceleration, and encode quality.\n• Server Health — monitor server status.\n• Maintenance — clean up orphaned files and metadata.\n• Guides — user guide and guided tour settings.'
-            : 'Use the sidebar to navigate between sections.\n\n• URLs & Access — configure external/internal share URLs.\n• Certificate — manage your SSL/TLS certificate.\n• Link Options — default access, comments, proxy file, and watermark settings.\n• Preferences — time format, link list view, and default server folder.\n• Performance — client-side transcoding, hardware acceleration, and encode quality.\n• Server Health — monitor server status.\n• Maintenance — clean up orphaned files and metadata.\n• Guides — user guide and guided tour settings.',
+        message: 'Use the sidebar to move between pages, or type in "Find a setting".\n\n• Sharing — new link defaults, share addresses, internet sharing, HTTPS certificate' + (isPremiumActive.value ? ', and branding (Pro).' : '.') + '\n• This app — preferences and video processing on this computer.\n• Server — server health, maintenance' + (adminSession.value ? ', and admin networks.' : '.') + '\n• Help — the user guide, API docs, and guided tours.',
 	},
 	{
 		target: '[data-tour="settings-modal-urls"]',
-		message: 'Each section shows its settings here.\n\nRight now you\'re viewing URLs & Access — toggle between Internal and External link access, configure your public domain or auto-detect, and set the HTTPS port.\n\nClick "Save Settings" at the bottom when you\'re done.',
-		beforeShow: () => { activeSection.value = 'sharing' },
+		message: 'Each page shows its settings here.\n\nRight now you\'re on New link defaults — who can open new links, when they expire, and video options.\n\nWhen you change something, a "Save changes" button appears at the bottom.',
+		beforeShow: () => { activeSection.value = 'linkOptions' },
 	},
 ])
 
 // ── Section navigation ──────────────────────────────────────────────────
 type Section = 'sharing' | 'publicSharing' | 'app' | 'performance' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade' | 'adminNetworks' | 'adminMail';
-const activeSection = ref<Section>((props.initialSection as Section) || 'sharing');
+
+type SectionMeta = {
+    label: string
+    description: string
+    icon: Component
+    /** Extra words people might search for */
+    keywords: string
+    /** Section has fields that the footer Save button stores */
+    savable?: boolean
+    saveHint?: string
+}
+
+const SECTION_META: Record<Section, SectionMeta> = {
+    linkOptions: {
+        label: 'New link defaults', icon: LinkIcon, savable: true,
+        description: 'Starting values for every new link. You can still change them on each link.',
+        keywords: 'network internet local invite only restrict access comments expiry expire never proxy watermark',
+        saveHint: 'Applies to links you create after saving.',
+    },
+    sharing: {
+        label: 'Share addresses', icon: GlobeAltIcon, savable: true,
+        description: 'The web addresses your share links use on the internet and on your local network.',
+        keywords: 'url urls external internal domain ip port https auto detect lan wan vpn',
+        saveHint: 'Applies to links you create after saving.',
+    },
+    publicSharing: {
+        label: 'Internet sharing', icon: SignalIcon,
+        description: 'Check that clients outside your network can reach your links, and repair common problems.',
+        keywords: 'public firewall nginx routing repair check status',
+    },
+    certificate: {
+        label: 'HTTPS certificate', icon: LockClosedIcon,
+        description: 'Install a trusted certificate so browsers don\'t show your clients a security warning.',
+        keywords: 'ssl tls letsencrypt let\'s encrypt domain dns self-signed',
+    },
+    branding: {
+        label: 'Branding', icon: SwatchIcon, savable: true,
+        description: 'Put your company name, logo and colours on the pages your clients see.',
+        keywords: 'white label logo colours colors theme company support email preview',
+        saveHint: 'Changes show on client pages after saving.',
+    },
+    app: {
+        label: 'Preferences', icon: AdjustmentsHorizontalIcon, savable: true,
+        description: 'How 45Flow looks and behaves, and where folder pickers start.',
+        keywords: 'time format 12 24 hour link list view notifications default server folder project root path',
+        saveHint: 'Time format and link list view apply right away. The default folder is saved for the server.',
+    },
+    performance: {
+        label: 'Video processing', icon: FilmIcon, savable: true,
+        description: 'Choose whether this computer or the server prepares videos for playback.',
+        keywords: 'performance transcoding transcode gpu hardware acceleration ffmpeg encode quality',
+        saveHint: 'Saved on this computer only.',
+    },
+    health: {
+        label: 'Server health', icon: ServerIcon,
+        description: 'Live status of the servers this app is connected to.',
+        keywords: 'cpu memory uptime license status transcoding',
+    },
+    maintenance: {
+        label: 'Maintenance', icon: WrenchScrewdriverIcon,
+        description: 'Clean up leftover files and records on the server.',
+        keywords: 'cleanup orphan prune missing files transcode directories',
+    },
+    adminNetworks: {
+        label: 'Admin networks', icon: ShieldCheckIcon,
+        description: 'Which networks may sign in to this server as an admin.',
+        keywords: 'admin cidr network security allow list',
+    },
+    adminMail: {
+        label: 'Email (SMTP)', icon: EnvelopeIcon,
+        description: 'The mail server 45Flow uses to send share invitations.',
+        keywords: 'smtp email mail invitation invite send server relay',
+    },
+    upgrade: {
+        label: 'Go Pro', icon: SparklesIcon,
+        description: 'Unlock branding, watermark controls and more with a 45Flow Pro license.',
+        keywords: 'license trial activate upgrade pro',
+    },
+    help: {
+        label: 'Help & tours', icon: QuestionMarkCircleIcon,
+        description: 'Documentation, the server API reference, and guided tours.',
+        keywords: 'guide user guide api docs swagger tours onboarding',
+    },
+};
+
+const activeSection = ref<Section>(
+    props.initialSection && props.initialSection in SECTION_META ? (props.initialSection as Section) : 'linkOptions'
+);
+const currentMeta = computed(() => SECTION_META[activeSection.value]);
+const contentRef = ref<HTMLElement | null>(null);
+watch(activeSection, () => { contentRef.value?.scrollTo?.({ top: 0 }) });
+
+const showUpgrade = computed(() => !isPremiumActive.value || isTrial.value);
 
 const navGroups = computed(() => {
-    const groups = [
+    const item = (key: Section) => ({ key, label: SECTION_META[key].label, icon: SECTION_META[key].icon });
+    return [
         {
-            label: 'Link Sharing',
+            label: 'Sharing',
             items: [
-                { key: 'sharing' as Section, label: 'URLs & Access' },
-                { key: 'publicSharing' as Section, label: 'Public Sharing' },
-                { key: 'certificate' as Section, label: 'Certificate' },
-                { key: 'linkOptions' as Section, label: 'Link Options' },
+                item('linkOptions'),
+                item('sharing'),
+                item('publicSharing'),
+                item('certificate'),
+                ...(isPremiumActive.value ? [item('branding')] : []),
             ],
         },
-        // Only show Branding when licensed
-        ...(isPremiumActive.value ? [{
-            label: 'Branding',
-            items: [
-                { key: 'branding' as Section, label: 'White Label' },
-            ],
-        }] : []),
         {
-            label: 'Application',
+            label: 'This app',
             items: [
-                { key: 'app' as Section, label: 'Preferences' },
-                { key: 'performance' as Section, label: 'Performance' },
-                { key: 'health' as Section, label: 'Server Health' },
-                { key: 'maintenance' as Section, label: 'Maintenance' },
-                ...(adminSession.value ? [{ key: 'adminNetworks' as Section, label: 'Admin Networks' }] : []),
-                ...(adminSession.value ? [{ key: 'adminMail' as Section, label: 'Email (SMTP)' }] : []),
+                item('app'),
+                ...(!isWeb ? [item('performance')] : []),
             ],
         },
-        // Show Go Pro when unlicensed or on trial
-        ...(!isPremiumActive.value || isTrial.value ? [{
-            label: 'Upgrade',
-            items: [
-                { key: 'upgrade' as Section, label: 'Go Pro' },
-            ],
-        }] : []),
         {
-            label: 'Help',
+            label: 'Server',
             items: [
-                { key: 'help' as Section, label: 'Guides' },
+                item('health'),
+                item('maintenance'),
+                ...(adminSession.value ? [item('adminNetworks'), item('adminMail')] : []),
             ],
         },
-    ]
-    return groups
+        {
+            label: showUpgrade.value ? 'Pro & help' : 'Help',
+            items: [
+                ...(showUpgrade.value ? [item('upgrade')] : []),
+                item('help'),
+            ],
+        },
+    ];
+});
+
+const navQuery = ref('');
+const filteredNavGroups = computed(() => {
+    const q = navQuery.value.toLowerCase();
+    if (!q) return navGroups.value;
+    return navGroups.value
+        .map(g => ({
+            ...g,
+            items: g.items.filter(i => {
+                const m = SECTION_META[i.key];
+                return `${m.label} ${m.description} ${m.keywords}`.toLowerCase().includes(q);
+            }),
+        }))
+        .filter(g => g.items.length);
 });
 
 onMounted(() => {
@@ -1960,6 +1908,7 @@ const busy = ref(false);
 const loadError = ref<string | null>(null);
 const saveError = ref<string | null>(null);
 const saveOk = ref(false);
+const savingSettings = ref(false);
 
 const defaultLinkAccess = ref<"external" | "internal">("internal");
 
@@ -1982,7 +1931,7 @@ const savedHttpsPort = ref<number>(443);
 const savedExternalAuto = ref(false);
 const savedExternalBase = ref("");
 
-const defaultRestrictAccess = ref(false);
+const defaultRestrictAccess = ref(true);
 const defaultAllowComments = ref(true);
 const defaultUseProxyFiles = ref(false);
 const defaultExpiryValue = ref<number>(1);
@@ -2598,6 +2547,7 @@ async function loadBranding() {
         brandingSupportUrl.value = data.supportUrl || '';
         brandingLinkPreviewTitle.value = data.linkPreviewTitle || '';
         brandingLinkPreviewDescription.value = data.linkPreviewDescription || '';
+        savedBranding.value = brandingSnapshot();
         // Sync custom theme to palette
         setCustomThemeEnabled(!!data.enabled);
         if (data.customPrimary || data.customSecondary) {
@@ -2633,6 +2583,7 @@ async function saveBranding() {
             }),
         });
         brandingOk.value = true;
+        savedBranding.value = brandingSnapshot();
         // Sync custom theme to palette
         setCustomThemeEnabled(brandingEnabled.value);
         setCustomThemeColors({
@@ -3124,6 +3075,57 @@ function close() {
     if (!busy.value) emit("close");
 }
 
+// ── Unsaved changes ────────────────────────────────────────────────────
+// Snapshots of what the server last returned; the Save bar compares against them.
+function coreSnapshot() {
+    return JSON.stringify([
+        defaultLinkAccess.value, externalHttpsPort.value, externalAuto.value, externalBase.value.trim(),
+        internalAuto.value, internalBase.value.trim(), defaultRestrictAccess.value, defaultAllowComments.value,
+        defaultUseProxyFiles.value, defaultExpiryNever.value,
+        defaultExpiryNever.value ? null : [defaultExpiryValue.value, defaultExpiryUnit.value],
+        defaultWatermarkEnabled.value,
+        defaultWatermarkEnabled.value ? (selectedExistingWatermark.value || defaultWatermarkId.value) : null,
+        isPremiumActive.value && defaultWatermarkEnabled.value ? watermarkSettings.value : null,
+        projectRoot.value.trim(), forceProjectRoot.value,
+    ]);
+}
+
+function brandingSnapshot() {
+    return JSON.stringify([
+        brandingEnabled.value, brandingCompanyName.value, brandingEnforcedTheme.value, brandingSplitLogos.value,
+        brandingCustomPrimary.value, brandingCustomSecondary.value, brandingSupportEmail.value, brandingSupportUrl.value,
+        brandingLinkPreviewTitle.value, brandingLinkPreviewDescription.value,
+    ]);
+}
+
+const savedCore = ref<string | null>(null);
+const savedBranding = ref<string | null>(null);
+
+const coreDirty = computed(() => settingsLoaded.value && savedCore.value !== null && coreSnapshot() !== savedCore.value);
+const brandingDirty = computed(() => isPremiumActive.value && savedBranding.value !== null && brandingSnapshot() !== savedBranding.value);
+const transcodeDirty = computed(() => {
+    // Hardware acceleration is forced off when none is detected; that alone isn't a change.
+    const hwExpected = hardwareCapabilities.value && !hardwareCapabilities.value.hasHardwareAccel ? false : _tcHwAccel.value;
+    return clientTranscodeEnabled.value !== _tcEnabled.value
+        || transcodePreset.value !== _tcPreset.value
+        || hwAccelEnabled.value !== hwExpected;
+});
+const isDirty = computed(() => coreDirty.value || brandingDirty.value || transcodeDirty.value);
+const showSaveBar = computed(() => isDirty.value || !!saveError.value || saveOk.value
+    || (!!currentMeta.value.savable && !(activeSection.value === 'performance' && isWeb)));
+
+function confirmDiscard() {
+    if (!isDirty.value || busy.value) return true;
+    return window.confirm('You have unsaved changes. Close Settings and lose them?');
+}
+
+async function discardChanges() {
+    clientTranscodeEnabled.value = _tcEnabled.value;
+    transcodePreset.value = _tcPreset.value;
+    hwAccelEnabled.value = hardwareCapabilities.value && !hardwareCapabilities.value.hasHardwareAccel ? false : _tcHwAccel.value;
+    await reload();
+}
+
 function normalizeUrlInput(raw: string, scheme: "http" | "https"): string | null {
     const s = (raw || "").trim();
     if (!s) return null;
@@ -3202,27 +3204,27 @@ const validationError = computed(() => {
     if (!settingsLoaded.value) return null;
     
     if (!isValidPort(externalHttpsPort.value)) {
-        return "External HTTPS port must be between 1 and 65535.";
+        return "The HTTPS port must be between 1 and 65535 (Share addresses).";
     }
 
     // External
     if (!externalAuto.value) {
-        if (!externalBase.value.trim()) return "External base is required unless Auto-detect is enabled.";
+        if (!externalBase.value.trim()) return "Enter a custom internet address, or turn on Detect automatically (Share addresses).";
         if (!normalizeUrlInput(externalBase.value, "https")) {
-            return "External base must be a valid origin (scheme + host + optional port).";
+            return "The custom internet address isn't valid. Use a domain or IP, like studio.example.com.";
         }
     }
 
     // Internal
     if (!internalAuto.value) {
-        if (!internalBase.value.trim()) return "Internal base is required unless Auto-detect is enabled.";
+        if (!internalBase.value.trim()) return "Enter a custom local address, or turn on Detect automatically (Share addresses).";
         if (!normalizeUrlInput(internalBase.value, "http")) {
-            return "Internal base must be a valid origin (scheme + host + optional port).";
+            return "The custom local address isn't valid. Use an IP or hostname, like 192.168.1.20.";
         }
     }
 
     if (forceProjectRoot.value && !projectRoot.value.trim()) {
-        return "Choose a default server folder to turn this on.";
+        return "Choose a default server folder to turn this on (Preferences).";
     }
 
     return null;
@@ -3258,7 +3260,7 @@ async function reload() {
         savedExternalBase.value = externalBase.value;
 
         defaultRestrictAccess.value =
-            typeof data.defaultRestrictAccess === "boolean" ? data.defaultRestrictAccess : false;
+            typeof data.defaultRestrictAccess === "boolean" ? data.defaultRestrictAccess : true;
         defaultAllowComments.value =
             typeof data.defaultAllowComments === "boolean" ? data.defaultAllowComments : true;
 
@@ -3329,6 +3331,8 @@ async function reload() {
         forceProjectRoot.value = typeof data.forceProjectRoot === "boolean" ? data.forceProjectRoot : false;
         
         settingsLoaded.value = true;
+        await nextTick();
+        savedCore.value = coreSnapshot();
     } catch (e: any) {
         loadError.value = e?.message ? `Failed to load settings: ${e.message}` : "Failed to load settings.";
     } finally {
@@ -3351,6 +3355,7 @@ async function save() {
     }
 
     busy.value = true;
+    savingSettings.value = true;
     try {
         const payload: any = {
             defaultLinkAccess: defaultLinkAccess.value,
@@ -3456,9 +3461,10 @@ async function save() {
             }
         }
 
-        // Save branding first if we're on that section (before reload overwrites refs)
-        if (activeSection.value === 'branding') {
+        // Save branding before reload() overwrites its refs
+        if (brandingDirty.value) {
             await saveBranding();
+            if (brandingError.value) throw new Error(`Branding wasn't saved: ${brandingError.value}`);
         }
 
         await reload();
@@ -3497,6 +3503,7 @@ async function save() {
         saveError.value = e?.message || "Failed to save settings.";
     } finally {
         busy.value = false;
+        savingSettings.value = false;
         setTimeout(() => { saveOk.value = false; }, 2000);
     }
 }
@@ -3573,52 +3580,127 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* ── Sidebar ─────────────────────────────────────────── */
+.settings-nav {
+    width: 13.5rem;
+    flex-shrink: 0;
+    overflow-y: auto;
+    padding: 0.9rem 0 1rem;
+    border-right: 1px solid var(--flow-line);
+    background: var(--flow-surface-sunken);
+}
 .settings-nav-group-label {
-    font-size: 0.625rem;
-    font-weight: 600;
+    padding: 0.85rem 1rem 0.3rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: rgb(156 163 175);
-    padding: 0.5rem 0.75rem 0.25rem;
-}
-:root.dark .settings-nav-group-label {
-    color: rgb(107 114 128);
-}
-.settings-nav-group-label:not(:first-child) {
-    margin-top: 0.5rem;
+    color: var(--ui-subtle-text);
 }
 .settings-nav-btn {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.375rem 0.75rem;
+    gap: 0.6rem;
+    width: calc(100% - 1rem);
+    margin: 0 0.5rem;
+    padding: 0.45rem 0.6rem;
     font-size: 0.8125rem;
     font-weight: 500;
-    color: rgb(107 114 128);
-    transition: all 0.15s ease;
-    border-left: 2px solid transparent;
-}
-:root.dark .settings-nav-btn {
-    color: rgb(156 163 175);
+    text-align: left;
+    color: var(--ui-subtle-text);
+    border-radius: var(--flow-radius-md);
+    transition: background 0.12s ease, color 0.12s ease;
 }
 .settings-nav-btn:hover {
-    color: rgb(55 65 81);
-    background-color: rgb(249 250 251);
+    color: inherit;
+    background: var(--flow-surface-hover);
 }
-:root.dark .settings-nav-btn:hover {
-    color: rgb(209 213 219);
-    background-color: rgba(255,255,255,0.05);
+.settings-nav-btn:focus-visible {
+    outline: 2px solid var(--ui-ring);
+    outline-offset: -2px;
 }
-.settings-nav-btn-active {
-    color: rgb(71 85 105);
-    background-color: rgba(71, 85, 105, 0.08);
+.settings-nav-btn-active,
+.settings-nav-btn-active:hover {
+    color: inherit;
     font-weight: 600;
-    border-left-color: rgb(71 85 105);
+    background: var(--flow-accent-soft);
+    box-shadow: inset 3px 0 0 var(--flow-accent-line);
 }
-:root.dark .settings-nav-btn-active {
-    color: rgb(148 163 184);
-    background-color: rgba(148, 163, 184, 0.1);
-    border-left-color: rgb(148 163 184);
+.settings-nav-icon {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex-shrink: 0;
+    opacity: 0.8;
+}
+
+/* ── Page ────────────────────────────────────────────── */
+.settings-content {
+    max-width: 100%;
+}
+.settings-page-head {
+    margin-bottom: 1.1rem;
+}
+.settings-page-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+.settings-page-desc {
+    margin-top: 0.2rem;
+    font-size: 0.8125rem;
+    color: var(--ui-subtle-text);
+    max-width: 40rem;
+}
+.settings-subhead {
+    margin: 1.4rem 0 0.45rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ui-subtle-text);
+}
+.settings-page-head + .settings-subhead,
+.settings-page-head + * .settings-subhead:first-child,
+.settings-subhead--first {
+    margin-top: 0;
+}
+
+/* A titled block of setting rows: one border, lines between rows */
+.settings-group {
+    border: 1px solid var(--flow-line);
+    border-radius: var(--flow-radius-lg);
+    padding: 0 1rem;
+}
+.settings-group > * + * {
+    border-top: 1px solid var(--flow-line);
+}
+
+/* Two-option picker (e.g. Local Network / Internet) */
+.settings-segmented {
+    display: inline-flex;
+    padding: 2px;
+    border: 1px solid var(--flow-line);
+    border-radius: var(--flow-radius-md);
+    background: var(--flow-surface-sunken);
+}
+.settings-segmented > button {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--ui-subtle-text);
+    border-radius: calc(var(--flow-radius-md) - 2px);
+    white-space: nowrap;
+}
+.settings-segmented > button:hover {
+    color: inherit;
+}
+.settings-segmented > button.is-on {
+    color: white;
+    font-weight: 600;
+    background: var(--btn-primary-fill);
+}
+.settings-segmented > button:focus-visible {
+    outline: 2px solid var(--ui-ring);
+    outline-offset: 1px;
 }
 </style>

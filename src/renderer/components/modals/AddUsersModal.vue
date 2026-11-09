@@ -1,397 +1,377 @@
 <template>
-  <FlowModal :model-value="modelValue" :title="linkMode ? 'Invite clients & teams' : 'Client Access'" size="xl"
+  <FlowModal :model-value="modelValue" :title="linkMode ? 'Invite clients & teams' : 'Client Access'"
+    :description="linkMode
+      ? 'Choose who can open this link and pick a role for each person or team.'
+      : 'Clients are people outside your company who sign in to open invite-only links.'"
+    size="xl" class="h-[min(46rem,calc(100vh-2rem))]" body-class="flex flex-col min-h-0 gap-3"
     :header-attrs="{ 'data-tour': 'users-modal-header' }" @close="close()">
-      <template #header-actions>
-          <button class="btn btn-secondary" @click="openGroups()">Teams</button>
-          <button class="btn btn-secondary" @click="openRoles()">Roles</button>
-      </template>
+    <template v-if="linkMode" #header-actions>
+      <button class="btn btn-secondary" @click="openGroups()">Manage teams</button>
+      <button class="btn btn-secondary" @click="openRoles()">Manage roles</button>
+    </template>
 
-      <div>
-        <div class="grid grid-cols-1 gap-4">
-          <!-- Existing users -->
-          <div class="border rounded p-3 bg-accent/60" data-tour="users-modal-list">
-            <div class="flex items-center justify-between mb-2">
-              <div class="font-semibold text-sm">{{ linkMode ? 'Choose clients' : 'Clients' }}</div>
-              <input type="text" v-model.trim="userSearch"
-                class="input-textlike border rounded px-2 py-1 text-sm  w-80"
-                placeholder="Search by name/username/email/company/tag" @input="debouncedFetchUsers()" />
-            </div>
+    <!-- Manage mode: one dialog, three tabs -->
+    <div v-if="!linkMode" class="flow-tabs shrink-0" role="tablist" aria-label="Client Access">
+      <button v-for="t in tabs" :key="t.key" :id="`access-tab-${t.key}`" class="flow-tab" role="tab"
+        :aria-selected="activeTab === t.key" :aria-controls="`access-panel-${t.key}`" @click="activeTab = t.key">
+        {{ t.label }}
+        <span v-if="t.count != null" class="flow-tab__count">{{ t.count }}</span>
+      </button>
+    </div>
 
-            <div class="max-h-[30vh] overflow-auto border rounded">
-              <div v-for="u in users" :key="u.id ?? u.username"
-                class="flex items-center justify-between px-3 py-2 border-b border-default text-sm">
-                <label v-if="linkMode" class="flex items-center gap-2 cursor-pointer" @click.stop>
-                  <input type="checkbox" :value="userKey(u)" v-model="selectedKeys" />
-                  <span class="inline-block h-3 w-3 rounded-full"
-                    :style="{ backgroundColor: u.display_color || '#999' }"></span>
-                  <div class="flex flex-col">
-                    <span class="font-medium">{{ u.name || u.username }}</span>
-                    <span class="opacity-70">
-                      @{{ u.username }}
-                      <span v-if="u.user_email">• {{ u.user_email }}</span>
-                    </span>
-                    <span v-if="u.company || (u.tags && u.tags.length)" class="opacity-60 text-xs">
-                      <span v-if="u.company">{{ u.company }}</span>
-                      <span v-if="u.company && u.tags && u.tags.length">•</span>
-                      <span v-if="u.tags && u.tags.length">{{ u.tags.join(', ') }}</span>
-                    </span>
-                  </div>
-                </label>
-                <div v-else class="flex items-center gap-2">
-                  <span class="inline-block h-3 w-3 rounded-full"
-                    :style="{ backgroundColor: u.display_color || '#999' }"></span>
-                  <div class="flex flex-col">
-                    <span class="font-medium">{{ u.name || u.username }}</span>
-                    <span class="opacity-70">
-                      @{{ u.username }}
-                      <span v-if="u.user_email">• {{ u.user_email }}</span>
-                    </span>
-                    <span v-if="u.company || (u.tags && u.tags.length)" class="opacity-60 text-xs">
-                      <span v-if="u.company">{{ u.company }}</span>
-                      <span v-if="u.company && u.tags && u.tags.length">•</span>
-                      <span v-if="u.tags && u.tags.length">{{ u.tags.join(', ') }}</span>
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Actions -->
-                <div class="flex items-center gap-2">
-                  <select
-                    v-if="linkMode"
-                    v-model.number="roleByKey[userKey(u)]"
-                    :disabled="!selectedKeys.includes(userKey(u)) || rolesLoading || !roles.length"
-                    class="input-textlike border rounded px-2 py-1 text-xs min-w-[140px]"
-                    title="Role for this link"
-                  >
-                    <option v-if="rolesLoading" disabled value="">Loading roles…</option>
-                    <option v-else-if="!roles.length" disabled value="">No roles</option>
-                    <option v-else v-for="r in roles" :key="r.id" :value="r.id">
-                      {{ r.name }}
-                    </option>
-                  </select>
-                  <button class="px-2 py-1 text-xs border rounded hover:opacity-80" @click.stop="startEdit(u)"
-                    title="Edit client">
-                    <FontAwesomeIcon :icon="faEdit" />
-                  </button>
-                  <button class="px-2 py-1 text-xs border rounded flow-tone-danger"
-                    @click.stop="deleteUser(u)" title="Delete client">
-                    <FontAwesomeIcon :icon="faTrash" />
-                  </button>
-                </div>
-              </div>
-              <div v-if="!users.length" class="px-3 py-2 text-sm opacity-70">No clients yet.</div>
-            </div>
-
-            <div v-if="linkMode" class="flex gap-2 mt-2">
-              <button class="btn btn-secondary" @click="selectAll()" :disabled="!users.length">Select all</button>
-              <button class="btn btn-secondary" @click="clearSelected()" :disabled="!selectedKeys.length">
-                Clear
-              </button>
-            </div>
-          </div>
-
-          <!-- Groups section (link mode) -->
-          <div v-if="linkMode && groups.length" class="border rounded p-3 bg-accent/60" data-tour="users-modal-groups">
-            <div class="font-semibold text-sm mb-2">Choose teams</div>
-            <div class="max-h-[30vh] overflow-auto border rounded">
-              <div v-for="g in groups" :key="g.id"
-                class="border-b border-default text-sm">
-                <div class="flex items-center justify-between px-3 py-2">
-                  <label class="flex items-center gap-2 cursor-pointer flex-1" @click.stop>
-                    <input type="checkbox" :value="g.id" v-model="selectedGroupIds" />
-                    <span class="inline-block h-3 w-3 rounded-full"
-                      :style="{ backgroundColor: g.display_color || '#999' }"></span>
-                    <div class="flex flex-col">
-                      <span class="font-medium">{{ g.name }}</span>
-                      <span class="opacity-60 text-xs">
-                        {{ g.member_count ?? 0 }} member{{ (g.member_count ?? 0) === 1 ? '' : 's' }}
-                        <span v-if="g.description"> • {{ g.description }}</span>
-                      </span>
-                    </div>
-                  </label>
-                  <div class="flex items-center gap-2">
-                    <select v-model.number="groupRoleById[g.id]"
-                      :disabled="!selectedGroupIds.includes(g.id) || rolesLoading || !roles.length"
-                      class="input-textlike border rounded px-2 py-1 text-xs min-w-[140px]"
-                      title="Role for this team">
-                      <option v-if="rolesLoading" disabled value="">Loading roles…</option>
-                      <option v-else-if="!roles.length" disabled value="">No roles</option>
-                      <option v-else v-for="r in roles" :key="r.id" :value="r.id">
-                        {{ r.name }}
-                      </option>
-                    </select>
-                    <button class="px-2 py-1 text-xs border rounded hover:opacity-80"
-                      @click.stop="toggleGroupMembers(g.id)"
-                      :title="expandedGroupIds.has(g.id) ? 'Hide members' : 'Show members'">
-                      <FontAwesomeIcon :icon="expandedGroupIds.has(g.id) ? faChevronUp : faChevronDown" />
-                    </button>
-                  </div>
-                </div>
-                <div v-if="expandedGroupIds.has(g.id)" class="px-8 pb-2">
-                  <div v-if="groupMembersCache[g.id]?.length" class="flex flex-wrap gap-1">
-                    <span v-for="m in groupMembersCache[g.id]" :key="m.user_id"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border">
-                      <span class="inline-block h-2 w-2 rounded-full"
-                        :style="{ backgroundColor: m.display_color || '#999' }"></span>
-                      {{ m.name || m.user_name }}
-                    </span>
-                  </div>
-                  <div v-else class="text-xs opacity-60">No members</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Add client -->
-          <div class="flex flex-col gap-2" data-tour="users-modal-create">
-            <div class="mr-auto">
-              <button v-if="!showCreate"
-                class="btn btn-primary"
-                @click="openCreate()">Add client</button>
-              <button v-else
-                class="btn btn-dismiss"
-                @click="closeCreate()">
-                Cancel
-              </button>
-            </div>
-            <div v-if="showCreate" class="border rounded p-3 bg-accent/60 max-h-[50vh] overflow-auto">
-              <div class="font-semibold text-sm mb-2">Add client</div>
-              <div class="flex flex-col gap-2">
-                <div class="text-xs opacity-70 mb-1">Set a temporary password and send it to your client securely.</div>
-                <div class="grid grid-cols-2 gap-2 text-left">
-                  <div>
-                    <label class="text-xs opacity-80">Name <span class="text-flow-danger">*</span></label>
-                    <input type="text" v-model.trim="newUser.name" tabindex="1"
-                      class="input-textlike border rounded px-3 py-2 w-full" placeholder="Jane Doe" />
-                  </div>
-                  <div>
-                    <label class="text-xs opacity-80">Username <span class="text-flow-danger">*</span></label>
-                    <input type="text" v-model.trim="newUser.username" tabindex="2"
-                      class="input-textlike border rounded px-3 py-2 w-full" placeholder="jane" />
-                  </div>
-                  <div>
-                    <div class="relative">
-                      <label class="text-xs opacity-80 pr-28 inline-block">
-                        Temporary Password <span class="text-flow-danger">*</span>
-                      </label>
-                      <button type="button"
-                        class="absolute right-0 top-0 text-xs underline opacity-80 hover:opacity-100 mt-1.5"
-                        @click="generateTempPassword">
-                        Generate password
-                      </button>
-                    </div>
-                    <div class="relative">
-                      <input :type="showTempPassword ? 'text' : 'password'"
-                        v-model.trim="tempPassword" tabindex="3"
-                        :class="['input-textlike border rounded px-3 py-2 w-full pr-12', (passwordFormatInvalid ? 'border-flow-danger' : '')]"
-                        placeholder="4–64 characters" aria-invalid="true"
-                        v-bind="passwordFormatInvalid ? { 'aria-describedby': 'password-format-error' } : {}" />
-                      <button type="button"
-                        class="absolute right-2 top-1/2 -translate-y-1/2 text-xs border rounded px-2 py-1"
-                        @click="showTempPassword = !showTempPassword" :aria-pressed="showTempPassword ? 'true' : 'false'">
-                        {{ showTempPassword ? 'Hide' : 'Show' }}
-                      </button>
-                    </div>
-                    <p v-if="passwordFormatInvalid" id="password-format-error" class="mt-1 text-xs text-flow-danger">
-                      Password must be 4–64 characters.
-                    </p>
-                  </div>
-                   <div>
-                    <label class="text-xs opacity-80">Confirm Password <span class="text-flow-danger">*</span></label>
-                    <div class="relative">
-                      <input :type="showTempPasswordConfirm ? 'text' : 'password'"
-                        v-model.trim="tempPasswordConfirm" tabindex="4"
-                        :class="['input-textlike border rounded px-3 py-2 w-full pr-12', (passwordMismatch ? 'border-flow-danger' : '')]"
-                        placeholder="Re-enter password" aria-invalid="true"
-                        v-bind="passwordMismatch ? { 'aria-describedby': 'password-mismatch-error' } : {}" />
-                      <button type="button"
-                        class="absolute right-2 top-1/2 -translate-y-1/2 text-xs border rounded px-2 py-1"
-                        @click="showTempPasswordConfirm = !showTempPasswordConfirm" :aria-pressed="showTempPasswordConfirm ? 'true' : 'false'">
-                        {{ showTempPasswordConfirm ? 'Hide' : 'Show' }}
-                      </button>
-                    </div>
-                    <p v-if="passwordMismatch" id="password-mismatch-error" class="mt-1 text-xs text-flow-danger">Passwords do not match.</p>
-                  </div>
-                  <div>
-                    <label class="text-xs opacity-80">Email (optional)</label>
-                    <input type="email" v-model.trim="newUser.user_email" tabindex="5"
-                      class="input-textlike border rounded px-3 py-2 w-full" placeholder="jane@example.com" />
-                  </div>
-                  <div>
-                    <label class="text-xs opacity-80">Company (optional)</label>
-                    <input type="text" v-model.trim="newUser.company" tabindex="6"
-                      class="input-textlike border rounded px-3 py-2 w-full" placeholder="Acme Corp" />
-                  </div>
-                  <div class="col-span-2">
-                    <label class="text-xs opacity-80">Tags (optional)</label>
-                    <input type="text" v-model.trim="newUserTagsInput" tabindex="7"
-                      class="input-textlike border rounded px-3 py-2 w-full" placeholder="finance, vip, internal" />
-                  </div>
-                  <div>
-                    <label class="text-xs opacity-80">Default role (new links)</label>
-                    <select v-model="newUserDefaultRoleId" :disabled="rolesLoading || !roles.length" tabindex="8"
-                      class="input-textlike border rounded px-3 py-2 w-full">
-                      <option :value="null">None</option>
-                      <option v-if="rolesLoading" disabled value="">Loading roles…</option>
-                      <option v-else-if="!roles.length" disabled value="">No roles</option>
-                      <option v-else v-for="r in roles" :key="r.id" :value="r.id">
-                        {{ r.name }}
-                      </option>
-                    </select>
-                  </div>
-                  <div v-if="linkMode" class="col-span-2">
-                    <label class="text-xs opacity-80">Role for this link</label>
-                    <select v-model.number="newUserRoleId" :disabled="rolesLoading || !roles.length" tabindex="9"
-                      class="input-textlike border rounded px-3 py-2 w-full">
-                      <option v-if="rolesLoading" disabled value="">Loading roles…</option>
-                      <option v-else-if="!roles.length" disabled value="">No roles</option>
-                      <option v-else v-for="r in roles" :key="r.id" :value="r.id">
-                        {{ r.name }}
-                      </option>
-                    </select>
-                  </div>
-                  <div class="col-span-2">
-                    <div class="flex items-center justify-between">
-                      <label class="text-xs opacity-80">Teams (optional)</label>
-                      <button type="button" class="text-xs underline opacity-80 hover:opacity-100" @click="openGroups()">
-                        New team
-                      </button>
-                    </div>
-                    <div v-if="groups.length" class="mt-1 border rounded p-2 max-h-32 overflow-auto">
-                      <label v-for="g in groups" :key="g.id"
-                        class="flex items-center gap-2 py-0.5 cursor-pointer text-sm">
-                        <input type="checkbox" :value="g.id" v-model="newUserGroupIds" />
-                        <span class="inline-block h-2.5 w-2.5 rounded-full"
-                          :style="{ backgroundColor: g.display_color || '#999' }"></span>
-                        <span>{{ g.name }}</span>
-                        <span class="opacity-50 text-xs">({{ g.member_count ?? 0 }})</span>
-                      </label>
-                    </div>
-                    <div v-else class="mt-1 text-xs opacity-60">No teams yet.</div>
-                  </div>
-                </div>
-             
-                <div class="col-span-2 text-left">
-                  <label class="text-xs opacity-80">Comment color</label>
-                  <div class="flex items-center gap-2">
-                    <input type="color" v-model="newUser.display_color" class="h-8 w-10 p-0 border rounded"
-                      title="Pick a color" />
-                    <input type="text" v-model.trim="newUser.display_color" tabindex="10"
-                      class="input-textlike border rounded px-3 py-2 w-full" placeholder="#aabbcc" />
-                  </div>
-                  <div class="text-xs opacity-70 mt-1">Used to color this client’s comments.</div>
-                </div>
-
-                <div v-if="error" class="text-sm text-flow-danger">{{ error }}</div>
-
-                <div class="flex flex-row w-full justify-between mt-2 sticky bottom-0 bg-accent/95 py-2 border-t border-default -mb-1">
-
-                  <button class="btn btn-secondary" @click="resetNewUser()">Reset</button>
-                  <button class="btn btn-primary" @click="createUser()" tabindex="11" :disabled="!canSubmit">{{linkMode ? 'Add & Invite Client' : 'Add Client'}}</button>
-                </div>
-              </div>
-            </div>
-          </div>
+    <!-- ── Clients ── -->
+    <section v-show="linkMode || activeTab === 'clients'" id="access-panel-clients" role="tabpanel"
+      aria-labelledby="access-tab-clients" class="flex flex-col gap-3 min-h-0"
+      :class="linkMode ? 'shrink-0' : 'flex-1'" data-tour="users-modal-list">
+      <div class="flex flex-wrap items-center gap-2">
+        <h3 v-if="linkMode" class="text-sm font-semibold mr-auto">
+          Clients <span class="font-normal text-muted">· {{ selectedKeys.length }} selected</span>
+        </h3>
+        <div class="relative" :class="linkMode ? 'w-64' : 'flex-1 min-w-[14rem]'">
+          <MagnifyingGlassIcon class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 opacity-60" aria-hidden="true" />
+          <input v-model.trim="userSearch" type="search" aria-label="Search clients"
+            class="input-textlike w-full pl-8 pr-3 py-2 text-sm" placeholder="Search name, email, company or tag"
+            @input="debouncedFetchUsers()" />
+        </div>
+        <div data-tour="users-modal-create">
+          <button class="btn" :class="linkMode ? 'btn-secondary' : 'btn-primary'" @click="openCreate()">Add client</button>
         </div>
       </div>
 
-      <template #footer>
-      <div class="flex items-center justify-between gap-2 w-full" data-tour="users-modal-actions">
-        <span v-if="linkMode" class="text-xs opacity-60">
-          {{ selectedKeys.length + selectedGroupIds.length }} user{{ selectedKeys.length + selectedGroupIds.length === 1 ? '' : 's'}}/group{{ selectedKeys.length + selectedGroupIds.length === 1 ? '' : 's'}} selected
-        </span>
-        <span v-else></span>
-        <div class="flex gap-2">
-          <button class="btn btn-dismiss" @click="close()">{{ linkMode ? 'Cancel' : 'Close' }}</button>
-          <button v-if="linkMode" class="btn btn-success" @click="apply()" :disabled="!selectedKeys.length && !selectedGroupIds.length">Add selected to link</button>
-        </div>
-      </div>
-      </template>
-  </FlowModal>
+      <ul v-if="users.length" class="flow-list overflow-y-auto min-h-0" :class="{ 'max-h-[16rem]': linkMode }" aria-label="Clients">
+        <li v-for="u in users" :key="u.id ?? u.username">
+          <component :is="linkMode ? 'label' : 'div'" class="flow-list__row"
+            :class="linkMode ? ['flow-list__row--interactive', { 'flow-list__row--selected': selectedKeys.includes(userKey(u)) }] : []">
+            <input v-if="linkMode" type="checkbox" :value="userKey(u)" v-model="selectedKeys" class="styled-checkbox"
+              :aria-label="`Invite ${u.name || u.username}`" />
+            <span class="flow-avatar" :style="avatarStyle(u.display_color)" aria-hidden="true">{{ initials(u.name || u.username) }}</span>
+            <div class="min-w-0 flex-1">
+              <p class="flow-list__title truncate">{{ u.name || u.username }}</p>
+              <p class="flow-list__meta truncate">@{{ u.username }}<template v-if="u.user_email"> · {{ u.user_email }}</template></p>
+              <div v-if="u.company || u.tags?.length || (!linkMode && defaultRoleLabel(u))" class="flex flex-wrap gap-1 mt-1">
+                <span v-if="u.company" class="flow-chip flow-chip--sm flow-chip--neutral">{{ u.company }}</span>
+                <span v-for="tag in u.tags" :key="tag" class="flow-chip flow-chip--sm flow-chip--muted">{{ tag }}</span>
+                <span v-if="!linkMode && defaultRoleLabel(u)" class="flow-chip flow-chip--sm flow-chip--info"
+                  title="Role picked for this client when you invite them to a new link">Default: {{ defaultRoleLabel(u) }}</span>
+              </div>
+            </div>
+            <span v-if="linkMode && !selectedKeys.includes(userKey(u))" class="w-36 shrink-0 text-xs text-muted text-right pr-2">Not invited</span>
+            <select v-else-if="linkMode" v-model.number="roleByKey[userKey(u)]" aria-label="Role on this link"
+              :disabled="rolesLoading || !roles.length"
+              class="input-textlike px-2 py-1 text-xs w-36 shrink-0" title="Role on this link" @click.stop>
+              <option v-if="rolesLoading" disabled value="">Loading roles…</option>
+              <option v-else-if="!roles.length" disabled value="">No roles</option>
+              <option v-else v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
+            </select>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button type="button" class="btn btn-secondary btn-xs" @click.stop.prevent="startEdit(u)">Edit</button>
+              <button type="button" class="btn btn-danger btn-xs" @click.stop.prevent="deleteUser(u)">Delete</button>
+            </div>
+          </component>
+        </li>
+      </ul>
+      <FlowEmpty v-else-if="userSearch" compact title="No matching clients" description="Try a different name, email, company or tag." />
+      <FlowEmpty v-else :compact="linkMode" title="No clients yet"
+        description="Add a client to give them their own sign-in for invite-only links.">
+        <template #actions><button class="btn btn-primary" @click="openCreate()">Add client</button></template>
+      </FlowEmpty>
 
-  <!-- Edit modal -->
-  <FlowModal :model-value="!!editing" title="Edit client" size="sm" @close="editing = null">
-      <div v-if="editing" class="space-y-3">
-        <div>
-          <label class="text-xs opacity-80">Username</label>
-          <input class="input-textlike border rounded px-3 py-2 w-full bg-gray-600/20 opacity-70"
-            :value="editing.username" disabled />
-        </div>
-        <div>
-          <label class="text-xs opacity-80">Name</label>
-          <input v-model.trim="editForm.name" class="input-textlike border rounded px-3 py-2 w-full" />
-        </div>
-        <div>
-          <label class="text-xs opacity-80">Email</label>
-          <input v-model.trim="editForm.user_email" type="email"
-            class="input-textlike border rounded px-3 py-2 w-full" />
-        </div>
-        <div>
-          <label class="text-xs opacity-80">Company</label>
-          <input v-model.trim="editForm.company" type="text"
-            class="input-textlike border rounded px-3 py-2 w-full" />
-        </div>
-        <div>
-          <label class="text-xs opacity-80">Tags</label>
-          <input v-model.trim="editForm.tags_text" type="text"
-            class="input-textlike border rounded px-3 py-2 w-full" placeholder="finance, vip, internal" />
-        </div>
-        <div>
-          <label class="text-xs opacity-80">Comment color</label>
-          <div class="flex items-center gap-2">
-            <input type="color" v-model="editForm.display_color" class="h-8 w-10 p-0 border rounded" />
-            <input v-model.trim="editForm.display_color"
-              class="input-textlike border rounded px-3 py-2 w-full" />
-          </div>
-        </div>
-        <div>
-          <label class="text-xs opacity-80">Default role (new links)</label>
-          <select v-model="editForm.default_role_id" :disabled="rolesLoading || !roles.length"
-            class="input-textlike border rounded px-3 py-2 w-full">
-            <option :value="null">None</option>
-            <option v-if="rolesLoading" disabled value="">Loading roles…</option>
-            <option v-else-if="!roles.length" disabled value="">No roles</option>
-            <option v-else v-for="r in roles" :key="r.id" :value="r.id">
-              {{ r.name }}
-            </option>
-          </select>
-        </div>
-        <div>
-          <div class="flex items-center justify-between">
-            <label class="text-xs opacity-80">Groups</label>
-            <button type="button" class="text-xs underline opacity-80 hover:opacity-100" @click="openGroups()">
-              New team
+      <div v-if="linkMode && users.length" class="flex gap-3 text-xs">
+        <button type="button" class="text-primary hover:underline" @click="selectAll()">Select all</button>
+        <button type="button" class="text-primary hover:underline disabled:opacity-50 disabled:no-underline"
+          :disabled="!selectedKeys.length" @click="clearSelected()">Clear selection</button>
+      </div>
+    </section>
+
+    <!-- ── Teams: pick (link mode) ── -->
+    <section v-if="linkMode" class="flex flex-col gap-2 min-h-0 flex-1" data-tour="users-modal-groups">
+      <div class="flex items-center gap-2">
+        <h3 class="text-sm font-semibold mr-auto">
+          Teams <span class="font-normal text-muted">· {{ selectedGroupIds.length }} selected</span>
+        </h3>
+      </div>
+      <ul v-if="groups.length" class="flow-list overflow-y-auto min-h-0" aria-label="Teams">
+        <li v-for="g in groups" :key="g.id" class="flow-list__group">
+          <label class="flow-list__row flow-list__row--interactive"
+            :class="{ 'flow-list__row--selected': selectedGroupIds.includes(g.id) }">
+            <input type="checkbox" :value="g.id" v-model="selectedGroupIds" class="styled-checkbox" :aria-label="`Invite team ${g.name}`" />
+            <span class="flow-avatar flow-avatar--team" :style="avatarStyle(g.display_color)" aria-hidden="true">{{ initials(g.name) }}</span>
+            <div class="min-w-0 flex-1">
+              <p class="flow-list__title truncate">{{ g.name }}</p>
+              <p class="flow-list__meta truncate">
+                {{ g.member_count ?? 0 }} member{{ (g.member_count ?? 0) === 1 ? '' : 's' }}<template v-if="g.description"> · {{ g.description }}</template>
+              </p>
+            </div>
+            <span v-if="!selectedGroupIds.includes(g.id)" class="w-36 shrink-0 text-xs text-muted text-right pr-2">Not invited</span>
+            <select v-else v-model.number="groupRoleById[g.id]" aria-label="Role for this team on this link"
+              :disabled="rolesLoading || !roles.length"
+              class="input-textlike px-2 py-1 text-xs w-36 shrink-0" title="Role for this team" @click.stop>
+              <option v-if="rolesLoading" disabled value="">Loading roles…</option>
+              <option v-else-if="!roles.length" disabled value="">No roles</option>
+              <option v-else v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
+            </select>
+            <button type="button" class="btn btn-secondary btn-xs shrink-0" :aria-expanded="expandedGroupIds.has(g.id)"
+              @click.stop.prevent="toggleGroupMembers(g.id)">
+              {{ expandedGroupIds.has(g.id) ? 'Hide members' : 'Members' }}
             </button>
+          </label>
+          <div v-if="expandedGroupIds.has(g.id)" class="pr-4 pb-3 pl-[5.25rem] -mt-1">
+            <div v-if="groupMembersCache[g.id]?.length" class="flex flex-wrap gap-1.5">
+              <span v-for="m in groupMembersCache[g.id]" :key="m.user_id" class="flow-chip flow-chip--muted">
+                <span class="flow-dot" :style="{ background: m.display_color || '#cbd5e1' }" aria-hidden="true" />
+                {{ m.name || m.user_name }}
+              </span>
+            </div>
+            <div v-else class="text-xs text-muted">No members</div>
           </div>
-          <div v-if="groups.length" class="mt-1 border rounded p-2 max-h-32 overflow-auto">
-            <label v-for="g in groups" :key="g.id"
-              class="flex items-center gap-2 py-0.5 cursor-pointer text-sm">
-              <input type="checkbox" :value="g.id" v-model="editGroupIds" />
-              <span class="inline-block h-2.5 w-2.5 rounded-full"
-                :style="{ backgroundColor: g.display_color || '#999' }"></span>
-              <span>{{ g.name }}</span>
-              <span class="opacity-50 text-xs">({{ g.member_count ?? 0 }})</span>
-            </label>
-          </div>
-          <div v-else class="mt-1 text-xs opacity-60">No teams yet.</div>
-        </div>
-        <div class="items-center text-center">
-          <button class="btn btn-primary" @click="openReset(editing)" title="Reset this client’s password">
-            Reset Password
+        </li>
+      </ul>
+      <p v-else class="text-xs text-muted">
+        No teams yet. Use <button type="button" class="text-primary hover:underline" @click="openGroups()">Manage teams</button>
+        to group clients you often invite together.
+      </p>
+    </section>
+
+    <!-- ── Teams / Roles: manage (dashboard) ── -->
+    <section v-if="!linkMode && activeTab === 'teams'" id="access-panel-teams" role="tabpanel"
+      aria-labelledby="access-tab-teams" class="flex flex-col min-h-0 flex-1">
+      <TeamsPanel :apiFetch="apiFetch" @updated="fetchGroups" />
+    </section>
+    <section v-if="!linkMode && activeTab === 'roles'" id="access-panel-roles" role="tabpanel"
+      aria-labelledby="access-tab-roles" class="flex flex-col min-h-0 flex-1">
+      <RolesPanel :apiFetch="apiFetch" @updated="fetchRoles" />
+    </section>
+
+    <template v-if="linkMode" #footer>
+      <div class="flex items-center justify-between gap-2 w-full" data-tour="users-modal-actions">
+        <span class="text-xs text-muted">{{ selectionSummary }}</span>
+        <div class="flex gap-2">
+          <button class="btn btn-dismiss" @click="close()">Cancel</button>
+          <button class="btn btn-success" @click="apply()" :disabled="!selectedKeys.length && !selectedGroupIds.length">
+            Add selected to link
           </button>
         </div>
       </div>
-
-      <template #footer>
-        <button class="btn btn-dismiss" @click="editing = null">Cancel</button>
-        <button class="btn btn-success" @click="saveEdit()" :disabled="!(hasProfileEdits || pendingResetPassword)">
-          Save
-        </button>
-      </template>
+    </template>
   </FlowModal>
-  <ConfirmDeleteModal v-model="deleteOpen" :title="'Delete client'"
-    :message="userToDelete ? `Delete “${userToDelete.name || userToDelete.username}”? This cannot be undone.` : ''"
-    :danger="true" :busy="deleting" :error="deleteError" :clickOutsideCancels="true" confirmText="Delete"
+
+  <!-- Add client -->
+  <FlowModal v-model="showCreate" :title="linkMode ? 'Add & invite a client' : 'Add client'"
+    description="Set a temporary password and send it to your client securely." size="lg">
+    <form id="add-client-form" class="flex flex-col gap-5" @submit.prevent="createUser()">
+      <fieldset class="client-form__grid">
+        <legend class="client-form__legend">Sign-in</legend>
+        <FlowField label="Name" required>
+          <template #default="{ id }">
+            <input :id="id" v-model.trim="newUser.name" autofocus class="input-textlike w-full px-3 py-2" placeholder="Jane Doe" />
+          </template>
+        </FlowField>
+        <FlowField label="Username" required help="What they type to sign in.">
+          <template #default="{ id, describedBy }">
+            <input :id="id" v-model.trim="newUser.username" :aria-describedby="describedBy" autocomplete="off"
+              class="input-textlike w-full px-3 py-2" placeholder="jane" />
+          </template>
+        </FlowField>
+        <FlowField label="Temporary password" required :error="passwordFormatInvalid ? 'Password must be 4–64 characters.' : null">
+          <template #default="{ id, describedBy }">
+            <div class="relative">
+              <input :id="id" :type="showTempPassword ? 'text' : 'password'" v-model.trim="tempPassword"
+                :aria-describedby="describedBy" :aria-invalid="passwordFormatInvalid" autocomplete="new-password"
+                class="input-textlike w-full px-3 py-2 pr-14" placeholder="4–64 characters" />
+              <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 btn btn-secondary btn-xs"
+                :aria-pressed="showTempPassword" @click="showTempPassword = !showTempPassword">
+                {{ showTempPassword ? 'Hide' : 'Show' }}
+              </button>
+            </div>
+          </template>
+          <template #help>
+            <button type="button" class="text-primary hover:underline" @click="generateTempPassword">Generate a password</button>
+          </template>
+        </FlowField>
+        <FlowField label="Confirm password" required :error="passwordMismatch ? 'Passwords do not match.' : null">
+          <template #default="{ id, describedBy }">
+            <div class="relative">
+              <input :id="id" :type="showTempPasswordConfirm ? 'text' : 'password'" v-model.trim="tempPasswordConfirm"
+                :aria-describedby="describedBy" :aria-invalid="passwordMismatch" autocomplete="new-password"
+                class="input-textlike w-full px-3 py-2 pr-14" placeholder="Re-enter password" />
+              <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 btn btn-secondary btn-xs"
+                :aria-pressed="showTempPasswordConfirm" @click="showTempPasswordConfirm = !showTempPasswordConfirm">
+                {{ showTempPasswordConfirm ? 'Hide' : 'Show' }}
+              </button>
+            </div>
+          </template>
+        </FlowField>
+      </fieldset>
+
+      <fieldset class="client-form__grid">
+        <legend class="client-form__legend">Details</legend>
+        <FlowField label="Email" optional>
+          <template #default="{ id }">
+            <input :id="id" type="email" v-model.trim="newUser.user_email" class="input-textlike w-full px-3 py-2" placeholder="jane@example.com" />
+          </template>
+        </FlowField>
+        <FlowField label="Company" optional>
+          <template #default="{ id }">
+            <input :id="id" v-model.trim="newUser.company" class="input-textlike w-full px-3 py-2" placeholder="Acme Corp" />
+          </template>
+        </FlowField>
+        <FlowField label="Tags" optional help="Separate with commas. Handy for searching.">
+          <template #default="{ id, describedBy }">
+            <input :id="id" v-model.trim="newUserTagsInput" :aria-describedby="describedBy" class="input-textlike w-full px-3 py-2" placeholder="finance, vip" />
+          </template>
+        </FlowField>
+        <FlowField label="Comment colour" help="Colours this client's comments.">
+          <template #default="{ id, describedBy }">
+            <div class="flex items-center gap-2">
+              <input type="color" :value="normalizeHex(newUser.display_color) || '#cccccc'" aria-label="Pick a colour"
+                class="h-9 w-11 p-0.5 rounded-md border border-default bg-default cursor-pointer"
+                @input="newUser.display_color = ($event.target as HTMLInputElement).value" />
+              <input :id="id" v-model.trim="newUser.display_color" :aria-describedby="describedBy"
+                class="input-textlike w-full px-3 py-2 font-mono text-sm" placeholder="#aabbcc" />
+            </div>
+          </template>
+        </FlowField>
+      </fieldset>
+
+      <fieldset class="client-form__grid">
+        <legend class="client-form__legend">Access</legend>
+        <FlowField label="Default role" help="Picked for them when you invite them to a new link.">
+          <template #default="{ id, describedBy }">
+            <select :id="id" v-model="newUserDefaultRoleId" :aria-describedby="describedBy" :disabled="rolesLoading || !roles.length"
+              class="input-textlike w-full px-3 py-2">
+              <option :value="null">None</option>
+              <option v-if="rolesLoading" disabled value="">Loading roles…</option>
+              <option v-else-if="!roles.length" disabled value="">No roles</option>
+              <option v-else v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
+            </select>
+          </template>
+        </FlowField>
+        <FlowField v-if="linkMode" label="Role on this link">
+          <template #default="{ id }">
+            <select :id="id" v-model.number="newUserRoleId" :disabled="rolesLoading || !roles.length" class="input-textlike w-full px-3 py-2">
+              <option v-if="rolesLoading" disabled value="">Loading roles…</option>
+              <option v-else-if="!roles.length" disabled value="">No roles</option>
+              <option v-else v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
+            </select>
+          </template>
+        </FlowField>
+        <div class="client-form__full flex flex-col gap-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium">Teams <span class="font-normal opacity-70">(optional)</span></span>
+            <button type="button" class="text-xs text-primary hover:underline" @click="openGroups()">New team</button>
+          </div>
+          <div v-if="groups.length" class="flex flex-wrap gap-2">
+            <label v-for="g in groups" :key="g.id" class="client-team-pill"
+              :class="{ 'client-team-pill--on': newUserGroupIds.includes(g.id) }">
+              <input type="checkbox" :value="g.id" v-model="newUserGroupIds" class="sr-only" />
+              <span class="flow-dot" :style="{ background: g.display_color || '#cbd5e1' }" aria-hidden="true" />
+              {{ g.name }}
+            </label>
+          </div>
+          <p v-else class="text-xs text-muted">No teams yet.</p>
+        </div>
+      </fieldset>
+
+      <p v-if="error" class="text-sm text-flow-danger" role="alert">{{ error }}</p>
+    </form>
+
+    <template #footer>
+      <button type="button" class="btn btn-secondary mr-auto" @click="resetNewUser()">Clear form</button>
+      <button type="button" class="btn btn-dismiss" @click="closeCreate()">Cancel</button>
+      <button type="submit" form="add-client-form" class="btn btn-primary" :disabled="!canSubmit">
+        {{ linkMode ? 'Add & invite client' : 'Add client' }}
+      </button>
+    </template>
+  </FlowModal>
+
+  <!-- Edit client -->
+  <FlowModal :model-value="!!editing" :title="editing ? `Edit ${editing.name || editing.username}` : 'Edit client'"
+    :description="editing ? `Signs in as @${editing.username}` : undefined" size="lg" @close="editing = null">
+    <form v-if="editing" id="edit-client-form" class="flex flex-col gap-5" @submit.prevent="saveEdit()">
+      <fieldset class="client-form__grid">
+        <legend class="client-form__legend">Details</legend>
+        <FlowField label="Name">
+          <template #default="{ id }">
+            <input :id="id" v-model.trim="editForm.name" class="input-textlike w-full px-3 py-2" />
+          </template>
+        </FlowField>
+        <FlowField label="Email" optional>
+          <template #default="{ id }">
+            <input :id="id" v-model.trim="editForm.user_email" type="email" class="input-textlike w-full px-3 py-2" />
+          </template>
+        </FlowField>
+        <FlowField label="Company" optional>
+          <template #default="{ id }">
+            <input :id="id" v-model.trim="editForm.company" class="input-textlike w-full px-3 py-2" />
+          </template>
+        </FlowField>
+        <FlowField label="Tags" optional help="Separate with commas.">
+          <template #default="{ id, describedBy }">
+            <input :id="id" v-model.trim="editForm.tags_text" :aria-describedby="describedBy" class="input-textlike w-full px-3 py-2" placeholder="finance, vip" />
+          </template>
+        </FlowField>
+        <FlowField label="Comment colour">
+          <template #default="{ id }">
+            <div class="flex items-center gap-2">
+              <input type="color" :value="normalizeHex(editForm.display_color) || '#cccccc'" aria-label="Pick a colour"
+                class="h-9 w-11 p-0.5 rounded-md border border-default bg-default cursor-pointer"
+                @input="editForm.display_color = ($event.target as HTMLInputElement).value" />
+              <input :id="id" v-model.trim="editForm.display_color" class="input-textlike w-full px-3 py-2 font-mono text-sm" />
+            </div>
+          </template>
+        </FlowField>
+        <FlowField label="Default role" help="Picked for them when you invite them to a new link.">
+          <template #default="{ id, describedBy }">
+            <select :id="id" v-model="editForm.default_role_id" :aria-describedby="describedBy" :disabled="rolesLoading || !roles.length"
+              class="input-textlike w-full px-3 py-2">
+              <option :value="null">None</option>
+              <option v-if="rolesLoading" disabled value="">Loading roles…</option>
+              <option v-else-if="!roles.length" disabled value="">No roles</option>
+              <option v-else v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
+            </select>
+          </template>
+        </FlowField>
+      </fieldset>
+
+      <fieldset class="flex flex-col gap-1.5">
+        <legend class="client-form__legend">Teams</legend>
+        <div class="flex items-center justify-end -mt-1">
+          <button type="button" class="text-xs text-primary hover:underline" @click="openGroups()">New team</button>
+        </div>
+        <div v-if="groups.length" class="flex flex-wrap gap-2">
+          <label v-for="g in groups" :key="g.id" class="client-team-pill"
+            :class="{ 'client-team-pill--on': editGroupIds.includes(g.id) }">
+            <input type="checkbox" :value="g.id" v-model="editGroupIds" class="sr-only" />
+            <span class="flow-dot" :style="{ background: g.display_color || '#cbd5e1' }" aria-hidden="true" />
+            {{ g.name }}
+          </label>
+        </div>
+        <p v-else class="text-xs text-muted">No teams yet.</p>
+      </fieldset>
+
+      <fieldset class="flex flex-col gap-2">
+        <legend class="client-form__legend">Password</legend>
+        <div class="flex flex-wrap items-center gap-3">
+          <button type="button" class="btn btn-secondary" @click="openReset(editing)">Reset password…</button>
+          <span v-if="pendingResetPassword" class="text-xs text-flow-info">New password is set when you save.</span>
+          <span v-else class="text-xs text-muted">Give them a new temporary password.</span>
+        </div>
+      </fieldset>
+
+      <p v-if="error" class="text-sm text-flow-danger" role="alert">{{ error }}</p>
+    </form>
+
+    <template #footer>
+      <button type="button" class="btn btn-dismiss" @click="editing = null">Cancel</button>
+      <button type="submit" form="edit-client-form" class="btn btn-success" :disabled="!(hasProfileEdits || pendingResetPassword)">
+        Save changes
+      </button>
+    </template>
+  </FlowModal>
+
+  <ConfirmDeleteModal v-model="deleteOpen" title="Delete client"
+    :message="userToDelete ? `Delete “${userToDelete.name || userToDelete.username}”? They lose access to every link. This can't be undone.` : ''"
+    :danger="true" :busy="deleting" :error="deleteError" :clickOutsideCancels="true" confirmText="Delete client"
     cancelText="Cancel" @confirm="performDelete" />
 
   <ResetPasswordModal v-model="resetOpen" :user="userToReset" @confirm="onConfirmReset" />
@@ -404,8 +384,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { faTrash, faEdit, faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
+import { MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 import type { Role, LinkItem, ExistingUser, Group, GroupMember } from '../../typings/electron'
 import ConfirmDeleteModal from './ConfirmDeleteModal.vue'
 import ResetPasswordModal from './ResetPasswordModal.vue';
@@ -414,6 +393,11 @@ import GroupsModal from './GroupsModal.vue'
 import { useTourManager, type TourStep } from '../../composables/useTourManager'
 import { useOnboarding } from '../../composables/useOnboarding'
 import FlowModal from '../../ui/FlowModal.vue'
+import FlowField from '../../ui/FlowField.vue'
+import FlowEmpty from '../../ui/FlowEmpty.vue'
+import TeamsPanel from '../access/TeamsPanel.vue'
+import RolesPanel from '../access/RolesPanel.vue'
+import { avatarStyle, initials, normalizeHex, randomPastel } from '../access/accessUi'
 
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()
@@ -421,19 +405,19 @@ const { onboarding, markDone } = useOnboarding()
 const usersTourSteps: TourStep[] = [
 	{
 		target: '[data-tour="users-modal-header"]',
-		message: 'This is Client Access.\n\nWhen opened from a link, it works in "link mode" — you choose which clients get access. From the dashboard, it\'s a general user manager.',
+		message: 'This is Client Access.\n\nFrom the dashboard you manage clients, teams and roles in the tabs here. When opened from a link, you choose which clients and teams can open that link.',
 	},
 	{
 		target: '[data-tour="users-modal-list"]',
-		message: 'Your clients appear here.\n\nSearch by name, username, email, company, or tags. In link mode, check the box next to each client to give them access, and assign a role from the dropdown.',
+		message: 'Your clients appear here.\n\nSearch by name, username, email, company, or tags. When inviting to a link, tick each client who should get access and pick their role.',
 	},
 	{
 		target: '[data-tour="users-modal-create"]',
-		message: 'Add client accounts here.\n\nFill in name, username, and a temporary password (use "Generate password" for a random one). Optionally add email, company, tags, and a comment color.\n\nIn link mode, newly created users are auto-selected for the link.',
+		message: 'Add client accounts here.\n\nGive them a name, username, and a temporary password ("Generate a password" makes a random one). Email, company, tags, and comment colour are optional.\n\nWhen inviting to a link, new clients are ticked for the link automatically.',
 	},
 	{
 		target: '[data-tour="users-modal-actions"]',
-		message: 'When in link mode, click "Add to link" to give the selected clients access.\n\nUse "Roles" in the header to create or edit permission roles that control what users can do.',
+		message: 'When inviting to a link, click "Add selected to link" to give the ticked clients and teams access.\n\nThe Roles tab (or "Manage roles") controls what each role can do.',
 	},
 ]
 
@@ -458,12 +442,14 @@ watch(() => props.modelValue, (open) => {
 	if (open && !_usersTourTriggered && !onboarding.value.manageUsersTourDone) {
 		_usersTourTriggered = true
 		setTimeout(() => {
-			requestTour('manage-users', usersTourSteps, () => markDone('manageUsersTourDone'))
+			requestTour('manage-users', linkMode.value ? usersTourSteps : usersTourSteps.filter(s => !s.target.includes('users-modal-actions')), () => markDone('manageUsersTourDone'))
 		}, 400)
 	}
 })
 
 // UI state
+type AccessTab = 'clients' | 'teams' | 'roles'
+const activeTab = ref<AccessTab>('clients')
 const userSearch = ref('')
 const users = ref<ExistingUser[]>([])
 const selectedKeys = ref<string[]>([])
@@ -561,6 +547,28 @@ const defaultRoleId = computed(() => {
 
 const linkMode = computed(() => !!props.link || props.roleHint != null)
 
+const tabs = computed<{ key: AccessTab; label: string; count?: number | null }[]>(() => [
+  { key: 'clients', label: 'Clients', count: userSearch.value ? null : users.value.length },
+  { key: 'teams', label: 'Teams', count: groups.value.length },
+  { key: 'roles', label: 'Roles', count: roles.value.length || null },
+])
+
+const selectionSummary = computed(() => {
+  const c = selectedKeys.value.length
+  const g = selectedGroupIds.value.length
+  if (!c && !g) return 'Nobody selected yet'
+  const parts: string[] = []
+  if (c) parts.push(`${c} client${c === 1 ? '' : 's'}`)
+  if (g) parts.push(`${g} team${g === 1 ? '' : 's'}`)
+  return `${parts.join(' and ')} selected`
+})
+
+function defaultRoleLabel(u: ExistingUser) {
+  const id = getDefaultRoleId(u)
+  if (id != null) return roles.value.find(r => r.id === id)?.name || getDefaultRoleName(u)
+  return getDefaultRoleName(u)
+}
+
 watch([tempPassword, tempPasswordConfirm], () => {
   if (error.value) error.value = ''
 })
@@ -588,6 +596,7 @@ watch(
   () => props.modelValue,
   v => {
     if (v) {
+      activeTab.value = 'clients'
       userSearch.value = ''
       error.value = ''
       selectedKeys.value = (props.preselected || [])
@@ -926,6 +935,7 @@ async function createUser() {
     await fetchUsers()
     if (newUserGroupIds.value.length) fetchGroups()
     resetNewUser()
+    showCreate.value = false
   } catch (e: any) {
     error.value = e?.message || 'Couldn\'t add the client.'
   }
@@ -933,6 +943,7 @@ async function createUser() {
 
 // Edit / Delete helpers
 async function startEdit(u: ExistingUser) {
+  error.value = ''
   editing.value = u
   editForm.value = {
     name: u.name || '',
@@ -1184,40 +1195,6 @@ function closeCreate() {
   showCreate.value = false
 }
 
-// utils
-function randomPastel() {
-  const h = Math.floor(Math.random() * 360)
-  const s = 60 + Math.floor(Math.random() * 20)
-  const l = 70 + Math.floor(Math.random() * 10)
-  function h2rgb(p: number, q: number, t: number) {
-    if (t < 0) t += 1
-    if (t > 1) t -= 1
-    if (t < 1 / 6) return p + (q - p) * 6 * t
-    if (t < 1 / 2) return q
-    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6
-    return p
-  }
-  const H = h / 360,
-    S = s / 100,
-    L = l / 100
-  const q = L < 0.5 ? L * (1 + S) : L + S - L * S
-  const p = 2 * L - q
-  const r = Math.round(h2rgb(p, q, H + 1 / 3) * 255)
-  const g = Math.round(h2rgb(p, q, H) * 255)
-  const b = Math.round(h2rgb(p, q, H - 1 / 3) * 255)
-  const toHex = (x: number) => x.toString(16).padStart(2, '0')
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`
-}
-
-function normalizeHex(x?: string) {
-  const s = (x || '').trim()
-  if (!s) return undefined
-  const m = s.match(/^#?([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/)
-  if (!m) return undefined
-  const v = m[1]
-  const full = v.length === 3 ? v.split('').map(c => c + c).join('') : v
-  return `#${full.toLowerCase()}`
-}
 function openReset(u: any) {
   userToReset.value = u
   resetOpen.value = true
@@ -1234,3 +1211,53 @@ async function onConfirmReset(payload: { userId?: number | string; newPassword: 
 
 
 </script>
+
+<style scoped>
+.client-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.75rem 1rem;
+  min-width: 0;
+}
+
+.client-form__full {
+  grid-column: 1 / -1;
+}
+
+.client-form__legend {
+  grid-column: 1 / -1;
+  margin-bottom: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ui-subtle-text);
+}
+
+.client-team-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  font-size: var(--flow-text-sm);
+  border: 1px solid var(--flow-line);
+  border-radius: var(--flow-radius-pill);
+  cursor: pointer;
+  user-select: none;
+}
+
+.client-team-pill:hover {
+  background: var(--flow-surface-hover);
+}
+
+.client-team-pill:focus-within {
+  outline: 2px solid var(--ui-ring);
+  outline-offset: 1px;
+}
+
+.client-team-pill--on {
+  border-color: var(--flow-accent-line);
+  background: var(--flow-accent-soft);
+  font-weight: 600;
+}
+</style>

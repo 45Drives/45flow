@@ -1,905 +1,568 @@
 <template>
-  <FlowModal :model-value="modelValue" size="xl" position="top" header-class="items-center"
-    :header-attrs="{ 'data-tour': 'link-details-header' }" body-class="text-sm text-left space-y-4" @close="close">
+  <FlowModal :model-value="modelValue" size="xl" surface="default" class="h-[min(48rem,calc(100vh-2rem))]"
+    :header-attrs="{ 'data-tour': 'link-details-header' }" :description="headerDescription"
+    flush body-class="flex flex-col !overflow-hidden text-sm text-left" footer-class="justify-between"
+    :before-close="confirmDiscard" @close="close">
       <template #title>
-        <span class="block truncate" :title="link?.title || (link && fallbackTitle(link)) || undefined">
-          Link Details — {{ link?.title || (link && fallbackTitle(link)) }}
+        <span class="block truncate" :title="displayTitle || undefined">
+          {{ editMode ? `Edit ${displayTitle}` : displayTitle }}
         </span>
       </template>
-      <template #header-actions>
-          <button v-if="!editMode && isPremiumActive"
-            class="btn btn-secondary flex items-center gap-2 whitespace-nowrap" 
-            @click="commentsModalOpen = true" 
-            :disabled="!link"
-            title="View Comments"
-          >
-            <ChatBubbleLeftRightIcon class="w-4 h-4" />
+      <template v-if="!editMode" #header-actions>
+          <button v-if="isPremiumActive" class="btn btn-secondary flex items-center gap-2 whitespace-nowrap"
+            :disabled="!link" @click="commentsModalOpen = true">
+            <ChatBubbleLeftRightIcon class="w-4 h-4" aria-hidden="true" />
             Comments
           </button>
-
-          <button v-if="!editMode" class="btn btn-primary whitespace-nowrap" @click="beginEdit" :disabled="!link">Edit</button>
-
-          <button v-if="editMode" class="btn btn-dismiss px-4 py-2 whitespace-nowrap" @click="cancelEdit" :disabled="saving">Cancel</button>
-          <button v-if="editMode" class="btn btn-success px-4 py-2 whitespace-nowrap" @click="saveAll" :disabled="saveDisabled">Save & Close</button>
+          <button class="btn btn-primary flex items-center gap-2 whitespace-nowrap" :disabled="!link" @click="beginEdit">
+            <PencilSquareIcon class="w-4 h-4" aria-hidden="true" />
+            Edit
+          </button>
       </template>
 
-        <!-- Meta -->
-        <section class="grid gap-3 lg:grid-cols-3" data-tour="link-details-meta">
-          <div class="lg:col-span-2 rounded-lg border border-default bg-default/20 p-3 space-y-2">
-            <div class="flex items-center justify-between gap-2 min-w-0">
-              <div class="font-semibold text-default truncate">Primary Link</div>
-              <button class="text-blue-500 hover:underline text-xs shrink-0" @click="copy(primaryUrl)">Copy</button>
-            </div>
-            <a :href="primaryUrl" target="_blank" rel="noopener" class="hover:underline block">
-              {{ primaryUrl || '—' }}
-            </a>
-
-
-            <div class="pt-2 border-t border-default/70 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-              <div>
-                <span class="opacity-70">Access</span>
-                <div class="font-semibold">{{ currentAccessSummary }}</div>
-              </div>
-              <div>
-                <span class="opacity-70">Proxy File Qualities Shared</span>
-                <div class="font-semibold">
-                    {{ currentGenerateReviewProxy ? currentProxyQualities.join(', ') : 'Disabled' }}
-                </div>
-              </div>
-              <div>
-                <span class="opacity-70">Watermark</span>
-                <div class="font-semibold">
-                  {{ currentWatermark ? 'Enabled' : 'Disabled' }}
-                  <span v-if="currentWatermarkFile" class="opacity-70">({{ currentWatermarkFile }})</span>
-                </div>
-              </div>
-            </div>
-            <div v-if="reviewFilesPath || uploadDirectoryPath" class="pt-2 border-t border-default/70 text-xs space-y-2">
-              <div v-if="reviewFilesPath">
-                <span class="opacity-70">Review Files Path</span>
-                <div class="font-mono font-semibold truncate" :title="reviewFilesPath">{{ reviewFilesPath }}</div>
-              </div>
-              <div v-if="uploadDirectoryPath">
-                <span class="opacity-70">Upload Directory Path</span>
-                <div class="font-mono font-semibold truncate" :title="uploadDirectoryPath">{{ uploadDirectoryPath }}</div>
-              </div>
-            </div>
+      <!-- ═══ View ═══════════════════════════════════════════ -->
+      <template v-if="!editMode">
+        <!-- Summary: the link itself and the facts people look for first -->
+        <div class="ld-summary" data-tour="link-details-meta">
+          <div v-if="link?.thumbnailUrl" class="ld-thumb" aria-hidden="true">
+            <img v-if="thumbnailSrc" :src="thumbnailSrc" alt="" class="w-full h-full object-cover" />
+            <span v-else class="text-xs text-muted">{{ thumbnailFailed ? 'No preview' : 'Loading…' }}</span>
           </div>
-
-          <div class="rounded-lg border border-default bg-default/20 p-3 space-y-2">
-            <!-- Thumbnail preview -->
-            <div v-if="link?.thumbnailUrl" class="mb-2 h-24 rounded border border-default bg-well overflow-hidden">
-              <img v-if="thumbnailSrc" :src="thumbnailSrc" class="w-full h-full object-contain" />
-              <div v-else-if="thumbnailLoading" class="w-full h-full flex items-center justify-center text-xs opacity-50">
-                Loading thumbnail...
+          <div class="min-w-0 flex-1 flex flex-col gap-3">
+            <div class="flex items-center gap-2 min-w-0">
+              <FlowChip v-if="link" :tone="statusTone" dot>{{ statusLabel }}</FlowChip>
+              <div class="ld-url">
+                <LinkIcon class="w-4 h-4 shrink-0 opacity-60" aria-hidden="true" />
+                <a v-if="primaryUrl" :href="primaryUrl" target="_blank" rel="noopener" class="truncate hover:underline" :title="primaryUrl">{{ primaryUrl }}</a>
+                <span v-else class="text-muted">No link address yet</span>
               </div>
-              <div v-else-if="thumbnailFailed" class="w-full h-full flex items-center justify-center text-xs opacity-50">
-                Failed to load
+              <button type="button" class="btn btn-secondary btn-sm whitespace-nowrap" :disabled="!primaryUrl" @click="copyPrimaryUrl">
+                {{ urlCopied ? 'Copied' : 'Copy link' }}
+              </button>
+            </div>
+            <dl class="ld-facts">
+              <div>
+                <dt>Who can open it</dt>
+                <dd>{{ currentAccessSummary }}</dd>
               </div>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-default font-bold">Type:</span>
-              <div class="flex items-center gap-1">
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold leading-tight"
-                  :class="hasShareCapability ? 'flow-tone-success' : 'bg-well/50 text-muted/40'"
-                >Review</span>
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold leading-tight"
-                  :class="hasUploadCapability ? 'flow-tone-info' : 'bg-well/50 text-muted/40'"
-                >Upload</span>
+              <div>
+                <dt>Expires</dt>
+                <dd>
+                  {{ link?.expiresAt ? formatDate(link.expiresAt) : 'Never' }}
+                  <span v-if="expiresRelative" class="ld-facts__aside">{{ expiresRelative }}</span>
+                </dd>
               </div>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-default font-bold">Project:</span>
-              <template v-if="editMode">
-                <select v-model="draftProjectId" class="input-textlike bg-default px-2 py-1 rounded text-sm">
-                  <option :value="null">— None —</option>
-                  <option v-for="proj in availableProjects" :key="proj.id" :value="proj.id">{{ proj.name }}</option>
-                </select>
-              </template>
-              <template v-else>
-                <span class="opacity-90">{{ link?.project_name || 'Unassigned' }}</span>
-              </template>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-default font-bold">Status:</span>
-              <span :class="statusChipClass(statusOf(link!))">{{ link ? statusOf(link).toUpperCase() : '' }}</span>
-            </div>
-            <div>
-              <span class="text-default font-bold">Created:</span>
-              <div class="opacity-90">{{ link ? new Date(link.createdAt).toLocaleString(undefined, { hour12: hour12 }) : '—' }}</div>
-            </div>
-            <div>
-              <span class="text-default font-bold">Expires:</span>
-              <div class="opacity-90">{{ link?.expiresAt ? new Date(link.expiresAt).toLocaleString(undefined, { hour12: hour12 }) : 'Never' }}</div>
-            </div>
+              <div>
+                <dt>Created</dt>
+                <dd>{{ link ? formatDate(link.createdAt) : '—' }}</dd>
+              </div>
+              <div>
+                <dt>Project</dt>
+                <dd class="truncate" :title="link?.project_name || undefined">{{ link?.project_name || 'None' }}</dd>
+              </div>
+            </dl>
           </div>
-        </section>
+        </div>
 
-        <section class="space-y-3 rounded-lg border border-default bg-default/10 p-3" data-tour="link-details-config">
-          <div class="text-default font-semibold">Link Configuration</div>
-          <div class="grid grid-cols-3">
-            <div class="min-w-0 rounded-lg border border-default bg-default/20 p-3 space-y-3">
-              <div>
-                <label class="block text-default mb-1">Title</label>
-                <template v-if="editMode">
-                  <input v-model="draftTitle" class="input-textlike bg-default w-full px-3 py-2 rounded" />
-                </template>
-                <template v-else>
-                  <div class="truncate px-3 py-2 rounded border border-default bg-default/30" :title="link?.title || undefined">
-                    {{ link?.title || '—' }}
-                  </div>
-                </template>
-              </div>
-              <div>
-                <label class="block text-default mb-1">Notes</label>
-                <template v-if="editMode">
-                  <textarea v-model="draftNotes" rows="5" class="input-textlike w-full px-3 py-2 rounded"></textarea>
-                </template>
-                <template v-else>
-                  <div class="px-3 py-2 rounded border border-default bg-default/30 whitespace-pre-wrap min-h-[7.5rem]">
-                    {{ link?.notes || '—' }}
-                  </div>
-                </template>
-              </div>
+        <div class="flow-tabs px-6 shrink-0" role="tablist" aria-label="Link details">
+          <button v-for="t in viewTabs" :key="t.key" :id="`ld-tab-${t.key}`" type="button" class="flow-tab" role="tab"
+            :aria-selected="activeTab === t.key" :aria-controls="`ld-panel-${t.key}`" :tabindex="activeTab === t.key ? 0 : -1"
+            :data-tour="t.tour" @click="activeTab = t.key" @keydown="onTabKeydown">
+            {{ t.label }}
+            <span v-if="t.count !== null" class="flow-tab__count">{{ t.count }}</span>
+          </button>
+        </div>
+
+        <div :id="`ld-panel-${activeTab}`" class="flex-1 min-h-0 overflow-y-auto px-6 py-5" role="tabpanel"
+          :aria-labelledby="`ld-tab-${activeTab}`" tabindex="0">
+
+          <!-- Overview -->
+          <div v-if="activeTab === 'overview'" data-tour="link-details-config">
+            <p class="flow-subhead flow-subhead--first">Who can open it</p>
+            <div class="flow-group">
+              <DetailRow label="Access" :description="accessModeHelp">{{ accessModeName }}</DetailRow>
+              <DetailRow v-if="currentAccessMode === 'open' && supportsComments" label="Comments"
+                description="Viewers can leave review comments.">
+                {{ link?.allow_comments ? 'Allowed' : 'Off' }}
+              </DetailRow>
             </div>
-
-            <div class="col-span-2 rounded-lg border border-default bg-default/20 p-3 space-y-3">
-              <div class="flex items-center justify-between gap-2">
-                <div class="text-default font-semibold">Access Settings</div>
-                <button
-                  v-if="editMode && effectiveAccessMode === 'restricted'"
-                  class="btn btn-primary text-xs px-2 py-1"
-                  @click="openAccessModal"
-                >
-                  Invite clients…
-                </button>
-              </div>
-
-              <div class="space-y-3">
-                <!-- Link Capabilities -->
-                <div v-if="editMode" class="pb-3 border-b border-default/70">
-                  <div class="text-default font-semibold mb-2">Link Capabilities</div>
-                  <div class="flex flex-wrap items-center gap-3">
-                    <label class="inline-flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" v-model="draftShareEnabled" class="proxy-quality-checkbox" />
-                      <span class="text-sm">Enable Review/Share</span>
-                    </label>
-                    <label class="inline-flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" v-model="draftUploadEnabled" class="proxy-quality-checkbox" />
-                      <span class="text-sm">Enable Upload</span>
-                    </label>
-                  </div>
-                  <div v-if="!draftShareEnabled && !draftUploadEnabled" class="text-xs text-flow-danger mt-1">
-                    At least one capability must be enabled.
-                  </div>
-                </div>
-
-                <div class="flex flex-wrap items-center gap-3 min-w-0">
-                  <label class="font-semibold sm:whitespace-nowrap">Only invited clients & teams</label>
-
-                  <template v-if="editMode">
-                    <Switch id="restrict-link-access-switch" v-model="restrictAccess" :class="[
-                      restrictAccess ? 'bg-secondary' : 'bg-well',
-                      'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-600 focus:ring-offset-2'
-                    ]">
-                      <span class="sr-only">Toggle invite-only access</span>
-                      <span aria-hidden="true" :class="[
-                        restrictAccess ? 'translate-x-5' : 'translate-x-0',
-                        'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-default shadow ring-0 transition duration-200 ease-in-out'
-                      ]" />
-                    </Switch>
-                    <span class="text-sm select-none truncate min-w-0 flex-1">
-                      {{ restrictAccess ? 'Restricted (users only)' : accessModeOpenLabel }}
-                    </span>
-                  </template>
-                  <template v-else>
-                    <span class="text-sm opacity-80">
-                      {{ accessModeSummary }}
-                    </span>
-                  </template>
-                </div>
-
-                <div v-if="effectiveAccessMode === 'open' && link?.type !== 'upload'"
-                  class="flex flex-wrap items-center gap-3 min-w-0">
-                  <label class="font-semibold sm:whitespace-nowrap">Allow Comments</label>
-                  <template v-if="editMode">
-                    <Switch id="allow-comments-switch" v-model="draftAllowComments" :class="[
-                      draftAllowComments ? 'bg-secondary' : 'bg-well',
-                      'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-600 focus:ring-offset-2'
-                    ]">
-                      <span class="sr-only">Toggle comments</span>
-                      <span aria-hidden="true" :class="[
-                        draftAllowComments ? 'translate-x-5' : 'translate-x-0',
-                        'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-default shadow ring-0 transition duration-200 ease-in-out'
-                      ]" />
-                    </Switch>
-                    <button 
-                      :class="[
-                        'btn btn-secondary flex items-center gap-2 whitespace-nowrap h-8 transition-opacity',
-                        !draftAllowComments && 'opacity-0 pointer-events-none'
-                      ]"
-                      :disabled="!effectiveToken || !link?.id"
-                      @click="categoryManagementOpen = true"
-                      title="Manage Comment Categories"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                      </svg>
-                      Comment Categories
-                    </button>
-                  </template>
-                  <template v-else>
-                    <span class="text-sm opacity-80">{{ props.link?.allow_comments ? 'Yes' : 'No' }}</span>
-                  </template>
-                </div>
-
-                <div v-if="effectiveAccessMode === 'open'" class="flex flex-col gap-2 min-w-0">
-                  <div class="flex flex-wrap items-center gap-3 min-w-0">
-                    <label class="font-semibold sm:whitespace-nowrap">Password Required</label>
-                    <template v-if="editMode">
-                      <Switch id="link-password-switch" v-model="draftUsePassword" :class="[
-                        draftUsePassword ? 'bg-secondary' : 'bg-well',
-                        'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-600 focus:ring-offset-2'
-                      ]">
-                        <span class="sr-only">Toggle link password</span>
-                        <span aria-hidden="true" :class="[
-                          draftUsePassword ? 'translate-x-5' : 'translate-x-0',
-                          'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-default shadow ring-0 transition duration-200 ease-in-out'
-                        ]" />
-                      </Switch>
-                    </template>
-                    <template v-else>
-                      <span class="text-sm opacity-80">{{ openPasswordRequired ? 'Yes' : 'No' }}</span>
-                    </template>
-                  </div>
-
-                  <div v-if="editMode && draftUsePassword" class="flex flex-col gap-1 min-w-0">
-                    <label class="text-default font-semibold sm:whitespace-nowrap">New Password</label>
-                    <input
-                      type="password"
-                      v-model.trim="draftPassword"
-                      placeholder="Enter a new password"
-                      class="input-textlike border rounded px-3 py-2 w-full min-w-0"
-                    />
-                    <p v-if="openPasswordRequired" class="text-xs opacity-70">
-                      Leave blank to keep the existing password.
-                    </p>
-                  </div>
-
-                  <p v-if="mustProvidePassword" class="text-xs text-flow-danger">
-                    Password is required when protection is enabled.
-                  </p>
-                </div>
-
-                <div v-if="effectiveAccessMode === 'open'" class="text-xs opacity-70">
-                  Open links allow anyone with the link to access. Turn on invite-only to require clients to sign in.
-                </div>
-
-                <div v-if="effectiveAccessMode === 'restricted'" class="space-y-2">
-                  <div v-if="!accessSatisfied" class="text-sm text-flow-danger">
-                    Invite at least one client or team, or turn off invite-only.
-                  </div>
-
-                  <div v-if="accessLoading && !unifiedAccessList.length && !accessGroupRows.length" class="text-sm opacity-70">Loading…</div>
-                  <div v-else-if="!accessLoading && !unifiedAccessList.length && !accessGroupRows.length" class="text-sm opacity-70">No clients or teams invited yet.</div>
-
-                  <!-- Unified users table -->
-                  <div v-if="unifiedAccessList.length" class="overflow-x-auto rounded-lg border border-default">
-                    <table class="min-w-full text-sm border-separate border-spacing-0">
-                      <thead>
-                        <tr class="bg-default text-default">
-                          <th class="text-left px-3 py-2 border border-default">User</th>
-                          <th class="text-left px-3 py-2 border border-default">Access Via</th>
-                          <th class="text-left px-3 py-2 border border-default">Role</th>
-                          <th class="text-right px-3 py-2 border border-default" v-if="editMode">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr v-for="u in unifiedAccessList" :key="u.user_id" class="border-t border-default">
-                          <td class="px-3 py-2 border border-default">
-                            <div class="flex items-center gap-2">
-                              <span class="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
-                                :style="{ backgroundColor: u.display_color || '#999' }"></span>
-                              <div class="flex flex-col">
-                                <span class="font-medium">{{ u.name || u.user_name || '—' }}</span>
-                                <span v-if="u.user_name && u.name" class="text-xs opacity-60">@{{ u.user_name }}</span>
-                              </div>
-                              <span v-if="u.is_disabled"
-                                class="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-default/70 text-flow-warning border border-flow-warning"
-                                title="This client login is disabled">
-                                Disabled
-                              </span>
-                            </div>
-                          </td>
-                          <td class="px-3 py-2 border border-default">
-                            <span v-if="u.source === 'direct'"
-                              class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full flow-tone-info border">
-                              Direct
-                            </span>
-                            <span v-else
-                              class="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border"
-                              :style="{
-                                backgroundColor: (u.source_color || '#999') + '18',
-                                borderColor: (u.source_color || '#999') + '50',
-                                color: u.source_color || '#999',
-                              }">
-                              <span class="inline-block h-2 w-2 rounded-full"
-                                :style="{ backgroundColor: u.source_color || '#999' }"></span>
-                              {{ u.source_label }}
-                            </span>
-                          </td>
-                          <td class="px-3 py-2 border border-default">
-                            {{ u.role_name || '—' }}
-                          </td>
-                          <td v-if="editMode" class="px-3 py-2 border border-default text-right">
-                            <button v-if="u.source === 'direct'" class="btn btn-danger px-2 py-1 text-xs"
-                              @click="removeAccess(u.user_id)">
-                              Remove
-                            </button>
-                            <span v-else class="text-xs opacity-40" title="Remove in Teams">—</span>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <!-- Groups summary -->
-                  <div v-if="accessGroupRows.length" class="mt-2">
-                    <div class="font-semibold text-xs opacity-70 mb-1 uppercase tracking-wide">Teams on this link</div>
-                    <div class="flex flex-wrap gap-2">
-                      <div v-for="g in accessGroupRows" :key="g.group_id"
-                        class="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border border-default bg-default/40">
-                        <span class="inline-block h-3 w-3 rounded-full flex-shrink-0"
-                          :style="{ backgroundColor: g.group_color || '#999' }"></span>
-                        <span class="font-medium">{{ g.group_name }}</span>
-                        <span class="text-xs opacity-50">{{ g.member_count ?? 0 }} member{{ (g.member_count ?? 0) === 1 ? '' : 's' }}</span>
-                        <span class="text-xs opacity-50">· {{ g.role_name || g.role?.name || 'viewer' }}</span>
-                        <button v-if="editMode" class="text-flow-danger hover:text-flow-danger ml-1"
-                          @click="removeGroupAccess(g.group_id)" title="Remove team">
-                          <FontAwesomeIcon :icon="faTrash" class="text-xs" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div v-if="currentAccessMode === 'restricted'" class="mt-3">
+              <LinkAccessList :users="access" :groups="accessGroupRows" :loading="accessLoading" />
             </div>
-
-            <div v-if="link?.id" class="col-span-3 rounded-lg border border-default bg-default/20 p-3">
+            <div v-if="link?.id" class="flow-group mt-3 py-3">
               <EmailInvitationPanel :key="link.id" :link-id="link.id" :api-fetch="apiFetch" />
             </div>
 
-            <div class="col-span-3 rounded-lg border border-default bg-default/20 p-3 space-y-3">
-              <div class="text-default font-semibold">Media Processing</div>
-              <div class="flex flex-wrap items-center gap-3 min-w-0">
-                <label class="font-semibold sm:whitespace-nowrap">Generate Proxy Files</label>
-                <template v-if="editMode">
-                  <Switch id="link-proxy-switch" v-model="draftGenerateReviewProxy" :class="[
-                    draftGenerateReviewProxy ? 'bg-secondary' : 'bg-well',
-                    'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-600 focus:ring-offset-2'
-                  ]">
-                    <span class="sr-only">Toggle proxy file generation</span>
-                    <span aria-hidden="true" :class="[
-                      draftGenerateReviewProxy ? 'translate-x-5' : 'translate-x-0',
-                      'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-default shadow ring-0 transition duration-200 ease-in-out'
-                    ]" />
-                  </Switch>
+            <template v-if="hasShareCapability">
+              <p class="flow-subhead">Shared files</p>
+              <div class="flow-group">
+                <DetailRow label="Files" :description="reviewFilesPath ? `From ${reviewFilesPath}` : ''">
+                  <button type="button" class="ld-link" @click="activeTab = 'files'">{{ pluralize(displayFiles.length, 'file') }}</button>
+                </DetailRow>
+              </div>
+            </template>
+
+            <template v-if="hasUploadCapability">
+              <p class="flow-subhead">Uploads</p>
+              <div class="flow-group">
+                <DetailRow label="Saves to">
+                  <code class="ld-path" :title="uploadDirectoryPath || undefined">{{ uploadDirectoryPath || 'Not set' }}</code>
+                </DetailRow>
+                <template v-if="hasShareCapability">
+                  <DetailRow label="Add uploads to shared files">{{ link?.auto_share_uploads ? 'On' : 'Off' }}</DetailRow>
+                  <DetailRow label="Watermark uploads">{{ link?.auto_watermark_uploads ? 'On' : 'Off' }}</DetailRow>
                 </template>
-                <template v-else>
-                  <span class="text-sm opacity-80">{{ currentGenerateReviewProxy ? 'Enabled' : 'Disabled' }}</span>
-                </template>
+                <DetailRow label="Proxy files for uploads">
+                  {{ link?.auto_transcode_uploads ? qualityList(link?.auto_transcode_proxy_qualities?.length ? link.auto_transcode_proxy_qualities : ['720p']) : 'Off' }}
+                </DetailRow>
               </div>
+            </template>
 
-              <div v-if="editMode && draftGenerateReviewProxy" class="flex flex-wrap items-center gap-3">
-                <span class="text-xs opacity-80">Proxy file qualities:</span>
-                <label v-for="q in proxyQualityChoices" :key="q" class="inline-flex items-center gap-1 text-sm">
-                  <input type="checkbox" class="proxy-quality-checkbox" :value="q" v-model="draftProxyQualities" />
-                  <span>{{ q }}</span>
-                </label>
-              </div>
-              <div v-else-if="!editMode && currentProxyQualities.length" class="text-xs opacity-70">
-                Qualities: {{ currentProxyQualities.join(', ') }}
-              </div>
+            <p class="flow-subhead">Playback and watermark</p>
+            <div class="flow-group">
+              <DetailRow label="Proxy files" description="Playback copies made for reviewers.">
+                {{ currentGenerateReviewProxy && currentProxyQualities.length ? qualityList(currentProxyQualities) : 'Off' }}
+              </DetailRow>
+              <DetailRow label="Watermark">
+                <span v-if="currentWatermark" class="truncate" :title="currentWatermarkFile || undefined">
+                  On<template v-if="currentWatermarkFile"> · {{ fileNameOf(currentWatermarkFile) }}</template>
+                </span>
+                <span v-else>Off</span>
+              </DetailRow>
+            </div>
 
-              <div class="flex flex-wrap items-center gap-3 min-w-0">
-                <label class="font-semibold sm:whitespace-nowrap">Apply Watermark</label>
-                <template v-if="editMode">
-                  <Switch id="link-watermark-switch" v-model="draftWatermarkEnabled" :disabled="linkHasVideoFiles && !draftGenerateReviewProxy"
-                    :class="[
-                      draftWatermarkEnabled ? 'bg-secondary' : 'bg-well',
-                      (linkHasVideoFiles && !draftGenerateReviewProxy) ? 'opacity-50 cursor-not-allowed' : '',
-                      'relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-slate-600 focus:ring-offset-2'
-                    ]">
-                    <span class="sr-only">Toggle watermark</span>
-                    <span aria-hidden="true" :class="[
-                      draftWatermarkEnabled ? 'translate-x-5' : 'translate-x-0',
-                      'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-default shadow ring-0 transition duration-200 ease-in-out'
-                    ]" />
-                  </Switch>
-                  <button 
-                    v-if="draftWatermarkEnabled"
-                    type="button" 
-                    class="btn btn-primary px-3 py-1 text-xs"
-                    @click="openWatermarkConfigModal"
-                  >
-                    Configure Watermark...
-                  </button>
-                </template>
-                <template v-else>
-                  <span class="text-sm opacity-80">{{ currentWatermark ? 'Enabled' : 'Disabled' }}</span>
-                </template>
-              </div>
+            <p class="flow-subhead">Notes</p>
+            <p v-if="link?.notes" class="ld-notes">{{ link.notes }}</p>
+            <p v-else class="text-sm text-muted">No notes. Use Edit to add some for your team.</p>
 
-              <div v-if="!editMode && currentWatermarkFile" class="text-xs opacity-70">
-                File: <code>{{ currentWatermarkFile }}</code>
-              </div>
-
-              <div v-if="editMode && draftShareEnabled && (draftGenerateReviewProxy || draftWatermarkEnabled)" class="pt-2 border-t border-default">
-                <div class="flex items-center gap-3">
-                  <button
-                    class="btn btn-primary"
-                    :disabled="reprocessingMedia"
-                    @click="reprocessMedia()"
-                  >
-                    <span v-if="reprocessingMedia">Processing…</span>
-                    <span v-else>Reprocess Proxy Files</span>
-                  </button>
-                  <span class="text-xs opacity-70">
-                    Regenerates proxy files/streams with current quality and watermark settings.
-                  </span>
-                </div>
-                <div class="text-xs text-muted flex items-center gap-1.5 mt-2">
-                  <template v-if="clientTranscodeEnabled">
-                    <span class="text-flow-success">✓</span>
-                    <span>Client-side transcoding: <strong class="text-default">Enabled</strong> — will use local hardware</span>
-                  </template>
-                  <template v-else>
-                    <span class="text-blue-500 dark:text-blue-400">ⓘ</span>
-                    <span>Transcoding will be handled by the server</span>
-                  </template>
-                </div>
-              </div>
-
-              <div v-if="editMode && draftShareEnabled" class="pt-2 border-t border-default space-y-2">
-                <div class="flex items-center justify-between">
-                  <div class="text-default font-semibold">
-                    Files for this link
-                  </div>
-                  <button class="btn btn-secondary" @click="openFilesEditor">
-                    Manage files…
-                  </button>
-                </div>
-
-                <div class="text-xs opacity-70">
-                  {{ draftFilePaths.length }} selected
-                  <span v-if="filesDirty" class="ml-2 text-flow-warning">Pending changes</span>
-                </div>
-
-                <div v-if="draftFilePaths.length">
-                  <button class="text-xs text-blue-500 hover:underline mt-1" @click="fileListExpanded = !fileListExpanded">
-                    {{ fileListExpanded ? 'Hide file list ▲' : 'Show file list ▼' }}
-                  </button>
-                  <div v-if="fileListExpanded"
-                    class="rounded border border-default bg-default/30 max-h-40 overflow-auto mt-1">
-                    <div v-for="(p, i) in draftFilePaths" :key="p + ':' + i"
-                      class="px-3 py-2 border-b border-default last:border-b-0">
-                      <code>{{ p }}</code>
-                    </div>
-                  </div>
-                </div>
-                <div v-else class="text-sm text-flow-warning">No files selected. Click "Manage files…" to select files.</div>
-              </div>
-
-              <div v-if="editMode && draftUploadEnabled" ref="uploadDestSection" class="pt-2 border-t border-default space-y-2">
-                <div class="text-default font-semibold">Upload destination</div>
-                <div class="text-xs opacity-70">
-                  Choose where uploaded files will be stored for this link.
-                </div>
-                <div class="flex flex-row gap-2 items-center">
-                  <span class="whitespace-nowrap">Destination folder:</span>
-                  <PathInput v-model="draftUploadDir" :apiFetch="apiFetch" :dirsOnly="true" />
-                </div>
-                <div class="text-xs opacity-70">
-                  Current: <code>{{ currentUploadDir || '—' }}</code>
-                  <span v-if="uploadDirDirty" class="ml-2 text-flow-warning">Pending changes</span>
-                </div>
-                <div v-if="uploadDirMissing" class="text-sm text-flow-danger">
-                  Choose an upload destination folder to save.
-                </div>
-
-                <template v-if="draftShareEnabled">
-                <label class="flex items-start gap-3 select-none cursor-pointer mt-2 pt-2 border-t border-default">
-                  <input
-                    type="checkbox"
-                    v-model="draftAutoShareUploads"
-                    class="mt-0.5 h-4 w-4 rounded border-default accent-blue-600 cursor-pointer"
-                  />
-                  <div class="min-w-0">
-                    <div class="text-sm font-medium">Auto-share uploaded files</div>
-                    <div class="text-xs text-muted">
-                      Uploaded files will automatically appear in this link's shared files.
-                    </div>
-                  </div>
-                </label>
-                <label class="flex items-start gap-3 select-none cursor-pointer mt-2">
-                  <input
-                    type="checkbox"
-                    v-model="draftAutoWatermarkUploads"
-                    :disabled="!link?.watermark"
-                    class="mt-0.5 h-4 w-4 rounded border-default accent-blue-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                  <div class="min-w-0">
-                    <div class="text-sm font-medium" :class="{ 'opacity-50': !link?.watermark }">Auto-watermark uploaded files</div>
-                    <div class="text-xs text-muted" :class="{ 'opacity-50': !link?.watermark }">
-                      Apply this link's watermark settings to files uploaded through this link.
-                      <span v-if="!link?.watermark" class="text-flow-warning"> (Link has no watermark configured)</span>
-                    </div>
-                  </div>
-                </label>
-                </template>
-
-                <label class="flex items-start gap-3 select-none cursor-pointer mt-2 pt-2 border-t border-default">
-                  <input
-                    type="checkbox"
-                    v-model="draftAutoTranscodeUploads"
-                    class="mt-0.5 h-4 w-4 rounded border-default accent-blue-600 cursor-pointer"
-                  />
-                  <div class="min-w-0">
-                    <div class="text-sm font-medium">Auto-transcode uploads</div>
-                    <div class="text-xs text-muted">
-                      The server makes proxy files for each video uploaded through this link.
-                    </div>
-                  </div>
-                </label>
-                <div v-if="draftAutoTranscodeUploads" class="ml-7 flex flex-col gap-1">
-                  <span class="text-xs font-medium text-muted">Proxy resolution</span>
-                  <div class="flex flex-wrap gap-x-3 gap-y-1">
-                    <label class="inline-flex items-center gap-2 text-sm">
-                      <input type="checkbox" class="h-4 w-4 rounded border-default accent-blue-600" value="720p"
-                        :checked="draftAutoTranscodeProxyQualities.includes('720p')"
-                        @change="toggleDraftAutoTranscodeQuality('720p', ($event.target as HTMLInputElement).checked)" />
-                      <span>720p</span>
-                    </label>
-                    <label class="inline-flex items-center gap-2 text-sm">
-                      <input type="checkbox" class="h-4 w-4 rounded border-default accent-blue-600" value="1080p"
-                        :checked="draftAutoTranscodeProxyQualities.includes('1080p')"
-                        @change="toggleDraftAutoTranscodeQuality('1080p', ($event.target as HTMLInputElement).checked)" />
-                      <span>1080p</span>
-                    </label>
-                    <label class="inline-flex items-center gap-2 text-sm">
-                      <input type="checkbox" class="h-4 w-4 rounded border-default accent-blue-600" value="original"
-                        :checked="draftAutoTranscodeProxyQualities.includes('original')"
-                        @change="toggleDraftAutoTranscodeQuality('original', ($event.target as HTMLInputElement).checked)" />
-                      <span>Full Res (MP4)</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
+            <div class="flow-group ld-danger mt-8">
+              <DetailRow label="Delete this link" description="Permanently delete this link and all associated data.">
+                <button type="button" class="btn btn-danger btn-sm" :disabled="!link" @click="emit('requestDelete', link!)">Delete link</button>
+              </DetailRow>
             </div>
           </div>
 
-          <AddUsersModal
-            v-model="accessModalOpen"
-            :apiFetch="apiFetch"
-            :link="link || undefined"
-            :roleHint="link?.type === 'upload' ? 'upload' : 'view'"
-            :preselected="access.map(a => ({
-              id: a.user_id,
-              username: a.user_name || '',
-              name: a.name || '',
-              user_email: a.user_email || '',
-              display_color: a.display_color || '',
-              role_id: a.role_id ?? a.role?.id ?? undefined,
-              role_name: a.role_name ?? a.role?.name ?? undefined,
-            }))"
-            :preselectedGroups="accessGroupRows.map((g: any) => ({
-              id: g.group_id,
-              role_id: g.role_id ?? g.role?.id ?? null,
-              role_name: g.role_name ?? g.role?.name ?? null,
-            }))"
-            @apply="mergeAccessFromModal"
-          />
-        </section>
+          <!-- Files -->
+          <div v-else-if="activeTab === 'files'">
+            <p class="text-xs text-muted mb-3">{{ filesCaption }}</p>
+            <div v-if="detailsLoading" class="text-sm text-muted py-6 text-center">Loading files…</div>
+            <FlowEmpty v-else-if="!displayFiles.length" compact title="No files yet"
+              :description="hasUploadCapability && !hasShareCapability ? 'Files clients upload through this link will show here.' : 'Use Edit to add files to this link.'" />
+            <template v-else>
+              <FlowNotice v-if="usingFallbackFiles" tone="warning" size="sm" class="mb-3">
+                Showing the basic file list. Full file details aren't available right now.
+              </FlowNotice>
+              <div class="flow-table-wrap">
+                <table class="flow-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th class="flow-table__num">Size</th>
+                      <th>Type</th>
+                      <template v-if="showUploadColumns">
+                        <th>Uploaded by</th>
+                        <th>From</th>
+                        <th>When</th>
+                      </template>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="f in displayFiles" :key="f.key">
+                      <td class="max-w-[22rem]"><span class="block truncate font-medium" :title="f.relPath || f.name">{{ f.name }}</span></td>
+                      <td class="flow-table__num">{{ fmtBytes(f.size) }}</td>
+                      <td class="text-muted whitespace-nowrap">{{ f.mime || '—' }}</td>
+                      <template v-if="showUploadColumns">
+                        <td>{{ f.uploader_label || '—' }}</td>
+                        <td class="whitespace-nowrap text-muted">{{ f.ip || '—' }}</td>
+                        <td class="whitespace-nowrap">{{ f.ts ? formatDate(f.ts) : '—' }}</td>
+                      </template>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </template>
 
-        <!-- Files table (still shown in view mode; in edit mode it remains informational) -->
-        <section v-if="!editMode"  class="w-full" data-tour="link-details-files">
-          <div class="flex items-center justify-between mb-2">
-            <h4 class="font-semibold">
-              {{ link?.type === 'upload' ? 'Uploaded Files' : 'Shared Files' }}
-            </h4>
-            <div class="text-xs opacity-70" v-if="!detailsLoading">{{ displayFiles.length }} item(s)</div>
+            <!-- Processing (proxy files / HLS / image watermarks); hides itself when nothing was requested -->
+            <LinkTranscodeStatus v-if="link && link.type !== 'upload'" class="mt-6"
+              :link-id="link.id" :api-fetch="props.apiFetch" :reload-signal="transcodeStatusReload" />
           </div>
 
-          <div v-if="detailsLoading" class="text-sm opacity-70">Loading…</div>
-          <div v-else-if="displayFiles.length === 0" class="text-sm opacity-70">No files.</div>
-          <div v-else>
-            <div v-if="usingFallbackFiles" class="text-xs text-flow-warning mb-2">
-              Loaded from link summary because detailed file rows are currently unavailable.
+          <!-- Activity -->
+          <div v-else-if="activeTab === 'activity'">
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+              <select v-model="activityTypeFilter" aria-label="Filter by action" class="input-textlike px-2 py-1.5 text-sm">
+                <option value="all">All actions</option>
+                <option v-for="t in activityTypes" :key="t" :value="t">{{ activityTypeLabel(t) }}</option>
+              </select>
+              <div class="relative flex-1 min-w-[14rem]">
+                <MagnifyingGlassIcon class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 opacity-60" aria-hidden="true" />
+                <input v-model.trim="activitySearch" type="search" aria-label="Search activity"
+                  class="input-textlike w-full pl-8 pr-3 py-1.5 text-sm" placeholder="Search by person, IP address or details" />
+              </div>
+              <span v-if="!detailsLoading" class="text-xs text-muted whitespace-nowrap">
+                {{ filteredAuditActivity.length === auditActivity.length ? pluralize(auditActivity.length, 'event') : `${filteredAuditActivity.length} of ${auditActivity.length}` }}
+              </span>
             </div>
-            <div class="overflow-x-auto max-h-[18rem] overflow-y-auto overscroll-y-contain rounded-lg border border-default">
-              <table class="min-w-full text-sm border-separate border-spacing-0 whitespace-nowrap">
+
+            <div v-if="detailsLoading" class="text-sm text-muted py-6 text-center">Loading activity…</div>
+            <FlowEmpty v-else-if="!auditActivity.length" compact title="No activity yet"
+              description="Views, downloads, uploads and changes to this link will show here." />
+            <FlowEmpty v-else-if="!filteredAuditActivity.length" compact title="Nothing matches" description="Try a different action or search." />
+            <div v-else class="flow-table-wrap">
+              <table class="flow-table">
                 <thead>
-                  <tr class="bg-default text-default">
-                    <th class="text-left px-3 py-2 border border-default">Name</th>
-                    <!-- <th v-if="link?.type === 'upload'" class="text-left px-3 py-2 border border-default">Saved As</th> -->
-                    <th class="text-right px-3 py-2 border border-default">Size</th>
-                    <th class="text-left px-3 py-2 border border-default">MIME</th>
-                    <th v-if="link?.type === 'upload'" class="text-left px-3 py-2 border border-default">Uploader</th>
-                    <th v-if="link?.type === 'upload'" class="text-left px-3 py-2 border border-default">IP</th>
-                    <th v-if="link?.type === 'upload'" class="text-left px-3 py-2 border border-default">When</th>
+                  <tr>
+                    <th>When</th>
+                    <th>Action</th>
+                    <th>Who</th>
+                    <th>From</th>
+                    <th>Details</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="f in displayFiles" :key="f.key" class="border-t border-default">
-                    <td class="px-3 py-2 border border-default">{{ f.name }}</td>
-                    <!-- <td v-if="link?.type === 'upload'" class="px-3 py-2 border border-default">
-                      {{ f.saved_as || '—' }}
-                    </td> -->
-                    <td class="px-3 py-2 text-right border border-default">{{ fmtBytes(f.size) }}</td>
-                    <td class="px-3 py-2 border border-default">{{ f.mime || '—' }}</td>
-                    <td v-if="link?.type === 'upload'" class="px-3 py-2 border border-default">{{ f.uploader_label || '—'
-                      }}</td>
-                    <td v-if="link?.type === 'upload'" class="px-3 py-2 border border-default">{{ f.ip || '—' }}</td>
-                    <td v-if="link?.type === 'upload'" class="px-3 py-2 border border-default">
-                      {{ f.ts ? new Date(f.ts).toLocaleString(undefined, { hour12: hour12 }) : '—' }}
+                  <tr v-for="(a, idx) in filteredAuditActivity" :key="`${a.ts_ms}:${a.type}:${idx}`">
+                    <td class="whitespace-nowrap">{{ formatTs(a.ts_ms) }}</td>
+                    <td class="whitespace-nowrap font-medium">{{ activityTypeLabel(a.type) }}</td>
+                    <td>{{ actorLabel(a) }}</td>
+                    <td class="text-muted">{{ sourceLabel(a) }}</td>
+                    <td class="min-w-[14rem]">
+                      <div>{{ activitySummary(a) }}</div>
+                      <details v-if="hasActivityDetails(a)" class="mt-1">
+                        <summary class="cursor-pointer text-xs text-muted">More</summary>
+                        <pre class="mt-1 text-xs whitespace-pre-wrap">{{ activityDetailsPretty(a) }}</pre>
+                      </details>
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
-        </section>
 
-        <!-- Processing (proxy files / HLS / image watermarks); hides itself when nothing was requested -->
-        <LinkTranscodeStatus
-          v-if="!editMode && link && link.type !== 'upload'"
-          :link-id="link.id"
-          :api-fetch="props.apiFetch"
-          :reload-signal="transcodeStatusReload"
-        />
+          <!-- Versions -->
+          <div v-else-if="activeTab === 'versions'">
+            <FlowEmpty v-if="versionFileChoices.length === 0" compact title="No versions"
+              description="None of the files on this link have saved versions." />
+            <template v-else>
+              <div class="flex flex-wrap items-end gap-2 mb-2">
+                <label class="flex flex-col gap-1 flex-1 min-w-[16rem]">
+                  <span class="text-xs font-medium text-muted">File</span>
+                  <select v-model="selectedVersionFileId" class="input-textlike px-2 py-1.5 text-sm w-full">
+                    <option v-for="f in versionFileChoices" :key="f.id" :value="f.id">{{ f.name }}</option>
+                  </select>
+                </label>
+                <button type="button" class="btn btn-secondary btn-sm" :disabled="versionsLoading || !selectedVersionFileId" @click="refreshVersions">
+                  {{ versionsLoading ? 'Refreshing…' : 'Refresh' }}
+                </button>
+              </div>
+              <div class="flex flex-wrap items-center gap-x-5 gap-y-1 mb-3 text-xs">
+                <label class="inline-flex items-center gap-2 cursor-pointer">
+                  <input v-model="restoreBackup" type="checkbox" class="styled-checkbox" />
+                  Back up the current file before restoring
+                </label>
+                <label class="inline-flex items-center gap-2 cursor-pointer">
+                  <input v-model="showExtraFiles" type="checkbox" class="styled-checkbox" />
+                  Show extra files (proxy files, HLS, snapshots)
+                </label>
+              </div>
 
-        <!-- Activity -->
-        <section v-if="!editMode" class="w-full" data-tour="link-details-activity">
-          <div class="flex items-center justify-between mb-2">
-            <h4 class="font-semibold">Access Activity</h4>
-            <div class="text-xs opacity-70" v-if="!detailsLoading">{{ filteredAuditActivity.length }} item(s)</div>
-          </div>
+              <FlowNotice v-if="versionsError" tone="danger" size="sm" class="mb-3">{{ versionsError }}</FlowNotice>
 
-          <div class="flex flex-wrap items-center gap-2 mb-2">
-            <select v-model="activityTypeFilter" class="px-2 py-1 border border-default rounded bg-default text-default">
-              <option value="all">All actions</option>
-              <option v-for="t in activityTypes" :key="t" :value="t">{{ activityTypeLabel(t) }}</option>
-            </select>
-            <input
-              v-model.trim="activitySearch"
-              type="text"
-              class="input-textlike px-2 py-1 rounded min-w-[16rem]"
-              placeholder="Filter by actor, IP, action, or details"
-            />
-          </div>
-
-          <div v-if="detailsLoading" class="text-sm opacity-70">Loading…</div>
-          <div v-else-if="filteredAuditActivity.length === 0" class="text-sm opacity-70">No activity found.</div>
-
-          <div v-else class="overflow-x-auto max-h-[18rem] overflow-y-auto overscroll-y-contain rounded-lg border border-default">
-            <table class="min-w-full text-sm border-separate border-spacing-0">
-              <thead>
-                <tr class="bg-default text-default">
-                  <th class="text-left px-3 py-2 border border-default">When</th>
-                  <th class="text-left px-3 py-2 border border-default">Action</th>
-                  <th class="text-left px-3 py-2 border border-default">Actor</th>
-                  <th class="text-left px-3 py-2 border border-default">Source</th>
-                  <th class="text-left px-3 py-2 border border-default">Summary</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(a, idx) in filteredAuditActivity" :key="`${a.ts_ms}:${a.type}:${idx}`" class="border-t border-default align-top">
-                  <td class="px-3 py-2 border border-default whitespace-nowrap">{{ formatTs(a.ts_ms) }}</td>
-                  <td class="px-3 py-2 border border-default">{{ activityTypeLabel(a.type) }}</td>
-                  <td class="px-3 py-2 border border-default">{{ actorLabel(a) }}</td>
-                  <td class="px-3 py-2 border border-default">{{ sourceLabel(a) }}</td>
-                  <td class="px-3 py-2 border border-default">
-                    <div>{{ activitySummary(a) }}</div>
-                    <details v-if="hasActivityDetails(a)" class="mt-1">
-                      <summary class="cursor-pointer opacity-80">Details</summary>
-                      <pre class="mt-1 text-xs whitespace-pre-wrap">{{ activityDetailsPretty(a) }}</pre>
-                    </details>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- Versions manager -->
-        <section v-if="!editMode"class="w-full">
-          <div class="flex flex-wrap items-start justify-between gap-3 mb-2">
-            <div>
-              <h4 class="font-semibold">Versions</h4>
-              <div class="text-xs opacity-70">Restore or delete versions, and inspect related proxy file/version artifacts.</div>
-            </div>
-            <div class="flex flex-wrap items-center justify-end gap-2">
-              <label class="text-xs opacity-80 inline-flex items-center gap-1 px-2 py-1 rounded border border-default bg-default/20">
-                <input type="checkbox" v-model="restoreBackup" />
-                Backup on restore
-              </label>
-              <label class="text-xs opacity-80 inline-flex items-center gap-1 px-2 py-1 rounded border border-default bg-default/20">
-                <input type="checkbox" v-model="showExtraFiles" />
-                Show extra files
-              </label>
-              <select v-model="selectedVersionFileId" class="px-2 py-1 border border-default rounded bg-default text-default min-w-[20rem]">
-                <option v-for="f in versionFileChoices" :key="f.id" :value="f.id">
-                  {{ f.name }}
-                </option>
-              </select>
-              <button class="btn btn-secondary" @click="refreshVersions" :disabled="versionsLoading || !selectedVersionFileId">
-                {{ versionsLoading ? 'Refreshing…' : 'Refresh' }}
-              </button>
-            </div>
-          </div>
-
-          <div v-if="versionFileChoices.length === 0" class="text-sm opacity-70">
-            No version-managed files for this link.
-          </div>
-          <div v-else>
-            <div v-if="versionsError" class="p-2 mb-2 rounded flow-tone-danger border text-default">
-              {{ versionsError }}
-            </div>
-
-            <div class="overflow-x-auto rounded-lg border border-default">
-              <table class="min-w-full text-sm border-separate border-spacing-0">
-                <thead>
-                  <tr class="bg-default text-default">
-                    <th class="text-left px-3 py-2 border border-default">Version</th>
-                    <th class="text-left px-3 py-2 border border-default">Created</th>
-                    <th class="text-left px-3 py-2 border border-default">Snapshot</th>
-                    <th class="text-right px-3 py-2 border border-default">Size</th>
-                    <th class="text-right px-3 py-2 border border-default">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-if="versionsLoading">
-                    <td colspan="5" class="px-3 py-4 border border-default text-center">Loading…</td>
-                  </tr>
-                  <tr v-else-if="versions.length === 0">
-                    <td colspan="5" class="px-3 py-4 border border-default text-center">No versions found.</td>
-                  </tr>
-                  <template v-else v-for="v in versions" :key="`v-${v.asset_version_id}`">
-                    <tr class="border-t border-default">
-                      <td class="px-3 py-2 border border-default">v{{ v.version_index }}</td>
-                      <td class="px-3 py-2 border border-default">{{ v.created_at ? new Date(v.created_at).toLocaleString(undefined, { hour12: hour12 }) : '—' }}</td>
-                      <td class="px-3 py-2 border border-default">{{ snapshotName(v.snapshot_rel) }}</td>
-                      <td class="px-3 py-2 text-right border border-default">{{ fmtBytes(v.snapshot_size_bytes) }}</td>
-                      <td class="px-3 py-2 border border-default text-right">
-                        <div class="flex items-center justify-end gap-2">
-                          <button class="btn btn-primary px-2 py-1 text-xs" @click="restoreVersion(v)">
-                            Restore
-                          </button>
-                          <button class="btn btn-danger px-2 py-1 text-xs" :disabled="versions.length <= 1"
-                            @click="deleteVersion(v)">
-                            Delete
-                          </button>
-                        </div>
-                      </td>
+              <div class="flow-table-wrap">
+                <table class="flow-table">
+                  <thead>
+                    <tr>
+                      <th>Version</th>
+                      <th>Created</th>
+                      <th>Snapshot</th>
+                      <th class="flow-table__num">Size</th>
+                      <th class="text-right"><span class="sr-only">Actions</span></th>
                     </tr>
-                    <tr v-if="showExtraFiles" class="border-t border-default bg-default/10">
-                      <td colspan="5" class="px-3 py-2 border border-default">
-                        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-                          <div class="text-xs font-semibold">Extra files for this version</div>
-                          <div class="flex flex-wrap items-center gap-2">
-                            <button
-                              class="btn btn-secondary px-2 py-1 text-xs"
-                              @click="copyAllExtraPaths(v)"
-                              :disabled="!hasAnyExtraPath(v)"
-                            >
-                              Copy all paths
-                            </button>
-                            <button
-                              class="btn btn-secondary px-2 py-1 text-xs"
-                              @click="deleteVersionArtifacts(v, 'transcodes')"
-                              :disabled="isDeletingArtifacts(v, 'transcodes')"
-                            >
-                              {{ isDeletingArtifacts(v, 'transcodes') ? 'Deleting…' : 'Delete proxy file/HLS' }}
-                            </button>
-                            <button
-                              v-if="clientTranscodeEnabled && isSelectedFileVideo"
-                              class="btn btn-primary px-2 py-1 text-xs"
-                              @click="startRemoteTranscodeForVersion(v)"
-                              :disabled="isRemoteTranscodingCheck(v.asset_version_id)"
-                            >
-                              {{ isRemoteTranscodingCheck(v.asset_version_id) ? 'Transcoding…' : 'Transcode with local hardware' }}
-                            </button>
-                            <button
-                              class="btn btn-secondary px-2 py-1 text-xs"
-                              @click="deleteVersionArtifacts(v, 'snapshot')"
-                              :disabled="isDeletingArtifacts(v, 'snapshot')"
-                            >
-                              {{ isDeletingArtifacts(v, 'snapshot') ? 'Deleting…' : 'Delete snapshot' }}
-                            </button>
-                            <button
-                              class="btn btn-danger px-2 py-1 text-xs"
-                              @click="deleteVersionArtifacts(v, 'all')"
-                              :disabled="isDeletingArtifacts(v, 'all')"
-                            >
-                              {{ isDeletingArtifacts(v, 'all') ? 'Deleting…' : 'Delete all extra' }}
-                            </button>
-                          </div>
-                        </div>
-                        <div class="grid gap-1 text-xs font-mono break-all opacity-85">
-                          <div v-if="artifactLoading(v)" class="text-xs opacity-70">Loading artifact files…</div>
-                          <div v-else-if="artifactError(v)" class="text-xs text-flow-danger">{{ artifactError(v) }}</div>
-                          <template v-else-if="artifactFileNodes(v).length">
-                            <div class="text-xs font-semibold mb-1">Existing files</div>
-                            <div
-                              v-for="f in artifactFileNodes(v)"
-                              :key="`artifact-file-${v.asset_version_id}-${f.rel_path}`"
-                              class="grid grid-cols-[1fr_auto_auto] gap-2 items-start border-b border-default/40 py-1"
-                            >
-                              <div class="min-w-0">
-                                <div class="truncate" :style="{ paddingLeft: `${Math.min(f.depth, 8) * 12}px` }">
-                                  └─ {{ f.name }}
-                                </div>
-                                <div class="text-[11px] opacity-70 truncate">{{ f.dir || '.' }}</div>
-                              </div>
-                              <div class="opacity-80">{{ fmtBytes(f.size) }}</div>
-                              <button
-                                class="btn btn-secondary px-2 py-1 text-[11px]"
-                                @click="copyExtraPath('Artifact file', f.rel_path)"
-                              >
-                                Copy
+                  </thead>
+                  <tbody>
+                    <tr v-if="versionsLoading">
+                      <td colspan="5" class="text-center text-muted py-5">Loading…</td>
+                    </tr>
+                    <tr v-else-if="versions.length === 0">
+                      <td colspan="5" class="text-center text-muted py-5">No versions found for this file.</td>
+                    </tr>
+                    <template v-else v-for="v in versions" :key="`v-${v.asset_version_id}`">
+                      <tr>
+                        <td class="font-semibold">v{{ v.version_index }}</td>
+                        <td class="whitespace-nowrap">{{ v.created_at ? formatDate(v.created_at) : '—' }}</td>
+                        <td class="text-muted max-w-[16rem]"><span class="block truncate" :title="v.snapshot_rel || undefined">{{ snapshotName(v.snapshot_rel) }}</span></td>
+                        <td class="flow-table__num">{{ fmtBytes(v.snapshot_size_bytes) }}</td>
+                        <td class="text-right whitespace-nowrap">
+                          <button type="button" class="btn btn-secondary btn-xs" @click="restoreVersion(v)">Restore</button>
+                          <button type="button" class="btn btn-danger btn-xs ml-1.5" :disabled="versions.length <= 1"
+                            :title="versions.length <= 1 ? 'The only version can\'t be deleted' : undefined" @click="deleteVersion(v)">Delete</button>
+                        </td>
+                      </tr>
+                      <tr v-if="showExtraFiles" class="ld-extra-row">
+                        <td colspan="5">
+                          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <span class="text-xs font-semibold">Extra files for v{{ v.version_index }}</span>
+                            <div class="flex flex-wrap items-center gap-1.5">
+                              <button type="button" class="btn btn-secondary btn-xs" :disabled="!hasAnyExtraPath(v)" @click="copyAllExtraPaths(v)">Copy all paths</button>
+                              <button v-if="clientTranscodeEnabled && isSelectedFileVideo" type="button" class="btn btn-secondary btn-xs"
+                                :disabled="isRemoteTranscodingCheck(v.asset_version_id)" @click="startRemoteTranscodeForVersion(v)">
+                                {{ isRemoteTranscodingCheck(v.asset_version_id) ? 'Transcoding…' : 'Transcode with local hardware' }}
+                              </button>
+                              <button type="button" class="btn btn-danger btn-xs" :disabled="isDeletingArtifacts(v, 'transcodes')" @click="deleteVersionArtifacts(v, 'transcodes')">
+                                {{ isDeletingArtifacts(v, 'transcodes') ? 'Deleting…' : 'Delete proxy files/HLS' }}
+                              </button>
+                              <button type="button" class="btn btn-danger btn-xs" :disabled="isDeletingArtifacts(v, 'snapshot')" @click="deleteVersionArtifacts(v, 'snapshot')">
+                                {{ isDeletingArtifacts(v, 'snapshot') ? 'Deleting…' : 'Delete snapshot' }}
+                              </button>
+                              <button type="button" class="btn btn-danger btn-xs" :disabled="isDeletingArtifacts(v, 'all')" @click="deleteVersionArtifacts(v, 'all')">
+                                {{ isDeletingArtifacts(v, 'all') ? 'Deleting…' : 'Delete all extra' }}
                               </button>
                             </div>
-                          </template>
-                          <template v-else>
-                            <div class="text-xs opacity-70">No artifact files found on disk. Known folders:</div>
-                            <div
-                              v-for="folder in fallbackFolderRows(v)"
-                              :key="`artifact-folder-${v.asset_version_id}-${folder.rel_path}`"
-                              class="grid grid-cols-[11rem_1fr_auto] gap-2 items-start"
-                            >
-                              <span class="opacity-80">{{ folder.label }}</span>
-                              <span>{{ folder.rel_path || '—' }}</span>
-                              <button class="btn btn-secondary px-2 py-1 text-[11px]" :disabled="!folder.rel_path" @click="copyExtraPath(folder.label, folder.rel_path)">Copy</button>
+                          </div>
+                          <div class="grid gap-1 text-xs font-mono break-all">
+                            <div v-if="artifactLoading(v)" class="text-muted">Loading files…</div>
+                            <div v-else-if="artifactError(v)" class="text-flow-danger">{{ artifactError(v) }}</div>
+                            <template v-else-if="artifactFileNodes(v).length">
+                              <div v-for="f in artifactFileNodes(v)" :key="`artifact-file-${v.asset_version_id}-${f.rel_path}`"
+                                class="grid grid-cols-[1fr_auto_auto] gap-2 items-center py-0.5">
+                                <span class="truncate" :style="{ paddingLeft: `${Math.min(f.depth, 8) * 12}px` }" :title="f.rel_path">└─ {{ f.name }}</span>
+                                <span class="text-muted">{{ fmtBytes(f.size) }}</span>
+                                <button type="button" class="btn btn-secondary btn-xs" @click="copyExtraPath('Artifact file', f.rel_path)">Copy</button>
+                              </div>
+                            </template>
+                            <template v-else>
+                              <div class="text-muted font-sans">No extra files on disk. Known folders:</div>
+                              <div v-for="folder in fallbackFolderRows(v)" :key="`artifact-folder-${v.asset_version_id}-${folder.rel_path}`"
+                                class="grid grid-cols-[10rem_1fr_auto] gap-2 items-center">
+                                <span class="text-muted font-sans">{{ folder.label }}</span>
+                                <span>{{ folder.rel_path || '—' }}</span>
+                                <button type="button" class="btn btn-secondary btn-xs" :disabled="!folder.rel_path" @click="copyExtraPath(folder.label, folder.rel_path)">Copy</button>
+                              </div>
+                            </template>
+                            <div class="grid grid-cols-[10rem_1fr_auto] gap-2 items-center pt-1">
+                              <span class="text-muted font-sans">Proxy files</span>
+                              <span>{{ proxyPatternRelPath(v) || '—' }}</span>
+                              <button type="button" class="btn btn-secondary btn-xs" :disabled="!proxyPatternRelPath(v)" @click="copyExtraPath('Proxy files pattern', proxyPatternRelPath(v))">Copy</button>
                             </div>
-                          </template>
-                          <div class="grid grid-cols-[11rem_1fr_auto] gap-2 items-start pt-1">
-                            <span class="opacity-80">Proxy files</span>
-                            <span>{{ proxyPatternRelPath(v) || '—' }}</span>
-                            <button class="btn btn-secondary px-2 py-1 text-[11px]" :disabled="!proxyPatternRelPath(v)" @click="copyExtraPath('Proxy files pattern', proxyPatternRelPath(v))">Copy</button>
+                            <div class="grid grid-cols-[10rem_1fr_auto] gap-2 items-center">
+                              <span class="text-muted font-sans">HLS folder</span>
+                              <span>{{ hlsFolderRelPath(v) || '—' }}</span>
+                              <button type="button" class="btn btn-secondary btn-xs" :disabled="!hlsFolderRelPath(v)" @click="copyExtraPath('HLS folder', hlsFolderRelPath(v))">Copy</button>
+                            </div>
                           </div>
-                          <div class="grid grid-cols-[11rem_1fr_auto] gap-2 items-start">
-                            <span class="opacity-80">HLS folder</span>
-                            <span>{{ hlsFolderRelPath(v) || '—' }}</span>
-                            <button class="btn btn-secondary px-2 py-1 text-[11px]" :disabled="!hlsFolderRelPath(v)" @click="copyExtraPath('HLS folder', hlsFolderRelPath(v))">Copy</button>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  </template>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- Danger Zone -->
-        <section v-if="!editMode" class="w-full">
-          <div class="border border-flow-danger rounded-lg p-3 mt-2">
-            <div class="flex items-center justify-between">
-              <div>
-                <h4 class="font-semibold text-flow-danger text-sm">Danger Zone</h4>
-                <p class="text-xs opacity-70">Permanently delete this link and all associated data.</p>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
               </div>
-              <button class="btn btn-danger px-3 py-1.5 text-sm"
-                @click="emit('requestDelete', link!)">
-                Delete Link
-              </button>
-            </div>
+            </template>
           </div>
-        </section>
+        </div>
+      </template>
+
+      <!-- ═══ Edit ═══════════════════════════════════════════ -->
+      <div v-else class="flex-1 min-h-0 overflow-y-auto px-6 py-5" data-tour="link-details-config">
+        <div class="max-w-3xl mx-auto">
+          <p class="flow-subhead flow-subhead--first">Details</p>
+          <div class="flow-group">
+            <DetailRow label="Title" for-id="ld-edit-title">
+              <input id="ld-edit-title" v-model="draftTitle" type="text" class="input-textlike px-2 py-1 text-sm w-72"
+                :placeholder="link ? fallbackTitle(link) : ''" />
+            </DetailRow>
+            <DetailRow label="Project" for-id="ld-edit-project">
+              <select id="ld-edit-project" v-model="draftProjectId" class="input-textlike px-2 py-1 text-sm w-72">
+                <option :value="null">None</option>
+                <option v-if="draftProjectId != null && !availableProjects.some(p => p.id === draftProjectId)" :value="draftProjectId">
+                  {{ link?.project_name || 'Current project' }}
+                </option>
+                <option v-for="proj in availableProjects" :key="proj.id" :value="proj.id">{{ proj.name }}</option>
+              </select>
+            </DetailRow>
+            <DetailRow label="Notes" description="Internal notes for your team." for-id="ld-edit-notes" stacked>
+              <textarea id="ld-edit-notes" v-model="draftNotes" rows="3" class="input-textlike w-full px-3 py-2 text-sm"></textarea>
+            </DetailRow>
+          </div>
+
+          <p class="flow-subhead">What this link does</p>
+          <div class="flow-group">
+            <DetailRow label="Review" description="Share files for clients to view.">
+              <FlowSwitch v-model="draftShareEnabled" label="Review" />
+            </DetailRow>
+            <DetailRow label="Upload" description="Let clients send you files.">
+              <FlowSwitch v-model="draftUploadEnabled" label="Upload" />
+            </DetailRow>
+          </div>
+          <FlowNotice v-if="!draftShareEnabled && !draftUploadEnabled" tone="danger" size="sm" class="mt-2">
+            Turn on Review, Upload or both.
+          </FlowNotice>
+
+          <template v-if="draftShareEnabled">
+            <p class="flow-subhead">Shared files</p>
+            <div class="flow-group">
+              <DetailRow :label="`${pluralize(draftFilePaths.length, 'file')} selected`"
+                :description="filesDirty ? 'Changed. Saved when you click Save & close.' : ''">
+                <button type="button" class="btn btn-secondary btn-sm" @click="openFilesEditor">Manage files…</button>
+              </DetailRow>
+              <div v-if="draftFilePaths.length" class="py-2">
+                <button type="button" class="ld-link text-xs" :aria-expanded="fileListExpanded" @click="fileListExpanded = !fileListExpanded">
+                  {{ fileListExpanded ? 'Hide the file list' : 'Show the file list' }}
+                </button>
+                <ul v-if="fileListExpanded" class="ld-paths">
+                  <li v-for="(p, i) in draftFilePaths" :key="p + ':' + i" class="truncate" :title="p"><code>{{ p }}</code></li>
+                </ul>
+              </div>
+            </div>
+            <FlowNotice v-if="!draftFilePaths.length" tone="warning" size="sm" class="mt-2">
+              No files selected. Use Manage files… to choose some.
+            </FlowNotice>
+          </template>
+
+          <div v-if="draftUploadEnabled" ref="uploadDestSection">
+            <p class="flow-subhead">Uploads</p>
+            <div class="flow-group">
+              <DetailRow label="Save uploads to" description="The folder on your server where uploaded files go." stacked>
+                <PathInput v-model="draftUploadDir" :apiFetch="apiFetch" :dirsOnly="true" />
+                <p v-if="uploadDirDirty" class="text-xs text-muted mt-1">
+                  Currently <code>{{ currentUploadDir || 'not set' }}</code>. Changes when you save.
+                </p>
+              </DetailRow>
+              <template v-if="draftShareEnabled">
+                <DetailRow label="Add uploads to shared files" description="Uploaded files appear in this link's shared files.">
+                  <FlowSwitch v-model="draftAutoShareUploads" label="Add uploads to shared files" />
+                </DetailRow>
+                <DetailRow label="Watermark uploads"
+                  :description="link?.watermark ? 'Apply this link\'s watermark to files uploaded through it.' : 'This link has no watermark configured.'">
+                  <FlowSwitch v-model="draftAutoWatermarkUploads" label="Watermark uploads" :disabled="!link?.watermark" />
+                </DetailRow>
+              </template>
+              <DetailRow label="Proxy files for uploads" description="The server makes proxy files for each video uploaded through this link.">
+                <FlowSwitch v-model="draftAutoTranscodeUploads" label="Proxy files for uploads" />
+              </DetailRow>
+              <DetailRow v-if="draftAutoTranscodeUploads" label="Upload proxy qualities">
+                <div class="flex flex-wrap justify-end gap-x-4 gap-y-1">
+                  <label v-for="q in proxyQualityChoices" :key="`auto-${q}`" class="inline-flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" class="styled-checkbox" :value="q" :checked="draftAutoTranscodeProxyQualities.includes(q)"
+                      @change="toggleDraftAutoTranscodeQuality(q, ($event.target as HTMLInputElement).checked)" />
+                    {{ qualityLabel(q) }}
+                  </label>
+                </div>
+              </DetailRow>
+            </div>
+            <FlowNotice v-if="uploadDirMissing" tone="danger" size="sm" class="mt-2">Choose a folder for uploads.</FlowNotice>
+          </div>
+
+          <p class="flow-subhead">Who can open it</p>
+          <ul class="flow-list" role="radiogroup" aria-label="Who can open this link">
+            <li v-for="opt in accessChoices" :key="opt.value">
+              <label class="flow-list__row flow-list__row--interactive !items-start"
+                :class="{ 'flow-list__row--selected': accessChoice === opt.value }">
+                <input type="radio" name="ld-access-choice" class="mt-0.5" :value="opt.value"
+                  :checked="accessChoice === opt.value" @change="accessChoice = opt.value" />
+                <span class="min-w-0">
+                  <span class="block text-sm font-medium">{{ opt.label }}</span>
+                  <span class="block flow-list__meta">{{ opt.help }}</span>
+                </span>
+              </label>
+            </li>
+          </ul>
+
+          <div v-if="accessChoice === 'open_password' || (accessChoice !== 'restricted' && supportsComments)" class="flow-group mt-3">
+            <DetailRow v-if="accessChoice === 'open_password'" :label="openPasswordRequired ? 'New password' : 'Password'"
+              :description="openPasswordRequired ? 'Leave blank to keep the current password.' : 'Share it with the people you send the link to.'"
+              for-id="ld-edit-password">
+              <input id="ld-edit-password" v-model.trim="draftPassword" type="password" autocomplete="new-password"
+                class="input-textlike px-2 py-1 text-sm w-56" :placeholder="openPasswordRequired ? 'Unchanged' : 'Enter a password'" />
+            </DetailRow>
+            <DetailRow v-if="supportsComments" label="Allow comments" description="Viewers can leave review comments.">
+              <button v-if="draftAllowComments" type="button" class="btn btn-secondary btn-xs whitespace-nowrap"
+                :disabled="!effectiveToken || !link?.id" @click="categoryManagementOpen = true">Comment categories…</button>
+              <FlowSwitch v-model="draftAllowComments" label="Allow comments" />
+            </DetailRow>
+          </div>
+          <FlowNotice v-if="mustProvidePassword" tone="danger" size="sm" class="mt-2">
+            Enter a password, or choose a different access option.
+          </FlowNotice>
+
+          <template v-if="accessChoice === 'restricted'">
+            <div class="flex items-center justify-between gap-2 mt-4 mb-2">
+              <div class="min-w-0">
+                <p class="text-sm font-medium">Invited</p>
+                <p class="text-xs text-muted">Changes here are saved when you click Save &amp; close.</p>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm whitespace-nowrap" @click="openAccessModal">Invite clients…</button>
+            </div>
+            <LinkAccessList :users="editAccessUsers" :groups="editAccessGroups" :loading="accessLoading" editable
+              @remove-user="removeAccess" @remove-team="removeGroupAccess"
+              @undo-user="undoRemoveAccess" @undo-team="undoRemoveGroupAccess" />
+            <FlowNotice v-if="!accessSatisfied" tone="danger" size="sm" class="mt-2">
+              Invite at least one client or team, or choose a different access option.
+            </FlowNotice>
+          </template>
+
+          <p class="flow-subhead">Playback and watermark</p>
+          <div class="flow-group">
+            <DetailRow label="Proxy files" description="Playback copies made for reviewers.">
+              <FlowSwitch v-model="draftGenerateReviewProxy" label="Proxy files" />
+            </DetailRow>
+            <DetailRow v-if="draftGenerateReviewProxy" label="Qualities">
+              <div class="flex flex-wrap justify-end gap-x-4 gap-y-1">
+                <label v-for="q in proxyQualityChoices" :key="q" class="inline-flex items-center gap-2 cursor-pointer">
+                  <input v-model="draftProxyQualities" type="checkbox" class="styled-checkbox" :value="q" />
+                  {{ qualityLabel(q) }}
+                </label>
+              </div>
+            </DetailRow>
+            <DetailRow label="Watermark" :description="watermarkEditHelp">
+              <button v-if="draftWatermarkEnabled" type="button" class="btn btn-secondary btn-xs whitespace-nowrap" @click="openWatermarkConfigModal">Configure…</button>
+              <FlowSwitch v-model="draftWatermarkEnabled" label="Watermark" :disabled="linkHasVideoFiles && !draftGenerateReviewProxy" />
+            </DetailRow>
+            <DetailRow v-if="draftShareEnabled && (draftGenerateReviewProxy || draftWatermarkEnabled)" label="Reprocess proxy files"
+              :description="`Regenerates proxy files and streams with the settings above. ${clientTranscodeEnabled ? 'Uses this computer\'s hardware (client-side transcoding is on).' : 'The server does the processing.'}`">
+              <button type="button" class="btn btn-secondary btn-sm whitespace-nowrap" :disabled="reprocessingMedia" @click="reprocessMedia()">
+                {{ reprocessingMedia ? 'Processing…' : 'Reprocess' }}
+              </button>
+            </DetailRow>
+          </div>
+        </div>
+      </div>
+
+      <template v-if="editMode" #footer>
+        <div class="min-w-0 mr-auto text-sm" aria-live="polite">
+          <span v-if="editProblem" class="text-flow-danger">{{ editProblem }}</span>
+          <span v-else-if="hasUnsavedChanges" class="inline-flex items-center gap-2 font-medium">
+            <span class="flow-dot flow-dot--warning" aria-hidden="true" />You have unsaved changes
+          </span>
+          <span v-else class="text-xs text-muted">Changes apply to the live link when you save.</span>
+        </div>
+        <div class="flex items-center gap-2" data-tour="link-details-save">
+          <button type="button" class="btn btn-dismiss" :disabled="saving" @click="cancelEdit">Cancel</button>
+          <button type="button" class="btn btn-success" :disabled="saveDisabled" @click="saveAll">{{ saving ? 'Saving…' : 'Save & close' }}</button>
+        </div>
+      </template>
   </FlowModal>
 
   <template v-if="modelValue">
+      <AddUsersModal
+        v-model="accessModalOpen"
+        :apiFetch="apiFetch"
+        :link="link || undefined"
+        :roleHint="link?.type === 'upload' ? 'upload' : 'view'"
+        :preselected="draftAccess.map(a => ({
+          id: a.user_id > 0 ? a.user_id : undefined,
+          username: a.user_name || '',
+          name: a.name || '',
+          user_email: a.user_email || '',
+          display_color: a.display_color || '',
+          role_id: a.role_id ?? a.role?.id ?? undefined,
+          role_name: a.role_name ?? a.role?.name ?? undefined,
+        }))"
+        :preselectedGroups="draftGroups.map((g: any) => ({
+          id: g.group_id,
+          role_id: g.role_id ?? g.role?.id ?? null,
+          role_name: g.role_name ?? g.role?.name ?? null,
+        }))"
+        @apply="mergeAccessFromModal"
+      />
       <EditLinkFilesModal v-model="filesEditorOpen" :apiFetch="apiFetch"
         :initialPaths="draftFilePaths"
         :base="linkProjectBase" :startDir="linkStartDir" @apply="onApplyFilePaths" />
@@ -1004,13 +667,45 @@
   </template>
 </template>
 
+<!-- Inline sub-components -->
+<script lang="ts">
+import { defineComponent, h } from 'vue'
+
+// One label/value row inside a .flow-group; `stacked` puts the value under the label.
+const DetailRow = defineComponent({
+  props: {
+    label: { type: String, required: true },
+    description: { type: String, default: '' },
+    forId: { type: String, default: '' },
+    stacked: { type: Boolean, default: false },
+  },
+  setup(props, { slots }) {
+    return () => {
+      const labelEl = h(props.forId ? 'label' : 'div', {
+        class: 'block text-sm font-medium text-default',
+        ...(props.forId ? { for: props.forId } : {}),
+      }, props.label)
+      const head = h('div', { class: 'min-w-0' }, [
+        labelEl,
+        props.description ? h('div', { class: 'text-xs text-accent mt-0.5' }, props.description) : null,
+      ])
+      if (props.stacked) {
+        return h('div', { class: 'py-3 flex flex-col gap-2' }, [head, h('div', { class: 'min-w-0' }, slots.default?.())])
+      }
+      return h('div', { class: 'grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 items-center py-3' }, [
+        head,
+        h('div', { class: 'flex items-center justify-end gap-2 min-w-0 max-w-[24rem] text-sm text-right' }, slots.default?.()),
+      ])
+    }
+  },
+})
+</script>
+
 <script setup lang="ts">
 import { writeClipboard } from '../../clipboard'
 import { computed, inject, nextTick, ref, watch, toRaw } from 'vue'
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { useTimeFormat } from '../../composables/useTimeFormat'
-import { faTrash } from '@fortawesome/free-solid-svg-icons'
-import { ChatBubbleLeftRightIcon } from '@heroicons/vue/24/outline'
+import { ChatBubbleLeftRightIcon, LinkIcon, MagnifyingGlassIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
 import AddUsersModal from './AddUsersModal.vue'
 import EditLinkFilesModal from './EditLinkFilesModal.vue'
 import CommentsReviewModal from './CommentsReviewModal.vue'
@@ -1020,11 +715,10 @@ import LinkTranscodeStatus from '../LinkTranscodeStatus.vue'
 import EmailInvitationPanel from '../EmailInvitationPanel.vue'
 import WatermarkCustomizer from '../WatermarkCustomizer.vue'
 import WatermarkPreview from '../WatermarkPreview.vue'
-import type { LinkItem, LinkType, AccessRow, Status, ExistingUser } from '../../typings/electron'
+import type { LinkItem, AccessRow, Status, ExistingUser } from '../../typings/electron'
 import type { WatermarkSettings, Default45FlowWatermark } from '../../types/watermark'
 import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../../types/watermark'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
-import { Switch } from '@headlessui/vue'
 import { useTransferProgress } from '../../composables/useTransferProgress'
 import { useExternalAddressReadiness, describeExternalAddressNotReady, resolveCopyUrl } from '../../composables/useExternalAddressReadiness'
 import { useConnections } from '../../composables/useConnections'
@@ -1036,6 +730,11 @@ import { connectionMetaInjectionKey } from '../../keys/injection-keys'
 import { useTourManager, type TourStep } from '../../composables/useTourManager'
 import { useOnboarding } from '../../composables/useOnboarding'
 import FlowModal from '../../ui/FlowModal.vue'
+import FlowChip from '../../ui/FlowChip.vue'
+import FlowEmpty from '../../ui/FlowEmpty.vue'
+import FlowNotice from '../../ui/FlowNotice.vue'
+import FlowSwitch from '../../ui/FlowSwitch.vue'
+import LinkAccessList from '../access/LinkAccessList.vue'
 
 const { requestTour } = useTourManager()
 const { onboarding, markDone } = useOnboarding()
@@ -1047,28 +746,26 @@ const linkDetailsTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="link-details-header"]',
 		message: isPremiumActive.value
-      ? 'This is the Link Details modal.\n\nView everything about a link — configuration, files, and activity. Click "Edit" to modify settings, "Comments" to review, categorize, and export feedback (Pro), or "Close" when done.'
-			: 'This is the Link Details modal.\n\nView everything about a link — configuration, files, and activity. Click "Edit" to modify settings, or "Close" when done.',
+			? 'This is Link Details.\n\nClick "Edit" to change the link, "Comments" to review, categorize and export feedback (Pro), or "Close" when done.'
+			: 'This is Link Details.\n\nClick "Edit" to change the link, or "Close" when done.',
 	},
 	{
 		target: '[data-tour="link-details-meta"]',
-		message: 'The top section shows the link\'s primary URL, access mode, sharing mode, watermark status, type (upload, share, or combined), status, and creation/expiry dates.\n\nClick "Copy" to copy the URL to your clipboard.',
+		message: 'The top of the window shows whether the link is active, its address, who can open it, and when it was created and expires.\n\nClick "Copy link" to copy the address.',
 	},
 	{
 		target: '[data-tour="link-details-config"]',
-		message: isPremiumActive.value
-      ? 'Link Configuration shows editable settings.\n\nTitle, notes, access mode, password protection, comments (including Comment Categories), media processing (proxy files, qualities, watermark with full customization), and for upload links — the destination directory.\n\nLinks can have both upload and share/review capabilities enabled simultaneously.'
-			: 'Link Configuration shows editable settings.\n\nTitle, notes, access mode, password protection, media processing (proxy files, qualities, basic watermark), and for upload links — the destination directory.\n\nLinks can have both upload and share/review capabilities enabled simultaneously.',
+		message: 'Overview sums up the link: who can open it (and who is invited), its shared files, where uploads are saved, its proxy files and watermark, and your notes.\n\nYou can also delete the link from the bottom of this tab.',
 	},
 	{
 		target: '[data-tour="link-details-files"]',
-		message: 'The Files table lists every file attached to this link.\n\nFor share links, these are the files recipients can access. For upload links, these are files that have been uploaded through the link. Combined links show both.',
+		message: 'Files lists every file on the link and the progress of any proxy files being made.\n\nFor review links these are the files people can open. For upload links these are the files people have sent you.',
 	},
 	{
 		target: '[data-tour="link-details-activity"]',
 		message: isPremiumActive.value
-			? 'The Activity section shows an audit log of all actions on this link — views, downloads, uploads, comments, and access changes.\n\nFilter by type and search by keyword to find specific events.'
-			: 'The Activity section shows an audit log of all actions on this link — views, downloads, uploads, and access changes.\n\nFilter by type and search by keyword to find specific events.',
+			? 'Activity is a log of everything that happened on this link: views, downloads, uploads, comments and changes.\n\nFilter by action or search to find something.'
+			: 'Activity is a log of everything that happened on this link: views, downloads, uploads and changes.\n\nFilter by action or search to find something.',
 	},
 ])
 
@@ -1076,12 +773,12 @@ const linkDetailsEditTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="link-details-config"]',
 		message: isPremiumActive.value
-			? 'You\'re now in Edit mode!\n\nAll fields in this section are editable. Change the title, notes, access mode, password, proxy file settings, or watermark configuration with full position/size/opacity customization (Pro).\n\nFor upload links, you can also change the destination directory. For combined links, you can toggle upload and share capabilities independently.'
-			: 'You\'re now in Edit mode!\n\nAll fields in this section are editable. Change the title, notes, access mode, password, proxy file settings, or basic watermark.\n\nFor upload links, you can also change the destination directory. For combined links, you can toggle upload and share capabilities independently.',
+			? 'You are editing the link.\n\nChange its title and project, whether it is for review, upload or both, its files, who can open it, and its proxy files and watermark (with full position, size and opacity controls in Pro).'
+			: 'You are editing the link.\n\nChange its title and project, whether it is for review, upload or both, its files, who can open it, and its proxy files and watermark.',
 	},
 	{
-		target: '[data-tour="link-details-header"]',
-		message: 'Click "Save & Close" when done, or "Cancel Edit" to discard edits.\n\nChanges take effect immediately after saving — active links will reflect the new settings.',
+		target: '[data-tour="link-details-save"]',
+		message: 'Click "Save & close" when you are done, or "Cancel" to go back without saving.\n\nChanges apply to the live link as soon as you save. Anything blocking the save is shown on the left.',
 	},
 ])
 
@@ -1168,6 +865,11 @@ const activityTypeFilter = ref('all')
 const activitySearch = ref('')
 const access = ref<AccessRow[]>([])
 const accessGroupRows = ref<any[]>([])
+// Edit mode works on copies; Save & close replaces the link's access with these.
+const draftAccess = ref<AccessRow[]>([])
+const draftGroups = ref<any[]>([])
+// Once the user edits the draft, server refreshes stop overwriting it.
+const accessTouched = ref(false)
 const accessLoading = ref(false)
 const accessModalOpen = ref(false)
 const commentsModalOpen = ref(false)
@@ -1225,6 +927,7 @@ const hasUnsavedChanges = computed(() => {
   const hadPassword = (props.link.auth_mode || '') === 'password' || !!props.link.passwordRequired
   if (draftUsePassword.value !== hadPassword) return true
   if (draftUsePassword.value && draftPassword.value.trim().length > 0) return true
+  if (accessEditsPending.value) return true
   return false
 })
 
@@ -1330,7 +1033,55 @@ const restrictAccess = computed({
     draftAccessMode.value = v ? 'restricted' : 'open'
   },
 })
-const accessSatisfied = computed(() => effectiveAccessMode.value !== 'restricted' || access.value.length > 0 || accessGroupRows.value.length > 0)
+const accessSatisfied = computed(() => {
+  if (effectiveAccessMode.value !== 'restricted') return true
+  return editMode.value
+    ? draftAccess.value.length > 0 || draftGroups.value.length > 0
+    : access.value.length > 0 || accessGroupRows.value.length > 0
+})
+
+function seedDraftAccess() {
+  draftAccess.value = access.value.map(a => ({ ...a }))
+  draftGroups.value = accessGroupRows.value.map((g: any) => ({ ...g }))
+  accessTouched.value = false
+}
+
+function roleKey(r: any) {
+  return String(r?.role_id ?? r?.role?.id ?? r?.role_name ?? r?.role?.name ?? '')
+}
+function accessSignature(users: AccessRow[], groups: any[]) {
+  const u = users.map(a => `u${a.user_id > 0 ? a.user_id : a.user_name}:${roleKey(a)}`).sort()
+  const g = groups.map((x: any) => `g${x.group_id}:${roleKey(x)}`).sort()
+  return [...u, ...g].join('|')
+}
+const accessDirty = computed(() =>
+  accessSignature(draftAccess.value, draftGroups.value) !== accessSignature(access.value, accessGroupRows.value)
+)
+// Invite changes only count (and only get saved) while invite-only is chosen, matching what's on screen.
+const accessEditsPending = computed(() => editMode.value && draftAccessMode.value === 'restricted' && accessDirty.value)
+
+type PendingState = 'added' | 'removed' | 'changed' | undefined
+function pendingState(serverRow: any, draftRow: any): PendingState {
+  if (!serverRow) return 'added'
+  if (!draftRow) return 'removed'
+  return roleKey(serverRow) !== roleKey(draftRow) ? 'changed' : undefined
+}
+const editAccessUsers = computed(() => {
+  const serverById = new Map(access.value.map(a => [a.user_id, a]))
+  const draftIds = new Set(draftAccess.value.map(a => a.user_id))
+  return [
+    ...draftAccess.value.map(a => ({ ...a, pending: pendingState(serverById.get(a.user_id), a) })),
+    ...access.value.filter(a => !draftIds.has(a.user_id)).map(a => ({ ...a, pending: 'removed' as const })),
+  ]
+})
+const editAccessGroups = computed(() => {
+  const serverById = new Map(accessGroupRows.value.map((g: any) => [g.group_id, g]))
+  const draftIds = new Set(draftGroups.value.map((g: any) => g.group_id))
+  return [
+    ...draftGroups.value.map((g: any) => ({ ...g, pending: pendingState(serverById.get(g.group_id), g) })),
+    ...accessGroupRows.value.filter((g: any) => !draftIds.has(g.group_id)).map((g: any) => ({ ...g, pending: 'removed' as const })),
+  ]
+})
 
 // Unified access list: direct users + group members (deduped, direct takes priority)
 const unifiedAccessList = computed(() => {
@@ -1415,9 +1166,9 @@ const accessModeSummary = computed(() => {
 const currentAccessSummary = computed(() => {
   if (currentAccessMode.value === 'restricted') {
     const parts: string[] = []
-    if (access.value.length) parts.push(`${access.value.length} client(s)`)
-    if (accessGroupRows.value.length) parts.push(`${accessGroupRows.value.length} team(s)`)
-    return parts.length ? parts.join(', ') : 'Only invited clients'
+    if (access.value.length) parts.push(pluralize(access.value.length, 'client'))
+    if (accessGroupRows.value.length) parts.push(pluralize(accessGroupRows.value.length, 'team'))
+    return parts.length ? `Invited: ${parts.join(', ')}` : 'Only invited clients'
   }
   if ((props.link?.auth_mode || '') === 'password' || !!props.link?.passwordRequired) {
     return 'Anyone with the link + password'
@@ -2129,12 +1880,136 @@ function openAccessModal() {
 const hasShareCapability = computed(() => !!props.link?.share_enabled)
 const hasUploadCapability = computed(() => !!props.link?.upload_enabled)
 
-function badgeClass(t?: LinkType) {
-  if (!t) return ''
-  return t === 'upload' ? 'text-blue-500' : t === 'download' ? 'text-emerald-500' : 'text-cyan-400'
+const STATUS_LABELS: Record<Status, string> = { active: 'Active', expired: 'Expired', disabled: 'Disabled', archived: 'Archived' }
+const statusLabel = computed(() => (props.link ? STATUS_LABELS[statusOf(props.link)] : ''))
+const statusTone = computed(() => {
+  if (!props.link) return 'muted' as const
+  const s = statusOf(props.link)
+  return s === 'active' ? 'success' as const : s === 'expired' ? 'warning' as const : 'muted' as const
+})
+
+const displayTitle = computed(() => (props.link ? (props.link.title || fallbackTitle(props.link)) : 'Link'))
+const headerDescription = computed(() => {
+  if (editMode.value) return 'Changes apply to the live link when you save.'
+  if (hasShareCapability.value && hasUploadCapability.value) return 'Review and upload link'
+  if (hasUploadCapability.value) return 'Upload link'
+  return 'Review link'
+})
+
+type ViewTab = 'overview' | 'files' | 'activity' | 'versions'
+const activeTab = ref<ViewTab>('overview')
+const viewTabs = computed(() => [
+  { key: 'overview' as const, label: 'Overview', count: null, tour: undefined },
+  { key: 'files' as const, label: 'Files', count: detailsLoading.value ? null : displayFiles.value.length, tour: 'link-details-files' },
+  { key: 'activity' as const, label: 'Activity', count: detailsLoading.value ? null : auditActivity.value.length, tour: 'link-details-activity' },
+  { key: 'versions' as const, label: 'Versions', count: null, tour: undefined },
+])
+function onTabKeydown(e: KeyboardEvent) {
+  const keys = viewTabs.value.map(t => t.key)
+  const i = keys.indexOf(activeTab.value)
+  let next = -1
+  if (e.key === 'ArrowRight') next = (i + 1) % keys.length
+  else if (e.key === 'ArrowLeft') next = (i - 1 + keys.length) % keys.length
+  else if (e.key === 'Home') next = 0
+  else if (e.key === 'End') next = keys.length - 1
+  if (next < 0) return
+  e.preventDefault()
+  activeTab.value = keys[next]
+  nextTick(() => document.getElementById(`ld-tab-${keys[next]}`)?.focus())
 }
-function statusChipClass(s: Status) {
-  return s === 'active' ? 'text-green-500' : s === 'expired' ? 'text-amber-500' : 'text-gray-500'
+
+const urlCopied = ref(false)
+let urlCopiedTimer: ReturnType<typeof setTimeout> | null = null
+async function copyPrimaryUrl() {
+  if (!primaryUrl.value) return
+  if (!(await copy(primaryUrl.value))) return
+  urlCopied.value = true
+  if (urlCopiedTimer) clearTimeout(urlCopiedTimer)
+  urlCopiedTimer = setTimeout(() => { urlCopied.value = false }, 1600)
+}
+
+function formatDate(v: number | string) {
+  const d = new Date(v)
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString(undefined, { hour12: hour12.value })
+}
+const expiresRelative = computed(() => {
+  const at = Number(props.link?.expiresAt || 0)
+  if (!at) return ''
+  const days = Math.round((at - Date.now()) / 86400000)
+  if (days === 0) return at > Date.now() ? 'today' : 'earlier today'
+  return days > 0 ? `in ${pluralize(days, 'day')}` : `${pluralize(-days, 'day')} ago`
+})
+
+function pluralize(n: number, word: string) {
+  return `${n} ${word}${n === 1 ? '' : 's'}`
+}
+const QUALITY_LABELS: Record<string, string> = { '720p': '720p', '1080p': '1080p', original: 'Full Res (MP4)' }
+function qualityLabel(q: string) {
+  return QUALITY_LABELS[q] || q
+}
+function qualityList(qs: string[]) {
+  return qs.map(qualityLabel).join(', ')
+}
+function fileNameOf(p: string) {
+  return String(p || '').split('/').pop() || p
+}
+
+const accessModeName = computed(() => {
+  if (currentAccessMode.value === 'restricted') return 'Only invited clients & teams'
+  return openPasswordRequired.value ? 'Anyone with the link + password' : 'Anyone with the link'
+})
+const accessModeHelp = computed(() => {
+  if (currentAccessMode.value === 'restricted') return 'Clients sign in with their own login. Roles set what they can do.'
+  return openPasswordRequired.value ? 'One shared password for everyone.' : 'No sign-in required.'
+})
+
+const filesCaption = computed(() => {
+  if (hasShareCapability.value && hasUploadCapability.value) return 'Files shared on this link and files clients have uploaded through it.'
+  if (hasUploadCapability.value) return 'Files clients have uploaded through this link.'
+  return 'Files people can open from this link.'
+})
+const showUploadColumns = computed(() =>
+  props.link?.type === 'upload' || displayFiles.value.some((f: any) => f?.uploader_label || f?.ts)
+)
+
+// Edit: the three access options match the create-link flow (LinkAccessMode.vue).
+type AccessChoice = 'restricted' | 'open' | 'open_password'
+const accessChoices: Array<{ value: AccessChoice; label: string; help: string }> = [
+  { value: 'restricted', label: 'Only invited clients & teams', help: 'Sign in with their own login. Roles set what they can do.' },
+  { value: 'open', label: 'Anyone with the link', help: 'No sign-in required.' },
+  { value: 'open_password', label: 'Anyone with the link + password', help: 'One shared password for everyone.' },
+]
+const accessChoice = computed<AccessChoice>({
+  get: () => (draftAccessMode.value === 'restricted' ? 'restricted' : draftUsePassword.value ? 'open_password' : 'open'),
+  set: (v) => {
+    draftAccessMode.value = v === 'restricted' ? 'restricted' : 'open'
+    draftUsePassword.value = v === 'open_password'
+  },
+})
+
+const watermarkEditHelp = computed(() => {
+  if (linkHasVideoFiles.value && !draftGenerateReviewProxy.value) return 'Turn on proxy files to watermark videos.'
+  if (draftWatermarkEnabled.value) {
+    const name = draftWatermarkLocalFile.value?.name || fileNameOf(draftWatermarkFile.value)
+    return name ? `Using ${name}.` : 'Click Configure… to choose an image.'
+  }
+  return 'Place an image over shared media.'
+})
+
+// First thing stopping a save, shown in the footer next to the Save button.
+const editProblem = computed(() => {
+  if (!editMode.value) return ''
+  if (!draftShareEnabled.value && !draftUploadEnabled.value) return 'Turn on Review, Upload or both.'
+  if (draftShareEnabled.value && draftFilePaths.value.length === 0) return 'Choose at least one file to share.'
+  if (uploadDirMissing.value) return 'Choose a folder for uploads.'
+  if (!accessSatisfied.value) return 'Invite at least one client or team.'
+  if (!passwordSatisfied.value) return 'Enter a password.'
+  return ''
+})
+
+function confirmDiscard() {
+  if (!editMode.value || saving.value || !hasUnsavedChanges.value) return true
+  return window.confirm('You have unsaved changes to this link. Close and lose them?')
 }
 function statusOf(it: LinkItem): Status {
   if (it.isDisabled) return 'disabled'
@@ -2147,13 +2022,13 @@ function fallbackTitle(it: LinkItem) {
   if (n === 1) return it.target?.files?.[0]?.name || '1 File'
   return `${n} Files`
 }
-async function copy(txt?: string | null) {
-  if (!txt) return
+async function copy(txt?: string | null): Promise<boolean> {
+  if (!txt) return false
   if (txt === primaryUrl.value && (props.link as any)?.externalLink) {
     const { ready, reason, base } = await checkExternalAddressReady()
     if (!ready) {
       pushNotification(new Notification('External Address Not Ready', describeExternalAddressNotReady(reason), 'error', 8000))
-      return
+      return false
     }
     // Freshen against the CURRENT server-authoritative public address —
     // primaryUrl is a prop set once by the caller and can be stale if the
@@ -2161,6 +2036,7 @@ async function copy(txt?: string | null) {
     txt = resolveCopyUrl(txt, base)
   }
   await writeClipboard(txt)
+  return true
 }
 
 function fmtBytes(n?: number) {
@@ -3343,6 +3219,7 @@ function setAccessFromResponse(resp: any) {
     []
   access.value = rows.map(normalizeAccessRow)
   accessGroupRows.value = Array.isArray(resp?.groups) ? resp.groups : []
+  if (!accessTouched.value) seedDraftAccess()
 }
 
 function selectDefaultVersionFile() {
@@ -3700,55 +3577,92 @@ async function mergeAccess(users: Array<{ id?: number; username?: string; name?:
   await loadAccess()
 }
 
-async function mergeAccessFromModal(
-  users: Array<{ username: string; name?: string; user_email?: string; display_color?: string; role_id?: number | null; role_name?: string | null }>,
-  groups?: Array<{ id: number; name?: string; role_id: number | null; role_name: string | null }>
+let tempUserId = 0
+
+function mergeAccessFromModal(
+  users: Array<{ id?: string | number; username: string; name?: string; user_email?: string; display_color?: string; role_id?: number | null; role_name?: string | null }>,
+  groups?: Array<{ id: number; name?: string; member_count?: number; display_color?: string | null; role_id: number | null; role_name: string | null }>
 ) {
-  try {
-    if (!props.link) return
-    const payload: any = { users: buildUsersPayload(users) }
-    if (groups !== undefined) {
-      payload.groups = (groups || []).map(g => ({
-        groupId: g.id,
-        roleId: g.role_id,
-        roleName: g.role_name,
-      }))
-    }
-    const resp = await props.apiFetch(`/api/links/${props.link.id}/access/merge`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
+  const known = [...draftAccess.value, ...access.value]
+  draftAccess.value = users.map(u => {
+    const id = Number(u.id)
+    const prev = Number.isFinite(id) && id > 0
+      ? known.find(a => a.user_id === id)
+      : known.find(a => a.user_name && a.user_name === u.username)
+    return {
+      ...(prev || {}),
+      // New clients without an id yet get a temporary negative key; the server resolves them by username.
+      user_id: Number.isFinite(id) && id > 0 ? id : (prev?.user_id ?? --tempUserId),
+      user_name: u.username || prev?.user_name,
+      name: u.name ?? prev?.name,
+      user_email: u.user_email ?? prev?.user_email,
+      display_color: u.display_color ?? prev?.display_color ?? null,
+      role_id: u.role_id ?? null,
+      role_name: u.role_name ?? null,
+      role: null,
+    } as AccessRow
+  })
+  if (groups !== undefined) {
+    const knownGroups = [...draftGroups.value, ...accessGroupRows.value]
+    draftGroups.value = groups.map(g => {
+      const prev: any = knownGroups.find((x: any) => x.group_id === g.id)
+      return {
+        ...(prev || {}),
+        group_id: g.id,
+        group_name: g.name || prev?.group_name || 'Team',
+        group_color: g.display_color ?? prev?.group_color ?? null,
+        member_count: g.member_count ?? prev?.member_count ?? 0,
+        role_id: g.role_id,
+        role_name: g.role_name,
+        role: null,
+      }
     })
-    setAccessFromResponse(resp)
-    accessModalOpen.value = false
-  } catch { }
+  }
+  accessTouched.value = true
+  accessModalOpen.value = false
 }
 
-async function removeAccess(userId: number) {
-  if (!props.link) return
-  if (!confirm('Remove access for this client?')) return
-  await props.apiFetch(`/api/links/${props.link.id}/access/${userId}`, { method: 'DELETE' })
-  await loadAccess()
+function removeAccess(userId: number) {
+  draftAccess.value = draftAccess.value.filter(a => a.user_id !== userId)
+  accessTouched.value = true
 }
 
-async function removeGroupAccess(groupId: number) {
+function removeGroupAccess(groupId: number) {
+  draftGroups.value = draftGroups.value.filter((g: any) => g.group_id !== groupId)
+  accessTouched.value = true
+}
+
+function undoRemoveAccess(userId: number) {
+  const row = access.value.find(a => a.user_id === userId)
+  if (row && !draftAccess.value.some(a => a.user_id === userId)) draftAccess.value = [...draftAccess.value, { ...row }]
+}
+
+function undoRemoveGroupAccess(groupId: number) {
+  const row = accessGroupRows.value.find((g: any) => g.group_id === groupId)
+  if (row && !draftGroups.value.some((g: any) => g.group_id === groupId)) draftGroups.value = [...draftGroups.value, { ...row }]
+}
+
+async function saveDraftAccess() {
   if (!props.link) return
-  if (!confirm('Remove team access?')) return
-  // Remove team access by re-merging without this group
-  const remainingGroups = accessGroupRows.value
-    .filter((g: any) => g.group_id !== groupId)
-    .map((g: any) => ({ groupId: g.group_id, roleId: g.role_id, roleName: g.role_name }))
-  const usersPayload = buildUsersPayload(access.value.map(a => ({
-    id: a.user_id,
+  const users = buildUsersPayload(draftAccess.value.map(a => ({
+    id: a.user_id > 0 ? a.user_id : undefined,
     username: a.user_name,
     name: a.name,
     user_email: a.user_email,
-    role_id: a.role_id,
-    role_name: a.role_name,
+    role_id: a.role_id ?? a.role?.id ?? null,
+    role_name: a.role_name ?? a.role?.name ?? null,
   })))
+  const groups = draftGroups.value.map((g: any) => ({
+    groupId: g.group_id,
+    roleId: g.role_id ?? g.role?.id ?? null,
+    roleName: g.role_name ?? g.role?.name ?? null,
+  }))
+  // The merge endpoint replaces the link's user and team lists with exactly these.
   const resp = await props.apiFetch(`/api/links/${props.link.id}/access/merge`, {
     method: 'POST',
-    body: JSON.stringify({ users: usersPayload, groups: remainingGroups }),
+    body: JSON.stringify({ users, groups }),
   })
+  accessTouched.value = false
   setAccessFromResponse(resp)
 }
 
@@ -3785,6 +3699,7 @@ function beginEdit() {
   draftProjectId.value = (props.link as any).project_id ?? null
   if (draftAccessMode.value === 'restricted') draftAllowComments.value = false
   seedDraftMediaSettings()
+  seedDraftAccess()
 
   // Fetch available projects for project selector
   fetchAvailableProjects()
@@ -3845,6 +3760,7 @@ function cancelEdit() {
     : ['720p']
   if (draftAccessMode.value === 'restricted') draftAllowComments.value = false
   seedDraftMediaSettings()
+  seedDraftAccess()
 
   draftFilePaths.value = originalFilePaths.value.slice()
   draftUploadDir.value = originalUploadDir.value || currentUploadDir.value || ''
@@ -3969,6 +3885,7 @@ async function saveAll() {
 
   // Track what we actually attempted (for better messaging)
   const did = {
+    access: false,
     details: false,
     files: false,
     uploadDest: false,
@@ -4131,6 +4048,24 @@ async function saveAll() {
         )
       )
       return
+    }
+
+    // 0) Invited clients and teams (before the access mode changes, so a failure can't lock anyone out)
+    if (accessEditsPending.value) {
+      try {
+        await saveDraftAccess()
+        did.access = true
+      } catch (e: any) {
+        pushNotification(
+          new Notification(
+            'Failed to Save Invites',
+            apiErrMsg(e) || 'The invited clients and teams could not be updated. Nothing was saved.',
+            'error',
+            8000
+          )
+        )
+        return
+      }
     }
 
     // 1) Title/notes
@@ -4450,7 +4385,7 @@ async function saveAll() {
     emit('updated', updatedPayload)
 
     // Optional success notification (only if something changed)
-    if (did.details || did.files || did.uploadDest) {
+    if (did.access || did.details || did.files || did.uploadDest) {
       console.log('[link-details:save] Save complete!', { did, capabilitiesChanged, uploadEnabledChanged, shareEnabledChanged })
       pushNotification(
         new Notification(
@@ -4475,6 +4410,7 @@ watch(
   (open) => {
     if (open) {
       editMode.value = false
+      activeTab.value = 'overview'
       draftTitle.value = props.link?.title || ''
       draftNotes.value = (props.link as any)?.notes || ''
       draftAccessMode.value = props.link?.access_mode || 'open'
@@ -4489,6 +4425,7 @@ watch(
       seedDraftMediaSettings()
       draftUploadDir.value = currentUploadDir.value || ''
       originalUploadDir.value = draftUploadDir.value
+      accessTouched.value = false
       fetchDetailsFor()
       loadAccess()
       loadCategories()
@@ -4503,6 +4440,7 @@ watch(
   () => {
     if (props.modelValue) {
       editMode.value = false
+      activeTab.value = 'overview'
       draftTitle.value = props.link?.title || ''
       draftNotes.value = (props.link as any)?.notes || ''
       draftAccessMode.value = props.link?.access_mode || 'open'
@@ -4517,6 +4455,7 @@ watch(
       seedDraftMediaSettings()
       draftUploadDir.value = currentUploadDir.value || ''
       originalUploadDir.value = draftUploadDir.value
+      accessTouched.value = false
       fetchDetailsFor()
       loadAccess()
       loadCategories()
@@ -4599,3 +4538,110 @@ watch(
   }
 )
 </script>
+
+<style scoped>
+/* ── Summary strip ───────────────────────────────────── */
+.ld-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-shrink: 0;
+  padding: 1.1rem 1.5rem 1rem;
+}
+.ld-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 8.5rem;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--flow-line);
+  border-radius: var(--flow-radius-md);
+  background: var(--flow-surface-sunken);
+}
+.ld-url {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.65rem;
+  font-size: var(--flow-text-sm);
+  border: 1px solid var(--flow-line);
+  border-radius: var(--flow-radius-md);
+  background: var(--flow-surface-sunken);
+}
+.ld-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem 1.25rem;
+}
+.ld-facts dt {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ui-subtle-text);
+}
+.ld-facts dd {
+  margin-top: 0.15rem;
+  font-size: var(--flow-text-sm);
+  font-weight: 500;
+}
+.ld-facts__aside {
+  display: block;
+  font-size: var(--flow-text-xs);
+  font-weight: 400;
+  color: var(--ui-subtle-text);
+}
+@media (max-width: 760px) {
+  .ld-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ld-thumb { display: none; }
+}
+
+/* ── Content ─────────────────────────────────────────── */
+.ld-link {
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--flow-accent-line);
+  text-underline-offset: 3px;
+}
+.ld-link:hover {
+  text-decoration-thickness: 2px;
+}
+.ld-link:focus-visible {
+  outline: 2px solid var(--ui-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.ld-path {
+  font-size: var(--flow-text-xs);
+  word-break: break-all;
+}
+.ld-notes {
+  white-space: pre-wrap;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--flow-line);
+  border-radius: var(--flow-radius-lg);
+  background: var(--flow-surface-sunken);
+}
+.ld-paths {
+  display: grid;
+  gap: 0.25rem;
+  max-height: 10rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  overflow-y: auto;
+  font-size: var(--flow-text-xs);
+  border-radius: var(--flow-radius-md);
+  background: var(--flow-surface-sunken);
+}
+.ld-danger {
+  border-color: var(--flow-danger-border);
+}
+.ld-extra-row > td,
+.flow-table tbody tr.ld-extra-row:hover > td {
+  background: var(--flow-surface-sunken);
+}
+</style>

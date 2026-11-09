@@ -1461,57 +1461,54 @@ Click **"Details"** on any link (or click its title) to view comprehensive infor
 
 ![Link Details modal](images/link-details-v3.png)
 
-### Link Configuration Summary
+The top of the window shows whether the link is **Active**, **Expired** or **Disabled**, its address with a **Copy link** button, and four quick facts: **Who can open it**, **Expires** (with how long is left), **Created** and **Project**. Below that, the details are split into tabs.
 
-The details view displays:
+### Overview
 
-| Field | Description |
-|-------|-------------|
-| **Primary Link** | The full URL with a **Copy** button. |
-| **Access** | Current access mode: **Anyone with the link**, **Anyone with the link + password**, or, for invite-only links, how many clients and teams are invited (**Only invited clients** when none are yet). |
-| **Proxy File Qualities Shared** | The proxy file qualities generated for this link, or "Disabled". |
-| **Watermark** | Whether watermarking is enabled or disabled (shows "Video + Image" for Pro, "Video only" for Community). |
-| **Type** | Share, Upload, or Combined. |
-| **Status** | Active, Expired, or Disabled. |
-| **Created** | Creation date and time. |
-| **Expires** | Expiration date/time or "Never". |
-| **Title** | Internal name. |
-| **Project** | Associated project (if assigned). |
-| **Notes** | Optional internal notes. |
+| Section | What it shows |
+|---------|---------------|
+| **Who can open it** | The access option: **Only invited clients & teams**, **Anyone with the link**, or **Anyone with the link + password**. Open links also show whether **Comments** are allowed. Invite-only links list every invited team (with its members and role) and every client invited directly (with their username, email and role). Clients whose login is disabled are marked **Login disabled**. |
+| **Shared files** | How many files are shared (click to jump to the Files tab) and the folder they come from. |
+| **Uploads** | Where uploaded files are saved, whether uploads are added to the shared files and watermarked, and the proxy file qualities made for uploads. |
+| **Playback and watermark** | The **Proxy files** qualities (or Off) and the **Watermark** image (or Off). |
+| **Notes** | Your internal notes. |
 
-### Shared Files
+**Delete link** at the bottom of the Overview tab permanently deletes the link and all associated data.
 
-A table of all files associated with this link, showing:
-- **Name** — File name
-- **Size** — File size
-- **MIME** — File type (e.g., video/mp4, image/jpeg)
+### Files
 
-### Access Activity Log
+Every file on the link, with its **Name**, **Size** and **Type**. Files uploaded through the link also show who uploaded them, from which IP address, and when.
 
-View a log of all actions taken on this link:
+Below the list, **Processing** shows the progress of any proxy files, HLS streams or image watermarks being made for the link, with **Retry** for any that failed.
+
+### Activity
+
+A log of everything that happened on the link. Filter by action or search by person, IP address or details.
 
 | Column | Description |
 |--------|-------------|
 | **When** | Date and time of the activity. |
-| **Action** | What happened — e.g., *Playback requested*, *Download*, *Upload*, *Expiry updated*. |
-| **Actor** | Whether the access was from a *Guest* or an *Authenticated user*. |
-| **Source** | IP address and browser information. |
-| **Summary** | Details of the action performed. |
+| **Action** | What happened, e.g. *Playback requested*, *Download*, *Upload*, *Expiry updated*. |
+| **Who** | Whether it was a *Guest* or a signed-in client. |
+| **From** | IP address and browser. |
+| **Details** | A summary of the action. Click **More** for the full record. |
 
 ![Access activity log](images/link-details-activity-v3.png)
 
-### File Versions
+### Versions
 
-If file versioning/snapshots are available, this section shows:
+If files on the link have saved versions, choose a file to see them:
 
 | Column | Description |
 |--------|-------------|
-| **Version** | Version identifier (e.g., v1, v2). |
+| **Version** | Version number (v1, v2…). |
 | **Created** | When the version was created. |
-| **Snapshot** | Snapshot reference. |
+| **Snapshot** | The saved copy of the file. |
 | **Size** | File size at that version. |
-| **Restore** | Restore this version, replacing the current file. |
-| **Delete** | Remove this version (if permitted). |
+| **Restore** | Restore this version, replacing the current file. Tick **Back up the current file before restoring** to keep a copy first. |
+| **Delete** | Remove this version. The only version can't be deleted. |
+
+Tick **Show extra files** to see and copy the paths of each version's proxy files, HLS folder and snapshot, delete them, or (with client-side transcoding on) remake them with this computer's hardware.
 
 ### Comments Review & Export
 
@@ -1523,13 +1520,16 @@ From the Link Details view, click the **"Comments"** button to review and manage
 
 **Reviewing Comments:**
 
-- View all comments across all files in a link in one place.
-- **Filter** by file, by resolved/unresolved status, by user, by **version**, or by **category**.
-- **Resolve/Unresolve** individual comments or bulk-resolve all.
-- Create and manage **Comment Categories** directly from the review panel, then assign categories per comment or in bulk.
-- **Sort** by timecode, date, author, status, or version.
-- Each comment shows its timecode, author, category (if set), annotation indicator, tags, and the version it was made on.
-- If a comment has an annotation, click **"View Annotation"** to see the drawing overlaid on the video frame at that timecode.
+- Comments are grouped by file. Replies sit under the comment they answer, including replies to replies, and say who they replied to.
+- Use the panel on the left to **search** text or people, show **All**, **Open** or **Resolved** comments, and filter by **file**, **person**, **category** (including **No category**) or **version** (including **No version**). **Clear filters** resets them all.
+- **Sort** by timecode, date posted, person, status or version; the arrow button reverses the order.
+- **Summary** at the bottom of the panel shows totals, replies, open and resolved comments, and comments with drawings.
+- Click **Resolve** or **Reopen** on a comment to change its status. Each comment shows **Open** or **✓ Resolved** (hover for when it was resolved).
+- Choose a **category** from the menu on each comment. Click **Manage…** next to the Category filter to create and edit categories and their colours.
+- To act on several comments at once, tick them (or click a comment, or use the checkbox at the top to select everything shown), then use **Resolve**, **Reopen** or **Set category…**. Only comments still shown by your filters stay selected.
+- If a comment has a drawing, click **View drawing** to see it over the video frame at that timecode.
+- **Delete** asks you to confirm, and tells you if the comment's drawing and replies will be deleted too.
+- **Refresh** reloads the comments, and **Open link** opens the share page in your browser.
 
 **Version Tracking:**
 
@@ -1541,7 +1541,7 @@ Comments are automatically tagged with the file version that was being reviewed 
 
 **Exporting Comments:**
 
-Export comments in multiple formats for use in external tools:
+Click **"Export…"**, choose all files or one file, pick a format and click **Export**. The file is named after the link. Formats:
 
 | Format | Description |
 |--------|-------------|
@@ -1562,23 +1562,19 @@ From the Link Details view, click **"Edit"** to modify an existing link's config
 
 ![Link edit modal](images/link-edit-v3.png)
 
-You can modify:
+The window becomes a single form, grouped like Settings:
 
-- **Title** and **Notes** — Update the internal name and documentation.
-- **Project Assignment** — Assign or change the project this link belongs to.
-- **Link Type** — Toggle **"Enable Review/Share"** and **"Enable Upload"** to change between Share, Upload, or Combined mode.
-- **Only invited clients & teams** — Toggle between open and invite-only access.
-- **Allow Comments** — Enable or disable commenting on shared files.
-- **Comment Categories** — When comments are enabled, use **"Comment Categories"** to define reusable labels and colors for review notes.
-- **Password Required** — Enable or disable password protection, and set the password.
-- **Generate Proxy Files** — Enable/disable proxy file generation and select qualities (720p, 1080p, Original).
-- **Apply Watermark** — Enable/disable watermark overlay with full customization controls (position, scale, opacity, rotation, presets — Pro for full control).
-- **Auto-watermark uploaded files** — When enabled on upload or combined links, files uploaded through this link automatically have the link's watermark settings applied.
-- **Files for This Link** — Add or remove files associated with the link using **"Manage Files"**.
+- **Details** — **Title**, **Project** and internal **Notes**.
+- **What this link does** — Turn **Review** (share files for clients to view) and **Upload** (let clients send you files) on or off. At least one must be on.
+- **Shared files** — How many files are selected. Click **"Manage files…"** to add or remove files, and **Show the file list** to check the paths.
+- **Uploads** — The folder uploads are saved to, and whether uploaded files are added to the shared files, watermarked with the link's watermark, or given proxy files (720p, 1080p, Full Res (MP4)).
+- **Who can open it** — Choose **Only invited clients & teams**, **Anyone with the link**, or **Anyone with the link + password**.
+  - Invite-only: click **"Invite clients…"** to add clients or teams or change their roles, or **Remove** to take someone off. Changes are marked **New**, **Role changed** or **Will be removed** (with **Undo**) and only apply when you click **"Save & close"**.
+  - With a password: enter the password. If the link already has one, leave the box blank to keep it.
+  - Open links: turn **Allow comments** on or off. When comments are on, **"Comment categories…"** sets the labels and colours reviewers can use.
+- **Playback and watermark** — Turn **Proxy files** on and pick the qualities, turn the **Watermark** on and click **"Configure…"** to choose the image and its position, size and opacity (full control in Pro), and **Reprocess** to rebuild proxy files with the new settings.
 
-Click **"Save Changes"** to apply. All changes take effect **immediately**.
-
-Click **"Cancel"** or **"Close"** to discard changes and return to Link Details.
+If something stops the link from saving (for example, no files selected or a missing password), the reason shows at the bottom left of the window. Click **"Save & close"** to apply your changes, or **"Cancel"** to go back to Link Details without saving. Closing the window with unsaved changes asks you to confirm first.
 
 > **Important:** Changes to access settings, passwords, and file lists take effect immediately for anyone accessing the link.
 

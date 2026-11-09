@@ -1,453 +1,244 @@
 <template>
-  <FlowModal :model-value="modelValue" title="Comments Review" size="full" header-class="bg-well" flush body-class="flex flex-col"
-    :description="`${link?.title || 'Untitled'} • ${filteredComments.length} comment${filteredComments.length !== 1 ? 's' : ''} across ${filteredFileNames.length} file${filteredFileNames.length !== 1 ? 's' : ''}`"
-    @close="close">
+  <FlowModal :model-value="modelValue" title="Comments Review" size="full" surface="default"
+    flush body-class="flex flex-col !overflow-hidden text-left" :description="headerDescription" @close="close">
       <template #header-actions>
-          <button
-            @click="loadComments"
-            :disabled="loading"
-            class="btn btn-secondary px-4 py-2 h-fit flex items-center gap-2"
-            title="Refresh comments"
-          >
-            <svg 
-              class="w-4 h-4" 
-              :class="{ 'animate-spin': loading }"
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Refresh
+          <button type="button" class="btn btn-secondary flex items-center gap-2 whitespace-nowrap"
+            :disabled="!comments.length" @click="openExport">
+            <ArrowDownTrayIcon class="w-4 h-4" aria-hidden="true" />
+            Export…
           </button>
-          <button 
-            v-if="link?.url" 
-            @click="openInBrowser"
-            class="btn btn-secondary px-4 py-2 h-fit flex items-center gap-2"
-            title="Open link in browser"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
-            Open in Browser
+          <button type="button" class="btn btn-secondary flex items-center gap-2 whitespace-nowrap"
+            :disabled="loading" @click="loadComments">
+            <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': loading }" aria-hidden="true" />
+            {{ loading ? 'Refreshing…' : 'Refresh' }}
+          </button>
+          <button v-if="link?.url" type="button" class="btn btn-secondary flex items-center gap-2 whitespace-nowrap"
+            title="Open the share page in your browser" @click="openInBrowser">
+            <ArrowTopRightOnSquareIcon class="w-4 h-4" aria-hidden="true" />
+            Open link
           </button>
       </template>
 
-      <!-- Export Section -->
-      <div v-if="!loading && comments.length > 0" class="px-5 py-4 border-b border-default bg-default/5 shrink-0">
-        <div class="flex items-end gap-3 flex-wrap">
-          <div class="flex-1 min-w-[180px]">
-            <label class="block text-xs font-semibold text-muted mb-1.5">Export File(s)</label>
-            <select v-model="exportFileFilter" class="w-full px-3 py-2 border border-default rounded-lg bg-default text-sm">
-              <option value="all">All Files</option>
-              <option v-for="fileName in allFileNames" :key="fileName" :value="fileName">
-                {{ fileName }}
-              </option>
-            </select>
-          </div>
-
-          <div class="flex-1 min-w-[180px]">
-            <label class="block text-xs font-semibold text-muted mb-1.5">Format</label>
-            <select v-model="exportFormat" class="w-full px-3 py-2 border border-default rounded-lg bg-default text-sm">
-              <option value="json">JSON</option>
-              <option value="csv">CSV</option>
-              <option value="markdown">Markdown</option>
-              <option value="webvtt">WebVTT (Subtitles)</option>
-              <option value="pdf">PDF Report</option>
-              <option value="edl">EDL (Edit Decision List)</option>
-            </select>
-          </div>
-
-          <button
-            @click="handleExport"
-            :disabled="exporting"
-            class="btn btn-primary px-5 py-2 h-fit"
-          >
-            <span v-if="exporting">Exporting...</span>
-            <span v-else class="flex items-center gap-2">
-              <ArrowDownTrayIcon class="w-4 h-4" />
-              Export
-            </span>
-          </button>
-        </div>
+      <!-- First load -->
+      <div v-if="loading && !comments.length" class="flex-1 flex items-center justify-center gap-3 text-sm text-muted">
+        <ArrowPathIcon class="w-5 h-5 animate-spin" aria-hidden="true" />
+        Loading comments…
       </div>
 
-      <!-- Loading State -->
-      <div v-if="loading" class="flex-1 flex items-center justify-center">
-        <div class="flex items-center gap-3 px-4 py-3 rounded-lg bg-default/60 border border-default shadow-sm">
-          <span
-            class="inline-block w-4 h-4 border-2 border-default border-t-transparent rounded-full animate-spin"></span>
-          <div class="flex flex-col leading-tight">
-            <div class="text-sm font-semibold text-default">Loading comments</div>
-            <div class="text-xs text-muted">Fetching data...</div>
-          </div>
-        </div>
+      <div v-else-if="error && !comments.length" class="flex-1 flex flex-col items-center justify-center gap-3 p-6">
+        <FlowNotice tone="danger" title="Couldn't load comments" class="max-w-md">{{ error }}</FlowNotice>
+        <button type="button" class="btn btn-secondary" @click="loadComments">Try again</button>
       </div>
 
-      <!-- Error State -->
-      <div v-else-if="error" class="flex-1 flex items-center justify-center">
-        <div class="p-4 rounded flow-tone-danger text-default border max-w-md">
-          <div class="font-semibold mb-1">Failed to load comments</div>
-          <div class="text-sm opacity-80">{{ error }}</div>
-        </div>
+      <div v-else-if="!comments.length" class="flex-1 flex items-center justify-center p-6">
+        <FlowEmpty title="No comments yet" description="When reviewers comment on files in this link, their comments show here.">
+          <template #icon><ChatBubbleLeftRightIcon /></template>
+        </FlowEmpty>
       </div>
 
-      <!-- Empty State -->
-      <div v-else-if="!comments.length" class="flex-1 flex items-center justify-center">
-        <div class="text-center text-muted">
-          <ChatBubbleLeftRightIcon class="w-16 h-16 mx-auto mb-3 opacity-50" />
-          <div class="font-semibold">No comments yet</div>
-          <div class="text-sm opacity-70">This link doesn't have any comments</div>
-        </div>
-      </div>
-
-      <!-- Main Content: Split View -->
-      <div v-else class="flex-1 flex min-h-0 overflow-hidden">
-        <!-- Left Sidebar: Filters (30%) -->
-        <div class="w-[30%] border-r border-default p-4 flex flex-col gap-4 overflow-y-auto shrink-0">
-          <div class="text-sm font-bold opacity-90">Filters & Search</div>
-          
-          <!-- Text Search -->
-          <div class="space-y-2">
-            <label class="text-xs font-semibold opacity-70">Search Text</label>
-            <input
-              v-model="searchText"
-              type="text"
-              placeholder="Search comments..."
-              class="w-full px-2 py-1.5 text-sm border border-default rounded bg-default"
-            />
+      <div v-else class="flex-1 flex min-h-0">
+        <!-- ═══ Filters ═══════════════════════════════════════ -->
+        <aside class="crm-sidebar" aria-label="Filter and sort comments">
+          <div class="relative">
+            <MagnifyingGlassIcon class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 opacity-60" aria-hidden="true" />
+            <input v-model="searchText" type="search" aria-label="Search comments"
+              class="input-textlike w-full pl-8 pr-3 py-1.5 text-sm" placeholder="Search text or people" />
           </div>
 
-          <!-- Status Filter -->
-          <div class="space-y-2">
-            <label class="text-xs font-semibold opacity-70">Status</label>
-            <select v-model="statusFilter" class="w-full px-2 py-1.5 text-sm border border-default rounded bg-default">
-              <option value="all">All ({{ stats?.total || 0 }})</option>
-              <option value="unresolved">Unresolved ({{ stats?.unresolved || 0 }})</option>
-              <option value="resolved">Resolved ({{ stats?.resolved || 0 }})</option>
-            </select>
+          <div class="crm-segmented" role="radiogroup" aria-label="Status">
+            <button v-for="opt in statusOptions" :key="opt.value" type="button" role="radio"
+              :aria-checked="statusFilter === opt.value" :class="{ 'is-on': statusFilter === opt.value }"
+              @click="statusFilter = opt.value">
+              {{ opt.label }}
+            </button>
           </div>
 
-          <!-- File Filter -->
-          <div class="space-y-2">
-            <label class="text-xs font-semibold opacity-70">File</label>
-            <select v-model="selectedFileFilter" class="w-full px-2 py-1.5 text-sm border border-default rounded bg-default">
-              <option value="">All Files ({{ fileGroups.length }})</option>
+          <div class="flex items-center justify-between mt-1">
+            <p class="flow-subhead !m-0">Filter</p>
+            <button v-if="filtersActive" type="button" class="crm-textbtn" @click="clearFilters">Clear filters</button>
+          </div>
+
+          <label class="crm-field">
+            <span>File</span>
+            <select v-model="selectedFileFilter" class="input-textlike px-2 py-1.5 text-sm w-full">
+              <option value="">All files</option>
               <option v-for="fileName in allFileNames" :key="fileName" :value="fileName">
                 {{ fileName }} ({{ getFileCommentCount(fileName) }})
               </option>
             </select>
-          </div>
+          </label>
 
-          <!-- Author Filter -->
-          <div class="space-y-2">
-            <label class="text-xs font-semibold opacity-70">Author</label>
-            <select v-model="authorFilter" class="w-full px-2 py-1.5 text-sm border border-default rounded bg-default">
-              <option value="">All Authors ({{ allAuthors.length }})</option>
-              <option v-for="author in allAuthors" :key="author" :value="author">
-                {{ author }}
-              </option>
+          <label class="crm-field">
+            <span>Person</span>
+            <select v-model="authorFilter" class="input-textlike px-2 py-1.5 text-sm w-full">
+              <option value="">Everyone</option>
+              <option v-for="author in allAuthors" :key="author" :value="author">{{ author }}</option>
+            </select>
+          </label>
+
+          <div class="crm-field">
+            <div class="flex items-center justify-between">
+              <label for="crm-category-filter">Category</label>
+              <button type="button" class="crm-textbtn" @click="showCategoryManagement = true">Manage…</button>
+            </div>
+            <select id="crm-category-filter" v-model="categoryFilter" class="input-textlike px-2 py-1.5 text-sm w-full">
+              <option value="">All categories</option>
+              <option v-for="cat in allCategories" :key="cat.id" :value="String(cat.id)">{{ cat.name }}</option>
+              <option value="0">No category</option>
             </select>
           </div>
 
-          <!-- Category Filter -->
-          <div class="space-y-2">
-            <label class="text-xs font-semibold opacity-70">Category</label>
-            <select v-model="categoryFilter" class="w-full px-2 py-1.5 text-sm border border-default rounded bg-default">
-              <option value="">All Categories ({{ allCategories.length }})</option>
-              <option v-for="cat in allCategories" :key="cat.id" :value="String(cat.id)">
-                {{ cat.name }}
-              </option>
+          <label v-if="allVersions.length > 0" class="crm-field">
+            <span>Version</span>
+            <select v-model="versionFilter" class="input-textlike px-2 py-1.5 text-sm w-full">
+              <option value="">All versions</option>
+              <option v-for="v in allVersions" :key="v.value" :value="v.value">{{ v.label }} ({{ v.count }})</option>
             </select>
-            <button
-              @click="showCategoryManagement = true"
-              class="btn btn-secondary w-full px-2 py-1.5 h-fit text-xs flex items-center justify-center gap-1.5"
-              title="Manage comment categories"
-            >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-              </svg>
-              Manage Categories
-            </button>
-          </div>
+          </label>
 
-          <!-- Version Filter -->
-          <div v-if="allVersions.length > 0" class="space-y-2">
-            <label class="text-xs font-semibold opacity-70">Version</label>
-            <select v-model="versionFilter" class="w-full px-2 py-1.5 text-sm border border-default rounded bg-default">
-              <option value="">All Versions</option>
-              <option v-for="v in allVersions" :key="v.id ?? 'none'" :value="String(v.id ?? '')">
-                {{ v.label }} ({{ v.count }})
-              </option>
-            </select>
-          </div>
-
-          <!-- Sort Options -->
-          <div class="space-y-2">
-            <label class="text-xs font-semibold opacity-70">Sort By</label>
-            <select v-model="sortBy" class="w-full px-2 py-1.5 text-sm border border-default rounded bg-default">
+          <p class="flow-subhead !mb-0">Sort</p>
+          <div class="flex items-center gap-2">
+            <select v-model="sortBy" aria-label="Sort by" class="input-textlike px-2 py-1.5 text-sm flex-1 min-w-0">
               <option value="timecode">Timecode</option>
-              <option value="date">Date Created</option>
-              <option value="author">Author Name</option>
+              <option value="date">Date posted</option>
+              <option value="author">Person</option>
               <option value="status">Status</option>
               <option value="version">Version</option>
             </select>
+            <button type="button" class="btn btn-secondary btn-sm whitespace-nowrap" :aria-pressed="sortReverse"
+              :title="sortReverse ? 'Showing in reverse order' : 'Reverse the order'" @click="sortReverse = !sortReverse">
+              <ArrowsUpDownIcon class="w-4 h-4" aria-hidden="true" />
+              <span class="sr-only">Reverse order</span>
+            </button>
           </div>
+          <p class="text-xs text-muted -mt-1">{{ sortDescription }}</p>
 
-          <!-- Sort Order -->
-          <div class="space-y-2">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                v-model="sortReverse"
-                class="rounded border-default"
-              />
-              <span class="text-xs font-semibold select-none">Reverse Sort Order</span>
+          <template v-if="stats">
+            <p class="flow-subhead !mb-0 mt-auto pt-2">Summary</p>
+            <dl class="crm-stats">
+              <div><dt>Total</dt><dd>{{ stats.total }}</dd></div>
+              <div v-if="stats.topLevel"><dt>Comments</dt><dd>{{ stats.topLevel }}</dd></div>
+              <div v-if="stats.replies"><dt>Replies</dt><dd>{{ stats.replies }}</dd></div>
+              <div><dt>Open</dt><dd>{{ stats.unresolved }}</dd></div>
+              <div><dt>Resolved</dt><dd>{{ stats.resolved }}</dd></div>
+              <div v-if="stats.withAnnotations"><dt>With drawings</dt><dd>{{ stats.withAnnotations }}</dd></div>
+            </dl>
+          </template>
+        </aside>
+
+        <!-- ═══ Comments ══════════════════════════════════════ -->
+        <section class="flex-1 flex flex-col min-w-0 min-h-0" aria-label="Comments">
+          <div class="crm-toolbar" :class="{ 'crm-toolbar--selecting': selectedCommentIds.size > 0 }">
+            <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" class="styled-checkbox" :checked="allVisibleSelected" :indeterminate.prop="someVisibleSelected"
+                :disabled="!visibleIds.length" aria-label="Select all shown comments" @change="toggleSelectAll" />
+              <span v-if="selectedCommentIds.size" class="text-sm font-semibold">{{ selectedCommentIds.size }} selected</span>
+              <span v-else class="text-sm font-semibold">
+                {{ filtersActive ? `${visibleIds.length} of ${comments.length} shown` : pluralize(comments.length, 'comment') }}
+              </span>
             </label>
-          </div>
 
-          <!-- Stats Panel -->
-          <div v-if="stats" class="mt-auto pt-4 border-t border-default space-y-2">
-            <div class="text-xs font-semibold opacity-70 mb-2">Statistics</div>
-            <div class="text-sm space-y-1">
-              <div class="flex justify-between">
-                <span class="opacity-70">Total:</span>
-                <span class="font-semibold">{{ stats.total }}</span>
-              </div>
-              <div v-if="stats.topLevel" class="flex justify-between">
-                <span class="opacity-70">Top-level:</span>
-                <span class="font-semibold">{{ stats.topLevel }}</span>
-              </div>
-              <div v-if="stats.replies" class="flex justify-between">
-                <span class="opacity-70">Replies:</span>
-                <span class="font-semibold">{{ stats.replies }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="opacity-70">Resolved:</span>
-                <span class="font-semibold text-flow-success">{{ stats.resolved }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="opacity-70">Unresolved:</span>
-                <span class="font-semibold text-flow-warning">{{ stats.unresolved }}</span>
-              </div>
-              <div v-if="stats.withAnnotations" class="flex justify-between">
-                <span class="opacity-70">With Drawings:</span>
-                <span class="font-semibold">{{ stats.withAnnotations }}</span>
-              </div>
+            <div v-if="selectedCommentIds.size" class="flex flex-wrap items-center gap-2 ml-auto">
+              <button type="button" class="btn btn-secondary btn-sm" :disabled="bulkBusy" @click="bulkResolve(true)">Resolve</button>
+              <button type="button" class="btn btn-secondary btn-sm" :disabled="bulkBusy" @click="bulkResolve(false)">Reopen</button>
+              <select v-model="bulkCategoryId" aria-label="Set category for selected comments" :disabled="bulkBusy"
+                class="input-textlike px-2 py-1 text-sm" @change="applyBulkCategory">
+                <option value="" disabled>Set category…</option>
+                <option v-for="cat in linkCategories" :key="cat.id" :value="String(cat.id)">{{ cat.name }}</option>
+                <option value="null">No category</option>
+              </select>
+              <button type="button" class="crm-textbtn" @click="clearSelection">Clear selection</button>
             </div>
+            <p v-else class="text-xs text-muted ml-auto hidden md:block">Select comments to resolve, reopen or categorize several at once.</p>
           </div>
-        </div>
 
-        <!-- Right: Comments List (70%) -->
-        <div class="flex-1 flex flex-col min-h-0">
-          <!-- Comments Header with Bulk Actions -->
-          <div class="px-4 py-3 border-b border-default shrink-0 bg-default/5">
-            <div class="flex items-center justify-between gap-4">
-              <div class="flex items-center gap-3">
-                <div class="text-sm font-semibold">
-                  {{ filteredCommentsWithReplies.length }} comment{{ filteredCommentsWithReplies.length === 1 ? '' : 's' }}
-                  <span v-if="selectedCommentIds.size > 0" class="text-primary">
-                    ({{ selectedCommentIds.size }} selected)
+          <FlowNotice v-if="error" tone="danger" size="sm" class="mx-5 mt-3">Couldn't refresh: {{ error }}</FlowNotice>
+
+          <div class="flex-1 overflow-y-auto px-5 py-4">
+            <FlowEmpty v-if="!filteredComments.length" compact title="No comments match"
+              description="Try a different search, status or filter.">
+              <template #actions><button type="button" class="btn btn-secondary btn-sm" @click="clearFilters">Clear filters</button></template>
+            </FlowEmpty>
+
+            <section v-for="group in visibleGroups" :key="group.fileName" class="crm-file" :aria-label="group.fileName">
+              <header class="crm-file__head">
+                <DocumentIcon class="w-4 h-4 shrink-0 opacity-70" aria-hidden="true" />
+                <span class="font-semibold truncate" :title="group.fileName">{{ group.fileName }}</span>
+                <span class="text-xs text-muted whitespace-nowrap ml-auto">{{ fileSummary(group.comments) }}</span>
+              </header>
+
+              <ul>
+                <li v-for="comment in group.comments" :key="comment.id" class="crm-comment"
+                  :class="{ 'crm-comment--selected': selectedCommentIds.has(comment.id), 'crm-comment--reply': (comment.depth || 0) > 0 }"
+                  :style="{ '--crm-depth': Math.min(comment.depth || 0, 4) }"
+                  @click="handleCommentClick($event, comment.id)">
+                  <input type="checkbox" class="styled-checkbox mt-1" :checked="selectedCommentIds.has(comment.id)"
+                    :aria-label="`Select comment by ${authorOf(comment)}`" @click.stop="toggleSelectComment(comment.id)" />
+                  <span class="flow-avatar flow-avatar--sm mt-0.5" :style="avatarStyle(comment.author_color || comment.display_color)" aria-hidden="true">
+                    {{ initials(authorOf(comment)) }}
                   </span>
-                </div>
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    :checked="allVisibleSelected"
-                    @change="toggleSelectAll"
-                    class="rounded border-default"
-                  />
-                  <span class="text-xs font-semibold select-none">Select All</span>
-                </label>
-              </div>
 
-              <!-- Help Text / Bulk Actions -->
-              <div class="flex items-center gap-3">
-                <div v-if="selectedCommentIds.size === 0" class="text-xs text-muted italic">
-                  Click comments to select • Use bulk actions to resolve multiple at once
-                </div>
-                <div v-else class="flex items-center gap-2">
-                  <button
-                    @click="bulkResolve(true)"
-                    class="btn btn-success px-3 py-1 text-xs h-fit"
-                  >
-                    Resolve ({{ selectedCommentIds.size }})
-                  </button>
-                  <button
-                    @click="bulkResolve(false)"
-                    class="btn btn-secondary px-3 py-1 text-xs h-fit"
-                  >
-                    Unresolve ({{ selectedCommentIds.size }})
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Comments List -->
-          <div class="flex-1 overflow-y-auto p-4 space-y-4">
-            <!-- Empty state -->
-            <div v-if="!filteredComments.length" class="text-center py-12 text-muted">
-              <ChatBubbleLeftRightIcon class="w-16 h-16 mx-auto mb-3 opacity-50" />
-              <div class="font-semibold">No comments match the current filters</div>
-              <div class="text-sm opacity-70 mt-1">
-                <span v-if="stats && stats.total > 0">
-                  {{ stats.total }} total comment{{ stats.total !== 1 ? 's' : '' }} • Try changing the status or file filter
-                </span>
-                <span v-else>
-                  Try changing the status or file filter
-                </span>
-              </div>
-            </div>
-
-            <!-- Group comments by file -->
-            <div 
-              v-for="fileName in filteredFileNames" 
-              :key="fileName" 
-              v-show="getFilteredFileComments(fileName).length > 0"
-              class="border border-default rounded-lg bg-default overflow-hidden shadow-sm"
-            >
-              <!-- File Header -->
-              <div class="sticky top-0 z-10 bg-well/95 backdrop-blur-sm border-b border-default px-4 py-3">
-                <div class="flex items-center gap-2">
-                  <DocumentIcon class="w-5 h-5 shrink-0" />
-                  <div class="flex-1 min-w-0">
-                    <div class="font-bold text-default truncate">{{ fileName }}</div>
-                    <div class="text-xs text-muted">
-                      {{ getFilteredFileComments(fileName).length }} comment{{ getFilteredFileComments(fileName).length !== 1 ? 's' : '' }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Comments for this file -->
-              <div class="p-3 space-y-2">
-                <div
-                  v-for="comment in getFilteredFileComments(fileName)"
-                  :key="comment.id"
-                  class="relative rounded-lg border border-default bg-well/40 hover:bg-well/60 transition-colors cursor-pointer comment-card"
-                  :class="{ 'comment-selected': selectedCommentIds.has(comment.id) }"
-                  :style="{ marginLeft: `${(comment.depth || 0) * 2}rem` }"
-                  @click="handleCommentClick($event, comment.id)"
-                >
-                  <!-- Depth indicator line -->
-                  <div
-                    v-if="(comment.depth || 0) > 0"
-                    class="absolute left-0 top-0 bottom-0 w-1 bg-primary/30 rounded-l-lg"
-                  ></div>
-
-                  <!-- Bulk Selection Checkbox - Top Left -->
-                  <div class="absolute top-3 left-3">
-                    <input
-                      type="checkbox"
-                      :checked="selectedCommentIds.has(comment.id)"
-                      @click.stop="toggleSelectComment(comment.id)"
-                      class="rounded border-default cursor-pointer"
-                      title="Select for bulk actions"
-                    />
-                  </div>
-
-                  <!-- Comment Content - Padded for checkbox -->
-                  <div class="pl-10 pr-4 py-4">
-                    <div class="flex items-start justify-between gap-3 mb-2">
-                      <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 flex-wrap">
-                          <span class="text-xs font-mono opacity-50">#{{ comment.id }}</span>
-                          <span class="font-bold text-default">
-                            {{ comment.author_name || comment.user_name || 'Anonymous' }}
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-start gap-2">
+                      <div class="min-w-0 flex-1">
+                        <p class="text-sm">
+                          <span class="font-semibold">{{ authorOf(comment) }}</span>
+                          <span v-if="comment.parent_id" class="text-xs text-muted" :title="`Reply to comment #${comment.parent_id}`">
+                            replied to {{ parentAuthor(comment) }}
                           </span>
-                          <span v-if="comment.parent_id" class="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-500/15 text-purple-400 rounded text-xs font-semibold" :title="`Reply to comment #${comment.parent_id}`">
-                            ↩ Reply to #{{ comment.parent_id }}
-                          </span>
-                          <span v-if="comment.start_seconds !== null && comment.start_seconds !== undefined" class="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/20 text-primary rounded text-xs font-mono font-semibold">
-                            <ClockIcon class="w-3 h-3" />
+                        </p>
+                        <p class="crm-meta">
+                          <span v-if="comment.start_seconds !== null && comment.start_seconds !== undefined" class="crm-tc">
+                            <ClockIcon class="w-3 h-3" aria-hidden="true" />
                             {{ formatTimecodeRange(comment.start_seconds, comment.end_seconds) }}
                           </span>
-                          <span v-if="comment.version_index != null" class="inline-flex items-center px-2 py-0.5 flow-tone-info rounded text-xs font-bold" :title="`Version ${comment.version_index}`">V{{ comment.version_index }}</span>
-                          <span v-if="comment.category_name" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border" :style="categoryBadgeStyle(comment.category_color)" :title="`Category: ${comment.category_name}`">
-                            <span class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: comment.category_color || '#9CA3AF' }" />
-                            {{ comment.category_name }}
-                          </span>
-                        </div>
-                        <div class="text-xs text-muted mt-1">
-                          {{ formatDate(comment.created_at) }}
-                          <span v-if="comment.is_edited" class="ml-1 italic">(edited)</span>
-                        </div>
+                          <FlowChip v-if="comment.version_index != null" tone="info" size="sm" :title="`Version ${comment.version_index}`">V{{ comment.version_index }}</FlowChip>
+                          <span>{{ formatDate(comment.created_at) }}</span>
+                          <span v-if="comment.is_edited" class="italic">edited</span>
+                          <span class="font-mono opacity-70">#{{ comment.id }}</span>
+                        </p>
                       </div>
-                      
-                      <!-- Individual Resolved Toggle - Top Right -->
-                      <label class="flex items-center gap-1.5 cursor-pointer shrink-0" @click.stop>
-                        <input
-                          type="checkbox"
-                          :checked="comment.resolved"
-                          @change="toggleResolved(comment)"
-                          class="rounded border-default"
-                          title="Toggle resolved status"
-                        />
-                        <span class="text-xs select-none">
-                          {{ comment.resolved ? 'Resolved' : 'Unresolved' }}
-                        </span>
+                      <div class="flex items-center gap-2 shrink-0" @click.stop>
+                        <FlowChip :tone="comment.resolved ? 'muted' : 'neutral'" size="sm"
+                          :title="comment.resolved && comment.resolved_at ? `Resolved ${formatDate(comment.resolved_at)}` : undefined">
+                          {{ comment.resolved ? '✓ Resolved' : 'Open' }}
+                        </FlowChip>
+                        <button type="button" class="btn btn-secondary btn-xs" :disabled="resolvingIds.has(comment.id)" @click="toggleResolved(comment)">
+                          {{ comment.resolved ? 'Reopen' : 'Resolve' }}
+                        </button>
+                      </div>
+                    </div>
+
+                    <p class="crm-body">{{ comment.body }}</p>
+
+                    <div class="flex flex-wrap items-center gap-2 mt-2" @click.stop>
+                      <label class="crm-category">
+                        <span class="flow-dot" :style="{ background: comment.category_color || 'transparent', borderColor: comment.category_color ? 'transparent' : undefined }" aria-hidden="true" />
+                        <span class="sr-only">Category</span>
+                        <select :value="comment.category_id ?? ''"
+                          @change="updateCommentCategory(comment.id, ($event.target as HTMLSelectElement).value)">
+                          <!-- The select itself is transparent, so give the dropdown list the theme's surface and text colours -->
+                          <option value="" class="bg-default text-default">No category</option>
+                          <option v-for="cat in linkCategories" :key="cat.id" :value="cat.id" class="bg-default text-default">{{ cat.name }}</option>
+                        </select>
                       </label>
-                    </div>
-
-                    <div class="text-default whitespace-pre-wrap leading-relaxed">{{ comment.body }}</div>
-
-                    <!-- Category Selector -->
-                    <div class="mt-2" @click.stop>
-                      <select
-                        :value="comment.category_id || ''"
-                        @change="updateCommentCategory(comment.id, $event.target.value)"
-                        class="text-xs px-2 py-1 border border-default rounded bg-default"
-                      >
-                        <option value="">— No Category —</option>
-                        <option v-for="cat in linkCategories" :key="cat.id" :value="cat.id">
-                          {{ cat.name }}
-                        </option>
-                      </select>
-                    </div>
-
-                    <!-- Tags if present -->
-                    <div v-if="comment.tags" class="mt-2 flex flex-wrap gap-1">
-                      <span
-                        v-for="tag in parseTags(comment.tags)"
-                        :key="tag"
-                        class="inline-block px-2 py-0.5 bg-accent text-xs rounded-full border border-default"
-                      >
-                        #{{ tag }}
-                      </span>
-                    </div>
-
-                    <!-- Comment Meta -->
-                    <div class="flex items-center gap-3 text-xs mt-2">
-                      <button
-                        v-if="comment.draw_data"
-                        @click.stop="viewAnnotation(comment)"
-                        class="flex items-center gap-1 px-2 py-1 rounded bg-primary/20 text-primary hover:bg-primary/30 transition-colors font-semibold"
-                        title="View annotation on video frame"
-                      >
-                        <PencilIcon class="w-3 h-3" />
-                        View Annotation
+                      <span v-for="tag in parseTags(comment.tags)" :key="tag" class="flow-chip flow-chip--muted flow-chip--sm">#{{ tag }}</span>
+                      <button v-if="comment.draw_data" type="button" class="btn btn-secondary btn-xs flex items-center gap-1"
+                        title="See the drawing on the video frame" @click="viewAnnotation(comment)">
+                        <PencilIcon class="w-3 h-3" aria-hidden="true" />
+                        View drawing
                       </button>
-                      <span v-if="comment.resolved_at" class="text-flow-success flex items-center gap-1 opacity-60">
-                        <CheckIcon class="w-3 h-3" />
-                        Resolved {{ formatDate(comment.resolved_at) }}
-                      </span>
-                      <button
-                        @click.stop="deleteComment(comment)"
-                        :disabled="deletingIds.has(comment.id)"
-                        class="ml-auto flex items-center gap-1 px-2 py-1 rounded flow-tone-danger transition-colors font-semibold disabled:opacity-50"
-                        :title="comment.draw_data ? 'Delete this comment and its annotation' : 'Delete this comment'"
-                      >
-                        <TrashIcon class="w-3 h-3" />
+                      <button type="button" class="btn btn-danger btn-xs ml-auto" :disabled="deletingIds.has(comment.id)"
+                        @click="askDelete(comment)">
                         {{ deletingIds.has(comment.id) ? 'Deleting…' : 'Delete' }}
                       </button>
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
+                </li>
+              </ul>
+            </section>
           </div>
-        </div>
+        </section>
       </div>
   </FlowModal>
 
@@ -468,6 +259,45 @@
       @close="showCategoryManagement = false"
       @categories-updated="onCategoriesUpdated"
     />
+
+    <FlowModal v-model="exportOpen" title="Export comments" description="Download the comments on this link." size="md" :busy="exporting">
+      <div class="flex flex-col gap-4">
+        <FlowField label="Files">
+          <template #default="{ id }">
+            <select :id="id" v-model="exportFileFilter" class="input-textlike w-full px-3 py-2 text-sm">
+              <option value="all">All files</option>
+              <option v-for="fileName in allFileNames" :key="fileName" :value="fileName">{{ fileName }}</option>
+            </select>
+          </template>
+        </FlowField>
+        <fieldset>
+          <legend class="text-sm font-medium mb-2">Format</legend>
+          <ul class="flow-list">
+            <li v-for="f in EXPORT_FORMATS" :key="f.value">
+              <label class="flow-list__row flow-list__row--interactive !py-2.5 !items-start"
+                :class="{ 'flow-list__row--selected': exportFormat === f.value }">
+                <input v-model="exportFormat" type="radio" name="crm-export-format" class="mt-0.5" :value="f.value" />
+                <span class="min-w-0">
+                  <span class="block text-sm font-medium">{{ f.label }}</span>
+                  <span class="block flow-list__meta">{{ f.help }}</span>
+                </span>
+              </label>
+            </li>
+          </ul>
+        </fieldset>
+      </div>
+      <template #footer>
+        <button type="button" class="btn btn-dismiss" :disabled="exporting" @click="exportOpen = false">Cancel</button>
+        <button type="button" class="btn btn-primary flex items-center gap-2" :disabled="exporting" @click="handleExport">
+          <ArrowDownTrayIcon class="w-4 h-4" aria-hidden="true" />
+          {{ exporting ? 'Exporting…' : 'Export' }}
+        </button>
+      </template>
+    </FlowModal>
+
+    <ConfirmDeleteModal v-model="deleteOpen" title="Delete comment" :message="deleteMessage" :danger="true"
+      :busy="deleteTarget ? deletingIds.has(deleteTarget.id) : false" busy-text="Deleting…"
+      confirm-text="Delete comment" cancel-text="Cancel" :click-outside-cancels="true" @confirm="performDelete" />
   </template>
 </template>
 
@@ -477,21 +307,28 @@ import { useApi } from '../../composables/useApi'
 import { useTimeFormat } from '../../composables/useTimeFormat'
 import type { LinkItem } from '../../typings/electron'
 import type { CommentExport, CommentStats } from '../../types/comments'
-import type { Comment } from '../../composables/useComments'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
-import { 
-  ChatBubbleLeftRightIcon,
-  DocumentIcon,
-  ClockIcon,
-  CheckIcon,
-  PencilIcon,
+import {
   ArrowDownTrayIcon,
-  TrashIcon
+  ArrowPathIcon,
+  ArrowsUpDownIcon,
+  ArrowTopRightOnSquareIcon,
+  ChatBubbleLeftRightIcon,
+  ClockIcon,
+  DocumentIcon,
+  MagnifyingGlassIcon,
+  PencilIcon,
 } from '@heroicons/vue/24/outline'
 import AnnotationViewerModal from './AnnotationViewerModal.vue'
 import CategoryManagementModal from './CategoryManagementModal.vue'
+import ConfirmDeleteModal from './ConfirmDeleteModal.vue'
 import { useCommentCategories } from '../../composables/useCommentCategories'
 import FlowModal from '../../ui/FlowModal.vue'
+import FlowChip from '../../ui/FlowChip.vue'
+import FlowEmpty from '../../ui/FlowEmpty.vue'
+import FlowField from '../../ui/FlowField.vue'
+import FlowNotice from '../../ui/FlowNotice.vue'
+import { avatarStyle, initials } from '../access/accessUi'
 
 const props = defineProps<{
   modelValue: boolean
@@ -516,7 +353,7 @@ const linkToken = computed(() => {
 const loading = ref(false)
 const error = ref<string | null>(null)
 const showAnnotationViewer = ref(false)
-const selectedAnnotationComment = ref<Comment | null>(null)
+const selectedAnnotationComment = ref<CommentExport | null>(null)
 const comments = ref<CommentExport[]>([])
 const stats = ref<CommentStats | null>(null)
 const selectedFileFilter = ref('')
@@ -539,6 +376,20 @@ const categoryFilter = ref('')
 const exportFileFilter = ref('all')
 const exportFormat = ref('json')
 const exporting = ref(false)
+const exportOpen = ref(false)
+const EXPORT_FORMATS = [
+  { value: 'pdf', label: 'PDF report', help: 'A styled report grouped by file and version, for sharing or printing.' },
+  { value: 'csv', label: 'CSV', help: 'A spreadsheet with one row per comment.' },
+  { value: 'markdown', label: 'Markdown', help: 'A readable list for notes, emails or docs.' },
+  { value: 'edl', label: 'EDL (edit decision list)', help: 'Timeline markers for Premiere, Resolve or Avid.' },
+  { value: 'webvtt', label: 'WebVTT subtitles', help: 'Timecoded comments as caption cues.' },
+  { value: 'json', label: 'JSON', help: 'Every field, for scripts and other tools.' },
+] as const
+
+const resolvingIds = ref<Set<number>>(new Set())
+const bulkBusy = ref(false)
+const deleteOpen = ref(false)
+const deleteTarget = ref<CommentExport | null>(null)
 
 // Group comments by file
 const fileGroups = computed(() => {
@@ -581,7 +432,7 @@ const allVersions = computed(() => {
     vMap.get(key)!.count++
   })
   return Array.from(vMap.entries())
-    .map(([key, v]) => ({ id: v.id, label: v.index != null ? `V${v.index}` : 'Unversioned', count: v.count }))
+    .map(([key, v]) => ({ id: v.id, value: key || 'none', label: v.index != null ? `V${v.index}` : 'No version', count: v.count }))
     .sort((a, b) => (b.id ?? 0) - (a.id ?? 0))
 })
 
@@ -624,9 +475,19 @@ const repliesByParent = computed(() => {
   return map
 })
 
+// True if any reply below this comment, at any depth, matches
+function anyInThread(parentId: number, pred: (c: CommentExport) => boolean, seen = new Set<number>([parentId])): boolean {
+  for (const reply of repliesByParent.value.get(parentId) || []) {
+    if (seen.has(reply.id)) continue
+    seen.add(reply.id)
+    if (pred(reply) || anyInThread(reply.id, pred, seen)) return true
+  }
+  return false
+}
+
 // Apply filters and sorting
 const filteredComments = computed(() => {
-  let result = topLevelComments.value
+  let result = topLevelComments.value.slice()
   
   // Filter by file
   if (selectedFileFilter.value) {
@@ -643,16 +504,14 @@ const filteredComments = computed(() => {
   // Filter by author — include parent if any of its replies match
   if (authorFilter.value) {
     result = result.filter(c => {
-      const author = c.author_name || c.user_name || 'Anonymous'
-      if (author === authorFilter.value) return true
-      const replies = repliesByParent.value.get(c.id) || []
-      return replies.some(r => (r.author_name || r.user_name || 'Anonymous') === authorFilter.value)
+      if (authorOf(c) === authorFilter.value) return true
+      return anyInThread(c.id, r => authorOf(r) === authorFilter.value)
     })
   }
 
   // Filter by version
   if (versionFilter.value !== '') {
-    const vId = versionFilter.value ? Number(versionFilter.value) : null
+    const vId = versionFilter.value === 'none' ? null : Number(versionFilter.value)
     result = result.filter(c => {
       if (vId === null) return c.asset_version_id == null
       return c.asset_version_id === vId
@@ -671,14 +530,13 @@ const filteredComments = computed(() => {
   // Filter by search text — include parent if any of its replies match
   if (searchText.value.trim()) {
     const search = searchText.value.toLowerCase()
-    const matchesSearch = (c: CommentExport) =>
+    const matchesSearch = (c: CommentExport) => !!(
       c.body?.toLowerCase().includes(search) ||
       c.author_name?.toLowerCase().includes(search) ||
-      c.user_name?.toLowerCase().includes(search)
+      c.user_name?.toLowerCase().includes(search))
     result = result.filter(c => {
       if (matchesSearch(c)) return true
-      const replies = repliesByParent.value.get(c.id) || []
-      return replies.some(matchesSearch)
+      return anyInThread(c.id, matchesSearch)
     })
   }
   
@@ -712,35 +570,33 @@ const filteredComments = computed(() => {
   return result
 })
 
-// Flatten filtered top-level comments with their replies for rendering
-// When author/search filters are active, also filter replies to only matching ones
+// Flatten filtered top-level comments with their whole reply thread (replies to replies included).
+// When person/search filters are active, only replies that match are kept.
+function matchesReplyFilters(r: CommentExport) {
+  if (authorFilter.value && authorOf(r) !== authorFilter.value) return false
+  const search = searchText.value.trim().toLowerCase()
+  if (search) {
+    return !!(r.body?.toLowerCase().includes(search) ||
+      r.author_name?.toLowerCase().includes(search) ||
+      r.user_name?.toLowerCase().includes(search))
+  }
+  return true
+}
+
+function threadOf(parentId: number, out: CommentExport[], seen: Set<number>) {
+  for (const reply of repliesByParent.value.get(parentId) || []) {
+    if (seen.has(reply.id)) continue
+    seen.add(reply.id)
+    if (matchesReplyFilters(reply)) out.push(reply)
+    threadOf(reply.id, out, seen)
+  }
+}
+
 const filteredCommentsWithReplies = computed(() => {
   const flat: CommentExport[] = []
   for (const comment of filteredComments.value) {
     flat.push(comment)
-    let replies = repliesByParent.value.get(comment.id) || []
-
-    // Filter replies when author filter is active
-    if (authorFilter.value) {
-      replies = replies.filter(r => {
-        const author = r.author_name || r.user_name || 'Anonymous'
-        return author === authorFilter.value
-      })
-    }
-
-    // Filter replies when search text is active
-    if (searchText.value.trim()) {
-      const search = searchText.value.toLowerCase()
-      replies = replies.filter(r =>
-        r.body?.toLowerCase().includes(search) ||
-        r.author_name?.toLowerCase().includes(search) ||
-        r.user_name?.toLowerCase().includes(search)
-      )
-    }
-
-    for (const reply of replies) {
-      flat.push(reply)
-    }
+    threadOf(comment.id, flat, new Set([comment.id]))
   }
   return flat
 })
@@ -751,21 +607,93 @@ const filteredFileNames = computed(() => {
   return Array.from(names).sort()
 })
 
-// Check if all visible comments are selected
-const allVisibleSelected = computed(() => {
-  if (filteredComments.value.length === 0) return false
-  return filteredComments.value.every(c => selectedCommentIds.value.has(c.id))
+const visibleGroups = computed(() => {
+  const byFile = new Map<string, CommentExport[]>()
+  for (const c of filteredCommentsWithReplies.value) {
+    const fn = c.file_name || 'Unknown'
+    if (!byFile.has(fn)) byFile.set(fn, [])
+    byFile.get(fn)!.push(c)
+  }
+  return filteredFileNames.value
+    .filter(fn => byFile.has(fn))
+    .map(fileName => ({ fileName, comments: byFile.get(fileName)! }))
 })
+
+const visibleIds = computed(() => filteredCommentsWithReplies.value.map(c => c.id))
+const allVisibleSelected = computed(() =>
+  visibleIds.value.length > 0 && visibleIds.value.every(id => selectedCommentIds.value.has(id))
+)
+const someVisibleSelected = computed(() =>
+  !allVisibleSelected.value && visibleIds.value.some(id => selectedCommentIds.value.has(id))
+)
+
+// Bulk actions only touch what's on screen, so drop selections that a filter has hidden.
+watch(visibleIds, (ids) => {
+  if (!selectedCommentIds.value.size) return
+  const visible = new Set(ids)
+  const kept = [...selectedCommentIds.value].filter(id => visible.has(id))
+  if (kept.length !== selectedCommentIds.value.size) selectedCommentIds.value = new Set(kept)
+})
+
+const statusOptions = [
+  { value: 'all' as const, label: 'All' },
+  { value: 'unresolved' as const, label: 'Open' },
+  { value: 'resolved' as const, label: 'Resolved' },
+]
+
+const filtersActive = computed(() =>
+  !!searchText.value.trim() || statusFilter.value !== 'all' || !!selectedFileFilter.value ||
+  !!authorFilter.value || categoryFilter.value !== '' || versionFilter.value !== ''
+)
+
+function clearFilters() {
+  searchText.value = ''
+  statusFilter.value = 'all'
+  selectedFileFilter.value = ''
+  authorFilter.value = ''
+  categoryFilter.value = ''
+  versionFilter.value = ''
+}
+
+const SORT_DESCRIPTIONS: Record<string, [string, string]> = {
+  timecode: ['Earliest timecode first', 'Latest timecode first'],
+  date: ['Oldest first', 'Newest first'],
+  author: ['People A to Z', 'People Z to A'],
+  status: ['Open first', 'Resolved first'],
+  version: ['Oldest version first', 'Newest version first'],
+}
+const sortDescription = computed(() => (SORT_DESCRIPTIONS[sortBy.value] || ['', ''])[sortReverse.value ? 1 : 0])
+
+const headerDescription = computed(() => {
+  const title = props.link?.title || 'Untitled link'
+  if (!comments.value.length) return title
+  return `${title} · ${pluralize(comments.value.length, 'comment')} on ${pluralize(allFileNames.value.length, 'file')}`
+})
+
+function pluralize(n: number, word: string) {
+  return `${n} ${word}${n === 1 ? '' : 's'}`
+}
+
+function authorOf(c: CommentExport) {
+  return c.author_name || c.user_name || 'Anonymous'
+}
+
+function parentAuthor(c: CommentExport) {
+  const parent = comments.value.find(p => p.id === c.parent_id)
+  return parent ? authorOf(parent) : `#${c.parent_id}`
+}
+
+function fileSummary(list: CommentExport[]) {
+  const open = list.filter(c => !c.resolved).length
+  return `${pluralize(list.length, 'comment')} · ${open} open`
+}
+
+function clearSelection() {
+  selectedCommentIds.value = new Set()
+}
 
 function getFileCommentCount(fileName: string): number {
   return topLevelComments.value.filter(c => c.file_name === fileName).length
-}
-
-function getFilteredFileComments(fileName: string): CommentExport[] {
-  return filteredCommentsWithReplies.value.filter(c => {
-    const fn = c.file_name || 'Unknown'
-    return fn === fileName
-  })
 }
 
 function formatTimecode(seconds: number | null | undefined): string {
@@ -863,7 +791,7 @@ async function loadComments() {
     }
     
     // Clear selections when reloading
-    selectedCommentIds.value.clear()
+    selectedCommentIds.value = new Set()
   } catch (err: any) {
     error.value = err?.message || String(err)
     console.error('[CommentsReview] Load error:', err)
@@ -894,170 +822,122 @@ function handleCommentClick(event: MouseEvent, commentId: number) {
 }
 
 function toggleSelectAll() {
-  if (allVisibleSelected.value) {
-    // Deselect all visible
-    filteredComments.value.forEach(c => selectedCommentIds.value.delete(c.id))
-  } else {
-    // Select all visible
-    filteredComments.value.forEach(c => selectedCommentIds.value.add(c.id))
+  const next = new Set(selectedCommentIds.value)
+  if (allVisibleSelected.value) visibleIds.value.forEach(id => next.delete(id))
+  else visibleIds.value.forEach(id => next.add(id))
+  selectedCommentIds.value = next
+}
+
+function applyCategoryLocally(ids: number[], catId: number | null) {
+  const category = catId ? linkCategories.value.find(c => c.id === catId) : null
+  for (const c of comments.value) {
+    if (!ids.includes(c.id)) continue
+    c.category_id = catId
+    c.category_name = category?.name || null
+    c.category_color = category?.color || null
   }
-  // Force reactivity
-  selectedCommentIds.value = new Set(selectedCommentIds.value)
+}
+
+function patchCategory(commentId: number, catId: number | null) {
+  return apiFetch(`/api/token/${encodeURIComponent(linkToken.value)}/comments/${commentId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ category_id: catId }),
+  })
 }
 
 async function updateCommentCategory(commentId: number, categoryId: string) {
   if (!linkToken.value) return
-  
+  const catId = categoryId === '' ? null : Number(categoryId)
   try {
-    const catId = categoryId === '' ? null : Number(categoryId)
-    
-    await apiFetch(`/api/token/${encodeURIComponent(linkToken.value)}/comments/${commentId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ category_id: catId })
-    })
-    
-    // Update local comment
-    const comment = comments.value.find(c => c.id === commentId)
-    if (comment) {
-      comment.category_id = catId
-      if (catId) {
-        const category = linkCategories.value.find(c => c.id === catId)
-        comment.category_name = category?.name || null
-        comment.category_color = category?.color || null
-      } else {
-        comment.category_name = null
-        comment.category_color = null
-      }
-    }
-    
-    pushNotification(new Notification(
-      'Category Updated',
-      'Comment category has been updated.',
-      'success',
-      3000
-    ))
+    await patchCategory(commentId, catId)
+    applyCategoryLocally([commentId], catId)
   } catch (err: any) {
     console.error('[CommentsReview] Update category error:', err)
-    pushNotification(new Notification(
-      'Update Failed',
-      err?.message || 'Could not update comment category',
-      'error',
-      5000
-    ))
+    pushNotification(new Notification('Update Failed', err?.message || 'Could not update comment category', 'error', 5000))
+    // Put the select back to the saved value
+    comments.value = [...comments.value]
   }
+}
+
+// Runs one request per comment and reports how many failed, so a partial failure isn't silent.
+async function runForEach(ids: number[], fn: (id: number) => Promise<any>) {
+  const results = await Promise.allSettled(ids.map(fn))
+  const ok: number[] = []
+  let firstError = ''
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled' && r.value?.ok !== false) ok.push(ids[i])
+    else if (!firstError) firstError = r.status === 'rejected' ? (r.reason?.message || String(r.reason)) : (r.value?.error || 'Request failed')
+  })
+  return { ok, failed: ids.length - ok.length, firstError }
 }
 
 async function applyBulkCategory() {
-  if (selectedCommentIds.value.size === 0 || !linkToken.value || bulkCategoryId.value === '') return
-  
-  const catId = bulkCategoryId.value === 'null' ? null : Number(bulkCategoryId.value)
-  const count = selectedCommentIds.value.size
-  const ids = Array.from(selectedCommentIds.value)
-  
-  try {
-    // Update all selected comments
-    await Promise.all(
-      ids.map(id => 
-        apiFetch(`/api/token/${encodeURIComponent(linkToken.value)}/comments/${id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ category_id: catId })
-        })
-      )
-    )
-    
-    // Update local comments
-    const category = catId ? linkCategories.value.find(c => c.id === catId) : null
-    ids.forEach(id => {
-      const comment = comments.value.find(c => c.id === id)
-      if (comment) {
-        comment.category_id = catId
-        comment.category_name = category?.name || null
-        comment.category_color = category?.color || null
-      }
-    })
-    
-    selectedCommentIds.value.clear()
-    selectedCommentIds.value = new Set(selectedCommentIds.value)
+  if (selectedCommentIds.value.size === 0 || !linkToken.value || bulkCategoryId.value === '') {
     bulkCategoryId.value = ''
-    
-    pushNotification(new Notification(
-      'Bulk Category Update Complete',
-      `Updated category for ${count} comment${count !== 1 ? 's' : ''}`,
-      'success',
-      5000
-    ))
-  } catch (err: any) {
-    console.error('[CommentsReview] Bulk category update error:', err)
-    pushNotification(new Notification(
-      'Bulk Update Failed',
-      err?.message || 'Could not update categories',
-      'error',
-      5000
-    ))
+    return
+  }
+  const catId = bulkCategoryId.value === 'null' ? null : Number(bulkCategoryId.value)
+  const ids = Array.from(selectedCommentIds.value)
+  bulkBusy.value = true
+  try {
+    const { ok, failed, firstError } = await runForEach(ids, id => patchCategory(id, catId))
+    applyCategoryLocally(ok, catId)
+    selectedCommentIds.value = new Set(ids.filter(id => !ok.includes(id)))
+    if (failed) {
+      pushNotification(new Notification('Some Categories Not Updated',
+        `${ok.length} updated, ${failed} failed. ${firstError}`.trim(), 'error', 6000))
+    } else {
+      pushNotification(new Notification('Categories Updated', `Updated ${pluralize(ok.length, 'comment')}.`, 'success', 3000))
+    }
+  } finally {
+    bulkCategoryId.value = ''
+    bulkBusy.value = false
   }
 }
 
-function onCategoriesUpdated(categories: Array<{ id: number; name: string; color: string | null }>) {
-  linkCategories.value = categories
+function onCategoriesUpdated(categories: Array<{ id?: number; name: string; color: string | null }>) {
+  // Unsaved categories have no id yet and can't be assigned to comments
+  linkCategories.value = categories.filter((c): c is { id: number; name: string; color: string | null } => c.id != null)
+}
+
+function applyResolvedLocally(ids: number[], resolved: boolean) {
+  const now = new Date().toISOString()
+  for (const c of comments.value) {
+    if (!ids.includes(c.id) || c.resolved === resolved) continue
+    c.resolved = resolved
+    c.resolved_at = resolved ? now : null
+    // The server's open/resolved counts only include top-level comments
+    if (stats.value && !c.parent_id) {
+      stats.value.resolved += resolved ? 1 : -1
+      stats.value.unresolved += resolved ? -1 : 1
+    }
+  }
+}
+
+function patchResolved(commentId: number, resolved: boolean) {
+  return apiFetch(`/api/links/${props.link!.id}/comments/${commentId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ resolved }),
+  })
 }
 
 async function bulkResolve(resolved: boolean) {
   if (selectedCommentIds.value.size === 0 || !props.link?.id) return
-
-  const linkId = props.link.id
-  const count = selectedCommentIds.value.size
   const ids = Array.from(selectedCommentIds.value)
-
+  bulkBusy.value = true
   try {
-    // Update all selected comments
-    await Promise.all(
-      ids.map(commentId =>
-        apiFetch(`/api/links/${linkId}/comments/${commentId}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ resolved }),
-        })
-      )
-    )
-
-    // Update local state directly instead of reloading
-    const now = new Date().toISOString()
-    for (const c of comments.value) {
-      if (ids.includes(c.id)) {
-        const wasResolved = c.resolved
-        c.resolved = resolved
-        c.resolved_at = resolved ? now : null
-        if (stats.value && wasResolved !== resolved) {
-          if (resolved) {
-            stats.value.resolved++
-            stats.value.unresolved--
-          } else {
-            stats.value.resolved--
-            stats.value.unresolved++
-          }
-        }
-      }
+    const { ok, failed, firstError } = await runForEach(ids, id => patchResolved(id, resolved))
+    applyResolvedLocally(ok, resolved)
+    selectedCommentIds.value = new Set(ids.filter(id => !ok.includes(id)))
+    if (failed) {
+      pushNotification(new Notification('Some Comments Not Updated',
+        `${ok.length} updated, ${failed} failed. ${firstError}`.trim(), 'error', 6000))
+    } else {
+      pushNotification(new Notification(resolved ? 'Comments Resolved' : 'Comments Reopened',
+        `${resolved ? 'Resolved' : 'Reopened'} ${pluralize(ok.length, 'comment')}.`, 'success', 3000))
     }
-    selectedCommentIds.value.clear()
-    selectedCommentIds.value = new Set(selectedCommentIds.value)
-
-    pushNotification(
-      new Notification(
-        'Bulk Update Complete',
-        `Marked ${count} comment${count !== 1 ? 's' : ''} as ${resolved ? 'resolved' : 'unresolved'}`,
-        'success',
-        3000
-      )
-    )
-  } catch (err: any) {
-    console.error('[CommentsReview] Bulk resolve error:', err)
-    pushNotification(
-      new Notification(
-        'Bulk Update Failed',
-        err?.message || 'Could not update selected comments',
-        'error',
-        4000
-      )
-    )
+  } finally {
+    bulkBusy.value = false
   }
 }
 
@@ -1066,18 +946,34 @@ function openInBrowser() {
   window.open(props.link.url, '_blank', 'noopener,noreferrer')
 }
 
+const deleteMessage = computed(() => {
+  const c = deleteTarget.value
+  if (!c) return ''
+  let replyCount = 0
+  const walk = (id: number) => (repliesByParent.value.get(id) || []).forEach(r => { replyCount++; walk(r.id) })
+  walk(c.id)
+  return [
+    `Delete this comment by ${authorOf(c)}?`,
+    c.draw_data ? 'Its drawing will also be removed.' : '',
+    replyCount ? `${replyCount} ${replyCount === 1 ? 'reply' : 'replies'} will also be deleted.` : '',
+    'This cannot be undone.',
+  ].filter(Boolean).join(' ')
+})
+
+function askDelete(comment: CommentExport) {
+  deleteTarget.value = comment
+  deleteOpen.value = true
+}
+
+async function performDelete() {
+  const comment = deleteTarget.value
+  if (comment) await deleteComment(comment)
+  deleteOpen.value = false
+}
+
 async function deleteComment(comment: CommentExport) {
   const linkId = props.link?.id
   if (!linkId || deletingIds.value.has(comment.id)) return
-
-  const replyCount = repliesByParent.value.get(comment.id)?.length ?? 0
-  const lines = [
-    `Delete this comment by ${comment.author_name || comment.user_name || 'Anonymous'}?`,
-    comment.draw_data ? 'Its annotation will also be removed.' : '',
-    replyCount ? `${replyCount} repl${replyCount === 1 ? 'y' : 'ies'} will also be deleted.` : '',
-    'This cannot be undone.',
-  ].filter(Boolean)
-  if (!confirm(lines.join('\n'))) return
 
   deletingIds.value = new Set(deletingIds.value).add(comment.id)
   try {
@@ -1128,56 +1024,31 @@ async function refreshStats() {
 }
 
 async function toggleResolved(comment: CommentExport) {
+  if (!props.link?.id || resolvingIds.value.has(comment.id)) return
   const newResolved = !comment.resolved
-  const commentId = comment.id
-  const linkId = props.link?.id
-  
-  if (!linkId) return
-  
+  resolvingIds.value = new Set(resolvingIds.value).add(comment.id)
   try {
-    const response = await apiFetch(`/api/links/${linkId}/comments/${commentId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        resolved: newResolved,
-      }),
-    })
-    
-    if (!response.ok) {
-      throw new Error(response.error || 'Failed to update comment')
-    }
-    
-    // Update local state directly instead of reloading
-    comment.resolved = newResolved
-    comment.resolved_at = newResolved ? new Date().toISOString() : null
-    if (stats.value) {
-      if (newResolved) {
-        stats.value.resolved++
-        stats.value.unresolved--
-      } else {
-        stats.value.resolved--
-        stats.value.unresolved++
-      }
-    }
-    
-    pushNotification(
-      new Notification(
-        'Comment Updated',
-        `Marked as ${newResolved ? 'resolved' : 'unresolved'}`,
-        'success',
-        2000
-      )
-    )
+    const response = await patchResolved(comment.id, newResolved)
+    if (!response?.ok) throw new Error(response?.error || 'Failed to update comment')
+    applyResolvedLocally([comment.id], newResolved)
   } catch (err: any) {
     console.error('[CommentsReview] Toggle resolved error:', err)
-    pushNotification(
-      new Notification(
-        'Update Failed',
-        err?.message || 'Could not update comment status',
-        'error',
-        4000
-      )
-    )
+    pushNotification(new Notification('Update Failed', err?.message || 'Could not update comment status', 'error', 4000))
+  } finally {
+    const next = new Set(resolvingIds.value)
+    next.delete(comment.id)
+    resolvingIds.value = next
   }
+}
+
+function openExport() {
+  // Start from the file being looked at, if any
+  exportFileFilter.value = selectedFileFilter.value || 'all'
+  exportOpen.value = true
+}
+
+function slugify(v: string) {
+  return v.replace(/[^a-z0-9_-]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 60)
 }
 
 async function handleExport() {
@@ -1201,9 +1072,10 @@ async function handleExport() {
     // Determine file extension
     const extMap: Record<string, string> = { markdown: 'md', webvtt: 'vtt', json: 'json', csv: 'csv', pdf: 'pdf', edl: 'edl' }
     const ext = extMap[exportFormat.value] || exportFormat.value
-    const fileName = exportFileFilter.value === 'all' 
-      ? `comments-all.${ext}`
-      : `comments-${exportFileFilter.value.replace(/[^a-z0-9_-]/gi, '_')}.${ext}`
+    const prefix = slugify(props.link?.title || '') || 'link'
+    const fileName = exportFileFilter.value === 'all'
+      ? `${prefix}-comments.${ext}`
+      : `${prefix}-${slugify(exportFileFilter.value)}-comments.${ext}`
 
     // Create download
     const blob = isPdf ? response : new Blob([response], { type: 'text/plain' })
@@ -1216,6 +1088,7 @@ async function handleExport() {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
 
+    exportOpen.value = false
     pushNotification(new Notification(
       'Export Complete',
       `Comments exported as ${fileName}`,
@@ -1234,7 +1107,7 @@ async function handleExport() {
   }
 }
 
-function viewAnnotation(comment: Comment) {
+function viewAnnotation(comment: CommentExport) {
   selectedAnnotationComment.value = comment
   showAnnotationViewer.value = true
 }
@@ -1249,6 +1122,16 @@ watch(() => props.modelValue, (isOpen) => {
   }
 })
 
+// Filters from one link make no sense on another (file names, people, versions differ).
+watch(() => props.link?.id, (id, prev) => {
+  if (id === prev) return
+  clearFilters()
+  comments.value = []
+  stats.value = null
+  error.value = null
+  selectedCommentIds.value = new Set()
+})
+
 onMounted(() => {
   if (props.modelValue) {
     loadComments()
@@ -1257,12 +1140,189 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.comment-card.comment-selected {
-  outline: 2px solid var(--btn-primary-border);
-  outline-offset: -2px;
-  border-color: var(--btn-primary-border);
+/* ── Filter sidebar ──────────────────────────────────── */
+.crm-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 17rem;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 1rem;
+  border-right: 1px solid var(--flow-line);
+  background: var(--flow-surface-sunken);
+}
+.crm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.crm-field > span,
+.crm-field label {
+  font-size: var(--flow-text-xs);
+  font-weight: 600;
+  color: var(--ui-subtle-text);
+}
+.crm-textbtn {
+  font-size: var(--flow-text-xs);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--flow-accent-line);
+  text-underline-offset: 3px;
+}
+.crm-textbtn:focus-visible {
+  outline: 2px solid var(--ui-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.crm-segmented {
+  display: flex;
+  padding: 2px;
+  border: 1px solid var(--flow-line);
+  border-radius: var(--flow-radius-md);
+  background: var(--flow-surface-sunken);
+}
+.crm-segmented > button {
+  flex: 1;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--ui-subtle-text);
+  border-radius: calc(var(--flow-radius-md) - 2px);
+}
+.crm-segmented > button:hover {
+  color: inherit;
+}
+.crm-segmented > button.is-on {
+  color: white;
+  font-weight: 600;
+  background: var(--btn-primary-fill);
+}
+.crm-segmented > button:focus-visible {
+  outline: 2px solid var(--ui-ring);
+  outline-offset: 1px;
+}
+.crm-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 0.75rem;
+}
+.crm-stats dt {
+  font-size: var(--flow-text-xs);
+  color: var(--ui-subtle-text);
+}
+.crm-stats dd {
+  font-size: var(--flow-text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Checkboxes already use theme colors via global CSS variables:
-   --checkbox-checked-border and --checkbox-checked-bg */
+/* ── Comment list ────────────────────────────────────── */
+.crm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3rem;
+  padding: 0.5rem 1.25rem;
+  border-bottom: 1px solid var(--flow-line);
+}
+.crm-toolbar--selecting {
+  background: var(--flow-accent-soft);
+}
+.crm-file {
+  border: 1px solid var(--flow-line);
+  border-radius: var(--flow-radius-lg);
+}
+.crm-file + .crm-file {
+  margin-top: 1rem;
+}
+.crm-file__head {
+  position: sticky;
+  top: -1rem;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.6rem 1rem;
+  font-size: var(--flow-text-sm);
+  border-bottom: 1px solid var(--flow-line);
+  border-radius: var(--flow-radius-lg) var(--flow-radius-lg) 0 0;
+  background: var(--flow-surface-sunken);
+  backdrop-filter: blur(8px);
+}
+.crm-comment {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem 0.85rem calc(1rem + var(--crm-depth, 0) * 1.75rem);
+  cursor: pointer;
+}
+.crm-comment + .crm-comment {
+  border-top: 1px solid var(--flow-line);
+}
+.crm-comment:hover {
+  background: var(--flow-surface-hover);
+}
+.crm-comment--reply {
+  background-image: linear-gradient(var(--flow-line), var(--flow-line));
+  background-repeat: no-repeat;
+  background-size: 2px 100%;
+  background-position: calc(1rem + var(--crm-depth, 0) * 1.75rem - 0.9rem) 0;
+}
+.crm-comment--selected,
+.crm-comment--selected:hover {
+  background-color: var(--flow-accent-soft);
+}
+.crm-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.6rem;
+  margin-top: 0.15rem;
+  font-size: var(--flow-text-xs);
+  color: var(--ui-subtle-text);
+}
+.crm-tc {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+  color: inherit;
+}
+.crm-body {
+  margin-top: 0.4rem;
+  font-size: var(--flow-text-sm);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+.crm-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.15rem 0 0.5rem;
+  font-size: var(--flow-text-xs);
+  border: 1px solid var(--flow-line);
+  border-radius: var(--flow-radius-pill);
+}
+.crm-category .flow-dot {
+  border: 1px dashed var(--flow-neutral-border);
+}
+.crm-category select {
+  padding: 0.15rem 1.6rem 0.15rem 0;
+  font-size: var(--flow-text-xs);
+  border: 0;
+  background-color: transparent;
+  background-position: right 0.25rem center;
+  box-shadow: none;
+}
+.crm-category:focus-within {
+  outline: 2px solid var(--ui-ring);
+  outline-offset: 1px;
+}
 </style>
