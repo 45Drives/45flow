@@ -1,7 +1,8 @@
 // Small helpers shared by the Client Access screens (clients, teams, roles).
 
 export function initials(name?: string | null, fallback = '?'): string {
-  const parts = String(name || '').trim().split(/[\s._-]+/).filter(Boolean)
+  // Ignore punctuation such as "(Editor)" so it can't become an initial
+  const parts = String(name || '').replace(/[^\p{L}\p{N}\s._-]+/gu, '').trim().split(/[\s._-]+/).filter(Boolean)
   if (!parts.length) return fallback
   const first = parts[0][0] || ''
   const last = parts.length > 1 ? parts[parts.length - 1][0] : (parts[0][1] || '')

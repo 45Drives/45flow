@@ -35,6 +35,7 @@ describe('accessUi helpers', () => {
     expect(initials('priya')).toBe('PR')
     expect(initials('mary-ann o.neil')).toBe('MN')
     expect(initials('')).toBe('?')
+    expect(initials('Jordan (Editor)')).toBe('JE')
   })
 
   it('normalizes hex colours', () => {

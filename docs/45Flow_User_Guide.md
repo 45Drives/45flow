@@ -1520,13 +1520,16 @@ From the Link Details view, click the **"Comments"** button to review and manage
 
 **Reviewing Comments:**
 
-- View all comments across all files in a link in one place.
-- **Filter** by file, by resolved/unresolved status, by user, by **version**, or by **category**.
-- **Resolve/Unresolve** individual comments or bulk-resolve all.
-- Create and manage **Comment Categories** directly from the review panel, then assign categories per comment or in bulk.
-- **Sort** by timecode, date, author, status, or version.
-- Each comment shows its timecode, author, category (if set), annotation indicator, tags, and the version it was made on.
-- If a comment has an annotation, click **"View Annotation"** to see the drawing overlaid on the video frame at that timecode.
+- Comments are grouped by file. Replies sit under the comment they answer, including replies to replies, and say who they replied to.
+- Use the panel on the left to **search** text or people, show **All**, **Open** or **Resolved** comments, and filter by **file**, **person**, **category** (including **No category**) or **version** (including **No version**). **Clear filters** resets them all.
+- **Sort** by timecode, date posted, person, status or version; the arrow button reverses the order.
+- **Summary** at the bottom of the panel shows totals, replies, open and resolved comments, and comments with drawings.
+- Click **Resolve** or **Reopen** on a comment to change its status. Each comment shows **Open** or **✓ Resolved** (hover for when it was resolved).
+- Choose a **category** from the menu on each comment. Click **Manage…** next to the Category filter to create and edit categories and their colours.
+- To act on several comments at once, tick them (or click a comment, or use the checkbox at the top to select everything shown), then use **Resolve**, **Reopen** or **Set category…**. Only comments still shown by your filters stay selected.
+- If a comment has a drawing, click **View drawing** to see it over the video frame at that timecode.
+- **Delete** asks you to confirm, and tells you if the comment's drawing and replies will be deleted too.
+- **Refresh** reloads the comments, and **Open link** opens the share page in your browser.
 
 **Version Tracking:**
 
@@ -1538,7 +1541,7 @@ Comments are automatically tagged with the file version that was being reviewed 
 
 **Exporting Comments:**
 
-Export comments in multiple formats for use in external tools:
+Click **"Export…"**, choose all files or one file, pick a format and click **Export**. The file is named after the link. Formats:
 
 | Format | Description |
 |--------|-------------|
