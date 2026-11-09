@@ -403,6 +403,20 @@ manager-owned gate evidence/rounds. It must save the actual pre-fix failing
 historical GET regression and locally commit only the bounded source/test
 change. Expected artifact: `c2-review-history-correction-v1.md`. No other
 source writer or independent checker is active on that worktree.
+The approved correction returned frozen at
+`03f3d4067f65c056fac24cdda7580e19feb10451`, only route/test files changed.
+It captured the real unfixed HTTP failure (expected 200, received 409), then
+made only GET opt out of the default write-freshness guard. Historical
+share/version isolation, revocation, removed-file denial, unchanged stale
+POST rejection and separately pending replacement assertions are explicit.
+The executor reports six focused test executions, no standing build/suite,
+actual start 14:12:06Z and closeout 14:15:57.140404Z. An auxiliary audit
+wrapper failed, followed by a successful replacement audit; the failure is
+preserved and is not represented as a product test failure or silently hidden.
+Manager confirmed matching frozen source at 14:16:19Z with only original
+gate metadata dirty. Canonical C2 round 34 records the bounded fix; it is
+not independent acceptance. Retained verifier/reviewer must clear this exact
+delta before final standing or C3 integration.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
