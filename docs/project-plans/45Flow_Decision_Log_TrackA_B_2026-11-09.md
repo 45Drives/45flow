@@ -1,6 +1,6 @@
 # Phase 2 decision log: Track A and early Track B (to 9 Nov 2026)
 
-Decisions made while building Track A (A1–A5) and the Track B work done alongside it (B1, B2 #1, B3 #4). Thread IDs (A1–A7, B1–B6) follow the Phase 2 project plan. D-numbers refer to the project's decision register (D-01 to D-37), which is kept outside this repository.
+Decisions made while building Track A (A1–A5) and the Track B work done alongside it (B1, B2 #1, B3 #4), plus two Track B items built by Track C (B1 #1 credential contract, the B3 #9 approver check). Thread IDs (A1–A7, B1–B6) follow the Phase 2 project plan. D-numbers refer to the project's decision register (D-01 to D-37), which is kept outside this repository.
 
 The register asks for *agreed* answers. Most entries below were made during development and are built, but nobody has signed them off yet. Each entry has a status:
 
@@ -8,7 +8,7 @@ The register asks for *agreed* answers. Most entries below were made during deve
 - **Built, needs sign-off**: implemented, but it answers or narrows a register decision, or changes a default. The named owner should confirm it or reverse it.
 - **Provisional**: built so work could continue; the plan already marks it as unconfirmed.
 
-Evidence: commits in `45flow-premium-dev` (client) and `houston-broadcaster` (server), 4–9 Nov, plus the docs named in each section.
+Evidence: commits in `45flow-premium-dev` (client) and `houston-broadcaster` (server), 4–9 Nov, plus the docs named in each section. On 9 Nov the Track C work was merged with the Track A/B work; the combined server passes its test suite.
 
 ---
 
@@ -20,7 +20,7 @@ Evidence: commits in `45flow-premium-dev` (client) and `houston-broadcaster` (se
 | **D-21** | Is web admin Pro-only? | `/app/` is gated by nginx `auth_request` to `/api/license/web-access`. A refusal shows an upgrade page (HTTP 402). The allowlist is checked first, so callers outside it get 403. "Licensed" means an active Pro license or trial, or a paid legacy license (`fallback: true`). Expired or revoked trials are blocked even if the package is installed. This is a product gate, not a security boundary: every API already requires authentication, and free servers use the same APIs from the desktop app. | Provisional (commercial confirmation still needed) | Commercial sign-off on Pro gating. No-IP gating is Track C. |
 | **D-22** (part) | Default authentication and session baseline | Session values are built: 15 min idle, 12 h absolute, rotation every 60 min with a 5 min grace period. All can be changed with env vars (section 4, B3 #4). | Built, needs sign-off (Project lead + IT) | Password length, lockout after 5 attempts with admin unlock, and staff MFA (B3 #1, #3, #6). |
 | **D-03** (part) | Defaults for new links | New links default to **Only invited clients & teams** when no admin has saved a choice (`default_restrict_access` → true). Servers with a saved choice keep it. Quick Share follows the server default. Separately, an unset `default_link_access` now falls back to **external**, which needs port forwarding. | Built, needs sign-off (Project lead + IT + Sales) | Expiry and inactivity values. Treatment of old links. The external fallback (see open questions). |
-| **D-05** (part) | What is in the client workflow? | So far: no new system. "Clients" are the existing share users and "Teams" are the existing groups (renamed). Client access is managed per project. | Built, needs sign-off | The client-focused view (A3, A-07) is not built: one place showing a client's projects, files, links, reviews and approvals. |
+| **D-05** | What is in the client workflow? | No new system. "Clients" are the existing share users and "Teams" are the existing groups (renamed). **The client-focused view (A3, A-07) is the projects-first restructure** (A4-1, A4-11 to A4-13): a project is the place where a client's files, links, Client Access, comments and activity come together. No separate per-client screen will be built. | Built, needs sign-off | Review and approval status appear in the project once the C2 screens exist. Confirm Client Access filters grant no extra permissions and check against representative multi-client data (A3 #3, #4). |
 | **D-16 / D-20** | Priority tasks, labels and visual direction for the refresh | The A1 feedback was applied as a projects-first workflow and creative-team vocabulary (section 3), plus the shared design system (section 3, A5). | Built, needs sign-off (design leads + Track A developer) | The written direction and approval record (A1 task 4), the baseline step counts (A1 #2, needed for A6) and the validation method are not recorded. |
 | **D-33** | How is the web UI packaged and served? | As recorded, with additions: six-distro repository packages, a version taken from the desktop app, automatic installation on entitled servers, and publication driven by the desktop release orchestrator (section 2, A2-8 to A2-11). | Built | First signed repository publication and live install on licensed Debian and Rocky servers. |
 | **D-37** | How is the web UI split between tracks? | Kept. Stage 1 (A2) is done. Because both clients share one session store, B3's session rules (#4) were built together with A2 rather than later, so A7's integration work for session rules is mostly already done. | Built | A7 still covers two-step login in the browser and the review of Track C screens. |
@@ -86,6 +86,7 @@ Docs: `docs/design-system.md`, `docs/track-c-ui-guide.md`. Commits `81170cb`, `9
 | A5-7 | **The share player mirrors the system** (`studiosharevideoplayer/src/styles/flow-*.css`, `src/ui/*`), with the same API minus `FlowCard`, its own guard, and Tailwind compiled through Vite. Token or prop changes must be made in both codebases by hand. | Clients and staff see the same status words and colours. | Built |
 | A5-8 | **Track C screen placement and status words:** client and reviewer actions (Approve this version, Request changes, resolve, annotate) go in the player. Team views (decisions, history, reports, email dialogs) go in the app. Labels: Awaiting approval (`info`), Approved (`success`), Changes requested (`warning`), Superseded (`muted`). A resolved comment is `muted` with a ✓, **never `success`**. | Resolving every comment must never look like an approval. | Built, needs sign-off (Track C owner) |
 | A5-9 | Layout rules: a switch for a yes/no setting; radio-style buttons when both options are named (Local Network / Internet). Use one bordered list, never a box inside a box. Records use `flow-table`. Settings and details use `flow-group` rows. | Consistent density across dialogs. | Built |
+| A5-10 | **The refresh ships as test builds first (A5 #5).** The A3–A5 refresh is released once the remaining work is implemented and tested. Screens merged in from Track C without the design-system pass are restyled before release. | One tested release instead of several back-to-back ones. | Decided |
 
 ### Other UX change made during A5 (not in a plan thread)
 
@@ -110,8 +111,9 @@ Docs: broadcaster `docs/browser-session-contract.md`, `docs/hardening-evidence.m
 | B1-7 | **Port 9095 stays on the LAN for now.** Bootstrap opens it to RFC 1918 only, every route on it needs a login, and the docs say never to forward it. `HOST=127.0.0.1` is available as an opt-in. Making `127.0.0.1` the default is a planned follow-up. | Built, needs sign-off |
 | B1-8 | **Hardening evidence approach:** each default has a row in `hardening-evidence.md` (where it is set, the automated test, the live check). `scripts/security-smoke.sh <host>` is re-run before every release (S-08) and the results are recorded there. | Built |
 | B1-9 | **Accepted gaps:** self-signed certificate by default (Let's Encrypt is the customer's choice in Settings). Web security is off only in `yarn dev` builds. | Built, needs sign-off |
+| B1-10 | **Credential-handling contract (B1 #1, B-09), built by Track C as its mail prerequisite.** One server-owned store with `smtp` and `noip` namespaces. Secrets are encrypted with AES-256-GCM; only ciphertext reaches the database. The key lives in a root-only file apart from the database. Rotation keeps older key versions so older backups still decrypt, and the key file is backed up separately. The admin API never returns a secret, and "store unavailable" is reported separately from "not configured". Email is the first consumer. Doc: broadcaster `docs/credential-boundary.md`. | Built, needs sign-off |
 
-Not done in B1: credential-handling contract (#1), approved-share confinement (#4), reduced service permissions (#5), reference network document (#9).
+Not done in B1: #4, #5, #9, #10.
 
 ### B2 #1: Desktop over HTTPS (done early)
 
@@ -141,13 +143,19 @@ Remaining: B2 #2 onward.
 | B3-10 | Failed sign-ins are rate-limited to **10 per 5 minutes per IP and username** for now. Lockout with admin unlock is deferred to B3 #3. | Built (interim) |
 | B3-11 | A desktop app with a saved password re-authenticates silently after expiry. This counts as the user's opt-in. | Built, needs sign-off |
 
+### B3 #9: Approval permissions (part, built in C2)
+
+| # | Decision | Status |
+|---|---|---|
+| B3-12 | Review decisions (approve, request changes, reject) are accepted only from the **designated approver** for the link, identified by the server-verified identity, never by anything the request claims. Open or anonymous links can never record a decision. Staff set the approver per link. Decisions on a replaced version are refused; history for older versions stays readable. | Built, needs sign-off |
+
 ---
 
 ## 5. Open questions raised during development
 
 1. **External link default.** An unset `default_link_access` now means "external", which needs port forwarding. A new server that hasn't set this up may create links that don't open. Choose: keep external, revert to local, or make the setup flow ask.
 2. **A1 record.** The design direction was implemented without a written direction, an approval record or the baseline step counts. A6 needs the baseline (A-12).
-3. **A3 client-focused view.** Decide whether it is a new screen grouping projects by client or whether the Clients/Teams wording and per-project Client Access is enough for this release (D-05).
+3. ~~**A3 client-focused view.**~~ Resolved: the projects-first restructure is the client view; no separate screen (D-05).
 4. **Access removal.** Removing a user's access does not yet revoke their sessions (B3 #5, B-17).
 5. **Port 9095 default.** When to make `HOST=127.0.0.1` the default (B1-7).
 6. **First live checks still pending:** repository publication and install of `45flow-web`, the signed-in browser checklist in Safari and Firefox, and a full desktop sign-in, upload and transcode against an updated server.
