@@ -438,6 +438,41 @@ claimed test. Manager permits final C2 server/viewer standing once on the
 unchanged candidate before publication and C3 integration. Whole C2 remains
 RED for G5/G7/G8; this is bounded producer acceptance work, not completion
 of comments-resolution/export features.
+Final C2 standing cleared the same producer at actual UTC
+14:20:30Z-14:21:40Z: server build/test and viewer test/build each ran once
+serially, all exit 0. Server reported 802 passed/two existing skips and
+viewer 26 passed; viewer build included typecheck. Source, package and lock
+stayed frozen; known canvas/config/chunk warnings were retained, no install
+or unrelated client check ran. Canonical C2 round 37 accepts this bounded
+verified producer, with the owner-assignment HTTP advisory still explicit.
+It may now be published on its existing feature branch, then integrated
+serially into C3 for the confirmed owner-and-approver per-decision emails.
+No whole-C2 completion, new PR, merge, runtime update or Princess write is
+authorized by that acceptance.
+The verified C2 source is now pushed with metadata
+`f02050aca1aef1a81a5d8c6010309a24acea8832`, remote-confirmed at 14:24:30Z
+on `mpyne1-fantastic-waffle`; product candidate remains `03f3d406`.
+No new PR or merge occurred. C2 round 38 and C3 round 67 record publication
+and downstream prerequisite admission. C3's clean product base is
+`4c7e03958de7329b82d0fde2d87895b2b6757d90` (only new round metadata dirty).
+The next source owner may port only the verified decision model/producer
+dependencies and implement the chosen per-decision owner-plus-approver
+notification through the existing durable mail boundary. It must preserve
+the historical-read correction and real authorization, not fabricate an
+event or merge the entire divergent C2/PDF branch. The integrated source
+needs fresh affected C2/C3 verification and review; upstream standing does
+not establish combined acceptance.
+Fresh execution-tier executor `320b5be9-0f80-4769-aa1f-b4aa897a5c2e` now
+owns that C3-only source integration at `4c7e039`. The C2 worktree is read-
+only to it; manager-owned C3 round 67 dirt must remain unchanged. Scope is
+the verified producer/model dependency port, real per-decision owner-plus-
+approver outbox/SMTP integration, a separately declared intended-recipient
+oracle and targeted integrated checks. No full branch/PDF import, new
+identity/role/UI/schema-for-mail feature, automatic replay or provider access
+is authorized. Expected first-candidate artifact:
+`review-mail-integration-candidate-v1.md`. Source stays in the feature branch
+locally until fresh integrated verification/review clears it; no runtime
+update is authorized yet.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
