@@ -329,6 +329,27 @@ revision. Expected report: `c2-review-producer-candidate-v1.md` in the same
 session verification directory. Source and live previews elsewhere stay
 unchanged. This replaces the handoff's misleading "NOT READY" label with
 actual implementation, not another admission round.
+The first C2 producer candidate is frozen locally at
+`52f8939aac7237273bf0ab3f7f238d972ccb8283`. Five files add four real registered
+assignment/decision routes, their mount/allowlist, generated inventory and
+real-route G1-G4 assertions. No schema, identity primitive, role flag or
+dependency changed. The executor reports four exact named selectors passing
+and a combined C2/inventory pass after two first-draft conflict-assertion
+failures; its UTC start is unknown and captured end is 13:28:38Z. Manager
+confirmed clean matching source at 13:30:36Z before canonical C2 round 29.
+The self-tests use the real database setter to assign the fixture approver,
+not the new owner-side HTTP assignment routes. That is an explicit coverage
+gap, not proof of those routes' owner/admin enforcement. Fresh independent
+verification and immutable review must examine the frozen producer before
+any C3 integration or mail-consumer work. No self-GREEN, source push, preview
+update, status write or retry-budget reset is claimed.
+Fresh verifier `99c930c0-3ce3-4e60-bef7-241e2bd93ff4` and immutable reviewer
+`50e8c4dd-c092-4d83-8133-83940eeeabc0` now examine the same frozen C2
+candidate concurrently. The verifier alone owns isolated checks and permitted
+gate-evidence writes; no source edit or manager round append runs while it
+is active. The review specifically retains the owner-assignment HTTP evidence
+boundary rather than assuming authenticated means authorized. No C3 source
+integration or mail implementation starts before both reports are reconciled.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
