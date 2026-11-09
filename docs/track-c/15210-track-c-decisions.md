@@ -132,3 +132,18 @@ This does not authorize emailing all reviewers, guessing a missing address,
 new provider access, resumed Princess writes or a correction-budget reset.
 Exact click times were not captured; manager observed both selections at
 2026-11-09T13:08:07Z.
+
+## C2 historical decision-read correction
+
+Decision 64, 2026-11-09: after the independent reviewer and judgment diagnosis
+identified the superseded-version history-read defect in producer `52f8939`,
+the user selected "Approve one focused correction (Recommended)". Authorize
+one additional fresh GPT-6.1 Sol attempt limited to allowing authorized
+historical decision reads while preserving current access, share/version
+isolation and rejection of stale decision writes. Capture a real failing
+HTTP regression before the fix, then obtain independent affected verification,
+delta review and final standing if cleared. The earlier PDF exception remains
+spent; this is a separate explicit bounded exception, not a reset of C2's
+bounce 2/2 or restart 0/2 budgets. No new role, schema, UI, mail feature,
+provider request, Princess write, merge or new PR is authorized. Exact click
+time was not captured; manager observed approval at 2026-11-09T14:11:12Z.

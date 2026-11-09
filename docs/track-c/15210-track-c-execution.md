@@ -1,5 +1,70 @@
 # Project 15210: Track C execution record
 
+## November 9: user-directed pause and Track A handoff
+
+The user requested saving and pushing all project work, then pausing ahead
+of Track A integration. This authorizes backup publication of the latest C3
+candidate, not acceptance, a merge, another repair or a new pull request.
+No new development or final standing checks should start. The already
+assigned verifier and reviewer were told to finish only their bounded reports
+and freeze their evidence. Princess writes remain paused. No session
+automation is attached; existing private preview services are left intact.
+
+All project work stays on these separate feature branches. Do not treat
+them as disjoint patches: the server branches share history and overlapping
+database, route and media changes. C3 now contains a scoped port of the C2
+decision producer, not the entire C2/PDF branch. Future Track A integration
+must reconcile those overlaps and check the actual combined source.
+
+| Repository | Scope | Remote branch | Saved product or preparation revision |
+| --- | --- | --- | --- |
+| 45flow | Management and handoff | `mpyne1-project-15210-schedule` | This execution record |
+| 45flow | C1 owner application | `mpyne1-refactored-fortnight` | `385dbb15c33327d8546e4e756587a1e70e37aea1` |
+| 45flow | C3 email controls | `mpyne1-psychic-invention` | `0cf5b5b280bb178b52f9afaa336df51fd1d4c162` |
+| houston-broadcaster | C1 public address | `mpyne1-legendary-carnival` | `15a90cbeb90f313a6b5d89f9bc99e0e72858f84d` |
+| houston-broadcaster | C2 review and approvals | `mpyne1-fantastic-waffle` | Producer `03f3d4067f65c056fac24cdda7580e19feb10451`; publication note `14a35860507dbe01884e583bfdd784d147c2b970` |
+| houston-broadcaster | C3 email notifications | `mpyne1-cuddly-waffle` | Candidate `d77fcbdcbbac147edaa774d24b74deec94f1f93c`; saved evidence `7843469e32cdd08ef8f9a1c6aa0b5edfe683188c`; final acceptance deferred |
+| houston-broadcaster | C4 playback | `mpyne1-c4-playback-transcoding-bandwidth` | `09fea15cc5fd5253e6cc97b240753b48c467d3a0` |
+| houston-broadcaster | C5 share gateway | `mpyne1-literate-carnival` | `d01228f90e25569feead68680b316e9888b91376` |
+| houston-broadcaster | C6 preparation only | `mpyne1-effective-system` | `43fee2cacc7dc4cc613b9b9a050f2fe2d7c90e26` |
+| houston-broadcaster | B1 credential prerequisite | `mpyne1-ideal-eureka` | `2d66c3e4d9cf2412fee06625dcf6b6c19234dd85` |
+
+Remote hashes were checked after publication. The C1 client/server and C6
+refs were newly created remotely from their existing local branches; no
+extra local branch, omnibus merge or change to a default branch was needed.
+C3 source and final candidate-review metadata are now published, with both
+independent writers idle and no follow-on assignment. The remaining C2/C3
+work and unsigned human checks recorded below are not made complete by
+pushing these branches.
+
+The independent reviewer finished at 14:47:06Z on unchanged `d77fcbdc`
+with no concrete bugs found. It source-confirmed all three verdicts are
+covered, including `changes_requested` in the mail-failure scenario; the
+earlier report-summary caveat was incomplete, not a missing implementation.
+The only new observation is an unreproduced, synthetic multi-database
+schema-cache concern, not a supported production failure or repair request.
+Review evidence is `review-mail-integration-review-v1.md` in the session
+verification directory.
+
+The independent verifier subsequently reported C3 G1-G7 and affected C2
+G1-G4 passing on that same combined source; G8 remains unsigned/RED and
+the whole C3 file remains RED. Its actual checks ended at 14:46:35Z;
+report-writing end is unknown. Comment/security-only exclusion is a static
+source check, not a dynamic fixture scenario. Neither a full final standing
+run nor a new live demonstration was performed: both are deferred by the
+user-directed pause. No further repair, final-check dispatch or human
+sign-off is inferred from this candidate pass.
+
+Canonical C3 rounds 69-71 preserve both reports and the pause instruction.
+Metadata `7843469e32cdd08ef8f9a1c6aa0b5edfe683188c` is remote-confirmed on
+`mpyne1-cuddly-waffle`; source is still `d77fcbdc`, unchanged by those
+evidence-only commits. The candidate verifier artifact is
+`review-mail-integration-verifier-v1.md`. This latest integration used one
+role-pinned executor, one verifier and one reviewer, without model
+overrides, consults, additional bounces/restarts, simplification or scribe
+work. Prior spent budgets remain spent. All ten project branches are saved;
+no merge, additional PR or Princess write occurred.
+
 ## November 6: C3 G7 first sending integration
 
 The genuine local SMTP preview is now running and was published at
@@ -378,6 +443,116 @@ that exhausted-budget diagnosis: practical reachability, smallest correction
 concept and affected checks, no source changes or tests. Expected artifact:
 `c2-review-history-diagnosis-v1.md`. Any further correction needs an explicit
 user decision; the previous final PDF allowance is not available again.
+Judgment confirmed the ordinary replacement-history defect at actual UTC
+13:37:22Z-13:38:11Z. The smallest correction separates write freshness from
+read access: authorized historical reads retain exact share/version scoping,
+while stale decision writes remain rejected. No architecture, schema, UI or
+mail change is needed. A real HTTP regression must first show the failure,
+then verify readable V1 history, separately pending V2, unchanged stale-POST
+denial and current authorization/isolation. This is a proposed bounded
+correction, not permission to implement it. Canonical C2 round 32 records
+the diagnosis; explicit user approval or a stop decision remains necessary.
+The user approved one focused correction with GPT-6.1 Sol. Decision 64 and
+canonical C2 round 33 preserve this separate, explicit history-read exception;
+the prior PDF allowance and spent budgets are not reset. Exact click UTC was
+not captured; manager observed approval at 14:11:12Z and confirmed unchanged
+producer `52f8939` with only owned gate metadata dirty. A fresh judgment-tier
+executor may now reproduce the historical GET failure and fix only read/
+write freshness separation with directly related regressions/documentation.
+Independent affected verification and delta review must clear the result
+before final standing and any C3 integration. No unrelated advisory repair,
+UI/mail expansion, provider access or resumed Princess writes is authorized.
+Fresh GPT-6.1 Sol executor `fc6100d2-f5a2-4cb9-a972-fb3c99b0c052` now owns
+that approved correction in the same C2 worktree at `52f8939`, preserving
+manager-owned gate evidence/rounds. It must save the actual pre-fix failing
+historical GET regression and locally commit only the bounded source/test
+change. Expected artifact: `c2-review-history-correction-v1.md`. No other
+source writer or independent checker is active on that worktree.
+The approved correction returned frozen at
+`03f3d4067f65c056fac24cdda7580e19feb10451`, only route/test files changed.
+It captured the real unfixed HTTP failure (expected 200, received 409), then
+made only GET opt out of the default write-freshness guard. Historical
+share/version isolation, revocation, removed-file denial, unchanged stale
+POST rejection and separately pending replacement assertions are explicit.
+The executor reports six focused test executions, no standing build/suite,
+actual start 14:12:06Z and closeout 14:15:57.140404Z. An auxiliary audit
+wrapper failed, followed by a successful replacement audit; the failure is
+preserved and is not represented as a product test failure or silently hidden.
+Manager confirmed matching frozen source at 14:16:19Z with only original
+gate metadata dirty. Canonical C2 round 34 records the bounded fix; it is
+not independent acceptance. Retained verifier/reviewer must clear this exact
+delta before final standing or C3 integration.
+Retained reviewer `50e8c4dd` now clears the same frozen correction at source
+level: the original history-read bug is resolved, POST freshness remains
+strict and exact share/version/access isolation is retained. No new delta
+bugs were found. Captured end is 14:18:40Z, start unknown; no tests/builds
+were run by the reviewer. Owner-assignment HTTP coverage remains advisory.
+Independent correction verification is still pending. The reviewer round
+append waits for the verifier to finish, avoiding concurrent gate-file writes;
+no source change, final standing or C3 integration is authorized yet.
+Correction verification now returned GREEN G1-G4 on that exact source at
+actual UTC 14:17:10Z-14:18:59Z. All four exact selectors passed, including
+the real historical-read/replacement-pending/stale-write and authorization/
+isolation regression. Snapshot/dispatcher hashes were reproduced and source/
+lock remained frozen. No JS typecheck script exists; no unrelated viewer
+check or standing build ran in this correction pass.
+Canonical C2 rounds 35-36 now record both clear reports, serialized after the
+verifier finished. The focused history exception is spent with no new bugs;
+owner-assignment HTTP coverage remains an accepted advisory, not a falsely
+claimed test. Manager permits final C2 server/viewer standing once on the
+unchanged candidate before publication and C3 integration. Whole C2 remains
+RED for G5/G7/G8; this is bounded producer acceptance work, not completion
+of comments-resolution/export features.
+Final C2 standing cleared the same producer at actual UTC
+14:20:30Z-14:21:40Z: server build/test and viewer test/build each ran once
+serially, all exit 0. Server reported 802 passed/two existing skips and
+viewer 26 passed; viewer build included typecheck. Source, package and lock
+stayed frozen; known canvas/config/chunk warnings were retained, no install
+or unrelated client check ran. Canonical C2 round 37 accepts this bounded
+verified producer, with the owner-assignment HTTP advisory still explicit.
+It may now be published on its existing feature branch, then integrated
+serially into C3 for the confirmed owner-and-approver per-decision emails.
+No whole-C2 completion, new PR, merge, runtime update or Princess write is
+authorized by that acceptance.
+The verified C2 source is now pushed with metadata
+`f02050aca1aef1a81a5d8c6010309a24acea8832`, remote-confirmed at 14:24:30Z
+on `mpyne1-fantastic-waffle`; product candidate remains `03f3d406`.
+No new PR or merge occurred. C2 round 38 and C3 round 67 record publication
+and downstream prerequisite admission. C3's clean product base is
+`4c7e03958de7329b82d0fde2d87895b2b6757d90` (only new round metadata dirty).
+The next source owner may port only the verified decision model/producer
+dependencies and implement the chosen per-decision owner-plus-approver
+notification through the existing durable mail boundary. It must preserve
+the historical-read correction and real authorization, not fabricate an
+event or merge the entire divergent C2/PDF branch. The integrated source
+needs fresh affected C2/C3 verification and review; upstream standing does
+not establish combined acceptance.
+Fresh execution-tier executor `320b5be9-0f80-4769-aa1f-b4aa897a5c2e` now
+owns that C3-only source integration at `4c7e039`. The C2 worktree is read-
+only to it; manager-owned C3 round 67 dirt must remain unchanged. Scope is
+the verified producer/model dependency port, real per-decision owner-plus-
+approver outbox/SMTP integration, a separately declared intended-recipient
+oracle and targeted integrated checks. No full branch/PDF import, new
+identity/role/UI/schema-for-mail feature, automatic replay or provider access
+is authorized. Expected first-candidate artifact:
+`review-mail-integration-candidate-v1.md`. Source stays in the feature branch
+locally until fresh integrated verification/review clears it; no runtime
+update is authorized yet.
+The executor returned frozen candidate
+`d77fcbdcbbac147edaa774d24b74deec94f1f93c` (two local commits), with
+ported model/producer, real owner/approver outbox wiring and a declared
+recipient fixture. Four targeted self-checks passed; no standing command,
+installation, push or runtime update ran. Its exact overall start/end are
+unknown: approximate/incomplete report timestamps are not exact evidence.
+Its fixture lists approved/rejected/rejected-again, so the report's
+three-verdict wording does not establish changes-requested coverage.
+Canonical round 68 records that boundary. Fresh verifier
+`f762cbe3-9151-482b-b3b1-03d2c357d7c6` now checks C3 G1-G7 and affected
+C2 G1-G4 on the combined source; fresh source-read-only reviewer
+`ed4b3ddb-e5da-428f-9839-8861641669e5` checks the same frozen delta.
+Only the verifier may write C3 gate evidence while those checks run.
+Both reports must clear before final standing or publication; no correction
+or spent-budget reset is authorized by this dispatch.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
