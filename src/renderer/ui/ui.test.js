@@ -4,6 +4,7 @@ import FlowModal from './FlowModal.vue'
 import FlowField from './FlowField.vue'
 import FlowButton from './FlowButton.vue'
 import FlowNotice from './FlowNotice.vue'
+import FlowSwitch from './FlowSwitch.vue'
 import { openModalCount } from './useModalStack'
 
 const apps = []
@@ -177,5 +178,37 @@ describe('FlowButton and FlowNotice', () => {
     expect(notice.className).toContain('flow-notice--danger')
     expect(notice.getAttribute('role')).toBe('alert')
     expect(notice.textContent).toContain('Low space')
+  })
+})
+
+describe('FlowSwitch', () => {
+  it('is a named switch that reports the new value', async () => {
+    const on = ref(false)
+    const host = mount(() => h(FlowSwitch, {
+      modelValue: on.value,
+      label: 'Invite-only links',
+      'onUpdate:modelValue': (v) => { on.value = v },
+    }))
+    await flush()
+    const sw = host.querySelector('[role="switch"]')
+    expect(sw.textContent.trim()).toBe('Invite-only links')
+    expect(sw.getAttribute('aria-checked')).toBe('false')
+    sw.click()
+    await flush()
+    expect(on.value).toBe(true)
+    expect(sw.getAttribute('aria-checked')).toBe('true')
+    expect(sw.className).toContain('flow-switch--on')
+  })
+
+  it('does not change while disabled', async () => {
+    const on = ref(false)
+    const host = mount(() => h(FlowSwitch, {
+      modelValue: on.value, label: 'X', disabled: true,
+      'onUpdate:modelValue': (v) => { on.value = v },
+    }))
+    await flush()
+    host.querySelector('[role="switch"]').click()
+    await flush()
+    expect(on.value).toBe(false)
   })
 })

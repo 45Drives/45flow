@@ -16,7 +16,7 @@ Building a Track C screen (approvals, comments, email)? Start with [track-c-ui-g
 | houston overrides | `src/renderer/styles/houston-overrides.css` | Every 45Flow override of a houston class (theme-coloured primary/secondary, success, checkboxes, focus rings). |
 | App | `src/renderer/styles/app.css` | Page frame, textured background, table rows, progress bars, header. |
 | Components | `src/renderer/styles/components.css` | The `.flow-*` classes and `.btn-dismiss` / `.btn-xs`. |
-| Pieces | `src/renderer/ui/` | `FlowButton`, `FlowField`, `FlowCard`, `FlowModal`, `FlowNotice`, `FlowChip`, `FlowEmpty`. |
+| Pieces | `src/renderer/ui/` | `FlowButton`, `FlowField`, `FlowCard`, `FlowModal`, `FlowNotice`, `FlowChip`, `FlowEmpty`, `FlowSwitch`. |
 
 `src/renderer/style.css` only imports these in cascade order. Don't reorder the imports.
 
@@ -124,6 +124,38 @@ Tones: `neutral`, `info`, `success`, `warning`, `danger`, `muted`. `size="sm"`, 
 ```
 
 `compact` for small panels and table bodies.
+
+## Switch
+
+```vue
+<FlowSwitch v-model="inviteOnly" label="Invite-only links" :disabled="busy" />
+```
+
+An on/off toggle (headless UI `Switch`). `label` is the accessible name only; put the visible label beside it, usually in a settings row. Use a switch for a setting that takes effect as a yes/no. For a choice between two named options (Local Network / Internet, 24-hour / 12-hour), use buttons with `role="radio"` instead so both options are visible.
+
+## Lists, avatars and tabs
+
+For people, teams and other records in a dialog, use one bordered list with lines between rows. Don't put a bordered box inside another bordered box.
+
+```vue
+<ul class="flow-list">
+  <li class="flow-list__row">
+    <span class="flow-avatar" :style="{ '--flow-avatar-color': user.display_color }">JD</span>
+    <div class="min-w-0 flex-1">
+      <p class="flow-list__title truncate">Jane Doe</p>
+      <p class="flow-list__meta truncate">@jane · jane@acme.com</p>
+    </div>
+    <button class="btn btn-secondary btn-xs">Edit</button>
+  </li>
+</ul>
+```
+
+- `flow-list__row--interactive` adds a hover state (use it on a `<label>` row with a checkbox); `flow-list__row--selected` tints a chosen row with the theme colour.
+- Wrap a row plus expandable detail in `flow-list__group` so the dividing lines stay correct.
+- `flow-avatar` shows initials on a person's comment colour; `flow-avatar--sm` is smaller and `flow-avatar--team` is a rounded square for teams.
+- Tabs: a `div.flow-tabs[role=tablist]` of `button.flow-tab[role=tab]` with `aria-selected`. `flow-tab__count` is the small count badge.
+
+The quiet line and surface colours come from `--flow-line`, `--flow-surface-sunken`, `--flow-surface-hover`, `--flow-accent-soft` and `--flow-accent-line` in `tokens.css` (app only; the share player does not use them). Dialogs (`.flow-modal__panel`) also get thin, theme-neutral scrollbars.
 
 ## Status colour helpers
 

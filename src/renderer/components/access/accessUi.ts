@@ -1,0 +1,49 @@
+// Small helpers shared by the Client Access screens (clients, teams, roles).
+
+export function initials(name?: string | null, fallback = '?'): string {
+  const parts = String(name || '').trim().split(/[\s._-]+/).filter(Boolean)
+  if (!parts.length) return fallback
+  const first = parts[0][0] || ''
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : (parts[0][1] || '')
+  return (first + last).toUpperCase()
+}
+
+export function avatarStyle(color?: string | null) {
+  return { '--flow-avatar-color': color || '#cbd5e1' }
+}
+
+export function randomPastel(): string {
+  const h = Math.floor(Math.random() * 360)
+  const s = 60 + Math.floor(Math.random() * 20)
+  const l = 70 + Math.floor(Math.random() * 10)
+  const H = h / 360, S = s / 100, L = l / 100
+  const q = L < 0.5 ? L * (1 + S) : L + S - L * S
+  const p = 2 * L - q
+  const h2rgb = (t: number) => {
+    if (t < 0) t += 1
+    if (t > 1) t -= 1
+    if (t < 1 / 6) return p + (q - p) * 6 * t
+    if (t < 1 / 2) return q
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6
+    return p
+  }
+  const toHex = (x: number) => Math.round(x * 255).toString(16).padStart(2, '0')
+  return `#${toHex(h2rgb(H + 1 / 3))}${toHex(h2rgb(H))}${toHex(h2rgb(H - 1 / 3))}`
+}
+
+export function normalizeHex(x?: string | null): string | undefined {
+  const s = (x || '').trim()
+  if (!s) return undefined
+  const m = s.match(/^#?([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/)
+  if (!m) return undefined
+  const v = m[1]
+  const full = v.length === 3 ? v.split('').map(c => c + c).join('') : v
+  return `#${full.toLowerCase()}`
+}
+
+export const ROLE_PERMISSIONS = [
+  { key: 'can_view', api: 'view', label: 'View', help: 'Open the link and play or preview files.' },
+  { key: 'can_comment', api: 'comment', label: 'Comment', help: 'Leave comments and review notes.' },
+  { key: 'can_download', api: 'download', label: 'Download', help: 'Download the original files.' },
+  { key: 'can_upload', api: 'upload', label: 'Upload', help: 'Send files to you through the link.' },
+] as const
