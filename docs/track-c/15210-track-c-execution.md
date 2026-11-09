@@ -417,6 +417,27 @@ Manager confirmed matching frozen source at 14:16:19Z with only original
 gate metadata dirty. Canonical C2 round 34 records the bounded fix; it is
 not independent acceptance. Retained verifier/reviewer must clear this exact
 delta before final standing or C3 integration.
+Retained reviewer `50e8c4dd` now clears the same frozen correction at source
+level: the original history-read bug is resolved, POST freshness remains
+strict and exact share/version/access isolation is retained. No new delta
+bugs were found. Captured end is 14:18:40Z, start unknown; no tests/builds
+were run by the reviewer. Owner-assignment HTTP coverage remains advisory.
+Independent correction verification is still pending. The reviewer round
+append waits for the verifier to finish, avoiding concurrent gate-file writes;
+no source change, final standing or C3 integration is authorized yet.
+Correction verification now returned GREEN G1-G4 on that exact source at
+actual UTC 14:17:10Z-14:18:59Z. All four exact selectors passed, including
+the real historical-read/replacement-pending/stale-write and authorization/
+isolation regression. Snapshot/dispatcher hashes were reproduced and source/
+lock remained frozen. No JS typecheck script exists; no unrelated viewer
+check or standing build ran in this correction pass.
+Canonical C2 rounds 35-36 now record both clear reports, serialized after the
+verifier finished. The focused history exception is spent with no new bugs;
+owner-assignment HTTP coverage remains an accepted advisory, not a falsely
+claimed test. Manager permits final C2 server/viewer standing once on the
+unchanged candidate before publication and C3 integration. Whole C2 remains
+RED for G5/G7/G8; this is bounded producer acceptance work, not completion
+of comments-resolution/export features.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
