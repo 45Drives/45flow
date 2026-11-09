@@ -378,6 +378,31 @@ that exhausted-budget diagnosis: practical reachability, smallest correction
 concept and affected checks, no source changes or tests. Expected artifact:
 `c2-review-history-diagnosis-v1.md`. Any further correction needs an explicit
 user decision; the previous final PDF allowance is not available again.
+Judgment confirmed the ordinary replacement-history defect at actual UTC
+13:37:22Z-13:38:11Z. The smallest correction separates write freshness from
+read access: authorized historical reads retain exact share/version scoping,
+while stale decision writes remain rejected. No architecture, schema, UI or
+mail change is needed. A real HTTP regression must first show the failure,
+then verify readable V1 history, separately pending V2, unchanged stale-POST
+denial and current authorization/isolation. This is a proposed bounded
+correction, not permission to implement it. Canonical C2 round 32 records
+the diagnosis; explicit user approval or a stop decision remains necessary.
+The user approved one focused correction with GPT-6.1 Sol. Decision 64 and
+canonical C2 round 33 preserve this separate, explicit history-read exception;
+the prior PDF allowance and spent budgets are not reset. Exact click UTC was
+not captured; manager observed approval at 14:11:12Z and confirmed unchanged
+producer `52f8939` with only owned gate metadata dirty. A fresh judgment-tier
+executor may now reproduce the historical GET failure and fix only read/
+write freshness separation with directly related regressions/documentation.
+Independent affected verification and delta review must clear the result
+before final standing and any C3 integration. No unrelated advisory repair,
+UI/mail expansion, provider access or resumed Princess writes is authorized.
+Fresh GPT-6.1 Sol executor `fc6100d2-f5a2-4cb9-a972-fb3c99b0c052` now owns
+that approved correction in the same C2 worktree at `52f8939`, preserving
+manager-owned gate evidence/rounds. It must save the actual pre-fix failing
+historical GET regression and locally commit only the bounded source/test
+change. Expected artifact: `c2-review-history-correction-v1.md`. No other
+source writer or independent checker is active on that worktree.
 
 The approved status correction is committed as server
 `71f2b98606ee34fa676c9fa2ecf7248b468d938c` and client
