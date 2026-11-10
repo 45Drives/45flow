@@ -98,6 +98,7 @@ RUNTIME_OVERRIDE_KEYS=(
   GH_TAG_MESSAGE
   GH_NOTES
   PARALLEL_BUILDS
+  WEB_PACKAGES
   WEB_WORKFLOW_REF
 )
 declare -A RUNTIME_OVERRIDES=()
@@ -1010,8 +1011,12 @@ fi
 
 # Windows stage-only runs exit above; finalization must wait for signed web
 # packages and repository sync before this process can publish the release.
-require_cmd gh
-node "$ROOT_DIR/scripts/release/web-workflow.mjs" "$VERSION" "$RELEASE_SOURCE_SHA"
+if truthy "${WEB_PACKAGES:-1}"; then
+  require_cmd gh
+  node "$ROOT_DIR/scripts/release/web-workflow.mjs" "$VERSION" "$RELEASE_SOURCE_SHA"
+else
+  echo "== Skipping 45flow-web packages (WEB_PACKAGES=${WEB_PACKAGES}) =="
+fi
 
 generate_update_metadata
 

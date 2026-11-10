@@ -182,6 +182,14 @@ if (name === 'git') {
     expect(calls.some(([command, ...args]) => command === 'gh' && args[0] === 'release')).toBe(false)
   })
 
+  it('skips the web workflow when WEB_PACKAGES=0', () => {
+    const { output, error, calls } = orchestrate(false, { WEB_PACKAGES: '0' })
+    expect(error).toBeUndefined()
+    expect(output).toContain('Skipping 45flow-web packages')
+    expect(output).toContain('Release orchestration complete.')
+    expect(calls.some(([command]) => command === 'gh')).toBe(false)
+  })
+
   it('exits nonzero on web publication failure before any tag or GitHub release mutation', () => {
     const { error, calls } = orchestrate(true)
     expect(error?.status).toBe(1)
