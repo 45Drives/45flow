@@ -392,21 +392,48 @@ conditional_yarn_install() {
 # ---------------------------------------------------------------------------
 
 verify_local_release_source() {
-  if [[ "$(git rev-parse HEAD)" != "$RELEASE_SOURCE_SHA" ]] || [[ -n "$(git status --porcelain)" ]]; then
-    echo "Desktop release source changed or is dirty. Commit/stash changes and rerun from the intended release commit." >&2
+  local local_sha local_status
+  local_sha="$(git rev-parse HEAD)"
+  local_status="$(git status --porcelain)"
+  if [[ "$local_sha" != "$RELEASE_SOURCE_SHA" ]]; then
+    echo "Local source moved from ${RELEASE_SOURCE_SHA:0:7} to ${local_sha:0:7} during the release; rerun from the intended release commit." >&2
+    exit 1
+  fi
+  if [[ -n "$local_status" ]]; then
+    echo "Local release source is dirty; commit/stash these and rerun (run 'git submodule update --init --recursive' if houston-common is listed):" >&2
+    printf '%s\n' "$local_status" | sed 's/^/  /' >&2
+    exit 1
+  fi
+}
+
+# git pull does not move submodules, so sync them before requiring the host to match the release commit.
+verify_remote_release_source() {
+  local label="$1" host="$2" user="$3" pass="$4" port="$5" cd_cmd="$6"
+  local output remote_sha remote_status=""
+  if ! output="$(ssh_run "$host" "$user" "$pass" "$port" \
+    "${cd_cmd} && git submodule --quiet update --init --recursive && git rev-parse HEAD && git status --porcelain --untracked-files=no")"; then
+    echo "${label} build host: could not sync submodules or read the source commit (see git output above)." >&2
+    exit 1
+  fi
+  output="${output//$'\r'/}"
+  remote_sha="${output%%$'\n'*}"
+  if [[ "$output" == *$'\n'* ]]; then
+    remote_status="${output#*$'\n'}"
+  fi
+  if [[ "$remote_sha" != "$RELEASE_SOURCE_SHA" ]]; then
+    echo "${label} build host is at ${remote_sha:0:7} but the release commit is ${RELEASE_SOURCE_SHA:0:7}; push the release commit and check the host's branch." >&2
+    exit 1
+  fi
+  if [[ -n "$remote_status" ]]; then
+    echo "${label} build host has uncommitted tracked changes; discard them and retry:" >&2
+    printf '%s\n' "$remote_status" | sed 's/^/  /' >&2
     exit 1
   fi
 }
 
 verify_windows_release_source() {
-  local remote_sha
-  remote_sha="$(ssh_run "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" \
-    "cd \"${WIN_BUILD_REMOTE_DIR}\" && git diff --quiet HEAD -- && git rev-parse HEAD")"
-  remote_sha="${remote_sha//$'\r'/}"
-  if [[ "$remote_sha" != "$RELEASE_SOURCE_SHA" ]]; then
-    echo "Windows source commit differs from the release commit; update the build host before retrying." >&2
-    exit 1
-  fi
+  verify_remote_release_source "Windows" "$WIN_BUILD_HOST" "$WIN_BUILD_USER" "${WIN_BUILD_PASSWORD:-}" "$WIN_BUILD_PORT" \
+    "cd \"${WIN_BUILD_REMOTE_DIR}\""
 }
 
 run_linux_build() {
@@ -772,13 +799,8 @@ run_mac_build() {
 
   if [[ "$MAC_PHASE" != "sign" ]]; then
     ssh_run "$MAC_ARM_HOST" "$MAC_ARM_USER" "${MAC_ARM_PASSWORD:-}" "$MAC_ARM_PORT" "$MAC_ARM_GIT_PULL_CMD"
-    MAC_SOURCE_SHA="$(ssh_run "$MAC_ARM_HOST" "$MAC_ARM_USER" "${MAC_ARM_PASSWORD:-}" "$MAC_ARM_PORT" \
-      "cd '${MAC_ARM_REPO_DIR}' && git diff --quiet HEAD -- && git rev-parse HEAD")"
-    MAC_SOURCE_SHA="${MAC_SOURCE_SHA//$'\r'/}"
-    if [[ "$MAC_SOURCE_SHA" != "$RELEASE_SOURCE_SHA" ]]; then
-      echo "macOS source commit differs from the release commit; update the build host before retrying." >&2
-      exit 1
-    fi
+    verify_remote_release_source "macOS" "$MAC_ARM_HOST" "$MAC_ARM_USER" "${MAC_ARM_PASSWORD:-}" "$MAC_ARM_PORT" \
+      "cd '${MAC_ARM_REPO_DIR}'"
   else
     echo "MAC_PHASE=sign; skipping git pull on ARM Mac."
   fi
