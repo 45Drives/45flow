@@ -36,6 +36,8 @@
 
                         <AdminSmtpPanel v-if="activeSection === 'adminMail' && adminSession && activeConnection"
                             :key="activeConnection.connectionId" :connection-id="activeConnection.connectionId" />
+                        <AdminStaffAlertsPanel v-if="activeSection === 'adminMail' && adminSession && activeConnection"
+                            :key="`staff-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId" />
 
                         <!-- Loading state: shown until settings arrive from the server -->
                         <div v-if="!settingsLoaded && (activeSection === 'sharing' || activeSection === 'linkOptions')" class="flex flex-col items-center justify-center gap-3 py-12">
@@ -141,6 +143,12 @@
                                 <SettingRow label="Share URL" description="The public URL recipients use to view your shared content.">
                                     <span class="font-mono text-xs">{{ publicSharingStatus?.settings?.externalBaseEffective || '(not configured)' }}</span>
                                 </SettingRow>
+                                <SettingRow label="Internet links" description="Copied links use a domain name with a trusted certificate, never the server's IP address.">
+                                    <FlowChip v-if="recipientReadiness" size="sm" :tone="recipientReadiness.ready ? 'success' : 'warning'" :dot="recipientReadiness.ready">
+                                        {{ recipientReadiness.ready ? 'Ready' : 'Not ready' }}
+                                    </FlowChip>
+                                    <span v-else class="text-xs text-muted">Checking…</span>
+                                </SettingRow>
                                 <SettingRow label="HTTPS" :description="publicSharingCertDescription">
                                     <span class="text-sm" :class="{
                                         'text-flow-success': publicSharingStatus?.certificate?.mode === 'letsencrypt' && publicSharingStatus?.certificate?.valid,
@@ -164,6 +172,15 @@
                                     <span class="text-xs text-accent">{{ formatBootstrapTime(publicSharingStatus.bootstrap.timestamp) }}</span>
                                 </SettingRow>
                             </div>
+
+                            <FlowNotice v-if="recipientReadiness && !recipientReadiness.ready" tone="warning" size="sm" class="mt-3">
+                                {{ describeExternalAddressNotReady(recipientReadiness.reason) }}
+                                <template #actions>
+                                    <button v-if="recipientReadiness.reason === 'certificate_not_trusted'" type="button" class="btn btn-secondary btn-xs"
+                                        @click="activeSection = 'certificate'">Open HTTPS certificate</button>
+                                    <button v-else type="button" class="btn btn-secondary btn-xs" @click="activeSection = 'sharing'">Open Share addresses</button>
+                                </template>
+                            </FlowNotice>
 
                             <!-- Action Buttons -->
                             <p class="settings-subhead">Fix problems</p>
@@ -289,6 +306,17 @@
                                 <SettingRow label="Make proxy files"
                                     description="Create smaller copies of videos that stream smoothly in the browser.">
                                     <FlowSwitch v-model="defaultUseProxyFiles" :disabled="busy" label="Make proxy files" />
+                                </SettingRow>
+                                <SettingRow v-if="proxyQualitiesSupported" label="Proxy sizes for uploads"
+                                    description="The proxy files the server makes for uploaded videos when the upload doesn't choose its own.">
+                                    <div class="flex items-center gap-3" role="group" aria-label="Proxy sizes for uploads">
+                                        <label v-for="q in PROXY_QUALITY_CHOICES" :key="q" class="inline-flex items-center gap-1.5 text-sm cursor-pointer">
+                                            <input type="checkbox" class="proxy-quality-checkbox" :value="q" :checked="effectiveProxyQualities.includes(q)"
+                                                :disabled="busy || (effectiveProxyQualities.length === 1 && effectiveProxyQualities.includes(q))"
+                                                @change="toggleDefaultProxyQuality(q)" />
+                                            <span>{{ q === 'original' ? 'Original' : q }}</span>
+                                        </label>
+                                    </div>
                                 </SettingRow>
                                 <SettingRow label="Watermark videos" description="Stamp an image on videos in new links.">
                                     <FlowSwitch v-model="defaultWatermarkEnabled" :disabled="busy" label="Watermark videos" />
@@ -1473,6 +1501,7 @@ import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useApi } from "../../composables/useApi";
 import AdminNetworksPanel from "../AdminNetworksPanel.vue";
 import AdminSmtpPanel from "../AdminSmtpPanel.vue";
+import AdminStaffAlertsPanel from "../AdminStaffAlertsPanel.vue";
 import { isAdminSession } from "../../composables/adminSession";
 import { disableNotifications, enableNotifications, notificationPermission, notificationsEnabled } from "../../web-notify";
 import { pushNotification, Notification } from '@45drives/houston-common-ui';
@@ -1494,6 +1523,8 @@ import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from "../..
 import FlowModal from '../../ui/FlowModal.vue';
 import FlowSwitch from '../../ui/FlowSwitch.vue';
 import FlowNotice from '../../ui/FlowNotice.vue';
+import FlowChip from '../../ui/FlowChip.vue';
+import { useExternalAddressReadiness, describeExternalAddressNotReady, type ExternalAddressReadiness } from '../../composables/useExternalAddressReadiness';
 import type { Component } from 'vue';
 import {
     AdjustmentsHorizontalIcon, EnvelopeIcon, FilmIcon, GlobeAltIcon, LinkIcon, LockClosedIcon, MagnifyingGlassIcon,
@@ -1934,6 +1965,17 @@ const savedExternalBase = ref("");
 const defaultRestrictAccess = ref(true);
 const defaultAllowComments = ref(true);
 const defaultUseProxyFiles = ref(false);
+// Server-wide proxy sizes for uploads (null = never set; the server then makes 720p).
+const PROXY_QUALITY_CHOICES = ['720p', '1080p', 'original'] as const;
+const proxyQualitiesSupported = ref(false);
+const defaultProxyQualities = ref<string[] | null>(null);
+const effectiveProxyQualities = computed(() => defaultProxyQualities.value?.length ? defaultProxyQualities.value : ['720p']);
+function toggleDefaultProxyQuality(q: string) {
+    const current = effectiveProxyQualities.value;
+    const next = current.includes(q) ? current.filter(x => x !== q) : [...current, q];
+    if (!next.length) return;
+    defaultProxyQualities.value = PROXY_QUALITY_CHOICES.filter(c => next.includes(c));
+}
 const defaultExpiryValue = ref<number>(1);
 const defaultExpiryUnit = ref<'hours' | 'days' | 'weeks'>('days');
 const defaultExpiryNever = ref(true);
@@ -2812,7 +2854,12 @@ function formatBootstrapTime(iso: string) {
     catch { return iso; }
 }
 
+// C1: same check the app runs before copying an internet link.
+const { checkExternalAddressReady } = useExternalAddressReadiness();
+const recipientReadiness = ref<ExternalAddressReadiness | null>(null);
+
 async function loadPublicSharingStatus() {
+    checkExternalAddressReady().then((r) => { recipientReadiness.value = r; });
     try {
         const data = await apiFetch('/api/settings/public-sharing/status', { timeoutMs: 15000 });
         publicSharingStatus.value = data;
@@ -3081,7 +3128,7 @@ function coreSnapshot() {
     return JSON.stringify([
         defaultLinkAccess.value, externalHttpsPort.value, externalAuto.value, externalBase.value.trim(),
         internalAuto.value, internalBase.value.trim(), defaultRestrictAccess.value, defaultAllowComments.value,
-        defaultUseProxyFiles.value, defaultExpiryNever.value,
+        defaultUseProxyFiles.value, defaultProxyQualities.value, defaultExpiryNever.value,
         defaultExpiryNever.value ? null : [defaultExpiryValue.value, defaultExpiryUnit.value],
         defaultWatermarkEnabled.value,
         defaultWatermarkEnabled.value ? (selectedExistingWatermark.value || defaultWatermarkId.value) : null,
@@ -3327,6 +3374,9 @@ async function reload() {
         
         defaultUseProxyFiles.value =
             typeof data.defaultUseProxyFiles === "boolean" ? data.defaultUseProxyFiles : false;
+        // Older servers don't send this field; keep the row hidden for them.
+        proxyQualitiesSupported.value = "defaultProxyQualities" in data;
+        defaultProxyQualities.value = Array.isArray(data.defaultProxyQualities) ? data.defaultProxyQualities : null;
         projectRoot.value = typeof data.projectRoot === "string" ? data.projectRoot : "";
         forceProjectRoot.value = typeof data.forceProjectRoot === "boolean" ? data.forceProjectRoot : false;
         
@@ -3369,6 +3419,7 @@ async function save() {
             defaultRestrictAccess: !!defaultRestrictAccess.value,
             defaultAllowComments: !!defaultAllowComments.value,
             defaultUseProxyFiles: !!defaultUseProxyFiles.value,
+            ...(proxyQualitiesSupported.value && defaultProxyQualities.value ? { defaultProxyQualities: defaultProxyQualities.value } : {}),
             defaultExpirySeconds: defaultExpiryNever.value ? 0 : computeDefaultExpirySec(),
             defaultWatermarkId: defaultWatermarkEnabled.value ? (selectedExistingWatermark.value || defaultWatermarkId.value) : null,
             projectRoot: (projectRoot.value || "").trim() || null,

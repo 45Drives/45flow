@@ -109,12 +109,21 @@ describe('token rotation', () => {
     expect(bodyOf(fetchImpl.mock.calls[0])).toEqual({ rotate: false })
   })
 
-  it('ignores an ended session and network errors without touching the connection', async () => {
+  it('reports an ended session with the token it used, and ignores network errors', async () => {
+    const onSessionEnded = vi.fn()
+    keepalive = createDesktopKeepalive({
+      connections: () => conns, transfersActive: () => transfers, onToken, onSessionEnded, fetchImpl, now: () => clock,
+    })
     fetchImpl.mockResolvedValueOnce(reply({ error: 'session_expired' }, 401))
+    await keepalive.run()
+    expect(onSessionEnded).toHaveBeenCalledWith('c1', sessionToken)
+
+    fetchImpl.mockResolvedValueOnce(reply({ error: 'no_session_token' }, 409))
     await keepalive.run()
     fetchImpl.mockRejectedValueOnce(new Error('offline'))
     await keepalive.run()
 
+    expect(onSessionEnded).toHaveBeenCalledOnce()
     expect(onToken).not.toHaveBeenCalled()
   })
 

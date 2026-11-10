@@ -193,6 +193,7 @@
                             {{ formatTimecodeRange(comment.start_seconds, comment.end_seconds) }}
                           </span>
                           <FlowChip v-if="comment.version_index != null" tone="info" size="sm" :title="`Version ${comment.version_index}`">V{{ comment.version_index }}</FlowChip>
+                          <FlowChip v-if="comment.page != null" tone="neutral" size="sm" :title="`PDF page ${comment.page}`">Page {{ comment.page }}</FlowChip>
                           <span>{{ formatDate(comment.created_at) }}</span>
                           <span v-if="comment.is_edited" class="italic">edited</span>
                           <span class="font-mono opacity-70">#{{ comment.id }}</span>
@@ -224,7 +225,7 @@
                       </label>
                       <span v-for="tag in parseTags(comment.tags)" :key="tag" class="flow-chip flow-chip--muted flow-chip--sm">#{{ tag }}</span>
                       <button v-if="comment.draw_data" type="button" class="btn btn-secondary btn-xs flex items-center gap-1"
-                        title="See the drawing on the video frame" @click="viewAnnotation(comment)">
+                        :title="comment.page != null ? `See the drawing on page ${comment.page}` : 'See the drawing on the video frame'" @click="viewAnnotation(comment)">
                         <PencilIcon class="w-3 h-3" aria-hidden="true" />
                         View drawing
                       </button>

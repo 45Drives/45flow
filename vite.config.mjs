@@ -39,7 +39,11 @@ export default defineConfig(({ command, mode }) => {
       emptyOutDir: true,
       rollupOptions: {
         output: {
-          assetFileNames: 'assets/[name][extname]',
+          // Emit .mjs assets (the pdf.js worker) as .js: older nginx mime.types
+          // don't know .mjs, and browsers refuse a worker without a JS type.
+          assetFileNames: (asset) => ((asset.names?.[0] ?? asset.name ?? '').endsWith('.mjs')
+            ? 'assets/[name].js'
+            : 'assets/[name][extname]'),
           entryFileNames: 'assets/[name].js',
           chunkFileNames: 'assets/[name].js',
         },

@@ -39,6 +39,10 @@ export interface Comment {
   category_id: number | null
   category_name: string | null
   category_color: string | null
+  asset_version_id?: number | null
+  version_index?: number | null
+  /** PDF page the markup belongs to; null for video and image comments. */
+  page?: number | null
 }
 
 export function useComments() {

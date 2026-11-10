@@ -89,9 +89,10 @@
             <div v-if="currentAccessMode === 'restricted'" class="mt-3">
               <LinkAccessList :users="access" :groups="accessGroupRows" :loading="accessLoading" />
             </div>
-            <div v-if="link?.id" class="flow-group mt-3 py-3">
+            <template v-if="link?.id">
+              <p class="flow-subhead">Invite by email</p>
               <EmailInvitationPanel :key="link.id" :link-id="link.id" :api-fetch="apiFetch" />
-            </div>
+            </template>
 
             <template v-if="hasShareCapability">
               <p class="flow-subhead">Shared files</p>
@@ -187,8 +188,16 @@
               :link-id="link.id" :api-fetch="props.apiFetch" :reload-signal="transcodeStatusReload" />
           </div>
 
+          <!-- Review (C2 approvals) -->
+          <div v-else-if="activeTab === 'review'">
+            <LinkReviewPanel :state="linkReview.state.value" :loading="linkReview.loading.value"
+              :error="linkReview.error.value" :link-access-mode="currentAccessMode" :users="access" :hour12="hour12"
+              @edit="beginEdit" @change-approver="editApprover" />
+          </div>
+
           <!-- Activity -->
           <div v-else-if="activeTab === 'activity'">
+            <LinkEmailsPanel v-if="link?.id" :key="`emails-${link.id}`" :link-id="link.id" :api-fetch="props.apiFetch" :hour12="hour12" />
             <div class="flex flex-wrap items-center gap-2 mb-3">
               <select v-model="activityTypeFilter" aria-label="Filter by action" class="input-textlike px-2 py-1.5 text-sm">
                 <option value="all">All actions</option>
@@ -275,15 +284,16 @@
                       <th>Created</th>
                       <th>Snapshot</th>
                       <th class="flow-table__num">Size</th>
+                      <th v-if="showReviewColumn">Review</th>
                       <th class="text-right"><span class="sr-only">Actions</span></th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-if="versionsLoading">
-                      <td colspan="5" class="text-center text-muted py-5">Loading…</td>
+                      <td :colspan="showReviewColumn ? 6 : 5" class="text-center text-muted py-5">Loading…</td>
                     </tr>
                     <tr v-else-if="versions.length === 0">
-                      <td colspan="5" class="text-center text-muted py-5">No versions found for this file.</td>
+                      <td :colspan="showReviewColumn ? 6 : 5" class="text-center text-muted py-5">No versions found for this file.</td>
                     </tr>
                     <template v-else v-for="v in versions" :key="`v-${v.asset_version_id}`">
                       <tr>
@@ -291,6 +301,15 @@
                         <td class="whitespace-nowrap">{{ v.created_at ? formatDate(v.created_at) : '—' }}</td>
                         <td class="text-muted max-w-[16rem]"><span class="block truncate" :title="v.snapshot_rel || undefined">{{ snapshotName(v.snapshot_rel) }}</span></td>
                         <td class="flow-table__num">{{ fmtBytes(v.snapshot_size_bytes) }}</td>
+                        <td v-if="showReviewColumn" class="whitespace-nowrap">
+                          <FlowChip v-if="versionReviewState(v.asset_version_id)" size="sm"
+                            :tone="reviewStateView(versionReviewState(v.asset_version_id)!).tone"
+                            :dot="reviewStateView(versionReviewState(v.asset_version_id)!).dot"
+                            :title="versionReviewState(v.asset_version_id) === 'superseded' ? `Was: ${reviewStateView(reviewByVersion.get(Number(v.asset_version_id)) || '').label}` : undefined">
+                            {{ reviewStateView(versionReviewState(v.asset_version_id)!).label }}
+                          </FlowChip>
+                          <span v-else class="text-muted">—</span>
+                        </td>
                         <td class="text-right whitespace-nowrap">
                           <button type="button" class="btn btn-secondary btn-xs" @click="restoreVersion(v)">Restore</button>
                           <button type="button" class="btn btn-danger btn-xs ml-1.5" :disabled="versions.length <= 1"
@@ -298,7 +317,7 @@
                         </td>
                       </tr>
                       <tr v-if="showExtraFiles" class="ld-extra-row">
-                        <td colspan="5">
+                        <td :colspan="showReviewColumn ? 6 : 5">
                           <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
                             <span class="text-xs font-semibold">Extra files for v{{ v.version_index }}</span>
                             <div class="flex flex-wrap items-center gap-1.5">
@@ -497,6 +516,16 @@
             <FlowNotice v-if="!accessSatisfied" tone="danger" size="sm" class="mt-2">
               Invite at least one client or team, or choose a different access option.
             </FlowNotice>
+            <div v-if="canChooseApprover" id="ld-edit-approver-row" class="flow-group mt-3 scroll-mt-4">
+              <DetailRow label="Who approves" for-id="ld-edit-approver"
+                description="Only this person can approve, request changes or reject files.">
+                <select id="ld-edit-approver" v-model="draftApproverId"
+                  class="input-textlike pl-2 pr-8 py-1 text-sm min-w-[10rem] max-w-[14rem]">
+                  <option :value="null" class="bg-default text-default">No approver</option>
+                  <option v-for="o in approverChoices" :key="o.id" :value="o.id" class="bg-default text-default">{{ o.label }}</option>
+                </select>
+              </DetailRow>
+            </div>
           </template>
 
           <p class="flow-subhead">Playback and watermark</p>
@@ -713,6 +742,10 @@ import CategoryManagementModal from './CategoryManagementModal.vue'
 import PathInput from '../PathInput.vue'
 import LinkTranscodeStatus from '../LinkTranscodeStatus.vue'
 import EmailInvitationPanel from '../EmailInvitationPanel.vue'
+import LinkReviewPanel from '../LinkReviewPanel.vue'
+import LinkEmailsPanel from '../LinkEmailsPanel.vue'
+import { useLinkReview } from '../../composables/useLinkReview'
+import { reviewStateView } from '../../utils/reviewStatus'
 import WatermarkCustomizer from '../WatermarkCustomizer.vue'
 import WatermarkPreview from '../WatermarkPreview.vue'
 import type { LinkItem, AccessRow, Status, ExistingUser } from '../../typings/electron'
@@ -928,6 +961,7 @@ const hasUnsavedChanges = computed(() => {
   if (draftUsePassword.value !== hadPassword) return true
   if (draftUsePassword.value && draftPassword.value.trim().length > 0) return true
   if (accessEditsPending.value) return true
+  if (approverDirty.value) return true
   return false
 })
 
@@ -1896,14 +1930,82 @@ const headerDescription = computed(() => {
   return 'Review link'
 })
 
-type ViewTab = 'overview' | 'files' | 'activity' | 'versions'
+type ViewTab = 'overview' | 'files' | 'review' | 'activity' | 'versions'
 const activeTab = ref<ViewTab>('overview')
 const viewTabs = computed(() => [
   { key: 'overview' as const, label: 'Overview', count: null, tour: undefined },
   { key: 'files' as const, label: 'Files', count: detailsLoading.value ? null : displayFiles.value.length, tour: 'link-details-files' },
+  ...(hasShareCapability.value ? [{ key: 'review' as const, label: 'Review', count: reviewAttentionCount.value, tour: undefined }] : []),
   { key: 'activity' as const, label: 'Activity', count: detailsLoading.value ? null : auditActivity.value.length, tour: 'link-details-activity' },
   { key: 'versions' as const, label: 'Versions', count: null, tour: undefined },
 ])
+
+// ── Review (C2) ─────────────────────────────────────────────────────────
+const linkReview = useLinkReview(computed(() => props.link?.id), (url, opts) => props.apiFetch(url, opts))
+// Files whose current version still needs a decision, shown on the tab.
+const reviewAttentionCount = computed(() => {
+  const st = linkReview.state.value
+  if (!st || st.accessMode !== 'restricted' || !st.approver) return null
+  const n = st.files.filter(f => f.status !== 'approved').length
+  return n || null
+})
+// Latest decision per version for the Versions tab, plus which version is current.
+const reviewByVersion = computed(() => {
+  const map = new Map<number, string>()
+  for (const d of linkReview.state.value?.history ?? []) {
+    if (!map.has(d.assetVersionId)) map.set(d.assetVersionId, d.decision)
+  }
+  return map
+})
+const currentVersionIds = computed(() => new Set(
+  (linkReview.state.value?.files ?? []).map(f => f.currentAssetVersionId).filter((v): v is number => v != null)
+))
+const showReviewColumn = computed(() => !!linkReview.state.value && linkReview.state.value.accessMode === 'restricted')
+
+// The approver is picked in Edit next to the invites and saved with them; the Review tab only shows it.
+const serverApproverId = computed(() => linkReview.state.value?.approver?.user_id ?? null)
+const draftApproverId = ref<number | null>(null)
+// Older servers have no review routes (state stays null), so there is nothing to pick.
+const canChooseApprover = computed(() =>
+  editMode.value && !!linkReview.state.value && draftShareEnabled.value && draftAccessMode.value === 'restricted'
+)
+const approverChoices = computed(() => {
+  const opts = draftAccess.value
+    .filter(a => a.user_id > 0 && !a.is_disabled && !a.is_deleted)
+    .map(a => ({ id: a.user_id, label: a.name || a.user_name || `Client ${a.user_id}` }))
+  const current = linkReview.state.value?.approver
+  // Keep an approver who was already removed from the link visible, so the change is explicit.
+  if (current && draftApproverId.value === current.user_id && !opts.some(o => o.id === current.user_id)
+    && !access.value.some(a => a.user_id === current.user_id)) {
+    opts.unshift({ id: current.user_id, label: `${current.name || current.user_name || 'Approver'} (no longer invited)` })
+  }
+  return opts
+})
+const approverDirty = computed(() => canChooseApprover.value && draftApproverId.value !== serverApproverId.value)
+// Follow the server value until the user picks something else.
+watch(serverApproverId, (id, old) => { if (draftApproverId.value === old) draftApproverId.value = id })
+// Removing the approver from the invite list also clears them as approver.
+watch(() => draftAccess.value.map(a => a.user_id), (ids) => {
+  if (draftApproverId.value != null && access.value.some(a => a.user_id === draftApproverId.value) && !ids.includes(draftApproverId.value)) {
+    draftApproverId.value = null
+  }
+})
+function versionReviewState(assetVersionId: number) {
+  const decision = reviewByVersion.value.get(Number(assetVersionId))
+  if (!currentVersionIds.value.has(Number(assetVersionId))) return decision ? 'superseded' : null
+  return decision || 'pending'
+}
+watch(
+  [() => props.modelValue, () => props.link?.id, () => hasShareCapability.value],
+  ([open, id, share]) => {
+    if (open && id && share) linkReview.load()
+    else linkReview.reset()
+  },
+  { immediate: true }
+)
+watch(activeTab, (tab) => {
+  if ((tab === 'review' || tab === 'versions') && props.modelValue && hasShareCapability.value) linkReview.load()
+})
 function onTabKeydown(e: KeyboardEvent) {
   const keys = viewTabs.value.map(t => t.key)
   const i = keys.indexOf(activeTab.value)
@@ -1976,8 +2078,8 @@ const showUploadColumns = computed(() =>
 type AccessChoice = 'restricted' | 'open' | 'open_password'
 const accessChoices: Array<{ value: AccessChoice; label: string; help: string }> = [
   { value: 'restricted', label: 'Only invited clients & teams', help: 'Sign in with their own login. Roles set what they can do.' },
-  { value: 'open', label: 'Anyone with the link', help: 'No sign-in required.' },
   { value: 'open_password', label: 'Anyone with the link + password', help: 'One shared password for everyone.' },
+  { value: 'open', label: 'Anyone with the link', help: 'No sign-in required.' },
 ]
 const accessChoice = computed<AccessChoice>({
   get: () => (draftAccessMode.value === 'restricted' ? 'restricted' : draftUsePassword.value ? 'open_password' : 'open'),
@@ -3700,6 +3802,7 @@ function beginEdit() {
   if (draftAccessMode.value === 'restricted') draftAllowComments.value = false
   seedDraftMediaSettings()
   seedDraftAccess()
+  draftApproverId.value = serverApproverId.value
 
   // Fetch available projects for project selector
   fetchAvailableProjects()
@@ -3736,6 +3839,17 @@ function beginEdit() {
 
 }
 
+// Opened from the Review tab's Change/Choose: land on the approver picker instead of the top of the form.
+async function editApprover() {
+  beginEdit()
+  await nextTick()
+  await new Promise(r => requestAnimationFrame(() => r(null)))
+  const row = document.getElementById('ld-edit-approver-row')
+  if (!row) return
+  row.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  document.getElementById('ld-edit-approver')?.focus({ preventScroll: true })
+}
+
 function cancelEdit() {
   editMode.value = false
   mediaWasReprocessed.value = false
@@ -3761,6 +3875,7 @@ function cancelEdit() {
   if (draftAccessMode.value === 'restricted') draftAllowComments.value = false
   seedDraftMediaSettings()
   seedDraftAccess()
+  draftApproverId.value = serverApproverId.value
 
   draftFilePaths.value = originalFilePaths.value.slice()
   draftUploadDir.value = originalUploadDir.value || currentUploadDir.value || ''
@@ -4066,6 +4181,22 @@ async function saveAll() {
         )
         return
       }
+    }
+
+    // Approver after invites, since the server only accepts someone already invited.
+    if (approverDirty.value) {
+      if (!(await linkReview.setApprover(draftApproverId.value))) {
+        pushNotification(
+          new Notification(
+            'Failed to Save Approver',
+            linkReview.error.value || 'The approver could not be changed.',
+            'error',
+            8000
+          )
+        )
+        return
+      }
+      did.access = true
     }
 
     // 1) Title/notes

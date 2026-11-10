@@ -15,6 +15,28 @@ Track C touches two front ends. Both have the same pieces with the same names an
 
 For C2, the approver's **Approve this version / Request changes** actions, comment resolve/reopen and PDF annotations are on the share page (player). Your team reads decisions, history and reports in the app (Link Details, Comments Review, exports). For C3, the email-sharing dialogs and notification settings go in the app. Email bodies are not Vue screens, but use the same status words listed below.
 
+## Screens that exist
+
+Build on these instead of starting new ones.
+
+| Screen | Where | File |
+|---|---|---|
+| Approve this version / Request changes / Reject, status chip, history | Share page, above the viewer (invite-only links) | player `src/components/ReviewDecisionPanel.vue` |
+| Approver (read-only, Change opens Edit), current status per file, decision history | App: Link Details → Review | `src/renderer/components/LinkReviewPanel.vue` (data: `composables/useLinkReview.ts`) |
+| Approver picker (saved with Save & close, after invites) | App: Link Details → Edit → Who can open it | `src/renderer/components/modals/LinkDetailsModal.vue` |
+| Decision per version | App: Link Details → Versions (Review column) | `LinkDetailsModal.vue` |
+| Every email for the link (invitations, download alerts, review decisions) with Retry | App: Link Details → Activity | `src/renderer/components/LinkEmailsPanel.vue` |
+| Invite by email (lists earlier invitations for the link, with the reason a send failed) | App: Link Details → Overview | `src/renderer/components/EmailInvitationPanel.vue` |
+| "Email this link" (optional) after a link is made | App: Create link result, QuickShare last step | `EmailInvitationPanel.vue` with `compact` |
+| Email (SMTP) settings, required From address, Send test email | App: Settings → Email (SMTP) | `src/renderer/components/AdminSmtpPanel.vue` |
+| Staff alert addresses (copies of every review decision and first download) | App: Settings → Email (SMTP), under the server settings | `src/renderer/components/AdminStaffAlertsPanel.vue` |
+| Review chip per link, sort, "Needs attention" filter | App: Links table and a project's links (Review column) | `src/renderer/views/ManageLinks.vue`, `utils/reviewStatus.ts` (`reviewSummaryView`) |
+| PDF markup on its page and version | App: Comments Review → View drawing | `modals/AnnotationViewerModal.vue`, `utils/pdfPage.ts` |
+| Internet links Ready / Not ready | App: Settings → Internet sharing | `modals/SettingsModal.vue` |
+| Playback mode (Auto / Data Saver / Best) and size hint | Share page, quality row | player `src/Views/ShareView.vue` |
+
+Server routes behind them: `GET /api/links/:id/review-decisions`, `GET/POST/DELETE /api/links/:id/review-approver`, `GET/POST /api/token/:token/review-decisions` (adds `approver`, `canDecide`, `isCurrentVersion`, `actorNames`), `GET /api/links/:id/emails` (adds `staffAlertCount`), `GET/PUT /api/admin/mail/staff-alerts`, `POST /api/admin/credentials/smtp/test`, a `reason` code on every email row (`no_from_address`, `auth_failed`, `connection_failed`, `tls_failed`, `refused`, `interrupted`; words in `utils/emailStatus.ts`), `linkId` on link-create responses, the `review` counts on each item of `GET /api/links` and `GET /api/projects/:id/links` (`null` unless the link is invite-only with files), and `GET /api/links/:linkId/files/:fileId/frame?asset_version_id=` (returns PDF bytes for PDFs).
+
 ## Status words and colours
 
 Use these exact labels and tones on both sides so a decision looks the same to the client and to your team.
@@ -26,7 +48,10 @@ Use these exact labels and tones on both sides so a decision looks the same to t
 | No decision yet | Awaiting approval | `info` |
 | Approved | Approved | `success` (with `dot`) |
 | Changes requested | Changes requested | `warning` |
+| Rejected | Rejected | `danger` |
 | Older version, replaced | Superseded | `muted` |
+
+Only the link's designated approver can decide, and only on an invite-only link. In the app, a file whose link has no approver (or is open) shows "—" instead of "Awaiting approval". The app uses `reviewStateView()` in `src/renderer/utils/reviewStatus.ts`.
 
 **Comment state (C-06)**
 
@@ -39,9 +64,13 @@ Use these exact labels and tones on both sides so a decision looks the same to t
 
 | State | Label | Chip |
 |---|---|---|
-| Queued / sending | Sending | `info` |
-| Delivered to the mail server | Sent | `success` |
-| Failed | Failed | `danger` |
+| Queued / sending (`pending`, `sending`) | Sending | `info` |
+| Queued but email isn't set up, or the settings couldn't be read | Not sent | `warning` |
+| Accepted by the mail server (`accepted`) | Sent | `success` |
+| Refused by the mail server (`rejected`) | Failed | `danger` |
+| No answer, or the connection dropped mid-send (`timeout`, `ambiguous`) | Unconfirmed | `warning` |
+
+"Sent" never means the inbox received it. "Unconfirmed" means it may or may not have arrived, so a retry can send it twice; say so in the help text. Retry is allowed for every status except `sending` and `accepted`. The app uses `emailStatusView()` in `src/renderer/utils/emailStatus.ts`; mirror it in the player if the player ever shows email state.
 
 ## Button choices
 
@@ -49,6 +78,7 @@ Use these exact labels and tones on both sides so a decision looks the same to t
 |---|---|---|
 | Approve this version | `success` | Positive decision. Fixed green, so it never looks like a red theme's primary. |
 | Request changes (opens the form) | `secondary` | Not destructive and not the main path. |
+| Reject (opens a confirm with an optional reason) | `danger` | Turns the version down. |
 | Send request (inside the form) | `primary` | Main action of that dialog. |
 | Resolve / Reopen comment | `secondary`, `size="sm"` | Bookkeeping, not a decision. |
 | Withdraw / clear a decision, delete an annotation | `danger` | Removes something. |

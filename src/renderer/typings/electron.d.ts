@@ -50,6 +50,16 @@ export type LinkItem = {
   project_name?: string | null
   project_root_dir?: string | null
   externalLink?: boolean
+  /** Review counts for invite-only review links; null otherwise, absent on older servers. */
+  review?: LinkReviewSummary | null
+}
+export type LinkReviewSummary = {
+  hasApprover: boolean
+  total: number
+  pending: number
+  approved: number
+  changes_requested: number
+  rejected: number
 }
 export type Role = {
   id: number

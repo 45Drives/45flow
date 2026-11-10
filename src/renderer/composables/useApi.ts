@@ -65,6 +65,85 @@ const SESSION_EXPIRED_MESSAGE = window.electron?.isWeb
     ? 'Your session ended. Please sign in again.'
     : 'Login token expired or is no longer valid. Please log in again.'
 
+export type UnauthorizedOutcome = 'reauthenticated' | 'signed-out' | 'stale'
+
+const pendingUnauthorized = new Map<string, Promise<UnauthorizedOutcome>>()
+
+/**
+ * The server rejected `rejectedToken` for this connection. Sign in again with a remembered
+ * password if there is one; otherwise end the session locally, tell the user, and leave the
+ * active server (AppShell sends the user to the login screen once the token is gone).
+ * Background work (polls, keepalive, WebSocket) calls this too, so a dead session never
+ * leaves the app sitting on a page it can no longer load. Concurrent calls share one outcome.
+ */
+export function handleUnauthorized(
+    connectionId: string,
+    rejectedToken: string,
+    options: { allowReauth?: boolean; loginBaseUrl?: string; navigate?: () => unknown } = {},
+): Promise<UnauthorizedOutcome> {
+    const key = `${connectionId}\n${rejectedToken}`
+    const pending = pendingUnauthorized.get(key)
+    if (pending) return pending
+    const outcome = resolveUnauthorized(connectionId, rejectedToken, options)
+        .finally(() => pendingUnauthorized.delete(key))
+    pendingUnauthorized.set(key, outcome)
+    return outcome
+}
+
+async function resolveUnauthorized(
+    connectionId: string,
+    rejectedToken: string,
+    { allowReauth = true, loginBaseUrl, navigate }: { allowReauth?: boolean; loginBaseUrl?: string; navigate?: () => unknown },
+): Promise<UnauthorizedOutcome> {
+    const { activeConnection, getConnection, updateConnection } = useConnections()
+    const conn = getConnection(connectionId)
+    // A late response must not clear a newer login or restore a logged-out session.
+    if (!conn || !rejectedToken || conn.token !== rejectedToken) return 'stale'
+
+    if (allowReauth && conn.savedPassword && conn.username) {
+        try {
+            const loginRes = await fetch(`${loginBaseUrl || conn.baseUrl}/api/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: conn.username, password: conn.savedPassword }),
+            })
+            if (loginRes.ok) {
+                const loginData = await loginRes.json()
+                if (loginData.token && conn.token === rejectedToken) {
+                    updateConnection(conn.connectionId, {
+                        token: loginData.token,
+                        tokenIssuedAt: Date.now(),
+                        status: 'connected',
+                        lastError: undefined,
+                    })
+                    return 'reauthenticated'
+                }
+            }
+        } catch {
+            window.appLog?.warn('auth.reauthentication-failed', { connectionId: conn.connectionId })
+        }
+    }
+
+    if (conn.token !== rejectedToken) return 'stale'
+    updateConnection(conn.connectionId, {
+        token: '',
+        savedPassword: undefined,
+        status: 'disconnected',
+        lastError: SESSION_EXPIRED_MESSAGE,
+    })
+    pushNotification(new Notification(
+        'Login token expired',
+        `${conn.name || conn.serverIp}: ${SESSION_EXPIRED_MESSAGE}`,
+        'warning',
+        8000,
+    ))
+    if (activeConnection.value?.connectionId === conn.connectionId) {
+        clearLastSession()
+        await navigate?.()
+    }
+    return 'signed-out'
+}
+
 /**
  * Create API client for a specific connection (or active connection if not specified)
  * @param connectionId - Optional connection ID. If not provided, uses active connection.
@@ -79,7 +158,7 @@ function createApiClient(
     connectionId?: string,
     options: { transport?: 'nginx-https' } = {},
 ) {
-    const { activeConnection, getConnection, updateConnection } = useConnections()
+    const { activeConnection, getConnection } = useConnections()
 
     // Resolve connection: use specified ID or fall back to active
     const connection = computed<Connection | null>(() => {
@@ -198,55 +277,15 @@ function createApiClient(
                         throw e
                     }
 
-                    // Attempt silent re-auth if we have a saved password
-                    if (conn.token === requestToken && conn.savedPassword && conn.username && !init._isReauth) {
-                        try {
-                            const loginRes = await fetch(`${requestBaseUrl}/api/login`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ username: conn.username, password: conn.savedPassword }),
-                            })
-                            if (loginRes.ok) {
-                                const loginData = await loginRes.json()
-                                if (loginData.token && conn.token === requestToken) {
-                                    updateConnection(conn.connectionId, {
-                                        token: loginData.token,
-                                        tokenIssuedAt: Date.now(),
-                                        status: 'connected',
-                                        lastError: undefined,
-                                    })
-                                    clearTimeout(timer)
-                                    // Retry the original request with the new token
-                                    return apiFetch(path, { ...init, _isReauth: true })
-                                }
-                            }
-                        } catch {
-                            window.appLog?.warn('auth.reauthentication-failed', { connectionId: conn.connectionId })
-                        }
-                    }
-
-                    // A late response must not clear a newer login or restore a logged-out session.
-                    if (requestToken && conn.token === requestToken) {
-                        updateConnection(conn.connectionId, {
-                            token: '',
-                            savedPassword: undefined,
-                            status: 'disconnected',
-                            lastError: SESSION_EXPIRED_MESSAGE
-                        })
-
-                        pushNotification(new Notification(
-                            'Login token expired',
-                            `${conn.name || conn.serverIp}: ${SESSION_EXPIRED_MESSAGE}`,
-                            'warning',
-                            8000,
-                        ))
-                        if (activeConnection.value?.connectionId === conn.connectionId) {
-                            clearLastSession()
-                            await router.push({ name: 'server-selection' })
-                        }
-                    }
-
                     clearTimeout(timer)
+                    const outcome = await handleUnauthorized(conn.connectionId, requestToken ?? '', {
+                        allowReauth: !init._isReauth,
+                        loginBaseUrl: requestBaseUrl,
+                        navigate: () => router.push({ name: 'server-selection' }),
+                    })
+                    // Retry the original request with the new token
+                    if (outcome === 'reauthenticated') return apiFetch(path, { ...init, _isReauth: true })
+
                     const e = Object.assign(new Error(SESSION_EXPIRED_MESSAGE), { status: 401 })
                     throw e
                 }

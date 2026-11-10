@@ -107,9 +107,9 @@ afterEach(() => {
 })
 
 describe('LinkDetailsModal hosts the real email invitation panel', () => {
-  it('renders Invite by Email always visible (Free, isPremiumActive=false), not standalone', async () => {
+  it('renders Invite by email always visible (Free, isPremiumActive=false), not standalone', async () => {
     await mount()
-    expect(modal.textContent).toContain('Invite by Email')
+    expect(modal.textContent).toContain('Invite by email')
     // Confirm it is inside the real modal DOM, not a separately
     // mounted/mocked screen: its own input/button live under the same modal panel.
     const emailInput = modal.querySelector('input[type="email"]')
@@ -131,7 +131,7 @@ describe('LinkDetailsModal hosts the real email invitation panel', () => {
     emailInput.value = 'reviewer@external.test'
     emailInput.dispatchEvent(new Event('input'))
     await flush()
-    const sendButton = [...modal.querySelectorAll('button')].find(b => b.textContent.includes('Send Invitation'))
+    const sendButton = [...modal.querySelectorAll('button')].find(b => b.textContent.includes('Send invitation'))
     sendButton.click()
     await flush()
     expect(mocks.apiFetch).toHaveBeenCalledWith('/api/links/42/invite', {
@@ -139,7 +139,7 @@ describe('LinkDetailsModal hosts the real email invitation panel', () => {
       body: JSON.stringify({ recipientEmail: 'reviewer@external.test' }),
     })
     expect(modal.textContent).toContain('Not sent')
-    expect(modal.textContent).toContain('SMTP delivery is not configured')
+    expect(modal.textContent).toContain("Email isn't set up on this server yet")
     expect(modal.textContent).not.toContain('Invitation sent')
   })
 })

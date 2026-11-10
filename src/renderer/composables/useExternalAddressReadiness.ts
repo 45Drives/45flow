@@ -30,15 +30,15 @@ export interface ExternalAddressReadiness {
 }
 
 const READINESS_MESSAGES: Record<string, string> = {
-	missing_hostname: 'Set a public hostname in Settings → URLs & Access before sharing external links.',
+	missing_hostname: 'Set a public web address in Settings → Share addresses before sharing links on the internet.',
 	raw_ip_address_not_allowed:
-		'Configure a real hostname instead of a raw IP address in Settings → URLs & Access.',
+		'Internet links need a domain name, not an IP address. Set one in Settings → Share addresses.',
 	insecure_scheme_not_allowed:
-		'Your configured public address must use https, not http, before sharing external links. Fix it in Settings → URLs & Access.',
+		'Your public address must start with https://. Fix it in Settings → Share addresses.',
 	certificate_not_trusted:
-		'The HTTPS certificate for your configured hostname is not valid or trusted yet. Finish certificate setup in Settings → URLs & Access.',
+		"The HTTPS certificate for your public address isn't trusted yet. Finish setup in Settings → HTTPS certificate.",
 	readiness_check_failed:
-		'Could not verify your external address is ready. Check Settings → URLs & Access and try again.',
+		"45Flow couldn't check your public address. Try again, or open Settings → Internet sharing.",
 }
 
 /**
@@ -70,7 +70,7 @@ export function resolveCopyUrl(originalUrl: string, base?: string | null): strin
 export function describeExternalAddressNotReady(reason?: string): string {
 	return (
 		(reason && READINESS_MESSAGES[reason]) ||
-		'External sharing is not ready yet. Check Settings → URLs & Access.'
+		"Internet sharing isn't ready yet. Check Settings → Internet sharing."
 	)
 }
 

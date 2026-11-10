@@ -15,20 +15,20 @@
           </label>
 
           <label :class="radioLabelClass">
-            <input type="radio" :name="radioName" value="open" :checked="modelValue === 'open'"
-              @change="$emit('update:modelValue', 'open')" :class="compact ? 'mt-0.5' : 'mt-1'" />
-            <span class="min-w-0">
-              <span class="font-semibold block" :class="compact ? 'text-sm' : ''">Anyone with the link</span>
-              <span class="text-xs text-muted block">No sign-in required.</span>
-            </span>
-          </label>
-
-          <label :class="radioLabelClass">
             <input type="radio" :name="radioName" value="open_password" :checked="modelValue === 'open_password'"
               @change="$emit('update:modelValue', 'open_password')" :class="compact ? 'mt-0.5' : 'mt-1'" />
             <span class="min-w-0">
               <span class="font-semibold block" :class="compact ? 'text-sm' : ''">{{ compact ? 'Password protected' : 'Anyone with the link + password' }}</span>
               <span class="text-xs text-muted block">One shared password{{ compact ? '.' : ' for everyone.' }}</span>
+            </span>
+          </label>
+
+          <label :class="radioLabelClass">
+            <input type="radio" :name="radioName" value="open" :checked="modelValue === 'open'"
+              @change="$emit('update:modelValue', 'open')" :class="compact ? 'mt-0.5' : 'mt-1'" />
+            <span class="min-w-0">
+              <span class="font-semibold block" :class="compact ? 'text-sm' : ''">Anyone with the link</span>
+              <span class="text-xs text-muted block">No sign-in required.</span>
             </span>
           </label>
 

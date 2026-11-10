@@ -313,6 +313,7 @@
               <button class="btn btn-primary" @click="openInBrowser">Open</button>
             </div>
           </div>
+          <EmailInvitationPanel v-if="createdLinkId" compact :key="createdLinkId" :link-id="createdLinkId" :api-fetch="apiFetch" />
         </div>
 
         <div v-else-if="uploadPhase === 'error'" class="flex flex-col gap-2">
@@ -369,6 +370,7 @@ import AddUsersModal from './modals/AddUsersModal.vue'
 import PortForwardingModal from './modals/PortForwardingModal.vue'
 import CategoryManagementModal from './modals/CategoryManagementModal.vue'
 import LinkAccessMode from './LinkAccessMode.vue'
+import EmailInvitationPanel from './EmailInvitationPanel.vue'
 import VideoOptionsPanel from './VideoOptionsPanel.vue'
 import WatermarkCustomizer from './WatermarkCustomizer.vue'
 import WatermarkPreview from './WatermarkPreview.vue'
@@ -795,6 +797,8 @@ const perFileProgress = ref<Record<string, number>>({})
 const perFileStatus = ref<Record<string, 'waiting' | 'transcoding' | 'uploading' | 'done' | 'error'>>({})
 const perFileDetail = ref<Record<string, string>>({})
 const viewUrl = ref('')
+// Older servers don't return the new link's id; then the email step is hidden.
+const createdLinkId = ref<number | null>(null)
 const errorMsg = ref('')
 
 const currentPhaseLabel = computed(() => {
@@ -920,6 +924,7 @@ function resetWizard() {
   perFileStatus.value = {}
   perFileDetail.value = {}
   viewUrl.value = ''
+  createdLinkId.value = null
   errorMsg.value = ''
   busy.value = false
   loadLinkDefaults()
@@ -1209,7 +1214,7 @@ watch(usePublicBase, (isExternal) => {
     pushNotification(
       new Notification(
         'Port Forwarding Required',
-        `External sharing requires port forwarding to your configured HTTPS port (${port}). You can change this port in Settings → URLs & Access.`,
+        `External sharing requires port forwarding to your configured HTTPS port (${port}). You can change this port in Settings → Share addresses.`,
         'info',
         8000
       )
@@ -1605,6 +1610,7 @@ async function startUploadAndShare() {
     })
 
     viewUrl.value = data.viewUrl || ''
+    createdLinkId.value = Number.isFinite(Number(data?.linkId)) && Number(data?.linkId) > 0 ? Number(data.linkId) : null
     uploadPhase.value = 'done'
     signalLinkCreated()
 

@@ -1,13 +1,11 @@
 <template>
     <section class="space-y-4" aria-label="Admin networks">
-        <h3 class="font-semibold">Trusted admin networks</h3>
-        <p class="text-sm text-accent">
-            Controls nginx access to administrative endpoints, not public share links.
-            Enter one IPv4 or IPv6 CIDR per line. All other addresses are denied.
-            Network access does not replace administrator authentication or establish that a network is safe.
-        </p>
         <details class="text-sm">
             <summary class="cursor-pointer font-medium">What are these networks?</summary>
+            <p class="mt-2">
+                This list controls who can reach admin pages, not share links. Enter one IPv4 or IPv6
+                range (CIDR) per line; every other address is denied. Admins still have to sign in.
+            </p>
             <p class="mt-2">
                 These defaults cover common local and VPN address ranges; they are not a discovery of your
                 actual network. Use the narrowest ranges you trust. A larger number after / means a smaller
@@ -19,34 +17,34 @@
                     <dt class="font-mono">{{ cidr }}</dt><dd>{{ meaning }}</dd>
                 </template>
             </dl>
+            <p class="mt-2 text-muted">
+                Admin network requests use this server's nginx HTTPS listener, including on LAN-only servers.
+                No public domain or port forwarding is required.
+                <template v-if="isWeb">Your browser verifies this page's HTTPS certificate; accept the warning only if you trust this server.</template>
+                <template v-else>The desktop verifies HTTPS through SSH.
+                If prompted, verify the SSH host-key fingerprint before trusting the server.</template>
+            </p>
         </details>
-        <p class="text-sm text-flow-danger">
+        <FlowNotice tone="warning" size="sm">
             Keep server console or SSH recovery access available. Changes are temporary until confirmed
             through the reloaded nginx policy; unconfirmed changes are automatically rolled back.
             An empty list denies all nginx admin access.
-        </p>
-        <p class="text-sm">
-            Admin network requests use this server's nginx HTTPS listener, including on LAN-only servers.
-            No public domain or port forwarding is required.
-            <template v-if="isWeb">Your browser verifies this page's HTTPS certificate; accept the warning only if you trust this server.</template>
-            <template v-else>The desktop verifies HTTPS through SSH.
-            If prompted, verify the SSH host-key fingerprint before trusting the server.</template>
-        </p>
-        <p v-if="loading" role="status">Loading admin networks…</p>
-        <p v-if="error" role="alert" class="text-sm text-flow-danger">{{ error }}</p>
+        </FlowNotice>
+        <p v-if="loading" role="status" class="text-sm text-muted">Loading admin networks…</p>
+        <FlowNotice v-if="error" tone="danger" size="sm" live>{{ error }}</FlowNotice>
         <template v-if="loaded">
             <p v-if="safety?.available" class="text-sm" role="status">
                 nginx sees your connection as <strong>{{ safety.clientAddress }}</strong>.
                 Currently allowed by: <span class="font-mono">{{ safety.matchedCidr || 'no matching range' }}</span>.
                 This may be a proxy address, not your device, and does not identify your whole LAN or VPN.
             </p>
-            <p v-else role="alert" class="text-sm text-flow-danger">
+            <FlowNotice v-else tone="danger" size="sm" live>
                 Connection safety is unavailable: {{ safety?.reason || 'update the server and its nginx configuration.' }}
                 Changes are disabled; update/regenerate the server's nginx configuration and reload this panel.
-            </p>
+            </FlowNotice>
             <label for="admin-cidrs" class="block text-sm font-medium">Trusted CIDRs</label>
             <textarea id="admin-cidrs" v-model="text" rows="10" spellcheck="false"
-                class="input-textlike border border-default rounded p-2 w-full font-mono text-sm"
+                class="input-textlike border border-default rounded-lg p-2 w-full font-mono text-sm"
                 :disabled="saving || loading || !!pending" placeholder="192.168.1.0/24&#10;fc00::/7" />
             <div class="flex flex-wrap gap-2">
                 <button type="button" class="btn btn-secondary" :disabled="!canCheck || !safety?.hostCidr"
@@ -55,29 +53,29 @@
                     Check proposed networks
                 </button>
             </div>
-            <p v-if="hasGlobalRange" role="alert" class="text-sm text-flow-danger">
+            <FlowNotice v-if="hasGlobalRange" tone="danger" size="sm" live>
                 Remove all /0 ranges before applying. They eliminate the admin network restriction
                 for that IP family, and the server will reject them.
-            </p>
-            <p v-if="checked?.allowed" class="text-sm text-flow-success" role="status">
+            </FlowNotice>
+            <FlowNotice v-if="checked?.allowed" tone="success" size="sm" plain live>
                 The proposed list includes your current nginx-observed address. This does not guarantee
                 future access if your address, VPN, or proxy changes.
-            </p>
-            <p v-if="checked && !checked.allowed" role="alert" class="text-sm text-flow-danger">
+            </FlowNotice>
+            <FlowNotice v-if="checked && !checked.allowed" tone="danger" size="sm" live>
                 The proposed list excludes your current connection ({{ checked.clientAddress }}).
                 You will need another permitted connection to confirm, or the server will roll back.
-            </p>
+            </FlowNotice>
             <label v-if="checked && !checked.allowed" class="flex gap-2 text-sm">
-                <input v-model="overrideCurrentConnection" type="checkbox" :disabled="saving || !!pending" />
+                <input v-model="overrideCurrentConnection" type="checkbox" class="styled-checkbox" :disabled="saving || !!pending" />
                 Intentionally exclude this connection. I have another permitted connection and recovery access.
             </label>
             <label class="flex gap-2 text-sm">
-                <input v-model="confirmed" type="checkbox" :disabled="saving || loading || !!pending" />
+                <input v-model="confirmed" type="checkbox" class="styled-checkbox" :disabled="saving || loading || !!pending" />
                 I understand this change can block my admin connection.
             </label>
         </template>
         <div class="flex flex-wrap gap-2">
-            <button type="button" class="btn btn-secondary" :disabled="saving || loading" @click="load">
+            <button type="button" class="btn btn-ghost" :disabled="saving || loading" @click="load">
                 Reload admin networks
             </button>
             <button v-if="loaded" type="button" class="btn btn-primary"
@@ -85,23 +83,24 @@
                 {{ saving ? 'Applying…' : 'Apply admin networks' }}
             </button>
         </div>
-        <div v-if="pending" class="space-y-2" role="status">
-            <p>
-                Temporary policy active. Confirm before {{ new Date(pending.expiresAt).toLocaleTimeString() }}.
-                Without confirmation the server restores the previous policy, even if you close this panel.
-            </p>
-            <button type="button" class="btn btn-primary" :disabled="saving || confirming || loading"
-                @click="confirmPolicy">{{ confirming ? 'Reconnecting to reloaded nginx…' : 'Reconnect and confirm' }}</button>
-        </div>
-        <p v-if="saved" role="status" class="text-sm text-flow-success">
+        <FlowNotice v-if="pending" tone="warning" title="Temporary policy active" live>
+            Confirm before {{ new Date(pending.expiresAt).toLocaleTimeString() }}.
+            Without confirmation the server restores the previous policy, even if you close this panel.
+            <template #actions>
+                <button type="button" class="btn btn-primary btn-sm" :disabled="saving || confirming || loading"
+                    @click="confirmPolicy">{{ confirming ? 'Reconnecting to reloaded nginx…' : 'Reconnect and confirm' }}</button>
+            </template>
+        </FlowNotice>
+        <FlowNotice v-if="saved" tone="success" size="sm" live>
             Admin networks confirmed through reloaded nginx. Future connections must use a trusted network.
-        </p>
+        </FlowNotice>
     </section>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useApi } from '../composables/useApi'
+import FlowNotice from '../ui/FlowNotice.vue'
 
 const props = defineProps<{ connectionId: string }>()
 const isWeb = window.electron?.isWeb === true

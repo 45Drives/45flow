@@ -79,6 +79,13 @@
 					<option value="disabled">Disabled</option>
 				</select>
 
+				<select v-if="hasReviewRows || reviewFilter" v-model="reviewFilter" aria-label="Approvals"
+					class="px-3 py-2 border border-default rounded-lg bg-default manage-filter-select">
+					<option value="">All approvals</option>
+					<option value="attention">Needs attention</option>
+					<option value="approved">Approved</option>
+				</select>
+
 				<label class="flex items-center gap-1.5 cursor-pointer select-none">
 					<input type="checkbox" v-model="showArchived" class="styled-checkbox" />
 					<span class="text-xs text-muted whitespace-nowrap">Show Archived</span>
@@ -107,6 +114,7 @@
 						<col class="expires-col" />
 						<col class="status-col" />
 						<col class="access-col" />
+						<col class="review-col" />
 						<col class="created-col" />
 						<col class="server-col" />
 						<col class="actions-col" />
@@ -170,6 +178,14 @@
 							</th>
 
 							<th class="text-left p-2 font-semibold border border-default cursor-pointer select-none"
+								title="Approvals on invite-only review links" @click="setSort('review')">
+								<span class="flex items-center justify-between gap-2 w-full">
+									<span class="hover:underline">Review</span>
+									<span>{{ sortIndicator('review') }}</span>
+								</span>
+							</th>
+
+							<th class="text-left p-2 font-semibold border border-default cursor-pointer select-none"
 								@click="setSort('created')">
 								<span class="flex items-center justify-between gap-2 w-full">
 									<span class="hover:underline">Created</span>
@@ -184,7 +200,7 @@
 
 					<tbody class="bg-accent">
 						<tr v-if="loading">
-							<td colspan="11" class="p-0 border border-default">
+							<td colspan="12" class="p-0 border border-default">
 								<div class="w-full min-h-[140px] flex items-center justify-center">
 									<div
 										class="flex items-center gap-3 px-4 py-3 rounded-lg bg-default/60 border border-default shadow-sm">
@@ -200,7 +216,7 @@
 						</tr>
 
 						<tr v-else-if="filteredRows.length === 0 && !showingDemoData">
-							<td colspan="11" class="border border-default align-middle">
+							<td colspan="12" class="border border-default align-middle">
 								<FlowEmpty compact title="No links found." />
 							</td>
 						</tr>
@@ -260,16 +276,15 @@
 							</td>
 
 							<td class="p-2 border border-default align-middle whitespace-nowrap">
-								<span class="status-chip bg-default dark:bg-well/75"
-									:class="statusChipClass(statusOf(it))">
-									{{ statusOf(it).toUpperCase() }}
-								</span>
+								<FlowChip size="sm" :tone="statusChip(it).tone" :dot="statusChip(it).dot">{{ statusChip(it).label }}</FlowChip>
 							</td>
 
 							<td class="p-2 border border-default align-middle whitespace-nowrap">
-								<span class="status-chip bg-default dark:bg-well/75" :class="accessChipClass(it)">
-									{{ accessLabel(it) }}
-								</span>
+								<FlowChip size="sm" :tone="accessChip(it).tone">{{ accessChip(it).label }}</FlowChip>
+							</td>
+
+							<td class="p-2 border border-default align-middle whitespace-nowrap">
+								<span class="text-muted">—</span>
 							</td>
 
 							<td class="p-2 border border-default align-middle whitespace-nowrap">
@@ -404,20 +419,22 @@
 							</td>
 
 							<td class="p-2 border border-default align-middle whitespace-nowrap">
-								<div class="flex items-center gap-1.5">
-									<span class="status-chip bg-default dark:bg-well/75"
-										:class="statusChipClass(statusOf(it))">
-										{{ statusOf(it) === 'archived' ? (it.expiresAt && it.expiresAt <= Date.now() ? 'EXPIRED' : (it.isDisabled ? 'DISABLED' : 'ACTIVE')) : statusOf(it).toUpperCase() }}
-									</span>
-									<span v-if="it.archived" class="flow-chip flow-chip--muted text-xs shrink-0">ARCHIVED</span>
+								<div class="flex flex-col items-start gap-1">
+									<FlowChip size="sm" :tone="statusChip(it).tone" :dot="statusChip(it).dot">{{ statusChip(it).label }}</FlowChip>
+									<FlowChip v-if="it.archived" size="sm" tone="muted">Archived</FlowChip>
 								</div>
 							</td>
 
 							<td class="p-2 border border-default align-middle whitespace-nowrap">
-								<span class="status-chip bg-default dark:bg-well/75" :class="accessChipClass(it)"
-									:title="accessDetail(it)">
-									{{ accessLabel(it) }}
-								</span>
+								<FlowChip size="sm" :tone="accessChip(it).tone" :title="accessDetail(it)">{{ accessChip(it).label }}</FlowChip>
+							</td>
+
+							<td class="p-2 border border-default align-middle whitespace-nowrap overflow-hidden">
+								<FlowChip v-if="reviewChip(it)" size="sm" :tone="reviewChip(it)!.tone" :dot="reviewChip(it)!.dot"
+									:title="reviewChip(it)!.title" class="max-w-full">
+									<span class="truncate">{{ reviewChip(it)!.label }}</span>
+								</FlowChip>
+								<span v-else class="text-muted">—</span>
 							</td>
 
 							<td class="p-2 border border-default align-middle whitespace-nowrap">
@@ -470,7 +487,7 @@
 						</tr>
 
 						<tr v-for="n in emptyRowCount" :key="`empty-${n}`" class="h-12">
-							<td colspan="11" class="p-0 bg-well">&nbsp;</td>
+							<td colspan="12" class="p-0 bg-well">&nbsp;</td>
 						</tr>
 					</tbody>
 				</table>
@@ -768,6 +785,8 @@
 import FlowModal from '../ui/FlowModal.vue'
 import FlowNotice from '../ui/FlowNotice.vue'
 import FlowEmpty from '../ui/FlowEmpty.vue'
+import FlowChip from '../ui/FlowChip.vue'
+import { reviewSummaryView, REVIEW_APPROVED_RANK as APPROVED_RANK } from '../utils/reviewStatus'
 import { writeClipboard } from '../clipboard'
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useApi } from '../composables/useApi'
@@ -784,7 +803,7 @@ import { useTime } from '../composables/useTime'
 import { useTimeFormat } from '../composables/useTimeFormat'
 import { useLinkListDefault } from '../composables/useLinkListDefault'
 import { FilmIcon, PhotoIcon, MusicalNoteIcon, ArrowUpTrayIcon, DocumentIcon } from '@heroicons/vue/24/outline'
-type SortKey = 'title' | 'type' | 'url' | 'expires' | 'status' | 'access' | 'created'
+type SortKey = 'title' | 'type' | 'url' | 'expires' | 'status' | 'access' | 'review' | 'created'
 type SortDir = 'asc' | 'desc'
 
 const props = withDefaults(defineProps<{ tourActive?: boolean; projectId?: number | string | null }>(), { tourActive: false, projectId: null })
@@ -1241,6 +1260,9 @@ const showArchived = ref(false)
 const fetchLimit = ref(200)
 const pageSize = ref(10)
 const currentPage = ref(1)
+// Client-side only: filters the loaded rows by their review chip.
+const reviewFilter = ref<'' | 'attention' | 'approved'>('')
+const hasReviewRows = computed(() => rows.value.some(r => !!reviewSummaryView(r.review)))
 const sortKey = ref<SortKey>('expires')
 const sortDir = ref<SortDir>('desc')
 
@@ -1254,7 +1276,7 @@ watch(showArchived, () => {
 })
 // rows is reassigned on every refresh, delete, and move, so parents can recount.
 watch(rows, () => emit('rows-changed'))
-watch([sortKey, sortDir], () => {
+watch([sortKey, sortDir, reviewFilter], () => {
 	currentPage.value = 1
 })
 
@@ -1377,14 +1399,11 @@ function statusOf(it: LinkItem): Status {
 	return 'active'
 }
 
-function statusChipClass(s: Status) {
-	return s === 'active'
-		? 'text-green-500'
-		: s === 'expired'
-			? 'text-amber-500'
-			: s === 'archived'
-				? 'text-purple-400'
-				: 'text-gray-500'
+// Archived is shown as its own chip, so this is the link's live state underneath it.
+function statusChip(it: LinkItem): { label: string; tone: 'success' | 'warning' | 'muted'; dot: boolean } {
+	if (it.expiresAt && it.expiresAt <= Date.now()) return { label: 'Expired', tone: 'warning', dot: false }
+	if (it.isDisabled) return { label: 'Disabled', tone: 'muted', dot: false }
+	return { label: 'Active', tone: 'success', dot: true }
 }
 
 function isRestricted(it: LinkItem) {
@@ -1406,9 +1425,18 @@ function accessDetail(it: LinkItem) {
 	return hasOpenPassword(it) ? `Password protected • ${comments}` : `Open link • ${comments}`
 }
 
-function accessChipClass(it: LinkItem) {
-	if (isRestricted(it)) return 'text-rose-400'
-	return hasOpenPassword(it) ? 'text-amber-400' : 'text-emerald-400'
+function reviewChip(it: LinkItem) {
+	return reviewSummaryView(it.review)
+}
+
+// Links needing attention first when ascending; links with nothing to review last.
+function reviewRank(it: LinkItem) {
+	return reviewChip(it)?.rank ?? 99
+}
+
+function accessChip(it: LinkItem): { label: string; tone: 'info' | 'warning' | 'success' } {
+	if (isRestricted(it)) return { label: accessLabel(it), tone: 'info' }
+	return { label: accessLabel(it), tone: hasOpenPassword(it) ? 'warning' : 'success' }
 }
 
 const nowMs = ref(Date.now())
@@ -1755,6 +1783,12 @@ const filteredRows = computed(() => {
 			return r.type === typeFilter.value
 		})
 		.filter(r => {
+			if (!reviewFilter.value) return true
+			const chip = reviewChip(r)
+			if (!chip) return false
+			return reviewFilter.value === 'approved' ? chip.rank === APPROVED_RANK : chip.rank < APPROVED_RANK
+		})
+		.filter(r => {
 			// Hide archived unless showArchived is checked
 			if (r.archived && !showArchived.value) return false
 			const s = statusOf(r)
@@ -1859,6 +1893,8 @@ function compareByKey(a: LinkItem, b: LinkItem, key: SortKey) {
 			return compareText(statusOf(a), statusOf(b))
 		case 'access':
 			return compareText(accessLabel(a), accessLabel(b))
+		case 'review':
+			return reviewRank(a) - reviewRank(b)
 		case 'created': {
 			const va = toDateUTC(a.createdAt)?.getTime() || 0
 			const vb = toDateUTC(b.createdAt)?.getTime() || 0
@@ -2161,7 +2197,7 @@ function formatLocal(ts: unknown, opts: Intl.DateTimeFormatOptions) {
 
 .manage-table {
 	width: 100%;
-	min-width: 1260px;
+	min-width: 1460px;
 	table-layout: fixed;
 	border-spacing: 0;
 	margin: 0;
@@ -2212,6 +2248,7 @@ function formatLocal(ts: unknown, opts: Intl.DateTimeFormatOptions) {
 	width: 72px;
 }
 
+/* Title and Link share the spare width. */
 .title-col {
 	width: auto;
 }
@@ -2221,19 +2258,23 @@ function formatLocal(ts: unknown, opts: Intl.DateTimeFormatOptions) {
 }
 
 .link-col {
-	width: 250px;
+	width: auto;
 }
 
 .expires-col {
-	width: 150px;
+	width: 132px;
 }
 
 .status-col {
-	width: 82px;
+	width: 96px;
 }
 
 .access-col {
-	width: 88px;
+	width: 116px;
+}
+
+.review-col {
+	width: 148px;
 }
 
 .created-col {
@@ -2352,18 +2393,6 @@ function formatLocal(ts: unknown, opts: Intl.DateTimeFormatOptions) {
 	text-align: center;
 }
 
-.status-chip {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	padding: 0.125rem 0.5rem;
-	border-radius: 999px;
-	font-size: 0.72rem;
-	font-weight: 700;
-	line-height: 1.2;
-	white-space: nowrap;
-}
-
 .table-mini-btn {
 	height: 1.8rem;
 	min-height: 1.8rem;
@@ -2469,7 +2498,7 @@ function formatLocal(ts: unknown, opts: Intl.DateTimeFormatOptions) {
 
 @media (min-width: 1400px) {
 	.manage-table {
-		min-width: 1360px;
+		min-width: 1560px;
 	}
 
 	.title-text {

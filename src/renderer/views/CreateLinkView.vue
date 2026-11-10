@@ -446,6 +446,8 @@
 									<button class="btn btn-primary" @click="openResult">Open</button>
 								</div>
 							</div>
+							<EmailInvitationPanel v-if="resultUrl && createdLinkId" compact :key="createdLinkId"
+								:link-id="createdLinkId" :api-fetch="apiFetch" class="mt-3 text-left" />
 						</section>
 						</template>
 					</div>
@@ -547,6 +549,7 @@ import FolderPicker from '../components/FolderPicker.vue'
 import FileExplorer from '../components/FileExplorer.vue'
 import PathInput from '../components/PathInput.vue'
 import CommonLinkControls from '../components/CommonLinkControls.vue'
+import EmailInvitationPanel from '../components/EmailInvitationPanel.vue'
 import LinkAccessMode from '../components/LinkAccessMode.vue'
 import CheckPortForwarding from '../components/CheckPortForwarding.vue'
 import VideoOptionsPanel from '../components/VideoOptionsPanel.vue'
@@ -713,6 +716,8 @@ const loading = ref(false)
 const initializing = ref(true)
 const error = ref<string | null>(null)
 const resultUrl = ref('')
+// Older servers don't return the new link's id; then the email step is hidden.
+const createdLinkId = ref<number | null>(null)
 
 // ── Computed ──
 // The share root is a valid upload destination; only the filesystem root ("/") is not.
@@ -1074,6 +1079,7 @@ async function generateLink() {
 	loading.value = true
 	error.value = null
 	resultUrl.value = ''
+	createdLinkId.value = null
 
 	try {
 		const optionsBody = opts.buildOptionsBody()
@@ -1193,6 +1199,7 @@ async function generateLink() {
 		}
 
 		resultUrl.value = data.viewUrl || data.url || ''
+		createdLinkId.value = Number.isFinite(Number(data?.linkId)) && Number(data?.linkId) > 0 ? Number(data.linkId) : null
 		draftLinkToken = extractLinkToken(data)
 
 		// ── Start transcode tracking in TransferDock ──
@@ -1450,6 +1457,7 @@ function resetAll() {
 	watermarkEnabled.value = false
 	watermarkSettings.value = createDefaultWatermarkSettings()
 	resultUrl.value = ''
+	createdLinkId.value = null
 	error.value = null
 	// Stay in the current project; reset only the link options.
 	onProjectChange()

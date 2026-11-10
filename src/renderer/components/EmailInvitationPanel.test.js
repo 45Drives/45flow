@@ -16,10 +16,17 @@ let host
 async function flush() {
   for (let i = 0; i < 5; i++) await nextTick()
 }
-function mount(linkId, apiFetch) {
+// The panel loads earlier invitations on open; answer that with `history` and
+// hand every other request to the test's own mock, so call counts stay per-action.
+function withHistory(apiFetch, history = []) {
+  return (url, opts) => (String(url).endsWith('/emails')
+    ? Promise.resolve({ ok: true, emails: history, owner: null })
+    : (opts === undefined ? apiFetch(url) : apiFetch(url, opts)))
+}
+function mount(linkId, apiFetch, props = {}) {
   host = document.createElement('div')
   document.body.appendChild(host)
-  app = createApp(EmailInvitationPanel, { linkId, apiFetch })
+  app = createApp(EmailInvitationPanel, { linkId, apiFetch: withHistory(apiFetch, props.history), compact: props.compact })
   const vm = app.mount(host)
   return vm
 }
@@ -29,7 +36,7 @@ function setEmail(value) {
   input.dispatchEvent(new Event('input'))
 }
 function sendButton() {
-  return [...host.querySelectorAll('button')].find(b => b.textContent.includes('Send Invitation'))
+  return [...host.querySelectorAll('button')].find(b => b.textContent.includes('Send invitation'))
 }
 function refreshButton() {
   return [...host.querySelectorAll('button')].find(b => b.textContent.includes('Refresh status'))
@@ -64,9 +71,9 @@ describe('EmailInvitationPanel', () => {
       body: JSON.stringify({ recipientEmail: 'reviewer@external.test' }),
     })
     expect(host.textContent).toContain('reviewer@external.test')
-    expect(host.textContent).toContain('pending')
     expect(host.textContent).toContain('Not sent')
-    expect(host.textContent).toContain('SMTP delivery is not configured')
+    expect(host.textContent).toContain("Email isn't set up on this server yet")
+    expect(host.querySelector('.flow-chip').textContent).toContain('Not sent')
     expect(host.textContent).not.toContain('Invitation sent')
   })
 
@@ -97,11 +104,10 @@ describe('EmailInvitationPanel', () => {
     refreshButton().click()
     await flush()
     expect(apiFetch).toHaveBeenNthCalledWith(2, '/api/links/42/invite/7')
-    expect(host.textContent).toContain('accepted')
-    expect(host.textContent).toContain('smtp-accepted')
+    expect(host.querySelector('.flow-chip').textContent).toContain('Sent')
     // Honest caveat required by the gate contract: accepted by the mail
     // server is not proof of inbox delivery.
-    expect(host.textContent).toContain('not that the recipient')
+    expect(host.textContent).toContain('Delivery to the inbox is up to')
   })
 
   it('shows a visible error and keeps the typed email on a failed submission', async () => {
@@ -138,8 +144,8 @@ describe('EmailInvitationPanel', () => {
     refreshButton().click()
     await flush()
     expect(apiFetch).toHaveBeenNthCalledWith(2, '/api/links/42/invite/7')
-    expect(host.textContent).toContain('Not sent — ' + neutralMessage)
-    expect(host.textContent).not.toContain('SMTP delivery is not configured')
+    expect(host.textContent).toContain("couldn't check the email settings")
+    expect(host.textContent).not.toContain("Email isn't set up on this server yet")
     expect(host.querySelector('[role="alert"]')).toBeNull()
   })
 
@@ -175,7 +181,8 @@ describe('EmailInvitationPanel', () => {
     // Tiny reactive host wrapper: the real integration always remounts via
     // :key on link switch, but the panel's OWN generation guard must also
     // hold on a bare reactive prop change, without relying on remount.
-    app = createApp({ render: () => h(EmailInvitationPanel, { linkId: linkId.value, apiFetch }) })
+    const wrapped = withHistory(apiFetch)
+    app = createApp({ render: () => h(EmailInvitationPanel, { linkId: linkId.value, apiFetch: wrapped }) })
     app.mount(host)
     await flush()
     setEmail('reviewer@external.test')
@@ -209,7 +216,7 @@ describe('EmailInvitationPanel', () => {
     retryButton().click()
     await flush()
     expect(apiFetch).toHaveBeenNthCalledWith(2, '/api/links/42/invite/7/retry', { method: 'POST' })
-    expect(host.textContent).toContain('rejected')
+    expect(host.querySelector('.flow-chip').textContent).toContain('Failed')
     expect(host.textContent).not.toContain('Invitation sent')
   })
 
@@ -265,7 +272,7 @@ describe('EmailInvitationPanel', () => {
     expect([...host.querySelectorAll('[role="alert"]')].some(el => el.textContent.includes(expectedText))).toBe(true)
     // Preserved DTO: still shows the pre-retry rejected status, not a
     // manufactured success or a cleared invitation.
-    expect(host.textContent).toContain('rejected')
+    expect(host.querySelector('.flow-chip').textContent).toContain('Failed')
   })
 
   it('discards a stale retry response after the link changes', async () => {
@@ -276,7 +283,8 @@ describe('EmailInvitationPanel', () => {
     const linkId = ref(42)
     host = document.createElement('div')
     document.body.appendChild(host)
-    app = createApp({ render: () => h(EmailInvitationPanel, { linkId: linkId.value, apiFetch }) })
+    const wrapped = withHistory(apiFetch)
+    app = createApp({ render: () => h(EmailInvitationPanel, { linkId: linkId.value, apiFetch: wrapped }) })
     app.mount(host)
     await flush()
     setEmail('reviewer@external.test')
@@ -292,5 +300,41 @@ describe('EmailInvitationPanel', () => {
     // Link 99's fresh (empty) panel must not show link 42's late retry result.
     expect(host.textContent).not.toContain('reviewer@external.test')
     expect(host.querySelector('input[type="email"]').value).toBe('')
+  })
+
+  it('shows earlier invitations for the link when it opens, with the reason a send failed', async () => {
+    const apiFetch = vi.fn()
+    mount(42, apiFetch, {
+      history: [
+        { ...pendingInvitation, id: 9, kind: 'invitation', status: 'rejected', attemptCount: 1, reason: 'no_from_address',
+          mail: { configured: true, sent: false, message: 'x' } },
+        { ...pendingInvitation, id: 3, kind: 'review', recipientEmail: 'staff@studio.test' },
+      ],
+    })
+    await flush()
+    expect(host.textContent).toContain('reviewer@external.test')
+    expect(host.textContent).toContain('No From address is set')
+    // Only invitations belong here; review/download alerts live in Activity → Emails.
+    expect(host.textContent).not.toContain('staff@studio.test')
+    expect(apiFetch).not.toHaveBeenCalled()
+  })
+
+  it('compact mode on a new link: optional wording and no history request', async () => {
+    const calls = []
+    const apiFetch = vi.fn((url) => { calls.push(url); return Promise.resolve({ ok: true, invitation: pendingInvitation }) })
+    host = document.createElement('div')
+    document.body.appendChild(host)
+    app = createApp(EmailInvitationPanel, { linkId: 42, apiFetch, compact: true })
+    app.mount(host)
+    await flush()
+    expect(calls).toEqual([])
+    expect(host.textContent).toContain('Email this link')
+    expect(host.textContent).toContain('(optional)')
+    setEmail('reviewer@external.test')
+    await flush()
+    ;[...host.querySelectorAll('button')].find(b => b.textContent.trim() === 'Send').click()
+    await flush()
+    expect(calls).toEqual(['/api/links/42/invite'])
+    expect(host.textContent).toContain('reviewer@external.test')
   })
 })

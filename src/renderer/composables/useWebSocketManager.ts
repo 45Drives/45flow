@@ -6,6 +6,7 @@ import { ref, watch } from 'vue'
 import { useConnections } from './useConnections'
 import type { Connection } from './useConnections'
 import { WEB_SESSION_TOKEN } from '../web-session'
+import { handleUnauthorized } from './useApi'
 
 interface WebSocketConnection {
   connectionId: string
@@ -157,6 +158,10 @@ function connect(connection: Connection) {
           wsConn.authFailed = true
           authFailedConnections.add(connectionId)  // Prevent future reconnection attempts
           ws.close()
+          // The server ended this session: sign in again with a remembered password, or sign out.
+          if (msg.error === 'invalid_token' || msg.error === 'invalid_session') {
+            void handleUnauthorized(connectionId, token)
+          }
           return
         }
         

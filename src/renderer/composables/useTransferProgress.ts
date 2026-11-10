@@ -1602,9 +1602,10 @@ export function useTransferProgress() {
         }
         
         try {
+            // No suppressAuthRedirect: this runs every 15 s, so it is often the first request
+            // to see an ended session, and it must sign the user out rather than fail quietly.
             const json = await apiFetch('/api/progress/active', {
                 parse: 'json',
-                suppressAuthRedirect: true,
                 headers: BACKGROUND_REQUEST,
             })
             if (!json?.ok || !Array.isArray(json.items)) return

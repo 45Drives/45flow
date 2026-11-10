@@ -183,7 +183,7 @@ export function useLinkOptions(): LinkOptionsState {
 			pushNotification(
 				new Notification(
 					'Port Forwarding Required',
-					`External sharing requires port forwarding to your configured HTTPS port (${port}). You can change this port in Settings → URLs & Access.`,
+					`External sharing requires port forwarding to your configured HTTPS port (${port}). You can change this port in Settings → Share addresses.`,
 					'info',
 					8000
 				)

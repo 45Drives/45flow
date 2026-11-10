@@ -15,7 +15,7 @@ vi.mock('./useConnections', () => ({
         updateConnection: mocks.updateConnection,
     }),
 }))
-import { useApi } from './useApi'
+import { handleUnauthorized, useApi } from './useApi'
 import { Notification, pushNotification } from '@45drives/houston-common-ui'
 import { clearLastSession } from './useSessionPersistence'
 
@@ -322,6 +322,37 @@ describe('admin API error propagation without changing existing defaults', () =>
             await expect(useApi('test-connection').apiFetch('/api/settings', { retry: 0 }))
                 .rejects.toMatchObject({ status: 401 })
             expect(mocks.updateConnection).not.toHaveBeenCalled()
+        })
+
+        it('signs out from background work without navigating itself', async () => {
+            const fetch = vi.fn()
+            vi.stubGlobal('fetch', fetch)
+            await expect(handleUnauthorized('test-connection', 'session')).resolves.toBe('signed-out')
+            expect(fetch).not.toHaveBeenCalled()
+            expect(mocks.connections[0]).toMatchObject({ token: '', status: 'disconnected' })
+            expect(pushNotification).toHaveBeenCalledOnce()
+            expect(clearLastSession).toHaveBeenCalledOnce()
+            expect(mocks.push).not.toHaveBeenCalled()
+        })
+
+        it('ignores a background rejection of a token that is no longer in use', async () => {
+            await expect(handleUnauthorized('test-connection', 'rotated-away')).resolves.toBe('stale')
+            expect(mocks.updateConnection).not.toHaveBeenCalled()
+            expect(pushNotification).not.toHaveBeenCalled()
+        })
+
+        it('signs in once with a remembered password when several background checks fail together', async () => {
+            Object.assign(mocks.connections[0], { username: 'admin', savedPassword: 'remembered-secret' })
+            const fetch = vi.fn(async () => new Response(JSON.stringify({ token: 'refreshed-token' })))
+            vi.stubGlobal('fetch', fetch)
+            const outcomes = await Promise.all([
+                handleUnauthorized('test-connection', 'session'),
+                handleUnauthorized('test-connection', 'session'),
+            ])
+            expect(outcomes).toEqual(['reauthenticated', 'reauthenticated'])
+            expect(fetch).toHaveBeenCalledOnce()
+            expect(mocks.connections[0].token).toBe('refreshed-token')
+            expect(pushNotification).not.toHaveBeenCalled()
         })
     })
 

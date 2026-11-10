@@ -3,6 +3,7 @@ import { attachIdleMonitor, type IdleMonitor } from '../web-idle'
 import { createDesktopKeepalive } from '../desktop-session'
 import { useConnections } from './useConnections'
 import { useTransferProgress } from './useTransferProgress'
+import { handleUnauthorized } from './useApi'
 
 /** Keep desktop sessions alive while the user is active, and pick up rotated tokens. */
 export function useDesktopSession() {
@@ -20,6 +21,7 @@ export function useDesktopSession() {
         // A login or sign-out that happened meanwhile wins over a late replacement.
         if (current && current.token === usedToken) updateConnection(connectionId, { token: newToken, tokenIssuedAt: Date.now() })
       },
+      onSessionEnded: (connectionId, usedToken) => { void handleUnauthorized(connectionId, usedToken) },
     })
     const monitor: IdleMonitor = {
       userActivity: () => keepalive.userActivity(),

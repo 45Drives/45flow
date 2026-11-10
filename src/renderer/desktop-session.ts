@@ -25,6 +25,8 @@ export type KeepaliveDeps = {
     transfersActive: () => boolean
     /** Called with the token that was used and its replacement. */
     onToken: (connectionId: string, usedToken: string, newToken: string) => void
+    /** Called when the server says the session behind `usedToken` has ended (401). */
+    onSessionEnded?: (connectionId: string, usedToken: string) => void
     fetchImpl?: typeof fetch
     now?: () => number
     minGapMs?: number
@@ -45,7 +47,11 @@ export function createDesktopKeepalive(deps: KeepaliveDeps) {
                 headers: { Authorization: `Bearer ${conn.token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ rotate: !deps.transfersActive() }),
             })
-            // 401 (ended) and 409 (no session) are handled where they matter: on the next real request.
+            // 409 (no session) is left to the next real request.
+            if (res.status === 401) {
+                deps.onSessionEnded?.(conn.connectionId, conn.token)
+                return
+            }
             if (!res.ok) return
             const body = await res.json().catch(() => null)
             // Keep refreshes well inside the server's idle timeout, even when an operator sets it short.

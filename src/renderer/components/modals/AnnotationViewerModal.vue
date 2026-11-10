@@ -1,6 +1,6 @@
 <template>
   <FlowModal :model-value="!!(modelValue && comment)" size="xl" header-class="bg-well" flush body-class="flex flex-col"
-    :description="comment ? `${comment.file_name || 'Unknown file'} • ${formatTimecode(comment.start_seconds)}` : ''"
+    :description="comment ? `${comment.file_name || 'Unknown file'} • ${isPdf ? `Page ${comment.page}` : formatTimecode(comment.start_seconds)}` : ''"
     @close="close">
       <template #title>
         <span class="flex items-center gap-2"><PencilIcon class="w-5 h-5" /> View Annotation</span>
@@ -12,8 +12,8 @@
         <div class="flex items-center gap-3 px-4 py-3 rounded-lg bg-default/60 border border-default shadow-sm">
           <span class="inline-block w-4 h-4 border-2 border-default border-t-transparent rounded-full animate-spin"></span>
           <div class="flex flex-col leading-tight">
-            <div class="text-sm font-semibold text-default">Loading frame...</div>
-            <div class="text-xs text-muted">Extracting video frame</div>
+            <div class="text-sm font-semibold text-default">{{ isPdf ? 'Loading page…' : 'Loading frame…' }}</div>
+            <div class="text-xs text-muted">{{ isPdf ? `Rendering page ${comment.page} of the PDF` : 'Extracting video frame' }}</div>
           </div>
         </div>
       </div>
@@ -37,7 +37,7 @@
                 v-if="frameDataUrl"
                 ref="frameImageRef"
                 :src="frameDataUrl"
-                alt="Video frame"
+                :alt="isPdf ? `PDF page ${comment.page}` : 'Video frame'"
                 class="max-w-full max-h-full object-contain rounded border border-default shadow-lg block"
                 @load="onImageLoad"
               />
@@ -48,7 +48,7 @@
                 class="absolute top-0 left-0 pointer-events-none"
                 :width="displayWidth"
                 :height="displayHeight"
-                viewBox="0 0 1920 1080"
+                :viewBox="overlayViewBox"
                 preserveAspectRatio="none"
                 style="display: block;"
               >
@@ -244,9 +244,17 @@
                   <span class="text-muted">Author:</span>
                   <span class="font-semibold">{{ comment.author_name || comment.user_name || 'Anonymous' }}</span>
                 </div>
-                <div class="flex justify-between">
+                <div v-if="isPdf" class="flex justify-between">
+                  <span class="text-muted">Page:</span>
+                  <span class="font-semibold">{{ comment.page }}</span>
+                </div>
+                <div v-else class="flex justify-between">
                   <span class="text-muted">Timecode:</span>
                   <span class="font-mono font-semibold">{{ formatTimecode(comment.start_seconds) }}</span>
+                </div>
+                <div v-if="comment.version_index != null" class="flex justify-between">
+                  <span class="text-muted">Version:</span>
+                  <span class="font-semibold">V{{ comment.version_index }}</span>
                 </div>
                 <div v-if="comment.start_frame !== null" class="flex justify-between">
                   <span class="text-muted">Frame:</span>
@@ -287,11 +295,12 @@ import type { Comment } from '../../composables/useComments'
 import { useApi } from '../../composables/useApi'
 import { useTimeFormat } from '../../composables/useTimeFormat'
 import FlowModal from '../../ui/FlowModal.vue'
+import { renderPdfPage } from '../../utils/pdfPage'
 
 // Only the fields this viewer reads, so both Comment and CommentExport rows can be passed in.
 type AnnotatedComment = Pick<Comment,
   'id' | 'file_id' | 'file_name' | 'body' | 'author_name' | 'user_name' | 'start_seconds' |
-  'start_frame' | 'created_at' | 'draw_data' | 'annotation_type'>
+  'start_frame' | 'created_at' | 'draw_data' | 'annotation_type' | 'page' | 'asset_version_id' | 'version_index'>
 
 const props = defineProps<{
   modelValue: boolean
@@ -314,6 +323,11 @@ const displayWidth = ref(0)
 const displayHeight = ref(0)
 const frameImageRef = ref<HTMLImageElement | null>(null)
 const imageContainerRef = ref<HTMLDivElement | null>(null)
+// PDF markup is saved per page, in that page's point size (C2).
+const isPdf = computed(() => props.comment?.page != null)
+const pdfPageSize = ref<{ width: number; height: number } | null>(null)
+const overlayViewBox = computed(() =>
+  isPdf.value && pdfPageSize.value ? `0 0 ${pdfPageSize.value.width} ${pdfPageSize.value.height}` : '0 0 1920 1080')
 
 const annotationData = computed(() => {
   if (!props.comment?.draw_data) return null
@@ -423,7 +437,43 @@ function formatDate(dateStr: string): string {
   return date.toLocaleString(undefined, { hour12: hour12.value })
 }
 
+async function fetchFrameSource(url: string) {
+  // apiFetch doesn't return binary data, so use fetch directly
+  const apiBase = baseUrl.value
+  const token = connection.value?.token || ''
+  if (!apiBase) throw new Error('API base URL not configured')
+  return fetch(`${apiBase}${url}`, { method: 'GET', headers: { 'Authorization': `Bearer ${token}` } })
+}
+
+async function loadPdfPage() {
+  const c = props.comment!
+  loading.value = true
+  error.value = null
+  frameDataUrl.value = null
+  pdfPageSize.value = null
+  try {
+    const q = c.asset_version_id != null ? `?asset_version_id=${encodeURIComponent(String(c.asset_version_id))}` : ''
+    const response = await fetchFrameSource(`/api/links/${props.link.id}/files/${c.file_id}/frame${q}`)
+    if (response.status === 409) {
+      const which = c.version_index != null ? `version ${c.version_index}` : 'this version'
+      throw new Error(`The PDF for ${which} is no longer saved on the server, so the page and its drawing can't be shown.`)
+    }
+    if (!response.ok) throw new Error((await response.text()) || `HTTP ${response.status}`)
+    const rendered = await renderPdfPage(await response.arrayBuffer(), Number(c.page))
+    pdfPageSize.value = { width: rendered.width, height: rendered.height }
+    frameDataUrl.value = rendered.imageUrl
+  } catch (err: any) {
+    console.error('[annotation-viewer] Failed to load PDF page:', err)
+    error.value = err?.message || 'Failed to load the PDF page'
+  } finally {
+    loading.value = false
+  }
+}
+
 async function loadFrame() {
+  if (props.comment?.file_id && props.link?.id && isPdf.value) {
+    return loadPdfPage()
+  }
   if (!props.comment?.file_id || props.comment.start_seconds === null) {
     error.value = 'Missing file or timecode information'
     return
