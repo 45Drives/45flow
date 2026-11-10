@@ -28,8 +28,10 @@ export async function releaseWebPackages({ repo, workflowRef, sourceSha, version
 
   let runId
   for (let attempt = 0; attempt < attempts; attempt++) {
-    const runs = JSON.parse(run('gh', ['run', 'list', '--repo', repo, '--workflow', WORKFLOW,
-      '--event', 'workflow_dispatch', '--limit', '100', '--json', 'databaseId,displayTitle']))
+    // REST rather than `gh run list --event/--json displayTitle`, which distro gh builds (e.g. 2.4) lack.
+    const runs = JSON.parse(run('gh', ['api',
+      `repos/${repo}/actions/workflows/${WORKFLOW}/runs?event=workflow_dispatch&per_page=100`,
+      '--jq', '[.workflow_runs[] | {databaseId: .id, displayTitle: .display_title}]']))
     const matches = runs.filter((item) => item.displayTitle === `45flow-web:${requestId}`)
     if (matches.length > 1) throw new Error('Multiple web workflow runs matched this release request')
     if (matches.length === 1) {

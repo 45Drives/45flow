@@ -23,7 +23,7 @@ function commands({ lists = [[ownRun]], conclusion = 'success', watchError } = {
   return vi.fn((_command, args) => {
     if (args[0] === 'repo') return 'main\n'
     if (args[0] === 'workflow') return ''
-    if (args[1] === 'list') return JSON.stringify(lists[Math.min(index++, lists.length - 1)])
+    if (args[0] === 'api') return JSON.stringify(lists[Math.min(index++, lists.length - 1)])
     if (args[1] === 'watch') {
       if (watchError) throw watchError
       return ''
@@ -43,6 +43,12 @@ describe('orchestrated web package releases', () => {
       '-f', `source_sha=${sourceSha}`, '-f', 'expected_version=1.0.9', '-f', 'request_id=request-1',
     ])
     expect(sleep).toHaveBeenCalledOnce()
+    // gh 2.4 (Ubuntu) has no `run list --event` or displayTitle field; the REST lookup works on every gh.
+    expect(run).toHaveBeenCalledWith('gh', [
+      'api', 'repos/45Drives/45flow/actions/workflows/build-web-packages.yml/runs?event=workflow_dispatch&per_page=100',
+      '--jq', '[.workflow_runs[] | {databaseId: .id, displayTitle: .display_title}]',
+    ])
+    expect(run.mock.calls.some(([, args]) => args[0] === 'run' && args[1] === 'list')).toBe(false)
     expect(run).toHaveBeenCalledWith('gh', [
       'run', 'watch', '12345', '--repo', options.repo, '--exit-status', '--interval', '15',
     ], { stdio: 'inherit', timeout: 7200000 })
@@ -134,7 +140,7 @@ if (name === 'git') {
 } else if (name === 'gh') {
   if (args[0] === 'workflow') {
     fs.writeFileSync(process.env.MOCK_REQUEST, args.find(a => a.startsWith('request_id=')).slice(11))
-  } else if (args[1] === 'list') {
+  } else if (args[0] === 'api' && args[1].includes('/actions/workflows/')) {
     console.log(JSON.stringify([{databaseId: 12345, displayTitle: '45flow-web:' + fs.readFileSync(process.env.MOCK_REQUEST, 'utf8')}]))
   } else if (args[1] === 'watch') {
     if (process.env.MOCK_WEB_FAIL === '1') process.exit(1)
@@ -201,7 +207,7 @@ if (name === 'git') {
   it('refuses dirty desktop sources before dispatching any web package publication', () => {
     const { error, calls } = orchestrate(false, { MOCK_DIRTY: '1' })
     expect(error?.status).toBe(1)
-    expect(String(error?.stderr)).toContain('Desktop release source changed or is dirty')
+    expect(String(error?.stderr)).toContain('Local release source is dirty')
     expect(calls.some(([command]) => command === 'gh')).toBe(false)
   })
 
