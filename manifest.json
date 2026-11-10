@@ -3,7 +3,7 @@
   "name": "45flow-web",
   "title": "45Flow Web UI",
   "description": "45Flow browser UI served by Houston Broadcaster at /app/",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "build_number": "1",
   "stable": false,
   "author": "45Drives <info@45drives.com>",
