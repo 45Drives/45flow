@@ -397,8 +397,8 @@
           class="relative aspect-video w-full rounded-md border border-default bg-gradient-to-br from-slate-700/40 via-slate-800/40 to-slate-900/60 overflow-hidden select-none"
           :class="{ 
             'cursor-grabbing': isDragging, 
-            'cursor-grab': !isDragging && imageOn && watermarkPreviewUrl && settings.position.anchor !== 'center',
-            'cursor-default': settings.position.anchor === 'center'
+            'cursor-grab': !isDragging && canDragPreview,
+            'cursor-default': !canDragPreview
           }"
           @mousedown="startDrag"
         >
@@ -421,8 +421,10 @@
         </div>
         <p class="text-xs text-muted italic">
           <span v-if="isDragging" class="text-primary font-semibold">Dragging...</span>
-          <span v-else-if="settings.position.anchor === 'center'" class="opacity-60">Center position is fixed — use advanced controls to adjust offsets</span>
-          <span v-else>Drag the watermark to position it or use advanced controls</span>
+          <span v-else-if="text?.layout === 'tiled'" class="opacity-60">Tiled text covers the frame — position does not apply</span>
+          <span v-else-if="previewPosition.anchor === 'center'" class="opacity-60">Center position is fixed — choose another anchor to enable dragging</span>
+          <span v-else-if="canDragPreview">Drag the watermark to position it or use position controls</span>
+          <span v-else>Enable a watermark to preview its position</span>
         </p>
         <p class="text-[10px] text-muted/50 italic">
           For images, actual placement may vary slightly depending on dimensions and aspect ratio.
@@ -485,7 +487,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import type { WatermarkSettings, PositionAnchor, TextWatermarkLayer, WatermarkFont, TemplateSample } from '../types/watermark'
+import type { WatermarkSettings, WatermarkPosition, PositionAnchor, TextWatermarkLayer, WatermarkFont, TemplateSample } from '../types/watermark'
 import {
   WATERMARK_TEXT_VARIABLES,
   TEXT_TEMPLATE_MAX_LENGTH,
@@ -743,30 +745,32 @@ async function handleSavePreset() {
 const showAdvancedPosition = ref(false)
 
 // Drag-to-position state
+const previewPosition = computed(() => text.value?.settings.position || settings.value.position)
+const previewDragLayer = computed(() => {
+  if (text.value) return text.value.layout === 'single' ? 'text' : null
+  return imageOn.value && props.watermarkPreviewUrl ? 'image' : null
+})
+const canDragPreview = computed(() => !!previewDragLayer.value && previewPosition.value.anchor !== 'center')
 const previewContainer = ref<HTMLElement | null>(null)
 const isDragging = ref(false)
 const dragStartX = ref(0)
 const dragStartY = ref(0)
-const dragStartSettings = ref<{ x: number; y: number } | null>(null)
+const dragStartSettings = ref<WatermarkPosition | null>(null)
+const dragLayer = ref<'text' | 'image' | null>(null)
 
 /**
  * Start dragging watermark
  */
 function startDrag(event: MouseEvent) {
-  if (!imageOn.value || !props.watermarkPreviewUrl || !previewContainer.value) return
-  
-  // Disable dragging when center anchor is selected (offsets don't apply)
-  if (settings.value.position.anchor === 'center') return
+  if (!canDragPreview.value || !previewContainer.value || event.button !== 0) return
   
   event.preventDefault()
   
   isDragging.value = true
   dragStartX.value = event.clientX
   dragStartY.value = event.clientY
-  dragStartSettings.value = {
-    x: settings.value.position.x,
-    y: settings.value.position.y,
-  }
+  dragStartSettings.value = { ...previewPosition.value }
+  dragLayer.value = previewDragLayer.value
   
   // Attach global listeners so drag works even when mouse leaves preview
   document.addEventListener('mousemove', drag)
@@ -778,12 +782,16 @@ function startDrag(event: MouseEvent) {
  */
 function drag(event: MouseEvent) {
   if (!isDragging.value || !dragStartSettings.value || !previewContainer.value) return
+  if (!canDragPreview.value || dragLayer.value !== previewDragLayer.value) {
+    stopDrag()
+    return
+  }
   
   const rect = previewContainer.value.getBoundingClientRect()
   let deltaX = event.clientX - dragStartX.value
   let deltaY = event.clientY - dragStartY.value
   
-  const { position } = settings.value
+  const position = dragStartSettings.value
   
   // Invert delta for right/bottom anchors so watermark follows cursor
   // For 'right' anchors: x offset is from right edge, so moving right = decrease offset
@@ -795,24 +803,31 @@ function drag(event: MouseEvent) {
   if (invertY) deltaY = -deltaY
   
   // Convert pixel delta to position units
+  let x: number
+  let y: number
   if (position.xUnit === '%') {
     const deltaXPercent = (deltaX / rect.width) * 100
     // Allow positioning anywhere, clamp to reasonable bounds
     const newX = Math.max(-50, Math.min(100, dragStartSettings.value.x + deltaXPercent))
-    updatePosition({ x: Math.round(newX * 10) / 10 })
+    x = Math.round(newX * 10) / 10
   } else {
     // Allow positioning anywhere in pixel mode
     const newX = Math.max(-500, Math.min(1000, dragStartSettings.value.x + deltaX))
-    updatePosition({ x: Math.round(newX) })
+    x = Math.round(newX)
   }
   
   if (position.yUnit === '%') {
     const deltaYPercent = (deltaY / rect.height) * 100
     const newY = Math.max(-50, Math.min(100, dragStartSettings.value.y + deltaYPercent))
-    updatePosition({ y: Math.round(newY * 10) / 10 })
+    y = Math.round(newY * 10) / 10
   } else {
     const newY = Math.max(-500, Math.min(1000, dragStartSettings.value.y + deltaY))
-    updatePosition({ y: Math.round(newY) })
+    y = Math.round(newY)
+  }
+  if (dragLayer.value === 'text') {
+    patchTextSettings({ position: { ...position, x, y } })
+  } else {
+    updatePosition({ x, y })
   }
 }
 
@@ -824,6 +839,7 @@ function stopDrag() {
   
   isDragging.value = false
   dragStartSettings.value = null
+  dragLayer.value = null
   
   // Remove global listeners
   document.removeEventListener('mousemove', drag)
