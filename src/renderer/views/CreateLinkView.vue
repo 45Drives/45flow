@@ -1,6 +1,6 @@
 <template>
 	<div class="h-full min-h-0 flex items-start justify-center pt-2 overflow-y-auto">
-		<div class="mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8">
+		<div class="mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8 pb-6">
 			<div class="grid w-full grid-cols-1 gap-4 text-xl min-w-0">
 				<FlowCard variant="plain" class="w-full bg-well rounded-md shadow-xl min-w-0">
 					<div class="ss-toned-panel flex flex-col gap-3 text-left min-w-0 p-3">
