@@ -2876,7 +2876,7 @@ async function checkPublicSharing() {
         publicSharingCheckResult.value = data;
         await loadPublicSharingStatus();
     } catch (e: any) {
-        pushNotification(new Notification({ title: 'Check failed', body: e?.message || 'Could not check public sharing.', level: 'error' }));
+        pushNotification(new Notification('Check failed', e?.message || 'Could not check public sharing.', 'error'));
     } finally {
         publicSharingBusy.value = false;
     }
@@ -2889,10 +2889,10 @@ async function repairPublicSharing() {
     try {
         const data = await apiFetch('/api/settings/public-sharing/repair', { method: 'POST', timeoutMs: 60000 });
         publicSharingRepairResult.value = data;
-        pushNotification(new Notification({ title: 'Repair complete', body: data.ok ? 'Public sharing has been repaired.' : 'Repair completed with issues.', level: data.ok ? 'info' : 'warning' }));
+        pushNotification(new Notification('Repair complete', data.ok ? 'Public sharing has been repaired.' : 'Repair completed with issues.', data.ok ? 'info' : 'warning'));
         await loadPublicSharingStatus();
     } catch (e: any) {
-        pushNotification(new Notification({ title: 'Repair failed', body: e?.message || 'Could not repair public sharing.', level: 'error' }));
+        pushNotification(new Notification('Repair failed', e?.message || 'Could not repair public sharing.', 'error'));
     } finally {
         publicSharingRepairBusy.value = false;
         publicSharingBusy.value = false;
@@ -2904,11 +2904,11 @@ async function regenerateLocalCert() {
     publicSharingBusy.value = true;
     try {
         const data = await apiFetch('/api/settings/public-sharing/regenerate-self-signed', { method: 'POST', timeoutMs: 30000 });
-        pushNotification(new Notification({ title: 'Certificate regenerated', body: data.message || 'Local certificate has been regenerated.', level: 'info' }));
+        pushNotification(new Notification('Certificate regenerated', data.message || 'Local certificate has been regenerated.', 'info'));
         await loadPublicSharingStatus();
         await loadCertStatus();
     } catch (e: any) {
-        pushNotification(new Notification({ title: 'Regeneration failed', body: e?.message || 'Could not regenerate certificate.', level: 'error' }));
+        pushNotification(new Notification('Regeneration failed', e?.message || 'Could not regenerate certificate.', 'error'));
     } finally {
         publicSharingRegenBusy.value = false;
         publicSharingBusy.value = false;

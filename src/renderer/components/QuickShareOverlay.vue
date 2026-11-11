@@ -30,10 +30,13 @@
   </Transition>
 
   <!-- Modal: shown after files are dropped -->
-  <FlowModal :model-value="showModal && !minimized" size="2xl" class="h-[85vh]" data-tour="qs-modal" :busy="busy"
+  <FlowModal :model-value="showModal && !minimized" :size="qsView === 'setup' ? '2xl' : 'lg'"
+    :class="qsView === 'setup' ? 'h-[85vh]' : ''" data-tour="qs-modal" :busy="busy"
     body-class="flex flex-col" @close="cancel">
       <template #title>
-          Upload {{ droppedFiles.length === 1 ? `"${droppedFiles[0]?.name}"` : `${droppedFiles.length} files` }} to server
+          <template v-if="qsView === 'progress' && uploadPhase === 'done'">Link ready</template>
+          <template v-else-if="qsView === 'progress' && uploadPhase === 'error'">Quick Share didn't finish</template>
+          <template v-else>Upload {{ fileLabel }} to server</template>
           <span v-if="activeConnection" class="text-sm text-muted font-normal ml-2">
             ({{ activeConnection.name }})
           </span>
@@ -44,82 +47,82 @@
           </button>
       </template>
 
-      <!-- Step indicator -->
-      <div class="flex items-center gap-2 text-sm mb-4 shrink-0" data-tour="qs-steps">
-        <span
-          class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold"
-          :class="wizardStep === 1 ? 'bg-primary text-white' : 'bg-well text-muted'"
-        >1</span>
-        <span :class="wizardStep === 1 ? 'font-semibold' : 'text-muted'">Destination</span>
-        <span class="text-muted mx-1">→</span>
-        <span
-          class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold"
-          :class="wizardStep === 2 ? 'bg-primary text-white' : 'bg-well text-muted'"
-        >2</span>
-        <span :class="wizardStep === 2 ? 'font-semibold' : 'text-muted'">Link Options</span>
-        <span class="text-muted mx-1">→</span>
-        <span
-          class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold"
-          :class="wizardStep === 3 ? 'bg-primary text-white' : 'bg-well text-muted'"
-        >3</span>
-        <span :class="wizardStep === 3 ? 'font-semibold' : 'text-muted'">Upload &amp; Share</span>
-      </div>
-
-      <!-- Dropped files list (pinned above the step content, scrolls on its own) -->
-      <div class="shrink-0 border border-default rounded-md p-2 mb-4 max-h-24 overflow-y-auto" aria-label="Files to upload">
+      <!-- Dropped files list (pinned above the options, scrolls on its own) -->
+      <div v-show="qsView === 'setup'" class="shrink-0 border border-default rounded-md p-2 mb-4 max-h-24 overflow-y-auto" aria-label="Files to upload" data-tour="qs-files">
         <div v-for="f in droppedFiles" :key="f.path" class="flex items-center justify-between text-sm py-0.5 min-w-0">
           <span class="truncate min-w-0 flex-1" :title="f.path">{{ f.name }}</span>
           <span class="text-muted ml-2 shrink-0">{{ formatSize(f.size) }}</span>
         </div>
       </div>
 
-      <!-- Step content area -->
+      <!-- Content area -->
       <div class="flex-1 min-h-0 flex flex-col overflow-y-auto">
 
-      <!-- ===== STEP 1: Destination ===== -->
-      <section v-show="wizardStep === 1" data-tour="qs-step-destination">
-        <div v-if="!rawActiveProject" class="mb-3 flex flex-col gap-1">
-          <label for="qs-project-select" class="font-semibold">Project</label>
-          <p class="text-xs text-muted">Quick Share uploads into a project. Pick the project these files belong to.</p>
-          <p v-if="projectsLoading" class="text-sm text-muted">Loading projects…</p>
-          <p v-else-if="!projectOptions.length" class="text-sm text-muted">
-            No projects yet. Close this, create a project from the Projects screen, then drop your files again.
-          </p>
-          <select v-else id="qs-project-select" v-model="pickedProjectId"
-            class="input-textlike px-3 py-2 border border-default rounded-lg bg-default text-sm max-w-md"
-            @change="onPickedProjectChange">
-            <option :value="null" disabled>Choose a project</option>
-            <option v-for="p in projectOptions" :key="p.id" :value="p.id">{{ p.name }}</option>
-          </select>
-        </div>
-        <FolderPicker
-          v-if="activeProject"
-          :key="`${destPickerKey}-${activeProject.id}`"
-          v-model="destFolder"
-          :apiFetch="apiFetch"
-          useCase="upload"
-          subtitle="Choose where to upload on the server."
-          :auto-detect-roots="!activeProject"
-          :allow-entire-tree="!activeProject"
-          :is-root-user="isRootUser"
-          :hide-project-controls="!!activeProject"
-          :startDir="activeProject?.root_dir || undefined"
-          v-model:project="projectBase"
-          v-model:dest="destFolder"
-        />
-      </section>
+      <!-- ===== Setup: where it goes + how the link works, all on one screen ===== -->
+      <section v-show="qsView === 'setup'" class="qs-lane shrink-0 flex flex-col gap-4" data-tour="qs-step-options">
+        <!-- Where the files go -->
+        <div class="flex flex-col gap-2 min-w-0" data-tour="qs-step-destination">
+          <div v-if="!rawActiveProject" class="flex flex-wrap items-center gap-3 min-w-0">
+            <label for="qs-project-select" class="font-semibold whitespace-nowrap shrink-0 qs-label">Project:</label>
+            <p v-if="projectsLoading" class="text-sm text-muted">Loading projects…</p>
+            <p v-else-if="!projectOptions.length" class="text-sm text-muted">
+              No projects yet. Close this, create a project from the Projects screen, then drop your files again.
+            </p>
+            <select v-else id="qs-project-select" v-model="pickedProjectId"
+              class="input-textlike px-3 py-2 border border-default rounded-lg bg-default text-sm min-w-[14rem]"
+              @change="onPickedProjectChange">
+              <option :value="null" disabled>Choose a project</option>
+              <option v-for="p in projectOptions" :key="p.id" :value="p.id">{{ p.name }}</option>
+            </select>
+          </div>
 
-      <!-- ===== STEP 2: Link Options ===== -->
-      <section v-show="wizardStep === 2" class="qs-lane min-h-0 flex flex-col gap-4" data-tour="qs-step-options">
-        <!-- ── Essential options (always visible) ── -->
-        <div class="flex flex-col gap-3">
+          <div class="flex items-center gap-3 min-w-0" data-tour="qs-destination">
+            <label class="font-semibold whitespace-nowrap shrink-0 qs-label">Upload to:</label>
+            <fieldset :disabled="!activeProject" class="flex items-center gap-2 min-w-0 flex-1" :class="{ 'opacity-50': !activeProject }">
+              <PathInput
+                v-model="destInput"
+                :apiFetch="pathInputApiFetch"
+                :dirsOnly="true"
+                :placeholder="activeProject ? 'Folder on the server' : 'Choose a project first'"
+                class="min-w-0 flex-1"
+              />
+              <button type="button" class="btn btn-secondary text-sm px-3 py-1.5" :aria-expanded="showDestBrowser"
+                @click="showDestBrowser = !showDestBrowser">{{ showDestBrowser ? 'Done' : 'Browse…' }}</button>
+            </fieldset>
+          </div>
+          <p v-if="destIsFilesystemRoot" class="text-xs text-flow-danger -mt-1">
+            The filesystem root (/) can't receive uploads. Choose a folder.
+          </p>
+          <p v-else class="text-xs text-muted -mt-1">
+            Files go into the project folder unless you pick a subfolder.
+          </p>
+          <FolderPicker
+            v-if="showDestBrowser && activeProject"
+            :key="`${destPickerKey}-${activeProject.id}`"
+            v-model="destFolder"
+            :apiFetch="apiFetch"
+            useCase="upload"
+            subtitle=""
+            :auto-detect-roots="false"
+            :allow-entire-tree="false"
+            :is-root-user="isRootUser"
+            :hide-project-controls="true"
+            :startDir="activeProject.root_dir || undefined"
+            v-model:project="projectBase"
+            v-model:dest="destFolder"
+            :compact="true"
+          />
+        </div>
+
+        <!-- Link essentials -->
+        <div class="flex flex-col gap-3 border-t border-default pt-4">
           <!-- Expiry -->
-          <div class="flex items-center gap-3 min-w-0" data-tour="qs-expiry">
-            <label class="font-semibold whitespace-nowrap shrink-0">Expires in:</label>
+          <div class="flex flex-wrap items-center gap-3 min-w-0" data-tour="qs-expiry">
+            <label class="font-semibold whitespace-nowrap shrink-0 qs-label">Expires in:</label>
             <div class="flex items-center gap-2 min-w-0">
               <input type="number" min="0" step="1" v-model.number="expiresValue"
-                class="input-textlike border rounded px-3 py-2 w-20" />
-              <select v-model="expiresUnit" class="input-textlike border rounded px-3 py-2 w-28">
+                class="input-textlike border rounded px-3 py-2 w-20" aria-label="Expires in" />
+              <select v-model="expiresUnit" class="input-textlike border rounded px-3 py-2 w-28" aria-label="Expiry unit">
                 <option value="hours">hours</option>
                 <option value="days">days</option>
                 <option value="weeks">weeks</option>
@@ -137,8 +140,8 @@
           </p>
 
           <!-- Network access -->
-          <div class="flex items-center gap-3 min-w-0" data-tour="qs-network">
-            <span class="font-semibold whitespace-nowrap shrink-0">Network:</span>
+          <div class="flex flex-wrap items-center gap-3 min-w-0" data-tour="qs-network">
+            <span class="font-semibold whitespace-nowrap shrink-0 qs-label">Network:</span>
             <div class="flex gap-2" role="radiogroup" aria-label="Network Access">
               <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer select-none transition border border-default bg-default hover:bg-well/40">
                 <input type="radio" name="qs-link-access" :value="true" :checked="usePublicBase === true" @change="usePublicBase = true" class="h-4 w-4" />
@@ -152,22 +155,40 @@
             <button type="button" @click="showPortFwdModal = true" class="text-xs text-primary hover:underline whitespace-nowrap">
               Learn how to set up port forwarding
             </button>
+            <CheckPortForwarding v-if="usePublicBase" inline :apiFetch="apiFetch" endpoint="/api/forwarding/check"
+              data-tour="qs-port-check" />
           </div>
         </div>
 
-        <!-- ── Summary of current settings ── -->
-        <div class="text-xs text-muted flex flex-wrap gap-x-4 gap-y-1">
-          <span>Access: {{ accessMode === 'open' ? 'Anyone' : accessMode === 'open_password' ? 'Password' : `${accessUsers.length} client(s)${accessGroups.length ? `, ${accessGroups.length} team(s)` : ''}` }}</span>
-          <span v-if="hasVideo">Proxy Files: {{ proxyQualities.join(', ') || 'none' }}</span>
-          <span v-if="hasMedia">Watermark: {{ watermarkEnabled ? 'on' : 'off' }}</span>
+        <!-- Access mode stays visible: invite-only links can't be created until someone is invited -->
+        <div class="border-t border-default pt-4">
+          <LinkAccessMode
+            v-model="accessMode"
+            v-model:password="password"
+            v-model:showPassword="showPassword"
+            v-model:allowOpenComments="allowOpenComments"
+            :accessCount="accessUsers.length"
+            :accessSatisfied="accessUsers.length > 0"
+            dataTour="qs-access-mode"
+            radioName="qs-access-mode"
+            :compact="true"
+            :showSummary="false"
+            @openUserModal="userModalOpen = true"
+            @openCategoriesModal="categoriesModalOpen = true"
+          />
         </div>
+
+        <LinkEmailComposer ref="emailComposer" v-model="emailEnabled" :people="composerPeople" :disabled="busy"
+          @update:recipients="(v) => (emailRecipients = v)" @update:invalid="(v) => (emailInvalid = v)" />
 
         <!-- ── Advanced Options (collapsible) ── -->
         <Disclosure v-slot="{ open }" as="div" class="border border-default rounded-lg bg-default" data-tour="qs-advanced">
           <DisclosureButton class="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left rounded-lg hover:bg-well/30 transition" data-tour="qs-advanced-btn">
             <div class="min-w-0">
               <span class="font-semibold text-sm">Advanced Options</span>
-              <span class="text-xs text-muted ml-2">Title, access control{{ hasMedia ? ', media options' : '' }}</span>
+              <span class="text-xs text-muted ml-2">
+                Link title{{ hasVideo ? `, proxy files (${proxyQualities.join(', ') || 'none'})` : '' }}{{ hasMedia ? `, watermark ${watermarkEnabled ? 'on' : 'off'}` : '' }}
+              </span>
             </div>
             <ChevronDownIcon class="h-5 w-5 text-muted transition-transform duration-200" :class="open ? 'rotate-180' : ''" />
           </DisclosureButton>
@@ -175,27 +196,11 @@
           <DisclosurePanel class="px-4 pb-4 pt-1 border-t border-default flex flex-col gap-4" data-tour="qs-advanced-panel">
             <!-- Link title -->
             <div class="flex flex-wrap items-center gap-3 min-w-0" data-tour="qs-link-title">
-              <label class="font-semibold text-sm whitespace-nowrap">Link Title:</label>
-              <input type="text" v-model.trim="linkTitle"
+              <label for="qs-link-title" class="font-semibold text-sm whitespace-nowrap">Link Title:</label>
+              <input id="qs-link-title" type="text" v-model.trim="linkTitle"
                 class="input-textlike border rounded px-3 py-2 flex-1 min-w-[12rem]"
                 placeholder="Optional title" />
             </div>
-
-            <!-- Access mode -->
-            <LinkAccessMode
-              v-model="accessMode"
-              v-model:password="password"
-              v-model:showPassword="showPassword"
-              v-model:allowOpenComments="allowOpenComments"
-              :accessCount="accessUsers.length"
-              :accessSatisfied="accessUsers.length > 0"
-              dataTour="qs-access-mode"
-              radioName="qs-access-mode"
-              :compact="true"
-              :showSummary="false"
-              @openUserModal="userModalOpen = true"
-              @openCategoriesModal="categoriesModalOpen = true"
-            />
 
             <!-- Video/Image options (shown for media files) -->
             <VideoOptionsPanel
@@ -225,7 +230,7 @@
                 <span>Client-side transcoding: <strong class="text-default">Enabled</strong>{{ _clientHwAccelOn ? ' (GPU)' : ' (CPU)' }}</span>
               </template>
               <template v-else-if="_isWebView">
-                <span class="text-blue-500 dark:text-blue-400">ⓘ</span>
+                <span class="text-flow-info">ⓘ</span>
                 <span>Client-side transcoding: <strong>Unavailable in the web view</strong> — the server will handle transcoding. Use 45Flow Desktop for local processing.</span>
               </template>
               <template v-else>
@@ -273,8 +278,8 @@
         @categories-updated="stagedCommentCategories = $event"
       />
 
-      <!-- ===== STEP 3: Upload & Share Progress ===== -->
-      <section v-show="wizardStep === 3" data-tour="qs-step-upload">
+      <!-- ===== Upload & Share progress / result ===== -->
+      <section v-show="qsView === 'progress'" data-tour="qs-step-upload">
         <div v-if="uploadPhase === 'validating'" class="flex items-center gap-3 text-sm">
           <span class="inline-block w-4 h-4 border-2 border-default border-t-transparent rounded-full animate-spin"></span>
           Checking all files before uploading…
@@ -304,40 +309,34 @@
           Generating share link…
         </div>
 
-        <div v-else-if="uploadPhase === 'done'" class="flex flex-col gap-3">
-          <div class="text-sm font-semibold text-flow-success">Upload complete &amp; link generated!</div>
-          <div class="p-3 border rounded flex flex-col items-center min-w-0 bg-default">
-            <code class="max-w-full break-all">{{ viewUrl }}</code>
-            <div class="flex flex-wrap gap-2 mt-2">
-              <button class="btn btn-secondary" @click="copyLink">Copy</button>
-              <button class="btn btn-primary" @click="openInBrowser">Open</button>
-            </div>
+        <div v-else-if="uploadPhase === 'done'" class="flex flex-col gap-4">
+          <FlowNotice tone="success" size="sm" hide-icon>
+            Uploaded {{ fileLabel }} to <span class="font-mono text-xs break-all">{{ uploadedTo }}</span>.
+            The link is ready to send.
+          </FlowNotice>
+          <div class="flex items-center gap-2 min-w-0">
+            <input :value="viewUrl" readonly aria-label="Share link" @focus="($event.target as HTMLInputElement).select()"
+              class="input-textlike font-mono text-sm px-3 py-2 border border-default rounded-lg flex-1 min-w-0" />
+            <button class="btn btn-primary" @click="copyLink">Copy</button>
+            <button class="btn btn-secondary" @click="openInBrowser">Open</button>
           </div>
-          <EmailInvitationPanel v-if="createdLinkId" compact :key="createdLinkId" :link-id="createdLinkId" :api-fetch="apiFetch" />
+          <EmailInvitationPanel v-if="createdLinkId" compact :key="createdLinkId" :link-id="createdLinkId" :api-fetch="apiFetch" :auto-send="createdLinkEmails" />
         </div>
 
-        <div v-else-if="uploadPhase === 'error'" class="flex flex-col gap-2">
-          <div class="text-sm font-semibold text-flow-danger">Error</div>
-          <p class="text-sm text-flow-danger whitespace-pre-wrap break-words">{{ errorMsg }}</p>
-        </div>
+        <FlowNotice v-else-if="uploadPhase === 'error'" tone="danger" size="sm" live>
+          <span class="whitespace-pre-wrap break-words">{{ errorMsg }}</span>
+        </FlowNotice>
       </section>
 
-      </div> <!-- end step content area -->
+      </div> <!-- end content area -->
 
       <!-- Footer buttons -->
-      <template #footer>
-      <div class="flex justify-end gap-2 w-full" data-tour="qs-footer">
-        <button v-if="wizardStep > 1 && uploadPhase === 'idle'" class="btn btn-secondary" @click="wizardStep--" :disabled="busy">
-          Back
-        </button>
-        <button v-if="wizardStep === 1" class="btn btn-primary" :disabled="!destFolder || !activeProject" @click="wizardStep = 2">
-          Next
-        </button>
-        <button v-else-if="wizardStep === 2" class="btn btn-primary" :disabled="!canProceed" @click="startUploadAndShare">
-          Upload &amp; Share
-        </button>
-        <button v-else-if="uploadPhase === 'done' || uploadPhase === 'error'" class="btn btn-dismiss" @click="cancel">
-          Close
+      <!-- Done/error screens close from the header Close button, so no footer there. -->
+      <template v-if="qsView === 'setup'" #footer>
+      <div class="flex flex-wrap items-center justify-end gap-3 w-full" data-tour="qs-footer">
+        <p v-if="shareBlockReason" class="text-sm text-muted mr-auto" aria-live="polite">{{ shareBlockReason }}</p>
+        <button class="btn btn-primary" :disabled="!canShare" @click="startUploadAndShare">
+          {{ emailRecipients.length ? 'Upload, Share & Email' : 'Upload & Share' }}
         </button>
       </div>
       </template>
@@ -366,11 +365,14 @@ import { tourQuickShareOpen, tourQuickShareStep, tourQuickShareShowDone, quickSh
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
 import FolderPicker from './FolderPicker.vue'
+import PathInput from './PathInput.vue'
+import CheckPortForwarding from './CheckPortForwarding.vue'
 import AddUsersModal from './modals/AddUsersModal.vue'
 import PortForwardingModal from './modals/PortForwardingModal.vue'
 import CategoryManagementModal from './modals/CategoryManagementModal.vue'
 import LinkAccessMode from './LinkAccessMode.vue'
-import EmailInvitationPanel from './EmailInvitationPanel.vue'
+import EmailInvitationPanel, { type InvitePerson } from './EmailInvitationPanel.vue'
+import LinkEmailComposer from './LinkEmailComposer.vue'
 import VideoOptionsPanel from './VideoOptionsPanel.vue'
 import WatermarkCustomizer from './WatermarkCustomizer.vue'
 import WatermarkPreview from './WatermarkPreview.vue'
@@ -380,6 +382,7 @@ import type { WatermarkSettings, Default45FlowWatermark } from '../types/waterma
 import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../types/watermark'
 import type { Commenter } from '../typings/electron'
 import FlowModal from '../ui/FlowModal.vue'
+import FlowNotice from '../ui/FlowNotice.vue'
 
 // Cast to avoid TS plugin resolution issues with global Window augmentation
 const electron = window.electron as any
@@ -425,8 +428,7 @@ async function loadProjectOptions() {
 }
 
 function onPickedProjectChange() {
-  destFolder.value = ''
-  projectBase.value = ''
+  resetDestination()
 }
 const transfer = useTransferProgress()
 const currentServer = inject(currentServerInjectionKey)!
@@ -442,108 +444,73 @@ const { onboarding, markDone } = useOnboarding()
 /** Cleanup helper — reset all Quick Share tour state */
 function cleanupQuickShareTour() {
   tourQuickShareShowDone.value = false
-  tourQuickShareStep.value = 1
+  tourQuickShareStep.value = 'setup'
   tourQuickShareOpen.value = false
 }
 
 const quickShareTourSteps = computed<TourStep[]>(() => [
-  // ── Quick Share Step 1: Modal overview ──
+  // ── Overview ──
   {
     target: '[data-tour="qs-modal"]',
-    message: 'This is the Quick Share screen.\n\nWhen you drop files onto 45Flow from most screens, this wizard opens automatically. It walks you through uploading files to the server and generating a share link — all in three quick steps.\n\nThe file list at the top shows what you dropped. Here we\'re using a sample file for the tour.',
+    message: 'This is Quick Share.\n\nWhen you drop files onto 45Flow from most screens, this opens automatically. Everything is on one screen: pick where the files go, set up the link, then click Upload & Share.\n\nThe list at the top shows what you dropped. Here we\'re using a sample file for the tour.',
     beforeShow: () => {
-      tourQuickShareStep.value = 1
+      tourQuickShareStep.value = 'setup'
       tourQuickShareShowDone.value = false
       tourQuickShareOpen.value = true
     },
   },
-  // ── Quick Share Step 1: Step indicator ──
-  {
-    target: '[data-tour="qs-steps"]',
-    message: 'The step indicator shows your progress.\n\nStep 1 is Destination — choose where on the server to upload. Step 2 is Link Options — set expiry, access, and video settings. Step 3 is Upload & Share — monitor the upload and grab your link.',
-    beforeShow: () => {
-      tourQuickShareStep.value = 1
-      tourQuickShareOpen.value = true
-    },
-  },
-  // ── Quick Share Step 1: Destination picker ──
+  // ── Destination ──
   {
     target: '[data-tour="qs-step-destination"]',
-    message: 'In Step 1, you pick where the files go.\n\nIf you are not inside a project, choose the project first. Then use the folder browser to pick a folder inside it. Once you\'ve selected a folder, click Next to continue.',
-    beforeShow: () => {
-      tourQuickShareStep.value = 1
-      tourQuickShareOpen.value = true
-    },
-  },
-  // ── Quick Share Step 2: Link Options overview ──
-  {
-    target: '[data-tour="qs-step-options"]',
-    message: 'Step 2 is where you configure your share link before uploading.\n\nLet\'s walk through each option.',
+    message: 'Files go into the project folder unless you change it.\n\nIf you are not inside a project, choose the project first. To use a subfolder, type a path or click Browse… to pick or create one.',
     beforeShow: () => {
       tourQuickShareOpen.value = true
-      tourQuickShareStep.value = 2
+      tourQuickShareStep.value = 'setup'
     },
   },
-  // ── Quick Share Step 2: Expiry ──
+  // ── Expiry ──
   {
     target: '[data-tour="qs-expiry"]',
     message: 'Set how long the link stays active.\n\nType a custom value or use the quick presets — 1 hour, 1 day, 1 week, or Never for a permanent link.',
     beforeShow: () => {
       tourQuickShareOpen.value = true
-      tourQuickShareStep.value = 2
+      tourQuickShareStep.value = 'setup'
     },
   },
-  // ── Quick Share Step 2: Network ──
+  // ── Network ──
   {
     target: '[data-tour="qs-network"]',
-    message: 'Choose the network for your share link.\n\nLocal Network generates an internal URL that only works on the same network as the server. External (Internet) uses your public domain or IP so anyone outside your network can access it (this requires port forwarding to be set up to your server).\n\nClick "Learn how to set up port forwarding" to see detailed setup instructions.',
+    message: 'Choose the network for your share link.\n\nLocal Network generates an internal URL that only works on the same network as the server. External (Internet) uses your public domain or IP so anyone outside your network can access it (this requires port forwarding to be set up to your server).\n\nClick "Learn how to set up port forwarding" to see detailed setup instructions. With External selected, click "Check port" to test it: the light turns green when the server is reachable from the internet and red when it isn\'t.',
     beforeShow: () => {
       tourQuickShareOpen.value = true
-      tourQuickShareStep.value = 2
+      tourQuickShareStep.value = 'setup'
     },
   },
-  // ── Quick Share Step 2: Advanced Options ──
-  {
-    target: '[data-tour="qs-advanced-panel"]',
-    message: 'The Advanced Options panel gives you finer control over your link.\n\nLet\'s go through each setting.',
-    beforeShow: async () => {
-      tourQuickShareOpen.value = true
-      tourQuickShareStep.value = 2
-      await new Promise(r => setTimeout(r, 100))
-      const btn = document.querySelector<HTMLElement>('[data-tour="qs-advanced-btn"]')
-      const panel = document.querySelector('[data-tour="qs-advanced-panel"]')
-      if (btn && !panel) btn.click()
-    },
-  },
-  // ── Quick Share Step 2: Link Title ──
-  {
-    target: '[data-tour="qs-link-title"]',
-    message: 'Give your link a descriptive title.\n\nThis is optional but helps you identify the link later in the dashboard.',
-    beforeShow: async () => {
-      tourQuickShareOpen.value = true
-      tourQuickShareStep.value = 2
-      await new Promise(r => setTimeout(r, 100))
-      const btn = document.querySelector<HTMLElement>('[data-tour="qs-advanced-btn"]')
-      const panel = document.querySelector('[data-tour="qs-advanced-panel"]')
-      if (btn && !panel) btn.click()
-    },
-  },
-  // ── Quick Share Step 2: Access Mode ──
+  // ── Access mode ──
   {
     target: '[data-tour="qs-access-mode"]',
     message: isPremiumActive.value
       ? 'Control who can access your shared files.\n\n• Invited clients & teams (default) — only specific client accounts and teams can open it.\n• Anyone with the link — no sign-in needed.\n• Password protected — recipients enter a shared password.\n\nComments can be toggled for open and password-protected links.\n\nWhen comments are enabled, you can stage Comment Categories so review notes are organized from the start.'
       : 'Control who can access your shared files.\n\n• Invited clients & teams (default) — only specific client accounts and teams can open it.\n• Anyone with the link — no sign-in needed.\n• Password protected — recipients enter a shared password.',
+    beforeShow: () => {
+      tourQuickShareOpen.value = true
+      tourQuickShareStep.value = 'setup'
+    },
+  },
+  // ── Advanced Options: title ──
+  {
+    target: '[data-tour="qs-link-title"]',
+    message: 'Advanced Options holds the extras.\n\nGive your link a descriptive title. This is optional but helps you identify the link later in the dashboard.',
     beforeShow: async () => {
       tourQuickShareOpen.value = true
-      tourQuickShareStep.value = 2
+      tourQuickShareStep.value = 'setup'
       await new Promise(r => setTimeout(r, 100))
       const btn = document.querySelector<HTMLElement>('[data-tour="qs-advanced-btn"]')
       const panel = document.querySelector('[data-tour="qs-advanced-panel"]')
       if (btn && !panel) btn.click()
     },
   },
-  // ── Quick Share Step 2: Video Options ──
+  // ── Advanced Options: media ──
   {
     target: '[data-tour="qs-video-options"]',
     message: isPremiumActive.value
@@ -551,20 +518,30 @@ const quickShareTourSteps = computed<TourStep[]>(() => [
       : 'When sharing video or image files, media processing options appear here.\n\nFor video:\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Proxy files (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nFor images and video:\n• A basic watermark can be applied (bottom-right). Upgrade to Pro for full customization of position, size, and opacity.' + clientTranscodeTourTip,
     beforeShow: async () => {
       tourQuickShareOpen.value = true
-      tourQuickShareStep.value = 2
+      tourQuickShareStep.value = 'setup'
       await new Promise(r => setTimeout(r, 100))
       const btn = document.querySelector<HTMLElement>('[data-tour="qs-advanced-btn"]')
       const panel = document.querySelector('[data-tour="qs-advanced-panel"]')
       if (btn && !panel) btn.click()
     },
   },
-  // ── Quick Share Step 3: Upload & Share (done state) ──
+  // ── Footer ──
   {
-    target: '[data-tour="qs-step-upload"]',
-    message: 'Step 3 handles the upload and link generation.\n\nYou\'ll see per-file progress bars while files transfer, then your share link appears with Copy and Open buttons. That\'s it — Quick Share in three steps!',
+    target: '[data-tour="qs-footer"]',
+    message: 'When everything is set, click Upload & Share.\n\nIf the button is greyed out, the line beside it says what is still missing — for example, inviting a client to an invite-only link.',
+    placement: 'top',
     beforeShow: () => {
       tourQuickShareOpen.value = true
-      tourQuickShareStep.value = 3
+      tourQuickShareStep.value = 'setup'
+    },
+  },
+  // ── Upload & Share (done state) ──
+  {
+    target: '[data-tour="qs-step-upload"]',
+    message: 'After you click Upload & Share, this screen shows per-file progress while files transfer, then your share link with Copy and Open buttons. You can minimize it and keep working.',
+    beforeShow: () => {
+      tourQuickShareOpen.value = true
+      tourQuickShareStep.value = 'progress'
       tourQuickShareShowDone.value = true
     },
   },
@@ -655,7 +632,7 @@ function onDocDrop(e: DragEvent) {
       const realFiles = pendingDropFiles
       pendingDropFiles = []
       tourQuickShareShowDone.value = false
-      tourQuickShareStep.value = 1
+      tourQuickShareStep.value = 'setup'
       tourQuickShareOpen.value = false
       droppedFiles.value = realFiles
       // Same reset as a normal drop: clears the tour's sample state and loads
@@ -700,12 +677,12 @@ const showModal = ref(false)
 watch(showModal, (v) => { quickShareOverlayOpen.value = v })
 const minimized = ref(false)
 const droppedFiles = ref<DroppedFile[]>([])
-const wizardStep = ref<1 | 2 | 3>(1)
+const qsView = ref<'setup' | 'progress'>('setup')
 const busy = ref(false)
 
 // ── Tour / demo mode ──
 // When the guided tour opens the Quick Share overlay it sets tourQuickShareOpen.
-// We show mock data and drive wizardStep from the tour composable.
+// We show mock data and drive the view from the tour composable.
 const MOCK_FILES: DroppedFile[] = [
   { path: '/home/user/FinalEdit_v3.mp4', name: 'FinalEdit_v3.mp4', size: 1_200_000_000 },
 ]
@@ -715,40 +692,64 @@ const isTourMode = computed(() => tourQuickShareOpen.value)
 watch(tourQuickShareOpen, (open) => {
   if (open) {
     droppedFiles.value = MOCK_FILES
-    wizardStep.value = tourQuickShareStep.value
+    qsView.value = tourQuickShareStep.value
     showModal.value = true
   } else if (!droppedFiles.value.length) {
     // Only reset if no real files were loaded (i.e. tour was cancelled, not completed)
     showModal.value = false
-    wizardStep.value = 1
+    qsView.value = 'setup'
     uploadPhase.value = 'idle'
   }
 })
 
 watch(tourQuickShareStep, (step) => {
   if (!tourQuickShareOpen.value) return
-  wizardStep.value = step
-  if (step === 3 && tourQuickShareShowDone.value) {
+  qsView.value = step
+  if (step === 'progress' && tourQuickShareShowDone.value) {
     uploadPhase.value = 'done'
     viewUrl.value = 'https://example.com/s/demo-link-abc123'
   }
 })
 
 watch(tourQuickShareShowDone, (done) => {
-  if (!tourQuickShareOpen.value || wizardStep.value !== 3) return
+  if (!tourQuickShareOpen.value || qsView.value !== 'progress') return
   if (done) {
     uploadPhase.value = 'done'
     viewUrl.value = 'https://example.com/s/demo-link-abc123'
   }
 })
 
-// Step 1: Destination
+// Destination: defaults to the project folder; Browse… opens the folder picker for a subfolder.
 const destFolder = ref('')
 const projectBase = ref('')
 const configuredProjectRoot = ref('')
 const destPickerKey = ref(0)
+const showDestBrowser = ref(false)
 
-// Step 2: Link options
+function resetDestination() {
+  const root = activeProject.value?.root_dir || ''
+  destFolder.value = root
+  projectBase.value = root
+  showDestBrowser.value = false
+  destPickerKey.value++
+}
+watch(() => activeProject.value?.root_dir, () => resetDestination(), { immediate: true })
+
+// FolderPicker writes "tank/p/sub"; show it as an absolute path in the text box.
+const destInput = computed({
+  get: () => (destFolder.value ? '/' + destFolder.value.replace(/^\/+/, '') : ''),
+  set: (v: string) => { destFolder.value = v },
+})
+
+const destIsFilesystemRoot = computed(() =>
+  !!destFolder.value.trim() && destFolder.value.trim().replace(/\/+/g, '') === ''
+)
+
+// PathInput works with absolute paths, so its listings must come from the filesystem root.
+const pathInputApiFetch = (url: string, init?: RequestInit) =>
+  apiFetch(url + (url.includes('?') ? '&' : '?') + 'fromRoot=1', init)
+
+// Link options
 const expiresValue = ref(1)
 const expiresUnit = ref<'hours' | 'days' | 'weeks'>('days')
 const linkTitle = ref('')
@@ -790,7 +791,7 @@ const effectiveWatermarkName = computed(() => {
   return ''
 })
 
-// Step 3: Progress
+// Progress
 type UploadPhase = 'idle' | 'validating' | 'uploading' | 'generating' | 'done' | 'error'
 const uploadPhase = ref<UploadPhase>('idle')
 const perFileProgress = ref<Record<string, number>>({})
@@ -799,6 +800,16 @@ const perFileDetail = ref<Record<string, string>>({})
 const viewUrl = ref('')
 // Older servers don't return the new link's id; then the email step is hidden.
 const createdLinkId = ref<number | null>(null)
+// Invited people as they were when the link was created, for the email step.
+// Emailing the link: chosen during setup, sent by the result panel once the link exists.
+const emailComposer = ref<InstanceType<typeof LinkEmailComposer> | null>(null)
+const emailEnabled = ref(false)
+const emailRecipients = ref<string[]>([])
+const emailInvalid = ref<string[]>([])
+const createdLinkEmails = ref<string[]>([])
+const composerPeople = computed<InvitePerson[]>(() => accessMode.value === 'restricted'
+  ? accessUsers.value.map(u => ({ name: u.name, user_name: u.username, email: u.user_email }))
+  : [])
 const errorMsg = ref('')
 
 const currentPhaseLabel = computed(() => {
@@ -813,6 +824,11 @@ const overallProgress = computed(() => {
   if (!vals.length) return 0
   return vals.reduce((a, b) => a + b, 0) / vals.length
 })
+
+const fileLabel = computed(() =>
+  droppedFiles.value.length === 1 ? `"${droppedFiles.value[0]?.name}"` : `${droppedFiles.value.length} files`
+)
+const uploadedTo = computed(() => '/' + (destFolder.value || '').replace(/^\/+/, '').replace(/\/+$/, ''))
 
 const minimizedStatusText = computed(() => {
   if (uploadPhase.value === 'done') return 'Done — click to view link'
@@ -882,6 +898,23 @@ const canProceed = computed(() => {
   return true
 })
 
+const shareBlockReason = computed(() => {
+  if (!activeProject.value) return 'Choose a project.'
+  if (!destFolder.value.trim()) return 'Choose a folder on the server.'
+  if (destIsFilesystemRoot.value) return 'Choose a folder other than the filesystem root (/).'
+  if (accessMode.value === 'open_password' && !password.value) return 'Enter a link password.'
+  if (accessMode.value === 'restricted' && !accessUsers.value.length && !accessGroups.value.length) {
+    return 'Invite at least one client or team, or choose who else can open the link.'
+  }
+  if (hasVideo.value && proxyQualities.value.length === 0) return 'Pick at least one proxy file quality in Advanced Options.'
+  if (watermarkEnabled.value && !watermarkFile.value && !selectedExistingWatermark.value) {
+    return 'Choose a watermark image in Advanced Options, or turn the watermark off.'
+  }
+  if (emailInvalid.value.length) return 'Fix the email addresses, or turn off sending by email.'
+  return ''
+})
+const canShare = computed(() => !shareBlockReason.value && !busy.value)
+
 function setPreset(v: number, u: 'hours' | 'days' | 'weeks') {
   expiresValue.value = v
   expiresUnit.value = u
@@ -893,11 +926,10 @@ function setNever() {
 }
 
 function resetWizard() {
-  wizardStep.value = 1
+  qsView.value = 'setup'
   minimized.value = false
-  destFolder.value = ''
-  projectBase.value = ''
   pickedProjectId.value = null
+  resetDestination()
   void loadProjectOptions()
   destPickerKey.value++
   expiresValue.value = 1
@@ -912,6 +944,8 @@ function resetWizard() {
   stagedCommentCategories.value = []
   accessUsers.value = []
   accessGroups.value = []
+  emailComposer.value?.reset()
+  createdLinkEmails.value = []
   userModalOpen.value = false
   proxyQualities.value = ['original']
   watermarkEnabled.value = false
@@ -1253,7 +1287,7 @@ function parseEtaToSeconds(eta: string): number | null {
 async function startUploadAndShare() {
   if (busy.value || !canProceed.value) return
   busy.value = true
-  wizardStep.value = 3
+  qsView.value = 'progress'
   uploadPhase.value = 'validating'
   minimized.value = true
   perFileProgress.value = Object.fromEntries(droppedFiles.value.map(f => [f.path, 0]))
@@ -1611,6 +1645,7 @@ async function startUploadAndShare() {
 
     viewUrl.value = data.viewUrl || ''
     createdLinkId.value = Number.isFinite(Number(data?.linkId)) && Number(data?.linkId) > 0 ? Number(data.linkId) : null
+    createdLinkEmails.value = [...emailRecipients.value]
     uploadPhase.value = 'done'
     signalLinkCreated()
 
@@ -1888,6 +1923,11 @@ function openInBrowser() {
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--btn-primary-bg) 9%, transparent), transparent 58%);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, white 3%, transparent);
+}
+
+/* Keeps the one-line rows (Project, Upload to, Expires in, Network) aligned */
+.qs-label {
+  min-width: 6.5rem;
 }
 
 .qs-fade-enter-active,

@@ -48,9 +48,11 @@ export function reviewSummaryView(s: ReviewSummaryCounts | null | undefined):
     return { label: s.changes_requested === 1 ? 'Needs changes' : `${s.changes_requested} need changes`, tone: 'warning', dot: false, title, rank: 1 }
   }
   if (s.pending) {
-    return s.hasApprover
-      ? { label: `${s.pending} awaiting`, tone: 'info', dot: false, title, rank: 2 }
-      : { label: 'No approver', tone: 'muted', dot: false, title, rank: 3 }
+    if (!s.hasApprover) return { label: 'No approver', tone: 'muted', dot: false, title, rank: 3 }
+    // Some files done: show progress so a part-approved link doesn't read as untouched.
+    return s.approved
+      ? { label: `${s.approved}/${s.total} approved`, tone: 'info', dot: false, title, rank: 2 }
+      : { label: `${s.pending} awaiting`, tone: 'info', dot: false, title, rank: 2 }
   }
   return { label: 'Approved', tone: 'success', dot: true, title, rank: REVIEW_APPROVED_RANK }
 }

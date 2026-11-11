@@ -793,14 +793,31 @@ ipcMain.handle('probe-health', async (_e, { ip, port }) => {
 });
 
 ipcMain.handle('verify-nginx-certificate-over-ssh', async (_event, options) => {
-  try {
-    await prepareSshCertificate(options);
-    return { ok: true };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    jl('warn', 'cert.ssh-verification.failed', { error: message });
-    return { ok: false, error: message };
+  // Resumed sessions don't record which key ensure-ssh-ready installed, so
+  // fall back to the app's own keys (same as serverTrust's defaultKeyPath).
+  const keyDir = getKeyDir();
+  const keyPaths = [...new Set([
+    typeof options?.keyPath === 'string' && options.keyPath ? options.keyPath : undefined,
+    path.join(keyDir, 'id_ed25519'),
+    path.join(keyDir, 'id_rsa'),
+  ].filter((p): p is string => !!p && fs.existsSync(p)))];
+  const attempts: Array<string | undefined> = keyPaths.length ? keyPaths : [undefined];
+  let lastMessage = '';
+  for (const keyPath of attempts) {
+    try {
+      await prepareSshCertificate({ ...options, keyPath });
+      return { ok: true };
+    } catch (error) {
+      lastMessage = error instanceof Error ? error.message : String(error);
+      jl('warn', 'cert.ssh-verification.failed', { error: lastMessage, keyPath });
+      if (!/authentication methods failed/i.test(lastMessage)) break;
+    }
   }
+  if (/authentication methods failed/i.test(lastMessage)) {
+    lastMessage = "45Flow couldn't sign in to this server over SSH to check its HTTPS certificate. "
+      + 'Disconnect, then connect again with your password so 45Flow can reinstall its SSH key.';
+  }
+  return { ok: false, error: lastMessage };
 });
 
 ipcMain.handle('ensure-ssh-ready', async (_e, { host, username, password, sshPort }) => {

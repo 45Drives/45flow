@@ -788,12 +788,13 @@ import FlowEmpty from '../ui/FlowEmpty.vue'
 import FlowChip from '../ui/FlowChip.vue'
 import { reviewSummaryView, REVIEW_APPROVED_RANK as APPROVED_RANK } from '../utils/reviewStatus'
 import { writeClipboard } from '../clipboard'
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useApi } from '../composables/useApi'
 import { useExternalAddressReadiness, describeExternalAddressNotReady, resolveCopyUrl } from '../composables/useExternalAddressReadiness'
 import { useConnections } from '../composables/useConnections'
 import { useServerFilter } from '../composables/useServerFilter'
 import { useLinkRefreshSignal } from '../composables/useLinkRefresh'
+import { BACKGROUND_REQUEST } from '../background-request'
 import { Notification } from '@45drives/houston-common-ui'
 import { pushNotification } from '../composables/useNotificationQueue'
 import { appLog } from '../composables/useLog'
@@ -863,6 +864,58 @@ const { checkExternalAddressReady } = useExternalAddressReadiness()
 const { activeConnection, connections } = useConnections()
 const { selectedFilter, filteredConnections } = useServerFilter()
 
+function listPath() {
+	const qs = new URLSearchParams()
+	const trimQ = q.value.trim()
+	if (trimQ) qs.set('q', trimQ)
+	if (typeFilter.value && typeFilter.value !== 'review') qs.set('type', typeFilter.value)
+	if (statusFilter.value) qs.set('status', statusFilter.value)
+	if (showArchived.value) qs.set('includeArchived', '1')
+	if (fetchLimit.value) qs.set('limit', String(fetchLimit.value))
+	if (props.projectId) qs.set('project_id', String(props.projectId))
+	return `/api/links?${qs.toString()}`
+}
+
+// Multi-server fetch when filter is 'all', multiple servers connected, and not in a specific project
+function isMultiServerList() {
+	return selectedFilter.value === 'all' && filteredConnections.value.length > 1 && !props.projectId
+}
+
+// Approvals are recorded on the share page, so the counts change while this list sits open.
+// Re-read them quietly (no spinner, thumbnails kept, session not extended).
+let reviewRefreshBusy = false
+async function refreshReviewCounts() {
+	if (props.tourActive || loading.value || reviewRefreshBusy || !rows.value.length) return
+	if (document.visibilityState !== 'visible') return
+	reviewRefreshBusy = true
+	try {
+		const path = listPath()
+		const init = { headers: { ...BACKGROUND_REQUEST } }
+		const reviews = new Map<string, LinkItem['review']>()
+		if (isMultiServerList()) {
+			const results = await apiFetchAll<{ items: LinkItem[] }>(filteredConnections.value, path, init)
+			for (const r of results) {
+				if (!r.success) continue
+				for (const link of r.data?.items || []) reviews.set(`${r.connectionId}:${link.id}`, link.review ?? null)
+			}
+		} else {
+			const connId = activeConnection.value?.connectionId
+			if (!connId) return
+			const data = await apiFetch(path, init) as { items: LinkItem[] }
+			for (const link of data?.items || []) reviews.set(`${connId}:${link.id}`, link.review ?? null)
+		}
+		if (loading.value) return
+		rows.value = rows.value.map(r => {
+			const key = `${(r as any)._connectionId}:${r.id}`
+			return reviews.has(key) ? { ...r, review: reviews.get(key) } : r
+		})
+	} catch {
+		// Best effort; the next full refresh shows any error.
+	} finally {
+		reviewRefreshBusy = false
+	}
+}
+
 async function refresh() {
 	loading.value = true
 	error.value = null
@@ -872,19 +925,9 @@ async function refresh() {
 	thumbFailed.value = new Set()
 
 	try {
-		const qs = new URLSearchParams()
-		const trimQ = q.value.trim()
-		if (trimQ) qs.set('q', trimQ)
-		if (typeFilter.value && typeFilter.value !== 'review') qs.set('type', typeFilter.value)
-		if (statusFilter.value) qs.set('status', statusFilter.value)
-		if (showArchived.value) qs.set('includeArchived', '1')
-		if (fetchLimit.value) qs.set('limit', String(fetchLimit.value))
-		if (props.projectId) qs.set('project_id', String(props.projectId))
+		const path = listPath()
 
-		const path = `/api/links?${qs.toString()}`
-
-		// Multi-server fetch when filter is 'all', multiple servers connected, and not in a specific project
-		if (selectedFilter.value === 'all' && filteredConnections.value.length > 1 && !props.projectId) {
+		if (isMultiServerList()) {
 			const results = await apiFetchAll<{ items: LinkItem[] }>(filteredConnections.value, path)
 			const allLinks: LinkItem[] = []
 			for (const r of results) {
@@ -969,6 +1012,23 @@ const linkSummary = computed(() => {
 })
 
 onMounted(refresh);
+
+const REVIEW_REFRESH_MS = 60_000
+const onWindowFocus = () => { void refreshReviewCounts() }
+const onVisibility = () => { if (document.visibilityState === 'visible') void refreshReviewCounts() }
+let reviewRefreshTimer: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+	window.addEventListener('focus', onWindowFocus)
+	document.addEventListener('visibilitychange', onVisibility)
+	reviewRefreshTimer = setInterval(() => { void refreshReviewCounts() }, REVIEW_REFRESH_MS)
+})
+onBeforeUnmount(() => {
+	window.removeEventListener('focus', onWindowFocus)
+	document.removeEventListener('visibilitychange', onVisibility)
+	if (reviewRefreshTimer) clearInterval(reviewRefreshTimer)
+})
+// Decisions may have come in while Link Details was open.
+watch(showModal, (open) => { if (!open) void refreshReviewCounts() })
 
 const { linkVersion } = useLinkRefreshSignal()
 watch(linkVersion, () => refresh())

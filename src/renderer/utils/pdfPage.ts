@@ -4,12 +4,14 @@
 
 const RENDER_SCALE = 1.5
 
-let pdfjsPromise: Promise<typeof import('pdfjs-dist')> | null = null
+// The legacy build polyfills the newest JS it relies on (e.g. Map.getOrInsertComputed),
+// which Electron's Chromium doesn't have yet.
+let pdfjsPromise: Promise<typeof import('pdfjs-dist/legacy/build/pdf.mjs')> | null = null
 
 function loadPdfjs() {
   if (!pdfjsPromise) {
-    pdfjsPromise = import('pdfjs-dist').then((lib) => {
-      lib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
+    pdfjsPromise = import('pdfjs-dist/legacy/build/pdf.mjs').then((lib) => {
+      lib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.min.mjs', import.meta.url).toString()
       return lib
     })
   }
@@ -26,8 +28,9 @@ export type RenderedPdfPage = {
 
 export async function renderPdfPage(data: ArrayBuffer, pageNumber: number): Promise<RenderedPdfPage> {
   const pdfjs = await loadPdfjs()
-  const doc = await pdfjs.getDocument({ data: new Uint8Array(data) }).promise
+  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(data) })
   try {
+    const doc = await loadingTask.promise
     if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > doc.numPages) {
       throw new Error(`This PDF has ${doc.numPages} page${doc.numPages === 1 ? '' : 's'}; page ${pageNumber} isn't in it.`)
     }
@@ -42,6 +45,7 @@ export async function renderPdfPage(data: ArrayBuffer, pageNumber: number): Prom
     const base = page.getViewport({ scale: 1 })
     return { imageUrl: canvas.toDataURL('image/png'), width: base.width, height: base.height, pageCount: doc.numPages }
   } finally {
-    doc.destroy()
+    // pdfjs 6 removed PDFDocumentProxy.destroy(); the loading task owns teardown.
+    void loadingTask.destroy()
   }
 }

@@ -2,6 +2,8 @@ module.exports = {
 	content: [
 		"./src/renderer/index.html",
 		"./src/renderer/**/*.{vue,js,ts,jsx,tsx}",
+		// The app shell (header, router outlet) lives outside src/renderer.
+		"./src/app/**/*.{vue,js,ts,jsx,tsx}",
 	],
 	theme: {
 		extend: {

@@ -1,5 +1,18 @@
 <template>
-    <div class="w-full min-w-0 text-center">
+    <!-- Inline: one small button plus a status light, for a single form row -->
+    <div v-if="inline" class="inline-flex items-center gap-2 min-w-0" :title="inlineTitle">
+        <button type="button" class="btn btn-secondary btn-xs whitespace-nowrap" :class="buttonClass"
+            :disabled="disabled || checking" @click="runCheck">
+            {{ checking ? checkingLabel : status ? 'Check Again' : buttonLabel }}
+        </button>
+        <span class="inline-flex items-center gap-1.5 text-xs whitespace-nowrap" role="status" aria-live="polite">
+            <span class="flow-dot cpf-light" :class="[`flow-dot--${lightTone}`, { 'cpf-light--checking': checking }]"
+                aria-hidden="true"></span>
+            <span :class="inlineTextClass">{{ inlineText }}</span>
+        </span>
+    </div>
+
+    <div v-else class="w-full min-w-0 text-center">
         <div class="flex items-center gap-2 min-w-0">
             <button type="button" class="btn btn-primary whitespace-nowrap px-3 py-2 text-base w-full" :class="buttonClass"
                 :disabled="disabled || checking" @click="runCheck">
@@ -74,6 +87,9 @@ const props = withDefaults(
         apiFetch?: ApiFetch;
 
         requestBody?: Record<string, unknown> | string | null;
+
+        /** Compact single-row layout: small button + status light (details in the tooltip). */
+        inline?: boolean;
     }>(),
     {
         endpoint: "/api/forwarding/check",
@@ -85,6 +101,7 @@ const props = withDefaults(
         buttonClass: "",
         apiFetch: undefined,
         requestBody: null,
+        inline: false,
     }
 );
 
@@ -124,6 +141,33 @@ const badgeTwClass = computed(() => {
     if (status.value === "error") return "bg-red-500/15 border-red-500/30 text-red-800 dark:text-red-100";
     return "bg-zinc-500/10 border-zinc-500/20 text-zinc-700 dark:bg-white/10 dark:border-white/15 dark:text-white/85";
 });
+
+const lightTone = computed(() => {
+    if (checking.value) return "info";
+    if (status.value === "enabled") return "success";
+    if (status.value === "disabled") return "danger";
+    if (status.value === "error") return "warning";
+    return "neutral";
+});
+
+const inlineText = computed(() => {
+    if (checking.value) return "Testing from the internet…";
+    if (status.value === "enabled") return "Reachable from the internet";
+    if (status.value === "disabled") return "Not reachable. Check port forwarding";
+    if (status.value === "error") return "Couldn't run the check";
+    return "Not checked";
+});
+
+const inlineTextClass = computed(() => {
+    if (status.value === "enabled") return "text-flow-success";
+    if (status.value === "disabled") return "text-flow-danger";
+    if (status.value === "error") return "text-flow-warning";
+    return "text-muted";
+});
+
+const inlineTitle = computed(() =>
+    [message.value, detailsLine.value].filter(Boolean).join("\n") || "Checks whether this server can be reached from outside your network."
+);
 
 function reset() {
     checking.value = false;
@@ -228,3 +272,22 @@ onMounted(() => {
 
 defineExpose({ runCheck, reset });
 </script>
+
+<style scoped>
+.cpf-light {
+    width: 0.65rem;
+    height: 0.65rem;
+}
+
+.cpf-light--checking {
+    animation: cpf-pulse 1s ease-in-out infinite;
+}
+
+@keyframes cpf-pulse {
+    50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cpf-light--checking { animation: none; }
+}
+</style>

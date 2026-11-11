@@ -408,6 +408,12 @@
 							</div>
 						</section>
 
+						<!-- ══════ Email ══════ -->
+						<section class="border-t border-default pt-4">
+							<LinkEmailComposer ref="emailComposer" v-model="emailEnabled" :people="composerPeople" :disabled="loading"
+								@update:recipients="(v) => (emailRecipients = v)" @update:invalid="(v) => (emailInvalid = v)" />
+						</section>
+
 						<!-- ══════ Generate Button ══════ -->
 						<section class="border-t border-default pt-4">
 							<div v-if="error" class="p-3 rounded flow-tone-danger text-default border mb-3 text-sm text-center">
@@ -429,7 +435,7 @@
 										<span class="inline-block w-4 h-4 border-2 border-default border-t-transparent rounded-full animate-spin"></span>
 										Generating…
 									</span>
-									<span v-else>Generate Flow link</span>
+									<span v-else>{{ emailRecipients.length ? 'Generate & Send Flow link' : 'Generate Flow link' }}</span>
 								</button>
 							</div>
 							<p class="text-xs mt-2" :class="linkKind ? 'opacity-80' : 'text-flow-danger'">
@@ -447,7 +453,7 @@
 								</div>
 							</div>
 							<EmailInvitationPanel v-if="resultUrl && createdLinkId" compact :key="createdLinkId"
-								:link-id="createdLinkId" :api-fetch="apiFetch" class="mt-3 text-left" />
+								:link-id="createdLinkId" :api-fetch="apiFetch" :auto-send="createdLinkEmails" class="mt-3 text-left" />
 						</section>
 						</template>
 					</div>
@@ -549,7 +555,8 @@ import FolderPicker from '../components/FolderPicker.vue'
 import FileExplorer from '../components/FileExplorer.vue'
 import PathInput from '../components/PathInput.vue'
 import CommonLinkControls from '../components/CommonLinkControls.vue'
-import EmailInvitationPanel from '../components/EmailInvitationPanel.vue'
+import LinkEmailComposer from '../components/LinkEmailComposer.vue'
+import EmailInvitationPanel, { type InvitePerson } from '../components/EmailInvitationPanel.vue'
 import LinkAccessMode from '../components/LinkAccessMode.vue'
 import CheckPortForwarding from '../components/CheckPortForwarding.vue'
 import VideoOptionsPanel from '../components/VideoOptionsPanel.vue'
@@ -718,6 +725,15 @@ const error = ref<string | null>(null)
 const resultUrl = ref('')
 // Older servers don't return the new link's id; then the email step is hidden.
 const createdLinkId = ref<number | null>(null)
+// Emailing the link: chosen before it's created, sent by the result panel once it exists.
+const emailComposer = ref<InstanceType<typeof LinkEmailComposer> | null>(null)
+const emailEnabled = ref(false)
+const emailRecipients = ref<string[]>([])
+const emailInvalid = ref<string[]>([])
+const createdLinkEmails = ref<string[]>([])
+const composerPeople = computed<InvitePerson[]>(() => opts.accessMode.value === 'restricted'
+	? opts.accessUsers.value.map(u => ({ name: u.name, user_name: u.username, email: u.user_email }))
+	: [])
 
 // ── Computed ──
 // The share root is a valid upload destination; only the filesystem root ("/") is not.
@@ -745,6 +761,7 @@ const canGenerate = computed(() => {
 	if (opts.uploadEnabled.value && !uploadDest.value.trim()) return false
 	if (opts.uploadEnabled.value && uploadDestIsFilesystemRoot.value) return false
 	if (opts.shareEnabled.value && shareFiles.value.length === 0) return false
+	if (emailInvalid.value.length) return false
 	return true
 })
 
@@ -1200,6 +1217,7 @@ async function generateLink() {
 
 		resultUrl.value = data.viewUrl || data.url || ''
 		createdLinkId.value = Number.isFinite(Number(data?.linkId)) && Number(data?.linkId) > 0 ? Number(data.linkId) : null
+		createdLinkEmails.value = [...emailRecipients.value]
 		draftLinkToken = extractLinkToken(data)
 
 		// ── Start transcode tracking in TransferDock ──
@@ -1444,6 +1462,8 @@ function openResult() {
 
 function resetAll() {
 	opts.resetOptions()
+	emailComposer.value?.reset()
+	createdLinkEmails.value = []
 	opts.uploadEnabled.value = false
 	showUploadBrowser.value = false
 	uploadDest.value = ''

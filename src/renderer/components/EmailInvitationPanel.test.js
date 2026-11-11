@@ -26,7 +26,7 @@ function withHistory(apiFetch, history = []) {
 function mount(linkId, apiFetch, props = {}) {
   host = document.createElement('div')
   document.body.appendChild(host)
-  app = createApp(EmailInvitationPanel, { linkId, apiFetch: withHistory(apiFetch, props.history), compact: props.compact })
+  app = createApp(EmailInvitationPanel, { linkId, apiFetch: withHistory(apiFetch, props.history), compact: props.compact, people: props.people })
   const vm = app.mount(host)
   return vm
 }
@@ -336,5 +336,114 @@ describe('EmailInvitationPanel', () => {
     await flush()
     expect(calls).toEqual(['/api/links/42/invite'])
     expect(host.textContent).toContain('reviewer@external.test')
+  })
+
+  describe('people on the link and several addresses', () => {
+    const people = [
+      { name: 'Ann', email: 'Ann@Client.test' },
+      { name: 'Bo', email: 'bo@client.test' },
+      { name: 'No Mail', email: null },
+    ]
+    const invitationFor = (email, id) => ({ ok: true, invitation: { ...pendingInvitation, id, recipientEmail: email } })
+    function boxes() {
+      return [...host.querySelectorAll('input[type="checkbox"]')]
+    }
+
+    it('ticks invited people who have an email, and sends to each ticked person', async () => {
+      const apiFetch = vi.fn()
+        .mockResolvedValueOnce(invitationFor('ann@client.test', 1))
+        .mockResolvedValueOnce(invitationFor('bo@client.test', 2))
+      mount(42, apiFetch, { people })
+      await flush()
+      const [ann, bo, none] = boxes()
+      expect(ann.checked).toBe(true)
+      expect(bo.checked).toBe(true)
+      expect(none.checked).toBe(false)
+      expect(none.disabled).toBe(true)
+      expect(host.textContent).toContain('No email address')
+      expect(sendButton().textContent).toContain('Send invitations (2)')
+      sendButton().click()
+      await flush()
+      expect(apiFetch.mock.calls.map(c => JSON.parse(c[1].body).recipientEmail)).toEqual(['ann@client.test', 'bo@client.test'])
+      expect(boxes()[0].checked).toBe(false)
+    })
+
+    it('lets a person be unticked and does not tick people who were already emailed', async () => {
+      const apiFetch = vi.fn()
+      mount(42, apiFetch, {
+        people,
+        history: [{ ...pendingInvitation, id: 9, kind: 'invitation', recipientEmail: 'bo@client.test', status: 'accepted' }],
+      })
+      await flush()
+      const [ann, bo] = boxes()
+      expect(ann.checked).toBe(true)
+      expect(bo.checked).toBe(false)
+      expect(host.textContent).toContain('Emailed')
+      ann.click()
+      await flush()
+      expect(boxes()[0].checked).toBe(false)
+      expect(sendButton().disabled).toBe(true)
+    })
+
+    it('sends to several typed addresses and flags ones that are not addresses', async () => {
+      const apiFetch = vi.fn()
+        .mockResolvedValueOnce(invitationFor('a@x.test', 1))
+        .mockResolvedValueOnce(invitationFor('b@x.test', 2))
+      mount(42, apiFetch)
+      await flush()
+      setEmail('a@x.test, nope')
+      await flush()
+      expect(host.textContent).toContain('Check this address: nope')
+      expect(sendButton().disabled).toBe(true)
+      setEmail('a@x.test, b@x.test; a@x.test')
+      await flush()
+      sendButton().click()
+      await flush()
+      expect(apiFetch.mock.calls.map(c => JSON.parse(c[1].body).recipientEmail)).toEqual(['a@x.test', 'b@x.test'])
+      expect(host.querySelector('input[type="email"]').value).toBe('')
+    })
+
+    it('keeps only the failed typed addresses when part of a send fails', async () => {
+      const apiFetch = vi.fn()
+        .mockResolvedValueOnce(invitationFor('a@x.test', 1))
+        .mockRejectedValueOnce(new Error('mailbox refused'))
+      mount(42, apiFetch)
+      await flush()
+      setEmail('a@x.test, b@x.test')
+      await flush()
+      sendButton().click()
+      await flush()
+      expect(host.querySelector('input[type="email"]').value).toBe('b@x.test')
+      expect(host.querySelector('[role="alert"]').textContent).toContain("Couldn't send to b@x.test: mailbox refused")
+    })
+  })
+
+  it('sends the addresses chosen before the link was created, once, and shows their status', async () => {
+    const apiFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, invitation: { ...pendingInvitation, id: 1, recipientEmail: 'ann@client.test' } })
+      .mockResolvedValueOnce({ ok: true, invitation: { ...pendingInvitation, id: 2, recipientEmail: 'bo@client.test' } })
+    host = document.createElement('div')
+    document.body.appendChild(host)
+    app = createApp(EmailInvitationPanel, { linkId: 501, apiFetch, compact: true, autoSend: ['ann@client.test', 'bo@client.test'] })
+    app.mount(host)
+    await flush()
+    expect(apiFetch.mock.calls.map(c => JSON.parse(c[1].body).recipientEmail)).toEqual(['ann@client.test', 'bo@client.test'])
+    expect(host.textContent).toContain('ann@client.test')
+    expect(host.textContent).toContain('Email someone else')
+    expect(host.querySelector('input[type="email"]').value).toBe('')
+
+    // Reopened (e.g. Quick Share restored): loads what was sent instead of sending again.
+    app.unmount()
+    host.remove()
+    const again = vi.fn((url) => Promise.resolve(String(url).endsWith('/emails')
+      ? { ok: true, emails: [{ ...pendingInvitation, id: 1, kind: 'invitation', recipientEmail: 'ann@client.test' }] }
+      : { ok: true, invitation: pendingInvitation }))
+    host = document.createElement('div')
+    document.body.appendChild(host)
+    app = createApp(EmailInvitationPanel, { linkId: 501, apiFetch: again, compact: true, autoSend: ['ann@client.test', 'bo@client.test'] })
+    app.mount(host)
+    await flush()
+    expect(again.mock.calls.map(c => c[0])).toEqual(['/api/links/501/emails'])
+    expect(host.textContent).toContain('ann@client.test')
   })
 })

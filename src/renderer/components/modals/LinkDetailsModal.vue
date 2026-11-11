@@ -91,7 +91,7 @@
             </div>
             <template v-if="link?.id">
               <p class="flow-subhead">Invite by email</p>
-              <EmailInvitationPanel :key="link.id" :link-id="link.id" :api-fetch="apiFetch" />
+              <EmailInvitationPanel :key="link.id" :link-id="link.id" :api-fetch="apiFetch" :people="invitePeople" />
             </template>
 
             <template v-if="hasShareCapability">
@@ -1056,6 +1056,11 @@ const reviewFilesPath = computed(() => {
 
 const uploadDirectoryPath = computed(() => currentUploadDir.value || '')
 const supportsComments = computed(() => props.link?.type !== 'upload')
+// Invited people for "Send to people on this link" in the email section.
+const invitePeople = computed(() => currentAccessMode.value === 'restricted'
+  ? access.value.filter(a => !a.is_disabled && !a.is_deleted)
+      .map(a => ({ name: a.name, user_name: a.user_name, email: a.user_email }))
+  : [])
 const supportsPassword = computed(() => effectiveAccessMode.value === 'open')
 const currentAccessMode = computed<'open' | 'restricted'>(() => props.link?.access_mode || 'open')
 const effectiveAccessMode = computed<'open' | 'restricted'>(() =>

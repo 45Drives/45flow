@@ -1038,10 +1038,10 @@ The **QuickShare** feature provides the fastest way to create a share link. Drag
 
 ### How to Use QuickShare
 
-1. **Drag Files:** From anywhere on your computer, drag one or more files directly into the QuickShare drop zone.
-2. **Choose Destination:** Select the folder on the server where your files will be stored.
-3. **Configure Options:** For video files, choose proxy file qualities and watermark settings. Set link expiry, title, and access controls.
-4. **Generate Link:** Click **"Share"** to upload, transcode, and generate a shareable link.
+1. **Drag Files:** From anywhere on your computer, drag one or more files onto 45Flow. The QuickShare screen opens.
+2. **Check the Destination:** Files go into the current project's folder. Outside a project, pick the project first. To use a subfolder, type a path or click **"Browse…"**.
+3. **Set Up the Link:** On the same screen, set the expiry, network, and who can open the link. Link title, proxy file qualities and watermark settings are under **Advanced Options**.
+4. **Share:** Click **"Upload & Share"** to upload, transcode, and generate a shareable link. If the button is unavailable, the line beside it says what's missing (for example, inviting a client to an invite-only link).
 
 Documents and spreadsheets: Share Excel, OpenDocument, CSV, TSV, and Word files. Spreadsheets have a read-only grid preview; DOCX has a text preview. Legacy DOC files require downloading.
 
@@ -1055,12 +1055,12 @@ QuickShare checks all selected files before uploading. If any are unsupported or
 
 QuickShare lets you configure:
 
-- **Destination folder** — Where files are stored on the server
+- **Destination folder** — Where files are stored on the server (the project folder unless you pick a subfolder)
 - **Link expiration** — How long the link remains active (default: 7 days)
 - **Access mode** — Open (anyone with link), password-protected, or invited clients/teams
 - **Proxy file qualities** — 720p, 1080p, and/or full resolution (for video)
 - **Watermark** — Overlay a watermark on video and image files (Pro: full positioning; Community: basic)
-- **Network mode** — External (port-forwarded) or Local (LAN/VPN)
+- **Network mode** — External (port-forwarded) or Local (LAN/VPN). With External selected, **"Check port"** tests whether the server is reachable from the internet: a green light means it is, red means port forwarding isn't working yet.
 
 These defaults can be customized in [Settings](#7-settings) under **Link Options**.
 
@@ -1231,13 +1231,23 @@ When you pick video or image files to share, a **Video Options**, **Image Option
 
 > **Note:** In Community mode, watermarks (video and image) are applied at a fixed bottom-right position with default scale/opacity. Upgrade to Pro for full customization (position, scale, opacity, rotation) and reusable presets.
 
+### Emailing the Link
+
+Above the generate button, **Send link by email** emails the link as soon as it is created.
+
+- When you invite clients who have an email address, sending turns on and they are ticked under **Invited people**. Untick anyone you don't want to email, or turn the switch off.
+- Add anyone else under **Other email addresses**. Separate several addresses with commas.
+- With at least one recipient, the button reads **"Generate & Send Flow link"**.
+
+After the link is created, each address is listed with its delivery status, and you can email more people from the same spot. Quick Share has the same **Send link by email** section; its button reads **"Upload, Share & Email"**.
+
 ### Generating the Link
 
 1. Verify all your settings are correct. The summary line under the **"Generate Flow link"** button says what kind of link you are about to create:
    - *"This link lets your client review and download N files."* — a share (review) link.
    - *"No files selected, so this is an upload-only link: your client can send you files."* — an upload-only link.
    - *"This link lets your client review N files and upload files to you."* — a combined link.
-2. Click **"Generate Flow link"**.
+2. Click **"Generate Flow link"** (or **"Generate & Send Flow link"** if you are emailing it).
 3. The generated URL will appear — use the **"Copy"** button to copy it to your clipboard, or **"Open"** to view it in your browser.
 4. The link is now visible in the project's links list for ongoing management.
 
@@ -1251,66 +1261,53 @@ Click **"Reset"** to clear the form and start over, or **"Back to Project"** to 
 
 Use this feature to copy files from this computer into a project folder on the server. This is ideal for getting new media onto the server for sharing later.
 
-Open a project and click **"Add Files"** to begin. A three-step wizard titled **"Add Files → \<project name\>"** guides you through the process: **Pick Files**, **Choose Folder**, and **Upload**. Click **"Back to Project"** at any time to return to the project.
+Open a project and click **"Add Files"**. Everything happens on one screen: add files, check where they go, set media options, and click **"Upload"**. Click **"Back to Project"** at any time to return to the project.
 
-### Step 1: Pick Files
+### Add Files to the List
 
-![Local upload — Step 1: Select files](images/upload-local-step1-v3.png)
+1. Drag files anywhere onto the screen, or click **"Choose Files"** (you can select several) or **"Choose Folder"** to add everything inside a folder.
+2. The files appear in a list showing **Name**, **Size**, and a **Remove** button. The total count and size are shown above the list, with **"Clear"** to start over.
+3. You can keep adding files until you click **"Upload"**.
 
-1. Click **"Choose Files"** to select individual files, or **"Choose Folder"** to add an entire folder's contents. You can also drag files onto the table.
-2. Selected files appear in a table showing **Name**, **Size**, and a **Remove** button.
-3. A summary shows the total number of items and combined size.
-4. Use **"Clear"** to remove all selected files and start over.
-5. Click **"Next"** to proceed.
+> **Note:** To add a folder, use **"Choose Folder"**. Folders dragged onto the screen are skipped, with a reminder to use Choose Folder.
 
-> **Note:** You can select multiple files at once in the file chooser dialog.
+### Check Where the Files Go
 
-### Step 2: Choose Folder
+**Upload to** starts at the project folder, so most uploads need no change here.
 
-![Local upload — Step 2: Choose destination](images/upload-local-step2-v3.png)
+- To use a subfolder, type a path (suggestions appear as you type), or click **"Browse…"** to open the folder browser.
+- In the folder browser, **single-click** a folder to choose it, **double-click** to open it, and click **"New Folder"** to create one. Click **"Done"** to close the browser.
+- The filesystem root (`/`) can't receive uploads.
 
-1. The folder browser opens in the project folder. Pick where the files go in the project.
-2. Navigate the folder browser:
-   - **Single-click** a folder to select it as the destination.
-   - **Double-click** a folder to enter it and browse deeper.
-   - Click **"New Folder"** to create a new directory at the current location.
-3. The selected destination path is shown at the top.
-4. Click **"Next"** to proceed, or **"Back"** to return to file selection.
+### Media Options
 
-### Step 3: Upload & Monitor Progress
+When the list includes videos or images, a **Video options** (or **Image options** / **Media options**) section appears below the destination:
 
-![Local upload — Step 3: Upload progress](images/upload-local-step3-v3.png)
+- **Proxy Files** — Choose proxy file qualities (720p, 1080p, Full Res MP4) to generate for your videos. These proxy files are used when you share the files later via links. A browser stream is always generated.
+- **Watermark Media** — Apply a watermark overlay to uploaded videos and images (Pro: full customization of position, size, opacity and tiling; Community: basic bottom-right watermark).
 
-The heading shows **"Adding to \<folder\>"** so you can confirm where the files are going.
+A line under the options shows whether videos are processed on this computer (client-side transcoding) or on the server.
 
-**Before Uploading:**
+### Upload & Monitor Progress
 
-If you're uploading video or image files, you can configure **Video options** (or **Image options** / **Media options**) before starting:
+The bar at the bottom summarizes what will happen, for example **"4 files · 2.3 GB → /tank/projects/spring/footage"**. If the **"Upload"** button is unavailable, the same bar says what's missing (for example, choosing a watermark image).
 
-- **Proxy Files** — Choose proxy file qualities (720p, 1080p) to generate for your videos during upload. These proxy files are used when you share the files later via links.
-- **Watermark Media** — Apply a watermark overlay to uploaded videos and images (Pro: images supported with full customization; Community: videos only with basic positioning).
-
-Click **"Start Upload"** to begin transferring files.
-
-> **Note:** Filenames are automatically sanitized during upload for cross-platform compatibility. Special characters such as apostrophes (`'`), colons (`:`), and other non-standard characters are replaced with underscores (`_`). If a file is renamed, a notification will appear showing the new filename.
-
-**During Upload:**
-
-The upload table shows each file with real-time status:
+Click **"Upload"** to start. The file list turns into a live status list:
 
 | Column | Description |
 |--------|-------------|
-| **Name** | File name with upload percentage |
+| **Name** | File name, with percentage, speed and time remaining while it transfers, or the total time once it finishes |
 | **Size** | File size |
-| **Speed / Time** | Transfer speed during upload, or total time after completion |
-| **Status** | Current state — **Queued**, **Transcoding** (local), **Uploading**, **Done**, **Canceled**, or **Error** |
-| **Action** | Cancel button (available during active transcode or upload) |
+| **Status** | **Waiting**, **Processing** (local transcode), **Uploading**, **Done**, **Canceled**, or **Failed** |
+| **Cancel** | Stops a file that is waiting, processing or uploading |
 
-A progress bar at the top shows overall completion across all files.
+The bottom bar shows overall progress across all files. You can leave this screen while uploads run; they continue in the [Transfer Dock](#12-transfer-dock).
+
+> **Note:** Filenames are automatically sanitized during upload for cross-platform compatibility. Special characters such as apostrophes (`'`), colons (`:`), and other non-standard characters are replaced with underscores (`_`). If a file is renamed, a notification will appear showing the new filename.
 
 When **client-side transcoding** is enabled (Settings → Performance), video files go through a two-phase workflow:
-1. **Transcode** — The video is processed on your machine using hardware acceleration (GPU) if available. This generates both the **Stream** (HLS adaptive bitrate for browser playback) and **Proxy Files** (downloadable MP4 files at your chosen qualities). Shown as "Transcode XX%" in the table.
-2. **Upload** — The raw source file is transferred to the server for archival. Shown as "Upload XX%".
+1. **Processing** — The video is transcoded on your machine using hardware acceleration (GPU) if available. This generates both the **Stream** (HLS adaptive bitrate for browser playback) and **Proxy Files** (downloadable MP4 files at your chosen qualities).
+2. **Upload** — The raw source file is transferred to the server for archival.
 
 This offloads video processing from the server to your workstation, typically completing much faster with hardware-accelerated encoding.
 
@@ -1320,13 +1317,13 @@ If client-side transcoding is **not enabled**, the workflow is reversed:
 
 You can monitor both modes in the [Transfer Dock](#12-transfer-dock).
 
-![Upload table with file statuses](images/upload-local-table-v3.png)
-
 **After Upload:**
 
-When all files are complete, click **"Finish"** to return to the project.
+When every file has finished:
 
-> **Tip:** If any uploads fail, the error message will appear below the file entry. You can address the issue and re-upload those files.
+- **"Done"** returns to the project.
+- **"Add More Files"** (or dragging in new files) clears the list and starts a new upload with the same folder and options.
+- **"Retry Failed"** appears if any files failed; it uploads only those files again. The error for each failed file is shown under its name.
 
 ---
 
