@@ -27,7 +27,7 @@ jobs:
       matrix: ${{ steps.prebuild.outputs.matrix }}
       uuid: ${{ steps.prebuild.outputs.uuid }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.source_sha }}
           submodules: recursive
