@@ -97,8 +97,10 @@ function timeAgo(ts: number) {
   return `${Math.floor(diff / 86400_000)}d ago`
 }
 
+// composedPath() is captured at dispatch, so it still includes the bell when the click target
+// (the unread badge, "Clear all") was removed from the DOM by the click handler's re-render.
 function onClickOutside(e: MouseEvent) {
-  if (bellRef.value && !bellRef.value.contains(e.target as Node)) {
+  if (bellRef.value && !e.composedPath().includes(bellRef.value)) {
     bellOpen.value = false
   }
 }
