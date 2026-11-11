@@ -408,9 +408,15 @@
 							</div>
 						</section>
 
+						<!-- ══════ File requirements for uploads (Pro) ══════ -->
+						<section v-if="opts.uploadEnabled.value && isPremiumActive" class="border-t border-default pt-3" data-tour="create-link-upload-spec">
+							<h3 class="text-base font-semibold mb-2">File requirements</h3>
+							<UploadSpecRulesEditor v-model="uploadSpecRules" :disabled="loading" @update:invalid="(v) => (uploadSpecInvalid = v)" />
+						</section>
+
 						<!-- ══════ Email ══════ -->
 						<section class="border-t border-default pt-4">
-							<LinkEmailComposer ref="emailComposer" v-model="emailEnabled" :people="composerPeople" :disabled="loading"
+							<LinkEmailComposer ref="emailComposer" v-model="emailEnabled" :people="composerPeople" :email-off="egress.isOff('smtp')" :disabled="loading"
 								@update:recipients="(v) => (emailRecipients = v)" @update:invalid="(v) => (emailInvalid = v)" />
 						</section>
 
@@ -452,7 +458,7 @@
 									<button class="btn btn-primary" @click="openResult">Open</button>
 								</div>
 							</div>
-							<EmailInvitationPanel v-if="resultUrl && createdLinkId" compact :key="createdLinkId"
+							<EmailInvitationPanel v-if="resultUrl && createdLinkId" compact :email-off="egress.isOff('smtp')" :key="createdLinkId"
 								:link-id="createdLinkId" :api-fetch="apiFetch" :auto-send="createdLinkEmails" class="mt-3 text-left" />
 						</section>
 						</template>
@@ -556,6 +562,9 @@ import FileExplorer from '../components/FileExplorer.vue'
 import PathInput from '../components/PathInput.vue'
 import CommonLinkControls from '../components/CommonLinkControls.vue'
 import LinkEmailComposer from '../components/LinkEmailComposer.vue'
+import { useEgressSwitches } from '../composables/useEgressSwitches'
+import UploadSpecRulesEditor from '../components/UploadSpecRulesEditor.vue'
+import { hasAnySpecRule, type UploadSpecRules } from '../utils/uploadSpec'
 import EmailInvitationPanel, { type InvitePerson } from '../components/EmailInvitationPanel.vue'
 import LinkAccessMode from '../components/LinkAccessMode.vue'
 import CheckPortForwarding from '../components/CheckPortForwarding.vue'
@@ -574,6 +583,8 @@ import { DEFAULT_45FLOW_WATERMARKS, createDefaultWatermarkSettings, type Waterma
 useHeader('Create Link')
 const route = useRoute()
 const { apiFetch, meta } = useApi()
+const egress = useEgressSwitches(apiFetch)
+void egress.load()
 const { to } = useResilientNav()
 const { activeProject: globalActiveProject } = useActiveProject()
 const transfer = useTransferProgress()
@@ -622,6 +633,8 @@ const showUploadBrowser = ref(false)
 const autoShareUploads = ref(false)
 const autoWatermarkUploads = ref(false)
 const autoTranscodeUploads = ref(false)
+const uploadSpecRules = ref<UploadSpecRules | null>(null)
+const uploadSpecInvalid = ref(false)
 const autoTranscodeProxyQualities = ref<string[]>(['720p'])
 function toggleAutoTranscodeQuality(quality: string, checked: boolean) {
 	const set = new Set(autoTranscodeProxyQualities.value)
@@ -762,10 +775,27 @@ const canGenerate = computed(() => {
 	if (opts.uploadEnabled.value && uploadDestIsFilesystemRoot.value) return false
 	if (opts.shareEnabled.value && shareFiles.value.length === 0) return false
 	if (emailInvalid.value.length) return false
+	if (opts.uploadEnabled.value && isPremiumActive.value && uploadSpecInvalid.value) return false
 	return true
 })
 
 // ── Methods ──
+// File requirements are saved after the link exists; a failure leaves the link
+// usable without a check, so warn instead of failing the whole create.
+async function saveUploadSpec(linkId: number | null) {
+	if (!opts.uploadEnabled.value || !isPremiumActive.value || !hasAnySpecRule(uploadSpecRules.value)) return
+	try {
+		if (!linkId) throw new Error('the server did not return the new link ID')
+		await apiFetch(`/api/links/${linkId}/upload-spec`, {
+			method: 'PUT', body: JSON.stringify({ rules: uploadSpecRules.value }), retry: 0, exposeServerMessage: true,
+		})
+	} catch (e: any) {
+		pushNotification(new Notification('File requirements not saved',
+			`The link was created, but uploads won't be checked: ${e?.message || 'unknown error'}. Set them in Link Details.`,
+			'warning', 10000))
+	}
+}
+
 function onProjectChange() {
 	opts.projectId.value = selectedProjectId.value
 	const root = selectedProject.value?.root_dir || configuredRoot.value || ''
@@ -1219,6 +1249,7 @@ async function generateLink() {
 		createdLinkId.value = Number.isFinite(Number(data?.linkId)) && Number(data?.linkId) > 0 ? Number(data.linkId) : null
 		createdLinkEmails.value = [...emailRecipients.value]
 		draftLinkToken = extractLinkToken(data)
+		await saveUploadSpec(createdLinkId.value)
 
 		// ── Start transcode tracking in TransferDock ──
 		if (hasMediaSelected.value) {
@@ -1471,6 +1502,8 @@ function resetAll() {
 	autoShareUploads.value = false
 	autoWatermarkUploads.value = false
 	autoTranscodeUploads.value = false
+	uploadSpecRules.value = null
+	uploadSpecInvalid.value = false
 	autoTranscodeProxyQualities.value = ['720p']
 	shareFiles.value = []
 	proxyQualities.value = ['original']

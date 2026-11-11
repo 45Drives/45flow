@@ -34,10 +34,18 @@
                         <AdminNetworksPanel v-if="activeSection === 'adminNetworks' && adminSession && activeConnection"
                             :key="activeConnection.connectionId" :connection-id="activeConnection.connectionId" />
 
+                        <FlowNotice v-if="activeSection === 'adminMail' && egress.isOff('smtp')" tone="warning" size="sm" class="mb-3"
+                            title="Email is off">{{ EGRESS_OFF_TEXT.smtp }}</FlowNotice>
                         <AdminSmtpPanel v-if="activeSection === 'adminMail' && adminSession && activeConnection"
                             :key="activeConnection.connectionId" :connection-id="activeConnection.connectionId" />
                         <AdminStaffAlertsPanel v-if="activeSection === 'adminMail' && adminSession && activeConnection"
                             :key="`staff-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId" />
+
+                        <AdminScannerPanel v-if="activeSection === 'adminSecurity' && adminSession && activeConnection"
+                            :key="`scanner-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId" />
+                        <AdminEgressPanel v-if="activeSection === 'adminSecurity' && adminSession && activeConnection"
+                            :key="`egress-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId" class="mt-6"
+                            @changed="egress.load" />
 
                         <!-- Loading state: shown until settings arrive from the server -->
                         <div v-if="!settingsLoaded && (activeSection === 'sharing' || activeSection === 'linkOptions')" class="flex flex-col items-center justify-center gap-3 py-12">
@@ -56,6 +64,8 @@
 
                         <!-- ═══ Link Sharing ══════════════════════════════════ -->
                         <template v-if="activeSection === 'sharing' && settingsLoaded">
+                            <FlowNotice v-if="externalAuto && egress.isOff('public_ip')" tone="warning" size="sm" class="mb-3"
+                                title="Public IP lookup is off">{{ EGRESS_OFF_TEXT.public_ip }}</FlowNotice>
                             <p class="settings-subhead settings-subhead--first">Internet address</p>
                             <div class="settings-group">
                                 <SettingRow label="Detect automatically" description="Use this server's public IP address.">
@@ -106,6 +116,10 @@
 
                         <!-- ═══ Public Sharing ════════════════════════════════ -->
                         <template v-if="activeSection === 'publicSharing'">
+                            <FlowNotice v-if="egress.isOff('port_check')" tone="warning" size="sm" class="mb-3"
+                                title="Port check is off">{{ EGRESS_OFF_TEXT.port_check }}</FlowNotice>
+                            <FlowNotice v-if="egress.isOff('public_ip')" tone="warning" size="sm" class="mb-3"
+                                title="Public IP lookup is off">{{ EGRESS_OFF_TEXT.public_ip }}</FlowNotice>
                             <!-- Status Summary Card -->
                             <div class="rounded-lg border p-4 mb-4" :class="{
                                 'flow-tone-success': publicSharingStatus?.friendlyStatus === 'ready',
@@ -928,6 +942,10 @@
 
                         <!-- ═══ Server Health ═════════════════════════════════ -->
                         <template v-if="activeSection === 'health'">
+                            <FlowNotice v-if="egress.isOff('update_check')" tone="warning" size="sm" class="mb-3"
+                                title="Update checks are off">{{ EGRESS_OFF_TEXT.update_check }}</FlowNotice>
+                            <FlowNotice v-if="egress.isOff('registry_heartbeat')" tone="info" size="sm" class="mb-3"
+                                title="Registry heartbeat is off">{{ EGRESS_OFF_TEXT.registry_heartbeat }}</FlowNotice>
                             <p class="text-xs text-accent mb-3">
                                 Live server resource stats from the connected broadcaster.
                             </p>
@@ -1502,6 +1520,9 @@ import { useApi } from "../../composables/useApi";
 import AdminNetworksPanel from "../AdminNetworksPanel.vue";
 import AdminSmtpPanel from "../AdminSmtpPanel.vue";
 import AdminStaffAlertsPanel from "../AdminStaffAlertsPanel.vue";
+import AdminScannerPanel from "../AdminScannerPanel.vue";
+import AdminEgressPanel from "../AdminEgressPanel.vue";
+import { EGRESS_OFF_TEXT, useEgressSwitches } from "../../composables/useEgressSwitches";
 import { isAdminSession } from "../../composables/adminSession";
 import { disableNotifications, enableNotifications, notificationPermission, notificationsEnabled } from "../../web-notify";
 import { pushNotification, Notification } from '@45drives/houston-common-ui';
@@ -1527,7 +1548,7 @@ import FlowChip from '../../ui/FlowChip.vue';
 import { useExternalAddressReadiness, describeExternalAddressNotReady, type ExternalAddressReadiness } from '../../composables/useExternalAddressReadiness';
 import type { Component } from 'vue';
 import {
-    AdjustmentsHorizontalIcon, EnvelopeIcon, FilmIcon, GlobeAltIcon, LinkIcon, LockClosedIcon, MagnifyingGlassIcon,
+    AdjustmentsHorizontalIcon, BugAntIcon, EnvelopeIcon, FilmIcon, GlobeAltIcon, LinkIcon, LockClosedIcon, MagnifyingGlassIcon,
     QuestionMarkCircleIcon, ServerIcon, ShieldCheckIcon, SignalIcon, SparklesIcon, SwatchIcon, WrenchScrewdriverIcon,
 } from '@heroicons/vue/24/outline';
 
@@ -1555,6 +1576,8 @@ const emit = defineEmits<{
 }>();
 
 const { apiFetch, baseUrl, meta } = useApi();
+// Optional outbound calls an admin turned off; sections that rely on one say so.
+const egress = useEgressSwitches(apiFetch);
 const { onboarding, resetAll: resetOnboarding, markDone } = useOnboarding();
 const { hour12 } = useTimeFormat();
 const { enabled: _tcEnabled, preset: _tcPreset, hwAccel: _tcHwAccel, setEnabled: commitTranscodeEnabled, setPreset: commitTranscodePreset, setHwAccel: commitHwAccel } = useClientTranscode();
@@ -1626,7 +1649,7 @@ const settingsTourSteps = computed<TourStep[]>(() => [
 ])
 
 // ── Section navigation ──────────────────────────────────────────────────
-type Section = 'sharing' | 'publicSharing' | 'app' | 'performance' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade' | 'adminNetworks' | 'adminMail';
+type Section = 'sharing' | 'publicSharing' | 'app' | 'performance' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade' | 'adminNetworks' | 'adminMail' | 'adminSecurity';
 
 type SectionMeta = {
     label: string
@@ -1700,6 +1723,11 @@ const SECTION_META: Record<Section, SectionMeta> = {
         description: 'The mail server 45Flow uses to send share invitations.',
         keywords: 'smtp email mail invitation invite send server relay',
     },
+    adminSecurity: {
+        label: 'Scanner & outbound calls', icon: BugAntIcon,
+        description: 'What the malware scanner does, and everything this server sends over the internet.',
+        keywords: 'clamav malware virus scan freshclam signatures security telemetry egress outbound privacy license heartbeat public ip port check updates',
+    },
     upgrade: {
         label: 'Go Pro', icon: SparklesIcon,
         description: 'Unlock branding, watermark controls and more with a 45Flow Pro license.',
@@ -1717,7 +1745,7 @@ const activeSection = ref<Section>(
 );
 const currentMeta = computed(() => SECTION_META[activeSection.value]);
 const contentRef = ref<HTMLElement | null>(null);
-watch(activeSection, () => { contentRef.value?.scrollTo?.({ top: 0 }) });
+watch(activeSection, () => { contentRef.value?.scrollTo?.({ top: 0 }); void egress.load() }, { immediate: true });
 
 const showUpgrade = computed(() => !isPremiumActive.value || isTrial.value);
 
@@ -1746,7 +1774,7 @@ const navGroups = computed(() => {
             items: [
                 item('health'),
                 item('maintenance'),
-                ...(adminSession.value ? [item('adminNetworks'), item('adminMail')] : []),
+                ...(adminSession.value ? [item('adminNetworks'), item('adminMail'), item('adminSecurity')] : []),
             ],
         },
         {

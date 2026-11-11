@@ -8,6 +8,10 @@
             <FlowSwitch :model-value="enabled" label="Send link by email" :disabled="disabled" @update:model-value="setEnabled" />
         </div>
 
+        <div v-if="emailOff" class="py-3">
+            <FlowNotice tone="warning" size="sm" title="Email is off">{{ EGRESS_OFF_TEXT.smtp }}</FlowNotice>
+        </div>
+
         <div v-if="enabled" class="flex flex-col gap-3 py-3">
             <fieldset v-if="peopleRows.length" class="flex flex-col gap-1.5 min-w-0">
                 <legend class="text-sm font-medium mb-1">Invited people</legend>
@@ -38,12 +42,16 @@
 import { computed, ref, watch } from 'vue'
 import FlowField from '../ui/FlowField.vue'
 import FlowSwitch from '../ui/FlowSwitch.vue'
+import FlowNotice from '../ui/FlowNotice.vue'
+import { EGRESS_OFF_TEXT } from '../composables/useEgressSwitches'
 import { collectRecipients, invalidAddresses, invitePeopleRows, type InvitePerson } from '../utils/emailRecipients'
 
 const props = defineProps<{
     /** People invited to the link being set up. */
     people?: InvitePerson[]
     disabled?: boolean
+    /** Email is switched off on the server; addresses are still recorded but not sent. */
+    emailOff?: boolean
 }>()
 
 const enabled = defineModel<boolean>({ default: false })

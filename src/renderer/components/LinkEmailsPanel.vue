@@ -66,7 +66,7 @@ type EmailRow = {
   reason?: string | null
   createdAt: string
   updatedAt: string
-  mail: { configured: boolean | null; sent: boolean; message: string }
+  mail: { configured: boolean | null; disabled?: boolean; sent: boolean; message: string }
 }
 
 const props = defineProps<{
@@ -99,7 +99,7 @@ const visible = computed(() => supported.value && (emails.value.length > 0 || !!
 const visibleEmails = computed(() => (showAll.value ? emails.value : emails.value.slice(0, PREVIEW)))
 
 function statusOf(e: EmailRow) {
-  return emailStatusView(e.status, e.mail?.configured, e.reason)
+  return emailStatusView(e.status, e.mail?.configured, e.reason, e.mail?.disabled)
 }
 
 function when(v: string) {

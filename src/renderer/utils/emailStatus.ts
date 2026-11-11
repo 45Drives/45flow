@@ -28,10 +28,13 @@ export function emailReasonHelp(reason?: EmailReason | string | null): string | 
   }
 }
 
-export function emailStatusView(status: EmailStatus | string, mailConfigured?: boolean | null, reason?: EmailReason | string | null): EmailStatusView {
+export function emailStatusView(status: EmailStatus | string, mailConfigured?: boolean | null, reason?: EmailReason | string | null, mailDisabled?: boolean): EmailStatusView {
   const why = emailReasonHelp(reason)
   switch (status) {
     case 'pending':
+      if (mailDisabled) {
+        return { label: 'Not sent', tone: 'warning', help: 'Email is turned off on this server. Retry once an admin turns it back on in Settings → Scanner & outbound calls.' }
+      }
       if (mailConfigured === false) {
         return { label: 'Not sent', tone: 'warning', help: "Email isn't set up on this server, so it's waiting to be sent." }
       }

@@ -2,7 +2,7 @@
     <!-- Inline: one small button plus a status light, for a single form row -->
     <div v-if="inline" class="inline-flex items-center gap-2 min-w-0" :title="inlineTitle">
         <button type="button" class="btn btn-secondary btn-xs whitespace-nowrap" :class="buttonClass"
-            :disabled="disabled || checking" @click="runCheck">
+            :disabled="disabled || checking || turnedOff" @click="runCheck">
             {{ checking ? checkingLabel : status ? 'Check Again' : buttonLabel }}
         </button>
         <span class="inline-flex items-center gap-1.5 text-xs whitespace-nowrap" role="status" aria-live="polite">
@@ -15,7 +15,7 @@
     <div v-else class="w-full min-w-0 text-center">
         <div class="flex items-center gap-2 min-w-0">
             <button type="button" class="btn btn-primary whitespace-nowrap px-3 py-2 text-base w-full" :class="buttonClass"
-                :disabled="disabled || checking" @click="runCheck">
+                :disabled="disabled || checking || turnedOff" @click="runCheck">
                 {{ checking ? checkingLabel : buttonLabel }}
             </button>
 
@@ -35,7 +35,8 @@
         </div>
 
         <p class="mt-2 mb-0 min-w-0 opacity-90 leading-5 break-words text-sm">
-            <span v-if="message">{{ message }}</span>
+            <span v-if="turnedOff">{{ EGRESS_OFF_TEXT.port_check }}</span>
+            <span v-else-if="message">{{ message }}</span>
             <span v-else class="opacity-70">Run a check to verify port forwarding.</span>
         </p>
 
@@ -48,6 +49,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { EGRESS_OFF_TEXT, useEgressSwitches } from "../composables/useEgressSwitches";
 
 type VerifyForwardingResponse = {
     ok: boolean;
@@ -114,6 +116,11 @@ const checking = ref(false);
 const status = ref<null | "enabled" | "disabled" | "error">(null);
 const message = ref("");
 const lastResponse = ref<VerifyForwardingResponse | null>(null);
+// The server's own check can be switched off in Settings → Scanner & outbound calls.
+const checksServer = computed(() => !!props.apiFetch && props.endpoint === "/api/forwarding/check");
+const egress = props.apiFetch ? useEgressSwitches(props.apiFetch) : null;
+const turnedOffByServer = ref(false);
+const turnedOff = computed(() => checksServer.value && (turnedOffByServer.value || !!egress?.isOff("port_check")));
 
 const detailsLine = computed(() => {
     const r = lastResponse.value;
@@ -127,6 +134,7 @@ const detailsLine = computed(() => {
 });
 
 const badgeText = computed(() => {
+    if (turnedOff.value) return "Check turned off";
     // if (status.value === "enabled") return "Port forwarding working";
     if (status.value === "enabled") return "External access is working!";
     // if (status.value === "disabled") return "Port forwarding not working";
@@ -151,6 +159,7 @@ const lightTone = computed(() => {
 });
 
 const inlineText = computed(() => {
+    if (turnedOff.value) return "Check turned off";
     if (checking.value) return "Testing from the internet…";
     if (status.value === "enabled") return "Reachable from the internet";
     if (status.value === "disabled") return "Not reachable. Check port forwarding";
@@ -166,7 +175,7 @@ const inlineTextClass = computed(() => {
 });
 
 const inlineTitle = computed(() =>
-    [message.value, detailsLine.value].filter(Boolean).join("\n") || "Checks whether this server can be reached from outside your network."
+    turnedOff.value ? EGRESS_OFF_TEXT.port_check : [message.value, detailsLine.value].filter(Boolean).join("\n") || "Checks whether this server can be reached from outside your network."
 );
 
 function reset() {
@@ -258,6 +267,12 @@ async function runCheck() {
 
         emit("result", { ok: true, enabled, response: json });
     } catch (e) {
+        if ((e as any)?.code === "egress_disabled") {
+            turnedOffByServer.value = true;
+            status.value = null;
+            emit("result", { ok: false, error: "egress_disabled" });
+            return;
+        }
         status.value = "error";
         message.value = String((e as any)?.message || e);
         emit("result", { ok: false, error: "network_error", detail: message.value });
@@ -266,8 +281,9 @@ async function runCheck() {
     }
 }
 
-onMounted(() => {
-    if (props.autoCheckOnMount) runCheck();
+onMounted(async () => {
+    if (checksServer.value) await egress?.load();
+    if (props.autoCheckOnMount && !turnedOff.value) runCheck();
 });
 
 defineExpose({ runCheck, reset });

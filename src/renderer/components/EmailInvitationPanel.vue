@@ -1,6 +1,9 @@
 <template>
     <div aria-label="Invite by email">
-        <FlowNotice v-if="mailUnconfigured" tone="warning" size="sm" class="mb-3">
+        <FlowNotice v-if="emailOff" tone="warning" size="sm" class="mb-3" title="Email is off">
+            {{ EGRESS_OFF_TEXT.smtp }}
+        </FlowNotice>
+        <FlowNotice v-else-if="mailUnconfigured" tone="warning" size="sm" class="mb-3">
             Email isn't set up on this server yet. Open Settings → Email (SMTP) to add it.
         </FlowNotice>
         <div :class="compact ? 'flex flex-col gap-3' : 'flow-group'">
@@ -83,9 +86,10 @@ import FlowChip from '../ui/FlowChip.vue'
 import FlowField from '../ui/FlowField.vue'
 import FlowNotice from '../ui/FlowNotice.vue'
 import { emailStatusView } from '../utils/emailStatus'
+import { EGRESS_OFF_TEXT } from '../composables/useEgressSwitches'
 import { EMAIL_RE, invitePeopleRows, normalizeEmail, splitAddresses, type InvitePerson } from '../utils/emailRecipients'
 
-export type InvitationMail = { configured: boolean | null; sent: boolean; message: string }
+export type InvitationMail = { configured: boolean | null; disabled?: boolean; sent: boolean; message: string }
 export type InvitationStatus = 'pending' | 'sending' | 'accepted' | 'rejected' | 'timeout' | 'ambiguous'
 export type Invitation = {
     id: number
@@ -113,6 +117,8 @@ const props = defineProps<{
     people?: InvitePerson[]
     /** Addresses to email as soon as the panel opens (chosen before the link was created). Sent once per link. */
     autoSend?: string[]
+    /** Email is switched off on the server (Settings → Scanner & outbound calls). */
+    emailOff?: boolean
 }>()
 
 const recipientEmail = ref('')
@@ -167,9 +173,10 @@ watch(() => props.linkId, () => {
 }, { flush: 'sync', immediate: true })
 
 function viewOf(inv: Invitation) {
-    return emailStatusView(inv.status, inv.mail.configured, inv.reason)
+    return emailStatusView(inv.status, inv.mail.configured, inv.reason, inv.mail.disabled)
 }
-const mailUnconfigured = computed(() => invitations.value.some(inv => inv.mail.configured === false))
+const mailUnconfigured = computed(() => invitations.value.some(inv => inv.mail.configured === false && !inv.mail.disabled))
+const emailOff = computed(() => !!props.emailOff || invitations.value.some(inv => inv.mail.disabled))
 
 function canRetry(inv: Invitation) {
     return retryingId.value === null && !RETRY_BLOCKED_STATUSES.includes(inv.status)
@@ -292,6 +299,8 @@ function retryErrorMessage(e: unknown) {
             return 'Another retry or delivery attempt is already in progress for this invitation. Refresh status and try again shortly.'
         case 'credential_store_unavailable':
             return 'SMTP credential store is unavailable; the invitation was not retried.'
+        case 'email_disabled':
+            return 'Email is turned off on this server, so it was not retried. An admin can turn it back on in Settings → Scanner & outbound calls.'
         default:
             return message(e)
     }
@@ -338,7 +347,10 @@ function parseInvitation(inv: any): Invitation {
         createdAt: requiredString('createdAt'),
         updatedAt: requiredString('updatedAt'),
         invitationUrl: nullableString('invitationUrl'),
-        mail: { configured: mailField.configured, sent: mailField.sent, message: mailField.message },
+        mail: {
+            configured: mailField.configured, sent: mailField.sent, message: mailField.message,
+            ...('disabled' in mailField && mailField.disabled === true ? { disabled: true } : {}),
+        },
     }
 }
 

@@ -468,6 +468,13 @@
               </DetailRow>
             </div>
             <FlowNotice v-if="uploadDirMissing" tone="danger" size="sm" class="mt-2">Choose a folder for uploads.</FlowNotice>
+            <template v-if="isPremiumActive">
+              <p class="flow-subhead">File requirements</p>
+              <FlowNotice v-if="uploadSpecError" tone="warning" size="sm">{{ uploadSpecError }}</FlowNotice>
+              <p v-else-if="!link?.upload_enabled" class="text-xs text-muted">Save the link with uploads turned on, then set file requirements here.</p>
+              <UploadSpecRulesEditor v-else v-model="draftUploadSpec" :disabled="saving"
+                @update:invalid="(v) => (uploadSpecInvalid = v)" />
+            </template>
           </div>
 
           <p class="flow-subhead">Who can open it</p>
@@ -740,6 +747,8 @@ import EditLinkFilesModal from './EditLinkFilesModal.vue'
 import CommentsReviewModal from './CommentsReviewModal.vue'
 import CategoryManagementModal from './CategoryManagementModal.vue'
 import PathInput from '../PathInput.vue'
+import UploadSpecRulesEditor from '../UploadSpecRulesEditor.vue'
+import { hasAnySpecRule, withSpecDefaults, type UploadSpecRules } from '../../utils/uploadSpec'
 import LinkTranscodeStatus from '../LinkTranscodeStatus.vue'
 import EmailInvitationPanel from '../EmailInvitationPanel.vue'
 import LinkReviewPanel from '../LinkReviewPanel.vue'
@@ -962,6 +971,7 @@ const hasUnsavedChanges = computed(() => {
   if (draftUsePassword.value && draftPassword.value.trim().length > 0) return true
   if (accessEditsPending.value) return true
   if (approverDirty.value) return true
+  if (uploadSpecDirty.value) return true
   return false
 })
 
@@ -973,6 +983,7 @@ const capabilitiesSatisfied = computed(() => {
   if (draftShareEnabled.value && draftFilePaths.value.length === 0) return false
   // If upload is enabled, destination directory must be set
   if (uploadDirMissing.value) return false
+  if (canEditUploadSpec.value && uploadSpecInvalid.value) return false
   return true
 })
 
@@ -1005,6 +1016,32 @@ function toggleDraftAutoTranscodeQuality(quality: string, checked: boolean) {
   draftAutoTranscodeProxyQualities.value = Array.from(set)
 }
 const draftProjectId = ref<number | null>(null)
+
+// File requirements for uploads (Pro). Saved separately through /upload-spec.
+const savedUploadSpec = ref<UploadSpecRules | null>(null)
+const draftUploadSpec = ref<UploadSpecRules | null>(null)
+const uploadSpecInvalid = ref(false)
+const uploadSpecError = ref('')
+const canEditUploadSpec = computed(() => isPremiumActive.value && draftUploadEnabled.value && !uploadSpecError.value)
+function specKey(r: UploadSpecRules | null) {
+  return hasAnySpecRule(r) ? JSON.stringify(r) : 'null'
+}
+const uploadSpecDirty = computed(() => canEditUploadSpec.value && specKey(draftUploadSpec.value) !== specKey(savedUploadSpec.value))
+async function loadUploadSpec() {
+  uploadSpecError.value = ''
+  savedUploadSpec.value = null
+  draftUploadSpec.value = null
+  if (!props.link?.id || !isPremiumActive.value || !props.link.upload_enabled) return
+  try {
+    const data = await props.apiFetch(`/api/links/${props.link.id}/upload-spec`, { exposeServerMessage: true })
+    savedUploadSpec.value = withSpecDefaults(data?.rules)
+    draftUploadSpec.value = withSpecDefaults(data?.rules)
+  } catch (e: any) {
+    uploadSpecError.value = e?.status === 404
+      ? 'This server does not support file requirements yet. Update the Broadcaster.'
+      : `Couldn't load file requirements: ${e?.message || 'unknown error'}`
+  }
+}
 const availableProjects = ref<{ id: number; name: string }[]>([])
 const draftGenerateReviewProxy = ref(false)
 const draftProxyQualities = ref<string[]>([])
@@ -3776,6 +3813,7 @@ async function saveDraftAccess() {
 function beginEdit() {
   if (!props.link) return
   editMode.value = true
+  void loadUploadSpec()
 
   // Tour: show edit-mode tour the first time
   if (!_editTourTriggered && !onboarding.value.linkDetailsEditTourDone) {
@@ -3858,6 +3896,7 @@ async function editApprover() {
 function cancelEdit() {
   editMode.value = false
   mediaWasReprocessed.value = false
+  draftUploadSpec.value = savedUploadSpec.value ? JSON.parse(JSON.stringify(savedUploadSpec.value)) : null
 
   draftTitle.value = props.link?.title || ''
   draftNotes.value = (props.link as any)?.notes || ''
@@ -4009,6 +4048,7 @@ async function saveAll() {
     details: false,
     files: false,
     uploadDest: false,
+    uploadSpec: false,
   }
 
   try {
@@ -4398,6 +4438,23 @@ async function saveAll() {
       }
     }
 
+    // 3b) File requirements (Pro) — only on links that already accept uploads.
+    if (uploadSpecDirty.value) {
+      try {
+        const resp = await props.apiFetch(`/api/links/${id}/upload-spec`, {
+          method: 'PUT',
+          body: JSON.stringify({ rules: hasAnySpecRule(draftUploadSpec.value) ? draftUploadSpec.value : null }),
+          retry: 0,
+          exposeServerMessage: true,
+        })
+        savedUploadSpec.value = withSpecDefaults(resp?.rules)
+        did.uploadSpec = true
+      } catch (e: any) {
+        pushNotification(new Notification('File requirements not saved', apiErrMsg(e), 'error', 8000))
+        return
+      }
+    }
+
     // Track transcode progress when files were added or watermark changed
     const trackingResp = shouldUpdateFiles ? filesResp : (watermarkChanged ? (mediaResp || detailsResp) : null)
     if (trackingResp && (trackingResp?.hasTranscodes || (shouldUpdateFiles && (wantsHls || wantsProxy)))) {
@@ -4521,7 +4578,7 @@ async function saveAll() {
     emit('updated', updatedPayload)
 
     // Optional success notification (only if something changed)
-    if (did.access || did.details || did.files || did.uploadDest) {
+    if (did.access || did.details || did.files || did.uploadDest || did.uploadSpec) {
       console.log('[link-details:save] Save complete!', { did, capabilitiesChanged, uploadEnabledChanged, shareEnabledChanged })
       pushNotification(
         new Notification(

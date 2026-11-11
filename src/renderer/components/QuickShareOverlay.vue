@@ -178,7 +178,7 @@
           />
         </div>
 
-        <LinkEmailComposer ref="emailComposer" v-model="emailEnabled" :people="composerPeople" :disabled="busy"
+        <LinkEmailComposer ref="emailComposer" v-model="emailEnabled" :people="composerPeople" :email-off="egress.isOff('smtp')" :disabled="busy"
           @update:recipients="(v) => (emailRecipients = v)" @update:invalid="(v) => (emailInvalid = v)" />
 
         <!-- ── Advanced Options (collapsible) ── -->
@@ -320,7 +320,7 @@
             <button class="btn btn-primary" @click="copyLink">Copy</button>
             <button class="btn btn-secondary" @click="openInBrowser">Open</button>
           </div>
-          <EmailInvitationPanel v-if="createdLinkId" compact :key="createdLinkId" :link-id="createdLinkId" :api-fetch="apiFetch" :auto-send="createdLinkEmails" />
+          <EmailInvitationPanel v-if="createdLinkId" compact :email-off="egress.isOff('smtp')" :key="createdLinkId" :link-id="createdLinkId" :api-fetch="apiFetch" :auto-send="createdLinkEmails" />
         </div>
 
         <FlowNotice v-else-if="uploadPhase === 'error'" tone="danger" size="sm" live>
@@ -373,6 +373,7 @@ import CategoryManagementModal from './modals/CategoryManagementModal.vue'
 import LinkAccessMode from './LinkAccessMode.vue'
 import EmailInvitationPanel, { type InvitePerson } from './EmailInvitationPanel.vue'
 import LinkEmailComposer from './LinkEmailComposer.vue'
+import { useEgressSwitches } from '../composables/useEgressSwitches'
 import VideoOptionsPanel from './VideoOptionsPanel.vue'
 import WatermarkCustomizer from './WatermarkCustomizer.vue'
 import WatermarkPreview from './WatermarkPreview.vue'
@@ -398,6 +399,8 @@ type DroppedFile = { path: string; name: string; size: number }
 
 const route = useRoute()
 const { apiFetch } = useApi()
+const egress = useEgressSwitches(apiFetch)
+void egress.load()
 const { checkExternalAddressReady } = useExternalAddressReadiness()
 const { activeConnection } = useConnections()
 const isRootUser = computed(() => activeConnection.value?.username === 'root')
