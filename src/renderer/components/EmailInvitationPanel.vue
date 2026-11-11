@@ -117,7 +117,7 @@ const props = defineProps<{
     people?: InvitePerson[]
     /** Addresses to email as soon as the panel opens (chosen before the link was created). Sent once per link. */
     autoSend?: string[]
-    /** Email is switched off on the server (Settings → Scanner & outbound calls). */
+    /** Email is switched off on the server (Settings → Scanning & privacy). */
     emailOff?: boolean
 }>()
 
@@ -300,7 +300,7 @@ function retryErrorMessage(e: unknown) {
         case 'credential_store_unavailable':
             return 'SMTP credential store is unavailable; the invitation was not retried.'
         case 'email_disabled':
-            return 'Email is turned off on this server, so it was not retried. An admin can turn it back on in Settings → Scanner & outbound calls.'
+            return 'Email is turned off on this server, so it was not retried. An admin can turn it back on in Settings → Scanning & privacy.'
         default:
             return message(e)
     }

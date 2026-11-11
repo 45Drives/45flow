@@ -33,7 +33,7 @@ export function emailStatusView(status: EmailStatus | string, mailConfigured?: b
   switch (status) {
     case 'pending':
       if (mailDisabled) {
-        return { label: 'Not sent', tone: 'warning', help: 'Email is turned off on this server. Retry once an admin turns it back on in Settings → Scanner & outbound calls.' }
+        return { label: 'Not sent', tone: 'warning', help: 'Email is turned off on this server. Retry once an admin turns it back on in Settings → Scanning & privacy.' }
       }
       if (mailConfigured === false) {
         return { label: 'Not sent', tone: 'warning', help: "Email isn't set up on this server, so it's waiting to be sent." }

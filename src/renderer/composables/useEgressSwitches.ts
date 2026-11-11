@@ -7,7 +7,7 @@ export type EgressId = 'smtp' | 'port_check' | 'public_ip' | 'update_check' | 'r
 
 type ApiFetch = (path: string, init?: any) => Promise<any>
 
-const WHERE = 'An admin can turn it back on in Settings → Scanner & outbound calls.'
+const WHERE = 'An admin can turn it back on in Settings → Scanning & privacy.'
 
 /** What stops working when each call is off, in one or two sentences. */
 export const EGRESS_OFF_TEXT: Record<EgressId, string> = {

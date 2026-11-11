@@ -1724,7 +1724,7 @@ const SECTION_META: Record<Section, SectionMeta> = {
         keywords: 'smtp email mail invitation invite send server relay',
     },
     adminSecurity: {
-        label: 'Scanner & outbound calls', icon: BugAntIcon,
+        label: 'Scanning & privacy', icon: BugAntIcon,
         description: 'What the malware scanner does, and everything this server sends over the internet.',
         keywords: 'clamav malware virus scan freshclam signatures security telemetry egress outbound privacy license heartbeat public ip port check updates',
     },

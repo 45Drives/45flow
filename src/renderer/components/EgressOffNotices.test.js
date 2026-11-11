@@ -28,8 +28,9 @@ describe('port-forwarding check when the server turned it off', () => {
         const apiFetch = vi.fn(async (url) => (url === '/api/egress/switches'
             ? { ok: true, switches: { port_check: false } } : { ok: true }))
         await mount(CheckPortForwarding, { apiFetch, endpoint: '/api/forwarding/check', autoCheckOnMount: true })
-        expect(host.textContent).toContain('Check turned off')
+        expect(host.textContent).toContain('Port check is off')
         expect(host.textContent).toContain('port-forwarding check is turned off')
+        expect(host.textContent).not.toContain('Not Tested')
         expect(button('Check Port').disabled).toBe(true)
         expect(apiFetch).toHaveBeenCalledTimes(1)
     })

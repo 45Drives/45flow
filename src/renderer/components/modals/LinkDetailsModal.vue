@@ -91,7 +91,8 @@
             </div>
             <template v-if="link?.id">
               <p class="flow-subhead">Invite by email</p>
-              <EmailInvitationPanel :key="link.id" :link-id="link.id" :api-fetch="apiFetch" :people="invitePeople" />
+              <EmailInvitationPanel :key="link.id" :link-id="link.id" :api-fetch="apiFetch" :people="invitePeople"
+                :email-off="egress.isOff('smtp')" />
             </template>
 
             <template v-if="hasShareCapability">
@@ -757,6 +758,7 @@ import LinkRecipientCopies from '../LinkRecipientCopies.vue'
 import EmailInvitationPanel from '../EmailInvitationPanel.vue'
 import LinkReviewPanel from '../LinkReviewPanel.vue'
 import LinkEmailsPanel from '../LinkEmailsPanel.vue'
+import { useEgressSwitches } from '../../composables/useEgressSwitches'
 import { useLinkReview } from '../../composables/useLinkReview'
 import { reviewStateView } from '../../utils/reviewStatus'
 import WatermarkCustomizer from '../WatermarkCustomizer.vue'
@@ -1020,6 +1022,10 @@ function toggleDraftAutoTranscodeQuality(quality: string, checked: boolean) {
   draftAutoTranscodeProxyQualities.value = Array.from(set)
 }
 const draftProjectId = ref<number | null>(null)
+
+// Email can be switched off on the server; say so before anyone tries to send.
+const egress = useEgressSwitches((url, opts) => props.apiFetch(url, opts))
+watch(() => props.link?.id, (id) => { if (id) void egress.load() }, { immediate: true })
 
 // File requirements for uploads (Pro). Saved separately through /upload-spec.
 const savedUploadSpec = ref<UploadSpecRules | null>(null)

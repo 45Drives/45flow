@@ -298,7 +298,7 @@ async function sendTest() {
         const code = typeof e === 'object' && e !== null && 'code' in e ? (e as any).code : undefined
         const text = statusCode(e) === 404 ? "This server can't send test emails yet. Update 45Flow on the server."
             : code === 'smtp_not_configured' || message(e) === 'smtp_not_configured' ? 'Save the email settings first.'
-            : code === 'smtp_disabled' ? 'Email is turned off in Settings → Scanner & outbound calls. Turn it on to send a test.'
+            : code === 'smtp_disabled' ? 'Email is turned off in Settings → Scanning & privacy. Turn it on to send a test.'
                 : `Couldn't send the test email: ${message(e)}`
         testResult.value = { sent: false, text, reply: null }
     } finally {

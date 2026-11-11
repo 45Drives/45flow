@@ -26,19 +26,23 @@
                 Reset
             </button>
         </div>
-        <div>
-            <span
-                class="inline-flex items-center justify-center whitespace-nowrap select-none rounded-full border text-[0.72rem] font-bold h-5 px-2 w-full"
-                :class="badgeTwClass">
-                {{ badgeText }}
-            </span>
-        </div>
+        <FlowNotice v-if="turnedOff" tone="warning" size="sm" class="mt-2 text-left" title="Port check is off">
+            {{ EGRESS_OFF_TEXT.port_check }}
+        </FlowNotice>
+        <template v-else>
+            <div>
+                <span
+                    class="inline-flex items-center justify-center whitespace-nowrap select-none rounded-full border text-[0.72rem] font-bold h-5 px-2 w-full"
+                    :class="badgeTwClass">
+                    {{ badgeText }}
+                </span>
+            </div>
 
-        <p class="mt-2 mb-0 min-w-0 opacity-90 leading-5 break-words text-sm">
-            <span v-if="turnedOff">{{ EGRESS_OFF_TEXT.port_check }}</span>
-            <span v-else-if="message">{{ message }}</span>
-            <span v-else class="opacity-70">Run a check to verify port forwarding.</span>
-        </p>
+            <p class="mt-2 mb-0 min-w-0 opacity-90 leading-5 break-words text-sm">
+                <span v-if="message">{{ message }}</span>
+                <span v-else class="opacity-70">Run a check to verify port forwarding.</span>
+            </p>
+        </template>
 
         <p v-if="showDetails && detailsLine" class="mt-1 mb-0 text-xs opacity-70 break-words">
             {{ detailsLine }}
@@ -50,6 +54,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { EGRESS_OFF_TEXT, useEgressSwitches } from "../composables/useEgressSwitches";
+import FlowNotice from "../ui/FlowNotice.vue";
 
 type VerifyForwardingResponse = {
     ok: boolean;
@@ -116,7 +121,7 @@ const checking = ref(false);
 const status = ref<null | "enabled" | "disabled" | "error">(null);
 const message = ref("");
 const lastResponse = ref<VerifyForwardingResponse | null>(null);
-// The server's own check can be switched off in Settings → Scanner & outbound calls.
+// The server's own check can be switched off in Settings → Scanning & privacy.
 const checksServer = computed(() => !!props.apiFetch && props.endpoint === "/api/forwarding/check");
 const egress = props.apiFetch ? useEgressSwitches(props.apiFetch) : null;
 const turnedOffByServer = ref(false);
@@ -134,7 +139,6 @@ const detailsLine = computed(() => {
 });
 
 const badgeText = computed(() => {
-    if (turnedOff.value) return "Check turned off";
     // if (status.value === "enabled") return "Port forwarding working";
     if (status.value === "enabled") return "External access is working!";
     // if (status.value === "disabled") return "Port forwarding not working";
@@ -151,6 +155,7 @@ const badgeTwClass = computed(() => {
 });
 
 const lightTone = computed(() => {
+    if (turnedOff.value) return "warning";
     if (checking.value) return "info";
     if (status.value === "enabled") return "success";
     if (status.value === "disabled") return "danger";
@@ -168,6 +173,7 @@ const inlineText = computed(() => {
 });
 
 const inlineTextClass = computed(() => {
+    if (turnedOff.value) return "text-flow-warning";
     if (status.value === "enabled") return "text-flow-success";
     if (status.value === "disabled") return "text-flow-danger";
     if (status.value === "error") return "text-flow-warning";
