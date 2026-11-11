@@ -8,6 +8,15 @@
     <div class="grid grid-cols-2 gap-6">
       <!-- Left Column: Controls -->
       <div class="space-y-4">
+        <!-- Image watermark (Pro: one card, exclusive with text) -->
+        <div v-if="allowImage" :class="allowText ? 'space-y-4 p-3 border border-default rounded-lg bg-default/10' : 'space-y-4'" data-testid="wm-image-section">
+          <label v-if="allowText" class="flex items-center gap-2 text-xs font-semibold">
+            <input type="checkbox" :checked="imageOn" data-testid="wm-image-toggle"
+              @change="toggleImage(($event.target as HTMLInputElement).checked)" />
+            Image watermark
+          </label>
+          <template v-if="imageOn">
+        <slot name="image-source" />
         <!-- Preset Selector -->
         <div class="space-y-2">
           <label class="text-xs font-semibold text-muted">Quick Presets</label>
@@ -312,6 +321,72 @@
             Reset
           </button>
         </div>
+          </template>
+        </div>
+
+        <!-- Text watermark (Pro) -->
+        <div v-if="allowText" class="space-y-3 p-3 border border-default rounded-lg bg-default/10" data-testid="wm-text-section">
+          <label class="flex items-center gap-2 text-xs font-semibold">
+            <input type="checkbox" :checked="!!text" data-testid="wm-text-toggle" @change="toggleText(($event.target as HTMLInputElement).checked)" />
+            Text watermark
+          </label>
+          <template v-if="text">
+            <div class="space-y-1">
+              <label class="text-xs text-muted" :for="templateInputId">Text</label>
+              <input :id="templateInputId" ref="templateInput" type="text" :maxlength="TEXT_TEMPLATE_MAX_LENGTH"
+                :value="text.template" data-testid="wm-text-template"
+                class="w-full px-2 py-1.5 text-sm border border-default rounded bg-default"
+                @input="patchText({ template: ($event.target as HTMLInputElement).value })" />
+              <div class="flex flex-wrap gap-1">
+                <button v-for="v in WATERMARK_TEXT_VARIABLES" :key="v.token" type="button"
+                  class="px-2 py-0.5 text-[11px] border border-default rounded-full bg-default hover:bg-default/60"
+                  :title="`Insert ${v.label}`" @click="insertVariable(v.token)">{{ v.label }}</button>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="text-xs text-muted space-y-1">
+                <span>Font</span>
+                <select :value="text.font" class="w-full px-2 py-1 text-xs border border-default rounded bg-default"
+                  @change="patchText({ font: ($event.target as HTMLSelectElement).value as WatermarkFont })">
+                  <option value="sans-bold">Sans Bold</option>
+                  <option value="sans">Sans</option>
+                </select>
+              </label>
+              <label class="text-xs text-muted space-y-1">
+                <span>Colour</span>
+                <input type="color" :value="text.color" class="w-full h-7 border border-default rounded bg-default"
+                  @input="patchText({ color: ($event.target as HTMLInputElement).value.toUpperCase() })" />
+              </label>
+            </div>
+            <div class="flex items-center gap-4 text-xs">
+              <label class="flex items-center gap-1"><input type="checkbox" :checked="text.outline"
+                @change="patchText({ outline: ($event.target as HTMLInputElement).checked })" /> Outline</label>
+              <label class="flex items-center gap-1"><input type="radio" :checked="text.layout === 'single'"
+                @change="patchText({ layout: 'single' })" /> Once</label>
+              <label class="flex items-center gap-1"><input type="radio" :checked="text.layout === 'tiled'"
+                @change="patchText({ layout: 'tiled' })" /> Tiled</label>
+            </div>
+            <div v-if="text.layout === 'single'" class="space-y-1">
+              <label class="text-xs text-muted">Position</label>
+              <div class="grid grid-cols-3 gap-1">
+                <button v-for="anchor in anchorOptions" :key="anchor.value" type="button"
+                  class="px-2 py-1 text-[11px] border rounded transition-colors"
+                  :class="text.settings.position.anchor === anchor.value ? 'border-primary bg-primary/20 text-primary font-semibold' : 'border-default bg-default hover:bg-default/60'"
+                  @click="patchTextSettings({ position: { ...text.settings.position, anchor: anchor.value } })">{{ anchor.label }}</button>
+              </div>
+            </div>
+            <div v-for="ctl in textSliders" :key="ctl.key" class="space-y-1">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-semibold">{{ ctl.label }}</label>
+                <span class="text-xs font-mono text-muted">{{ text.settings[ctl.key] }}{{ ctl.unit }}</span>
+              </div>
+              <input type="range" :min="ctl.min" :max="ctl.max" step="1" :value="text.settings[ctl.key]"
+                :style="getSliderStyle(text.settings[ctl.key], ctl.max, ctl.min)" class="w-full slider"
+                @input="setTextSetting(ctl.key, parseInt(($event.target as HTMLInputElement).value))" />
+            </div>
+          </template>
+        </div>
+
       </div>
 
       <!-- Right Column: Live Preview -->
@@ -322,13 +397,13 @@
           class="relative aspect-video w-full rounded-md border border-default bg-gradient-to-br from-slate-700/40 via-slate-800/40 to-slate-900/60 overflow-hidden select-none"
           :class="{ 
             'cursor-grabbing': isDragging, 
-            'cursor-grab': !isDragging && watermarkPreviewUrl && settings.position.anchor !== 'center',
+            'cursor-grab': !isDragging && imageOn && watermarkPreviewUrl && settings.position.anchor !== 'center',
             'cursor-default': settings.position.anchor === 'center'
           }"
           @mousedown="startDrag"
         >
           <img
-            v-if="watermarkPreviewUrl"
+            v-if="imageOn && watermarkPreviewUrl"
             :src="watermarkPreviewUrl"
             alt="Watermark preview"
             class="absolute drop-shadow-md transition-opacity"
@@ -336,6 +411,13 @@
             style="object-fit: contain; max-width: none; max-height: none; pointer-events: none;"
             :style="computedPreviewStyle"
           />
+          <div v-if="text && text.layout === 'tiled'" class="absolute inset-0 overflow-hidden pointer-events-none" data-testid="wm-text-preview">
+            <div class="absolute flex flex-wrap content-start" :style="tiledWrapperStyle">
+              <span v-for="n in 60" :key="n" class="whitespace-nowrap" :style="textPreviewStyle">{{ previewText }}</span>
+            </div>
+          </div>
+          <span v-else-if="text" class="absolute whitespace-nowrap pointer-events-none" :style="singleTextStyle"
+            data-testid="wm-text-preview">{{ previewText }}</span>
         </div>
         <p class="text-xs text-muted italic">
           <span v-if="isDragging" class="text-primary font-semibold">Dragging...</span>
@@ -403,7 +485,13 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import type { WatermarkSettings, PositionAnchor } from '../types/watermark'
+import type { WatermarkSettings, PositionAnchor, TextWatermarkLayer, WatermarkFont, TemplateSample } from '../types/watermark'
+import {
+  WATERMARK_TEXT_VARIABLES,
+  TEXT_TEMPLATE_MAX_LENGTH,
+  createDefaultTextLayer,
+  resolveTemplatePreview,
+} from '../types/watermark'
 import { useWatermarkCustomization } from '../composables/useWatermarkCustomization'
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import FlowModal from '../ui/FlowModal.vue'
@@ -414,14 +502,145 @@ const props = withDefaults(defineProps<{
   modelValue?: WatermarkSettings | null
   /** URL for watermark image preview */
   watermarkPreviewUrl?: string | null
+  /** Text layer (Pro); null = no text. Only editable when allowText is set. */
+  textLayer?: TextWatermarkLayer | null
+  allowText?: boolean
+  /** Values shown for template variables in the preview */
+  previewSample?: TemplateSample | null
+  /** Image layer on (Pro editor: image and text are exclusive) */
+  imageEnabled?: boolean
+  /** Hide the image card entirely (text-only editor) */
+  allowImage?: boolean
 }>(), {
   modelValue: null,
   watermarkPreviewUrl: null,
+  textLayer: null,
+  allowText: false,
+  previewSample: null,
+  imageEnabled: true,
+  allowImage: true,
 })
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: WatermarkSettings): void
+  (e: 'update:textLayer', value: TextWatermarkLayer | null): void
+  (e: 'update:imageEnabled', value: boolean): void
 }>()
+
+// ── Text layer ──────────────────────────────────────────────────────────
+const text = computed(() => (props.allowText ? props.textLayer : null))
+// With text allowed, the image and text watermarks are exclusive cards; otherwise image only.
+const imageOn = computed(() => props.allowImage && (!props.allowText || (props.imageEnabled && !text.value)))
+let lastText: TextWatermarkLayer | null = null
+const templateInputId = `wm-text-template-${Math.random().toString(36).slice(2, 9)}`
+const templateInput = ref<HTMLInputElement | null>(null)
+const textSliders = [
+  { key: 'scale', label: 'Text size', min: 1, max: 30, unit: '%' },
+  { key: 'opacity', label: 'Text opacity', min: 0, max: 100, unit: '%' },
+  { key: 'rotation', label: 'Text rotation', min: 0, max: 360, unit: '°' },
+] as const
+
+function emitText(next: TextWatermarkLayer | null) {
+  emit('update:textLayer', next ? JSON.parse(JSON.stringify(next)) : null)
+}
+function toggleText(on: boolean) {
+  if (on) {
+    emitText(props.textLayer || lastText || createDefaultTextLayer())
+    emit('update:imageEnabled', false)
+  } else {
+    lastText = props.textLayer
+    emitText(null)
+  }
+}
+function toggleImage(on: boolean) {
+  if (on && props.textLayer) {
+    lastText = props.textLayer
+    emitText(null)
+  }
+  emit('update:imageEnabled', on)
+}
+function patchText(patch: Partial<TextWatermarkLayer>) {
+  if (props.textLayer) emitText({ ...props.textLayer, ...patch })
+}
+function patchTextSettings(patch: Partial<WatermarkSettings>) {
+  if (props.textLayer) emitText({ ...props.textLayer, settings: { ...props.textLayer.settings, ...patch } })
+}
+function setTextSetting(key: 'scale' | 'opacity' | 'rotation', value: number) {
+  if (Number.isFinite(value)) patchTextSettings({ [key]: value } as Partial<WatermarkSettings>)
+}
+function insertVariable(token: string) {
+  if (!props.textLayer) return
+  const el = templateInput.value
+  const value = props.textLayer.template
+  const start = el?.selectionStart ?? value.length
+  const end = el?.selectionEnd ?? value.length
+  // Keep variables apart from the word before them ("{date} {company}", not "{date}{company}").
+  const insert = start > 0 && !/\s/.test(value[start - 1]) ? ` ${token}` : token
+  const next = (value.slice(0, start) + insert + value.slice(end)).slice(0, TEXT_TEMPLATE_MAX_LENGTH)
+  patchText({ template: next })
+  nextTick(() => {
+    el?.focus()
+    el?.setSelectionRange(start + insert.length, start + insert.length)
+  })
+}
+
+const previewText = computed(() => resolveTemplatePreview(text.value?.template || '', {
+  recipient: 'John Smith',
+  email: 'john.smith@example.com',
+  company: 'Example Co',
+  link: 'Review link',
+  ...Object.fromEntries(Object.entries(props.previewSample || {}).filter(([, v]) => !!v)),
+}))
+
+// Text height is a % of the frame height, like the server-rendered plate.
+const previewHeight = ref(0)
+let resizeObserver: ResizeObserver | null = null
+onMounted(() => {
+  if (typeof ResizeObserver === 'undefined') return
+  resizeObserver = new ResizeObserver(([entry]) => { previewHeight.value = entry.contentRect.height })
+  if (previewContainer.value) resizeObserver.observe(previewContainer.value)
+})
+onBeforeUnmount(() => resizeObserver?.disconnect())
+
+const textPreviewStyle = computed(() => {
+  const t = text.value
+  if (!t) return {}
+  const px = Math.max(6, (previewHeight.value || 180) * t.settings.scale / 100)
+  return {
+    fontFamily: "'DejaVu Sans', 'Verdana', sans-serif",
+    fontWeight: t.font === 'sans-bold' ? '700' : '400',
+    fontSize: `${px}px`,
+    lineHeight: '1',
+    color: t.color,
+    opacity: t.settings.opacity / 100,
+    textShadow: t.outline ? '0 0 2px rgba(0,0,0,.75), 0 0 1px rgba(0,0,0,.75)' : 'none',
+  }
+})
+const singleTextStyle = computed(() => {
+  const t = text.value
+  if (!t) return {}
+  const { position: p, rotation } = t.settings
+  const s: Record<string, string> = {}
+  const x = `${p.x}${p.xUnit}`
+  const y = `${p.y}${p.yUnit}`
+  if (p.anchor === 'center') {
+    s.top = '50%'
+    s.left = '50%'
+    s.transform = `translate(-50%, -50%) rotate(${rotation}deg)`
+  } else {
+    if (p.anchor.startsWith('top')) s.top = y
+    else s.bottom = y
+    if (p.anchor.endsWith('left')) s.left = x
+    else s.right = x
+    if (rotation) s.transform = `rotate(${rotation}deg)`
+  }
+  return { ...textPreviewStyle.value, ...s }
+})
+const tiledWrapperStyle = computed(() => ({
+  inset: '-50%',
+  gap: `${Math.max(12, (previewHeight.value || 180) * 0.08)}px ${Math.max(16, (previewHeight.value || 180) * 0.1)}px`,
+  transform: `rotate(${text.value?.settings.rotation || 0}deg)`,
+}))
 
 const {
   settings,
@@ -534,7 +753,7 @@ const dragStartSettings = ref<{ x: number; y: number } | null>(null)
  * Start dragging watermark
  */
 function startDrag(event: MouseEvent) {
-  if (!props.watermarkPreviewUrl || !previewContainer.value) return
+  if (!imageOn.value || !props.watermarkPreviewUrl || !previewContainer.value) return
   
   // Disable dragging when center anchor is selected (offsets don't apply)
   if (settings.value.position.anchor === 'center') return

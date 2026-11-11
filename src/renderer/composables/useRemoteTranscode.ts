@@ -14,7 +14,7 @@
 import { ref } from 'vue'
 import { useUploadTranscode, type ClientTranscodeOpts, type ClientTranscodeResult } from './useUploadTranscode'
 import { useTransferProgress, type TransferContext } from './useTransferProgress'
-import type { WatermarkSettings } from '../types/watermark'
+import type { TextWatermarkLayer, WatermarkSettings } from '../types/watermark'
 
 type ApiFetch = (path: string, init?: any) => Promise<any>
 
@@ -25,6 +25,8 @@ export interface RemoteTranscodeOpts {
     generateHls: boolean
     watermarkPath?: string | null
     watermarkSettings?: WatermarkSettings | null
+    watermarkText?: TextWatermarkLayer | null
+    watermarkLinkTitle?: string
     skipWatermarkCleanup?: boolean
     apiBase: string
     apiToken: string
@@ -79,6 +81,8 @@ export function useRemoteTranscode() {
                 generateHls: opts.generateHls,
                 watermarkPath: opts.watermarkPath,
                 watermarkSettings: opts.watermarkSettings,
+                watermarkText: opts.watermarkText,
+                watermarkLinkTitle: opts.watermarkLinkTitle,
                 skipWatermarkCleanup: opts.skipWatermarkCleanup,
                 isRemoteSource: true,
                 apiBase: opts.apiBase,

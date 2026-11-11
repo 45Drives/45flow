@@ -44,6 +44,18 @@ export type TranscodeProgress = {
 
 export type TranscodeResult = { ok?: boolean; outputPath?: string; error?: string }
 
+export type DesktopTextWatermark = {
+  /** Template with {date}/{link} (recipient variables resolve empty on the desktop) */
+  template?: string
+  /** Already-resolved text; wins over template */
+  text?: string
+  font: 'sans' | 'sans-bold'
+  color: string
+  outline: boolean
+  layout: 'single' | 'tiled'
+  settings: WatermarkSettings
+}
+
 export type FullTranscodeOptions = {
   inputPath: string
   proxyQualities: ('720p' | '1080p' | 'original')[]
@@ -52,6 +64,10 @@ export type FullTranscodeOptions = {
   generateProxy?: boolean
   watermarkPath?: string
   watermarkSettings?: WatermarkSettings | null
+  /** Text watermark layer (Pro); rendered with the image (watermarkPath) into one plate */
+  watermarkText?: DesktopTextWatermark | null
+  /** Value for the {link} variable in watermarkText */
+  watermarkLinkTitle?: string
   useHardwareAccel: boolean
   preset?: 'fast' | 'balanced' | 'quality'
   /** When true, inputPath is an HTTP(S) URL (remote source streaming) — adds FFmpeg reconnect flags */

@@ -6,6 +6,7 @@ import type {
   WatermarkSettings,
   WatermarkPreset,
   WatermarkPosition,
+  WatermarkPresetSettings,
 } from '../types/watermark'
 import {
   DEFAULT_WATERMARK_PRESETS,
@@ -74,7 +75,7 @@ export function useWatermarkCustomization(options: UseWatermarkCustomizationOpti
   /**
    * Save current settings as a new custom preset
    */
-  async function saveAsPreset(name: string, description?: string): Promise<boolean> {
+  async function saveAsPreset(name: string, description?: string, settingsOverride?: WatermarkPresetSettings): Promise<boolean> {
     saving.value = true
     error.value = null
     
@@ -84,7 +85,7 @@ export function useWatermarkCustomization(options: UseWatermarkCustomizationOpti
         body: JSON.stringify({
           name,
           description,
-          settings: settings.value,
+          settings: settingsOverride ?? settings.value,
         }),
       })
       
@@ -152,7 +153,9 @@ export function useWatermarkCustomization(options: UseWatermarkCustomizationOpti
     const preset = presets.value.find(p => p.id === presetId)
     if (!preset) return
     
-    settings.value = JSON.parse(JSON.stringify(preset.settings))
+    // A preset's optional text layer is not part of the image settings
+    const { text: _text, ...imageSettings } = JSON.parse(JSON.stringify(preset.settings)) as WatermarkPresetSettings
+    settings.value = imageSettings
     selectedPresetId.value = presetId
   }
 

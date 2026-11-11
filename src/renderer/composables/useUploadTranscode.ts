@@ -15,7 +15,7 @@
 
 import { useClientTranscode } from './useClientTranscode'
 import { useTransferProgress, type TransferContext } from './useTransferProgress'
-import type { WatermarkSettings } from '../types/watermark'
+import type { TextWatermarkLayer, WatermarkSettings } from '../types/watermark'
 
 type ApiFetch = (path: string, init?: any) => Promise<any>
 
@@ -27,6 +27,10 @@ export interface ClientTranscodeOpts {
     generateHls: boolean
     watermarkPath?: string | null
     watermarkSettings?: WatermarkSettings | null
+    /** Pro text layer, rendered by the desktop transcode together with the image */
+    watermarkText?: TextWatermarkLayer | null
+    /** Value for {link} in watermarkText */
+    watermarkLinkTitle?: string
     /** When true, do NOT delete the watermark temp file after transcode (caller handles cleanup) */
     skipWatermarkCleanup?: boolean
     /** When true, sourceFilePath is constructed as an HTTP streaming URL from the server (remote client transcode) */
@@ -301,6 +305,8 @@ export function useUploadTranscode() {
                             generateProxy: false,
                             watermarkPath: opts.watermarkPath || undefined,
                             watermarkSettings: opts.watermarkSettings ? JSON.parse(JSON.stringify(opts.watermarkSettings)) : undefined,
+                            watermarkText: opts.watermarkText ? JSON.parse(JSON.stringify(opts.watermarkText)) : undefined,
+                            watermarkLinkTitle: opts.watermarkLinkTitle || undefined,
                             useHardwareAccel: hwAccelSetting.value,
                             preset: transcodePreset.value,
                             isRemoteSource: opts.isRemoteSource || false,
@@ -373,6 +379,8 @@ export function useUploadTranscode() {
                             generateHls: false,
                             watermarkPath: opts.watermarkPath || undefined,
                             watermarkSettings: opts.watermarkSettings ? JSON.parse(JSON.stringify(opts.watermarkSettings)) : undefined,
+                            watermarkText: opts.watermarkText ? JSON.parse(JSON.stringify(opts.watermarkText)) : undefined,
+                            watermarkLinkTitle: opts.watermarkLinkTitle || undefined,
                             useHardwareAccel: hwAccelSetting.value,
                             preset: transcodePreset.value,
                             isRemoteSource: opts.isRemoteSource || false,

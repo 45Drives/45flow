@@ -218,6 +218,7 @@
               :watermarkLabel="hasVideo && hasImage ? 'Watermark Media' : hasVideo ? 'Watermark Videos' : 'Watermark Images'"
               :watermarkStatusText="watermarkEnabled ? 'On' : 'Off'"
               :hideProxyQualities="!hasVideo"
+              :hideWatermarkPicker="isPremiumActive"
               @pickWatermark="pickWatermark"
               @clearWatermark="clearWatermark"
               @refreshWatermarks="loadExistingWatermarkFiles"
@@ -240,15 +241,38 @@
             </div>
 
             <!-- Premium Watermark Customization -->
-            <div v-if="hasMedia && watermarkEnabled && (watermarkFile || selectedExistingWatermark)" class="mt-3 border-t border-default pt-3">
+            <div v-if="hasMedia && watermarkEnabled && (watermarkFile || selectedExistingWatermark || isPremiumActive)" class="mt-3 border-t border-default pt-3">
               <WatermarkCustomizer v-if="isPremiumActive"
                 v-model="watermarkSettings" 
+                v-model:text-layer="watermarkTextLayer"
+                v-model:image-enabled="watermarkImageEnabled"
+                allow-text
                 :watermarkPreviewUrl="watermarkPreviewUrl"
-              />
+                :preview-sample="watermarkPreviewSample"
+              >
+                <template #image-source>
+                  <WatermarkImagePicker compact
+                    v-model:selectedExistingWatermark="selectedExistingWatermark"
+                    v-model:showDefaultWatermarks="showDefaultWatermarks"
+                    :watermarkFile="watermarkFile"
+                    :existingWatermarkFiles="existingWatermarkFiles"
+                    :defaultWatermarks="validDefaultWatermarks"
+                    :effectiveWatermarkName="effectiveWatermarkName"
+                    @pickWatermark="pickWatermark"
+                    @refreshWatermarks="loadExistingWatermarkFiles"
+                  />
+                </template>
+              </WatermarkCustomizer>
               <WatermarkPreview v-else
                 :previewUrl="watermarkPreviewUrl || ''"
                 label="Watermark (bottom-right)"
               />
+              <FlowNotice v-if="usePersonalCopies" tone="info" size="sm" class="mt-2">
+                Each invited person gets their own copy with their details filled in, and only ever sees that copy.
+              </FlowNotice>
+              <FlowNotice v-else-if="textUsesRecipient" tone="warning" size="sm" class="mt-2">
+                {recipient}, {email} and {company} need the link limited to invited people. Otherwise they're left blank.
+              </FlowNotice>
             </div>
           </DisclosurePanel>
         </Disclosure>
@@ -377,10 +401,14 @@ import { useEgressSwitches } from '../composables/useEgressSwitches'
 import VideoOptionsPanel from './VideoOptionsPanel.vue'
 import WatermarkCustomizer from './WatermarkCustomizer.vue'
 import WatermarkPreview from './WatermarkPreview.vue'
+import WatermarkImagePicker from './WatermarkImagePicker.vue'
 import { useLicenseStatus } from '../composables/useLicenseStatus'
 import { useCommentCategories } from '../composables/useCommentCategories'
-import type { WatermarkSettings, Default45FlowWatermark } from '../types/watermark'
-import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from '../types/watermark'
+import type { WatermarkSettings, Default45FlowWatermark, TextWatermarkLayer } from '../types/watermark'
+import {
+  createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS, isUsableTextLayer, normalizeTextLayer, templateUsesRecipientVariables,
+} from '../types/watermark'
+import { buildRecipientLinkFields, buildRecipientPolicy, buildSpec } from '../utils/watermarkRequest'
 import type { Commenter } from '../typings/electron'
 import FlowModal from '../ui/FlowModal.vue'
 import FlowNotice from '../ui/FlowNotice.vue'
@@ -784,6 +812,22 @@ const existingWatermarkFiles = ref<string[]>([])
 const validDefaultWatermarks = ref<Default45FlowWatermark[]>([])
 const selectedExistingWatermark = ref('')
 const existingWatermarkPreviewUrl = ref<string | null>(null)
+// Pro: text layer and personal (per-recipient) copies
+const watermarkTextLayer = ref<TextWatermarkLayer | null>(null)
+const watermarkImageEnabled = ref(true)
+const activeTextLayer = computed(() =>
+  isPremiumActive.value && watermarkEnabled.value && isUsableTextLayer(watermarkTextLayer.value)
+    ? normalizeTextLayer(watermarkTextLayer.value) : null)
+/** Image and text are exclusive; free users only ever have the image. */
+const imageWatermarkActive = computed(() =>
+  watermarkEnabled.value && !activeTextLayer.value && (!isPremiumActive.value || watermarkImageEnabled.value))
+const textUsesRecipient = computed(() => !!activeTextLayer.value && templateUsesRecipientVariables(activeTextLayer.value.template))
+/** Text naming the recipient on a restricted link: every invited person gets their own copy. */
+const usePersonalCopies = computed(() => textUsesRecipient.value && accessMode.value === 'restricted')
+const watermarkPreviewSample = computed(() => {
+  const first = accessUsers.value[0]
+  return { link: linkTitle.value, recipient: first?.name || first?.username || '', email: first?.user_email || '' }
+})
 const effectiveWatermarkName = computed(() => {
   if (watermarkFile.value?.name) return watermarkFile.value.name
   if (selectedExistingWatermark.value) {
@@ -897,7 +941,8 @@ const canProceed = computed(() => {
   if (accessMode.value === 'open_password' && !password.value) return false
   if (accessMode.value === 'restricted' && !accessUsers.value.length && !accessGroups.value.length) return false
   if (hasVideo.value && proxyQualities.value.length === 0) return false
-  if (watermarkEnabled.value && !watermarkFile.value && !selectedExistingWatermark.value) return false
+  if (imageWatermarkActive.value && !watermarkFile.value && !selectedExistingWatermark.value) return false
+  if (watermarkEnabled.value && !imageWatermarkActive.value && !activeTextLayer.value) return false
   return true
 })
 
@@ -910,8 +955,10 @@ const shareBlockReason = computed(() => {
     return 'Invite at least one client or team, or choose who else can open the link.'
   }
   if (hasVideo.value && proxyQualities.value.length === 0) return 'Pick at least one proxy file quality in Advanced Options.'
-  if (watermarkEnabled.value && !watermarkFile.value && !selectedExistingWatermark.value) {
-    return 'Choose a watermark image in Advanced Options, or turn the watermark off.'
+  if (watermarkEnabled.value && !activeTextLayer.value && !(imageWatermarkActive.value && (watermarkFile.value || selectedExistingWatermark.value))) {
+    return isPremiumActive.value
+      ? 'Choose a watermark image or add watermark text in Advanced Options, or turn the watermark off.'
+      : 'Choose a watermark image in Advanced Options, or turn the watermark off.'
   }
   if (emailInvalid.value.length) return 'Fix the email addresses, or turn off sending by email.'
   return ''
@@ -956,6 +1003,8 @@ function resetWizard() {
   selectedExistingWatermark.value = ''
   existingWatermarkFiles.value = []
   existingWatermarkPreviewUrl.value = null
+  watermarkTextLayer.value = null
+  watermarkImageEnabled.value = true
   uploadPhase.value = 'idle'
   perFileProgress.value = {}
   perFileStatus.value = {}
@@ -1314,7 +1363,9 @@ async function startUploadAndShare() {
     
     // Resolve watermark image path for client-side transcoding
     let localWatermarkPath: string | null = null
-    if (watermarkEnabled.value && clientTranscodeEnabled.value) {
+    // Link-level text is baked in by the desktop transcode; personal copies are rendered by the server.
+    const clientTextLayer = usePersonalCopies.value ? null : activeTextLayer.value
+    if (imageWatermarkActive.value && clientTranscodeEnabled.value) {
       if (watermarkFile.value?.path) {
         localWatermarkPath = watermarkFile.value.path
       } else if (selectedExistingWatermark.value) {
@@ -1413,6 +1464,8 @@ async function startUploadAndShare() {
             generateHls: true,
             watermarkPath: localWatermarkPath || undefined,
             watermarkSettings: localWatermarkPath && isPremiumActive.value ? JSON.parse(JSON.stringify(watermarkSettings.value)) : undefined,
+            watermarkText: clientTextLayer,
+            watermarkLinkTitle: linkTitle.value || '',
             skipWatermarkCleanup: true,
             apiBase: connectionMeta.value.apiBase || '',
             apiToken: connectionMeta.value.token || '',
@@ -1435,7 +1488,7 @@ async function startUploadAndShare() {
 
           clientTranscoded = true
           anyClientTranscoded = true
-          if (localWatermarkPath) clientAppliedWatermark = true
+          if (localWatermarkPath || clientTextLayer) clientAppliedWatermark = true
 
           // 3. Upload raw file (server won't queue transcodes — clientTranscode:true)
           perFileProgress.value[f.path] = 0
@@ -1463,7 +1516,7 @@ async function startUploadAndShare() {
       }
 
       // HTTP chunked upload
-      const enableWatermark = watermarkEnabled.value && !!resolveWatermarkPathForIngest()
+      const enableWatermark = imageWatermarkActive.value && !!resolveWatermarkPathForIngest()
       const { id: uploadId, done } = await electron.httpUploadStart(
         {
           src: f.path,
@@ -1529,7 +1582,7 @@ async function startUploadAndShare() {
 
     // Upload watermark file to server (needed for metadata/link details even when client-applied)
     let watermarkRelPath = ''
-    if (watermarkEnabled.value && hasMedia.value) {
+    if (imageWatermarkActive.value && hasMedia.value) {
       const selectedServerWm = String(selectedExistingWatermark.value || '').trim()
       if (selectedServerWm) {
         watermarkRelPath = resolveWatermarkPathForApi(selectedServerWm)
@@ -1612,14 +1665,19 @@ async function startUploadAndShare() {
       body.proxyQualities = proxyQualities.value.length > 0 ? proxyQualities.value.slice() : ['original']
     }
 
-    if (watermarkEnabled.value && watermarkRelPath) {
+    if (usePersonalCopies.value && activeTextLayer.value) {
+      // Each recipient's copy is rendered by the server; the shared (staff) copy stays clean.
+      Object.assign(body, buildRecipientLinkFields(buildRecipientPolicy(
+        buildSpec({ imageEnabled: false, imageFile: '', imageSettings: watermarkSettings.value, textLayer: activeTextLayer.value }), [])))
+    } else if (watermarkEnabled.value && (watermarkRelPath || activeTextLayer.value)) {
       body.watermark = true
-      body.watermarkFile = watermarkRelPath
+      if (watermarkRelPath) body.watermarkFile = watermarkRelPath
+      if (activeTextLayer.value) body.watermarkText = activeTextLayer.value
       if (hasVideo.value) {
         body.watermarkProxyQualities = proxyQualities.value.slice()
       }
       // Premium: Pass custom watermark settings to server (deep copy to prevent mutation)
-      if (watermarkSettings.value && isPremiumActive.value) {
+      if (watermarkRelPath && watermarkSettings.value && isPremiumActive.value) {
         body.watermarkSettings = JSON.parse(JSON.stringify(watermarkSettings.value))
       }
     }

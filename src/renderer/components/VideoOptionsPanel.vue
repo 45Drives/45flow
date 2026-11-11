@@ -71,38 +71,22 @@
           {{ watermarkBlockReason }}
         </div>
 
-        <div v-if="watermarkEnabled" class="flex flex-row items-center gap-2 mb-2">
-          <button class="btn btn-secondary" :class="compact ? 'text-xs' : ''" @click="$emit('pickWatermark')">
-            {{ pickButtonLabel }}
-          </button>
-          <span class="text-sm truncate min-w-0" :title="effectiveWatermarkName || 'No image selected'">
-            {{ effectiveWatermarkName || (usingExistingWatermark ? 'Using existing watermark' : 'No image selected') }}
-          </span>
-          <select :value="selectedExistingWatermark" @change="$emit('update:selectedExistingWatermark', ($event.target as HTMLSelectElement).value)"
-            :class="compact ? 'input-textlike border rounded px-2 py-1 text-xs min-w-[14rem]' : 'input-textlike border rounded px-2 py-1 text-sm min-w-[16rem]'">
-            <option value="">{{ compact ? 'Existing watermark…' : 'Select existing watermark file…' }}</option>
-            <optgroup v-if="showDefaultWatermarks && defaultWatermarks.length && existingWatermarkFiles.length" label="Client Uploads">
-              <option v-for="wm in existingWatermarkFiles" :key="wm" :value="wm">{{ wm.split('/').pop() }}</option>
-            </optgroup>
-            <template v-else-if="existingWatermarkFiles.length">
-              <option v-for="wm in existingWatermarkFiles" :key="wm" :value="wm">{{ wm.split('/').pop() }}</option>
-            </template>
-            <optgroup v-if="showDefaultWatermarks && defaultWatermarks.length" label="45Flow Defaults">
-              <option v-for="wm in defaultWatermarks" :key="wm.id" :value="wm.path">{{ wm.name }}</option>
-            </optgroup>
-          </select>
-          <button class="btn btn-secondary px-2 py-1 text-xs" @click="$emit('refreshWatermarks')">Refresh</button>
-        </div>
-
-        <div v-if="watermarkEnabled" class="flex items-center gap-2 mb-2">
-          <input type="checkbox" id="show-default-watermarks" :checked="showDefaultWatermarks" @change="$emit('update:showDefaultWatermarks', ($event.target as HTMLInputElement).checked)" class="proxy-quality-checkbox" />
-          <label for="show-default-watermarks" class="text-sm cursor-pointer">Show default watermarks</label>
-        </div>
-
-        <p v-if="watermarkEnabled && !watermarkFile && !selectedExistingWatermark && !usingExistingWatermark"
-          class="text-xs text-flow-warning mb-2">
-          Select a watermark image to continue.
-        </p>
+        <WatermarkImagePicker v-if="watermarkEnabled && !hideWatermarkPicker"
+          :watermarkFile="watermarkFile"
+          :selectedExistingWatermark="selectedExistingWatermark"
+          :existingWatermarkFiles="existingWatermarkFiles"
+          :defaultWatermarks="defaultWatermarks"
+          :showDefaultWatermarks="showDefaultWatermarks"
+          :effectiveWatermarkName="effectiveWatermarkName"
+          :usingExistingWatermark="usingExistingWatermark"
+          :pickButtonLabel="pickButtonLabel"
+          :compact="compact"
+          class="mb-2"
+          @update:selectedExistingWatermark="$emit('update:selectedExistingWatermark', $event)"
+          @update:showDefaultWatermarks="$emit('update:showDefaultWatermarks', $event)"
+          @pickWatermark="$emit('pickWatermark')"
+          @refreshWatermarks="$emit('refreshWatermarks')"
+        />
       </div>
     </div>
   </div>
@@ -111,6 +95,7 @@
 <script setup lang="ts">
 import { Switch } from '@headlessui/vue'
 import type { Default45FlowWatermark } from '../types/watermark'
+import WatermarkImagePicker from './WatermarkImagePicker.vue'
 
 type LocalFile = { path: string; name: string; size: number; dataUrl?: string | null }
 
@@ -159,6 +144,8 @@ const props = withDefaults(defineProps<{
   hideProxyQualities?: boolean
   /** Hide the on/off switch — use when an external checkbox already controls watermarkEnabled */
   hideWatermarkToggle?: boolean
+  /** Hide the image picker — use when it is shown inside the watermark editor's image card */
+  hideWatermarkPicker?: boolean
 }>(), {
   dataTour: '',
   compact: false,
@@ -175,6 +162,7 @@ const props = withDefaults(defineProps<{
   reviewCopyHelpText: 'Lightweight MP4s for downloading & offline review. A browser stream is always generated separately. The original file is always preserved.',
   hideProxyQualities: false,
   hideWatermarkToggle: false,
+  hideWatermarkPicker: false,
 })
 
 const emit = defineEmits<{

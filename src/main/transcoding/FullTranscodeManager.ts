@@ -11,6 +11,15 @@ import { detectHardwareCapabilities } from './hardware-detect';
 import { acquire, release } from './ffmpeg-semaphore';
 import type { FullTranscodeOptions, FullTranscodeProgress, FullTranscodeResult, WatermarkSettings } from '../preload';
 import { buildWatermarkFilter, computeOverlayPosition } from './watermark-filter';
+import { renderDesktopWatermarkPlate, FULL_FRAME_SETTINGS } from './watermark-plate';
+
+// Image placement when an image is combined with text but has no saved settings.
+const LEGACY_IMAGE_SETTINGS: WatermarkSettings = {
+  position: { x: 3, y: 3, xUnit: '%', yUnit: '%', anchor: 'bottom-right' },
+  scale: 20,
+  opacity: 100,
+  rotation: 0,
+};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -38,6 +47,8 @@ interface ProbeInfo {
   fps: number;
   width: number;
   height: number;
+  displayWidth: number;
+  displayHeight: number;
   videoCodec: string;
   audioCodec: string;
   audioChannels: number;
@@ -72,11 +83,21 @@ function probeSource(ffmpegPath: string, inputPath: string): ProbeInfo {
   const [num, den] = fpsRaw.split('/').map(Number);
   const fps = den > 0 ? num / den : 24;
 
+  // ffmpeg auto-rotates on decode, so overlays are composed on the displayed frame.
+  const sideRot = (videoStream?.side_data_list || [])
+    .map((d: any) => Number(d?.rotation))
+    .find((r: number) => Number.isFinite(r));
+  const rotation = Math.abs(Number.isFinite(sideRot) ? sideRot : Number(videoStream?.tags?.rotate || 0)) % 180;
+  const width = Number(videoStream?.width) || 0;
+  const height = Number(videoStream?.height) || 0;
+
   return {
     durationSeconds,
     fps,
-    width: Number(videoStream?.width) || 0,
-    height: Number(videoStream?.height) || 0,
+    width,
+    height,
+    displayWidth: rotation === 90 ? height : width,
+    displayHeight: rotation === 90 ? width : height,
     videoCodec: String(videoStream?.codec_name || '').toLowerCase(),
     audioCodec: String(audioStream?.codec_name || '').toLowerCase(),
     audioChannels: Number(audioStream?.channels) || 2,
@@ -181,6 +202,23 @@ export class FullTranscodeManager {
     });
     if (probe.durationSeconds <= 0) {
       throw new Error('Could not determine source duration');
+    }
+
+    // Text watermark (Pro): render text (+ optional image) into one full-frame plate,
+    // then let every phase overlay it through the existing image-watermark path.
+    if (options.watermarkText) {
+      const platePath = await renderDesktopWatermarkPlate({
+        ffmpegPath,
+        ffprobePath: getFfprobePath(),
+        sourceWidth: probe.displayWidth || probe.width,
+        sourceHeight: probe.displayHeight || probe.height,
+        text: options.watermarkText,
+        linkTitle: options.watermarkLinkTitle,
+        imagePath: options.watermarkPath || null,
+        imageSettings: options.watermarkPath ? (options.watermarkSettings || LEGACY_IMAGE_SETTINGS) : null,
+        outPath: path.join(app.getPath('temp'), `45flow-wm-plate-${jobId}.png`),
+      });
+      options = { ...options, watermarkPath: platePath, watermarkSettings: FULL_FRAME_SETTINGS };
     }
 
     const gopSize = Math.round(probe.fps * 2);
@@ -518,6 +556,7 @@ export class FullTranscodeManager {
     // Re-throw the original error
     throw error;
   } finally {
+    fs.rmSync(path.join(app.getPath('temp'), `45flow-wm-plate-${jobId}.png`), { force: true });
     this.currentJobId = null;
     this.activeProcess = null;
   }

@@ -186,6 +186,9 @@
             <!-- Processing (proxy files / HLS / image watermarks); hides itself when nothing was requested -->
             <LinkTranscodeStatus v-if="link && link.type !== 'upload'" class="mt-6"
               :link-id="link.id" :api-fetch="props.apiFetch" :reload-signal="transcodeStatusReload" />
+            <LinkRecipientCopies v-if="isPremiumActive && link?.id && link.type !== 'upload' && link.access_mode === 'restricted'"
+              :key="`recipient-copies-${link.id}`" class="mt-6" :link-id="link.id" :link-title="link.title || ''"
+              :api-fetch="props.apiFetch" />
           </div>
 
           <!-- Review (C2 approvals) -->
@@ -750,6 +753,7 @@ import PathInput from '../PathInput.vue'
 import UploadSpecRulesEditor from '../UploadSpecRulesEditor.vue'
 import { hasAnySpecRule, withSpecDefaults, type UploadSpecRules } from '../../utils/uploadSpec'
 import LinkTranscodeStatus from '../LinkTranscodeStatus.vue'
+import LinkRecipientCopies from '../LinkRecipientCopies.vue'
 import EmailInvitationPanel from '../EmailInvitationPanel.vue'
 import LinkReviewPanel from '../LinkReviewPanel.vue'
 import LinkEmailsPanel from '../LinkEmailsPanel.vue'
