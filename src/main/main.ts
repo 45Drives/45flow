@@ -1384,9 +1384,7 @@ function createWindow() {
   }
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      shell.openExternal(url); // Opens in the user's default browser
-    }
+    void openExternalSafely(url); // Opens in the user's default browser after checks
 
     return { action: 'deny' }; // Prevent Electron from opening a new window
   });
@@ -2083,9 +2081,44 @@ app.on('web-contents-created', (_event, contents) => {
     if (isRendererUrl(url)) return;
     event.preventDefault();
     jl('warn', 'navigation.blocked', { url: String(url).slice(0, 200) });
-    if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    void openExternalSafely(url);
   });
 });
+
+// Hosts we publish ourselves; anything else (e.g. a customer's share link) needs the user's confirmation.
+const TRUSTED_EXTERNAL_HOSTS = ['45drives.com', '45drivesstudio.com', '45d.io', 'github.com'];
+
+function isTrustedExternalHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/\.$/, '');
+  return TRUSTED_EXTERNAL_HOSTS.some((h) => host === h || host.endsWith(`.${h}`)) || isPrivateNetworkHost(host);
+}
+
+async function openExternalSafely(rawUrl: string): Promise<void> {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return;
+  }
+  // Only web links, and never links carrying credentials in the URL.
+  if ((url.protocol !== 'https:' && url.protocol !== 'http:') || url.username || url.password) {
+    jl('warn', 'open-external.rejected', { protocol: url.protocol });
+    return;
+  }
+  if (!isTrustedExternalHost(url.hostname)) {
+    const parent = mainWindowRef && !mainWindowRef.isDestroyed() ? mainWindowRef : undefined;
+    const options: Electron.MessageBoxOptions = {
+      type: 'question',
+      message: 'Open this link in your browser?',
+      detail: url.href,
+      buttons: ['Cancel', 'Open link'],
+      cancelId: 0, defaultId: 0, noLink: true,
+    };
+    const { response } = parent ? await dialog.showMessageBox(parent, options) : await dialog.showMessageBox(options);
+    if (response !== 1) return;
+  }
+  await shell.openExternal(url.href);
+}
 
 function rendererEntryUrl(): URL {
   return process.env.NODE_ENV === 'development'
@@ -2106,6 +2139,34 @@ function isRendererUrl(url: string): boolean {
 const sshTrustDeps = {
   getSshVerifiedCertificates, prepareSshCertificate, getPin, rememberPin, keyDir: getKeyDir,
 };
+
+// Permission checks only receive an origin (e.g. "file://"), so compare scheme and host, not the path.
+function isRendererOrigin(origin: string): boolean {
+  try {
+    const target = new URL(origin);
+    const entry = rendererEntryUrl();
+    return target.protocol === entry.protocol && target.host === entry.host;
+  } catch {
+    return false;
+  }
+}
+
+// True for RFC 1918 / link-local IPv4, loopback, IPv6 unique-local/link-local, and mDNS (.local) names.
+function isPrivateNetworkHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
+  if (host === 'localhost' || host.endsWith('.local')) return true;
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    if (v4.slice(1).some((o) => Number(o) > 255)) return false;
+    return a === 10 || a === 127 || (a === 172 && b >= 16 && b <= 31)
+      || (a === 192 && b === 168) || (a === 169 && b === 254);
+  }
+  if (host.includes(':')) {
+    return host === '::1' || /^f[cd][0-9a-f]{2}:/.test(host) || /^fe[89ab][0-9a-f]:/.test(host);
+  }
+  return false;
+}
 
 // Mirrors Electron 42.11.16+'s block of the compromised eMudhra intermediates (GHSA-jr5w-w6x2-84p9).
 function usesBlockedKey(req: Electron.Request): boolean {
@@ -2128,13 +2189,18 @@ app.whenReady().then(() => {
   // log.info("Logging initialized.");
   // log.info("Log file path:", // log.transports.file.getFile().path);
 
-  const isInternalHost = (hostname: string) => {
-    // plain IPv4 or .local – adjust for environment
-    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)) return true;
-    if (hostname.endsWith('.local')) return true;
-    // if (hostname.endsWith('.45drives.internal')) return true;
-    return false;
-  };
+  // Only private-network hosts may use the trust-on-first-use prompt; public hosts get normal CA checks.
+  const isInternalHost = isPrivateNetworkHost;
+
+  // Deny every browser permission except the few the UI needs (copying links, fullscreen video).
+  const ALLOWED_PERMISSIONS = new Set(['clipboard-sanitized-write', 'fullscreen']);
+  session.defaultSession.setPermissionRequestHandler((wc, permission, callback, details) => {
+    const allowed = ALLOWED_PERMISSIONS.has(permission) && isRendererOrigin(details.requestingUrl || wc.getURL());
+    if (!allowed) jl('warn', 'permission.denied', { permission });
+    callback(allowed);
+  });
+  session.defaultSession.setPermissionCheckHandler((_wc, permission, requestingOrigin) =>
+    ALLOWED_PERMISSIONS.has(permission) && isRendererOrigin(requestingOrigin));
 
   session.defaultSession.setCertificateVerifyProc((req, cb) => {
     if (usesBlockedKey(req)) {
@@ -2187,9 +2253,9 @@ app.whenReady().then(() => {
     dialog.showMessageBox({
       type: 'question',
       message: `Trust this server?`,
-      detail: `Host: ${req.hostname}\nFingerprint: ${presented}`,
+      detail: `Host: ${req.hostname}\nFingerprint: ${presented}\n\nOnly trust this server if the fingerprint matches the one shown on the server itself.`,
       buttons: ['Cancel', 'Trust'],
-      cancelId: 0, defaultId: 1, noLink: true
+      cancelId: 0, defaultId: 0, noLink: true
     }).then(({ response }) => {
       if (response === 1) { rememberPin(req.hostname, presented); cb(0); }
       else cb(-2);

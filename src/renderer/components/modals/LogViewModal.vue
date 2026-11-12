@@ -84,6 +84,102 @@
               </div>
             </div>
 
+            <!-- Audit integrity & review (admin only) -->
+            <div
+              v-if="source === 'server' && serverCanView"
+              class="rounded-md border p-3 mb-4 bg-default"
+              :class="auditHealthy ? 'border-default' : 'border-red-700'"
+              data-testid="audit-status-panel"
+            >
+              <div class="flex flex-wrap items-start gap-x-6 gap-y-2">
+                <div>
+                  <div class="text-xs text-muted">Audit writes</div>
+                  <div v-if="!auditStatus" class="text-sm text-muted">—</div>
+                  <div v-else-if="auditStatus.writes?.ok" class="text-sm font-semibold text-green-500">OK</div>
+                  <div v-else class="text-sm font-semibold text-red-400">
+                    Failing since {{ formatTs(auditStatus.writes?.since) }} · {{ auditStatus.writes?.dropped }} lost
+                  </div>
+                </div>
+                <div>
+                  <div class="text-xs text-muted">Hash chain</div>
+                  <div v-if="!auditStatus?.lastVerification" class="text-sm text-muted">Not checked yet</div>
+                  <div v-else-if="auditStatus.lastVerification.ok" class="text-sm font-semibold text-green-500">
+                    Intact <span class="font-normal text-muted">({{ auditStatus.lastVerification.checked }} rows, {{ formatTs(auditStatus.lastVerification.at) }})</span>
+                  </div>
+                  <div v-else class="text-sm font-semibold text-red-400">
+                    BROKEN at row {{ auditStatus.lastVerification.brokenAtId }} ({{ auditStatus.lastVerification.reason }})
+                  </div>
+                </div>
+                <div>
+                  <div class="text-xs text-muted">Last review</div>
+                  <div v-if="auditStatus?.lastReview" class="text-sm">
+                    {{ formatTs(auditStatus.lastReview.ts) }} by <span class="font-semibold">{{ auditStatus.lastReview.actor || 'unknown' }}</span>
+                  </div>
+                  <div v-else class="text-sm text-amber-400">Never reviewed</div>
+                </div>
+                <div v-if="auditStatus">
+                  <div class="text-xs text-muted">{{ auditStatus.lastReview ? 'Since last review' : 'All time' }}</div>
+                  <div class="text-sm">
+                    <span class="text-red-400 font-semibold">{{ auditStatus.lastReview ? auditStatus.sinceLastReview?.errors : auditStatus.errors }}</span> errors ·
+                    <span class="text-amber-400 font-semibold">{{ auditStatus.lastReview ? auditStatus.sinceLastReview?.warnings : auditStatus.warnings }}</span> warnings
+                  </div>
+                </div>
+                <div v-if="auditStatus">
+                  <div class="text-xs text-muted">Retention</div>
+                  <div class="text-sm">{{ auditStatus.retentionDays }} days</div>
+                </div>
+                <div class="ml-auto flex flex-wrap items-center gap-2">
+                  <button class="btn btn-secondary text-xs" type="button" :disabled="verifying" @click="verifyChain">
+                    {{ verifying ? 'Verifying…' : 'Verify chain' }}
+                  </button>
+                  <button class="btn btn-secondary text-xs" type="button" :disabled="exporting" @click="exportAudit('csv')">Export CSV</button>
+                  <button class="btn btn-secondary text-xs" type="button" :disabled="exporting" @click="exportAudit('jsonl')">Export JSONL</button>
+                  <button class="btn btn-primary text-xs" type="button" @click="reviewOpen = !reviewOpen">Mark reviewed…</button>
+                </div>
+              </div>
+              <div v-if="reviewOpen" class="mt-3 flex flex-wrap items-start gap-2">
+                <textarea
+                  v-model="reviewNote"
+                  maxlength="1000"
+                  rows="2"
+                  placeholder="Review note (optional): what you checked, follow-ups…"
+                  class="input-textlike flex-1 min-w-[280px] px-3 py-2 border border-default rounded-lg bg-default text-default text-sm"
+                />
+                <button class="btn btn-primary text-xs" type="button" :disabled="reviewing" @click="markReviewed">
+                  {{ reviewing ? 'Saving…' : 'Record review' }}
+                </button>
+                <button class="btn btn-secondary text-xs" type="button" @click="reviewOpen = false">Cancel</button>
+              </div>
+              <div v-if="auditMessage" class="mt-2 text-xs" :class="auditMessageError ? 'text-red-400' : 'text-green-500'">{{ auditMessage }}</div>
+            </div>
+
+            <!-- Quick views & server-side filters -->
+            <div v-if="source === 'server' && serverCanView" class="mb-3">
+              <div class="flex flex-wrap gap-2 mb-2">
+                <button
+                  v-for="view in quickViews"
+                  :key="view.key"
+                  type="button"
+                  class="px-3 py-1 rounded-full text-xs border"
+                  :class="quickView === view.key ? 'border-blue-500 text-blue-400 bg-blue-900/20' : 'border-default text-muted hover:text-default'"
+                  :title="view.hint"
+                  @click="selectQuickView(view.key)"
+                >
+                  {{ view.label }}
+                </button>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <input v-model.trim="serverFilters.actor" type="text" placeholder="Actor (exact)" class="input-textlike px-3 py-1.5 border border-default rounded-lg bg-default text-default text-sm w-40" @keyup.enter="applyServerFilters" />
+                <input v-model.trim="serverFilters.resourceId" type="text" placeholder="Resource ID" class="input-textlike px-3 py-1.5 border border-default rounded-lg bg-default text-default text-sm w-32" @keyup.enter="applyServerFilters" />
+                <label class="text-xs text-muted">From</label>
+                <input v-model="serverFilters.since" type="date" class="px-2 py-1.5 border border-default rounded-lg bg-default text-sm" />
+                <label class="text-xs text-muted">To</label>
+                <input v-model="serverFilters.until" type="date" class="px-2 py-1.5 border border-default rounded-lg bg-default text-sm" />
+                <button class="btn btn-secondary text-xs" type="button" @click="applyServerFilters">Apply</button>
+                <button class="btn btn-secondary text-xs" type="button" @click="clearServerFilters">Clear</button>
+              </div>
+            </div>
+
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
               <div class="rounded-md border border-default p-3 bg-default">
                 <div class="text-xs text-muted">Errors</div>
@@ -203,7 +299,7 @@
                       This server is not connected. Log in to this server to view its logs.
                     </td>
                   </tr>
-                  <tr v-else-if="serverAccessDenied">
+                  <tr v-else-if="serverAccessDenied || !serverCanView">
                     <td colspan="6" class="p-4 text-center text-flow-warning">
                       Admin access required to view server logs. Log in with a system (PAM) account.
                     </td>
@@ -273,6 +369,7 @@ import { useTourManager, type TourStep } from "../../composables/useTourManager"
 import { useOnboarding } from "../../composables/useOnboarding";
 import { useApi } from "../../composables/useApi";
 import { useConnections } from "../../composables/useConnections";
+import { isAdminSession } from "../../composables/adminSession";
 
 const { requestTour } = useTourManager();
 const { onboarding, markDone } = useOnboarding();
@@ -381,6 +478,169 @@ const search = ref("");
 const levelFilter = ref("");
 const errorsOnly = ref(true);
 const groupRelated = ref(true);
+
+// ---- Audit screen (server tab, admins only) --------------------------------
+const selectedConnection = computed(() =>
+  connections.find(c => c.connectionId === selectedServerConnectionId.value) || activeConnection.value || null
+);
+// UX gate only; the server enforces requireAdmin on every audit route.
+const serverCanView = computed(() => isAdminSession(selectedConnection.value?.token));
+
+type AuditStatus = {
+  writes?: { ok: boolean; since?: string | null; dropped?: number; lastError?: string | null };
+  lastVerification?: { ok: boolean; at: string; checked?: number; brokenAtId?: number; reason?: string } | null;
+  lastReview?: { id: number; ts: string; actor: string | null; detail?: any } | null;
+  sinceLastReview?: { errors: number; warnings: number } | null;
+  retentionDays?: number;
+  total?: number;
+  errors?: number;
+  warnings?: number;
+};
+const auditStatus = ref<AuditStatus | null>(null);
+const auditHealthy = computed(() =>
+  !auditStatus.value || (auditStatus.value.writes?.ok !== false && auditStatus.value.lastVerification?.ok !== false)
+);
+const verifying = ref(false);
+const exporting = ref(false);
+const reviewing = ref(false);
+const reviewOpen = ref(false);
+const reviewNote = ref("");
+const auditMessage = ref("");
+const auditMessageError = ref(false);
+
+function setAuditMessage(msg: string, isError = false) {
+  auditMessage.value = msg;
+  auditMessageError.value = isError;
+}
+
+const quickViews = [
+  { key: 'all', label: 'All events', hint: 'Everything', params: {} },
+  { key: 'alerts', label: 'Alerts & warnings', hint: 'Warning and error level events', params: { levels: 'warn,error' } },
+  { key: 'security', label: 'Security changes', hint: 'Weakened links, access/role/group changes, scanning disabled', params: { actions: 'link.security.,access.changed,settings.malware_scan.,user.,role.,group.' } },
+  { key: 'denied', label: 'Denied & failed logins', hint: 'Rejected requests (401/403) and failed logins', params: { actions: 'http.denied,http.denied.suppressed,auth.login.failed,auth.login.noshell,security.alert' } },
+  { key: 'files', label: 'Downloads & streams', hint: 'Link downloads/views and direct desktop streams', params: { actions: 'file.desktop.stream,link.activity.' } },
+  { key: 'integrity', label: 'Audit integrity', hint: 'Exports, reviews, verification and write failures', params: { actions: 'audit.' } },
+] as const;
+type QuickViewKey = typeof quickViews[number]['key'];
+const quickView = ref<QuickViewKey>('all');
+const serverFilters = ref({ actor: '', resourceId: '', since: '', until: '' });
+
+function serverQueryParams(): URLSearchParams {
+  const params = new URLSearchParams();
+  const view = quickViews.find(v => v.key === quickView.value);
+  for (const [k, v] of Object.entries(view?.params || {})) params.set(k, String(v));
+  if (levelFilter.value) params.set('level', levelFilter.value);
+  const f = serverFilters.value;
+  if (f.actor) params.set('actor', f.actor);
+  if (f.resourceId) params.set('resource_id', f.resourceId);
+  // Date inputs are local days; send the local-day bounds as UTC ISO strings.
+  if (f.since) params.set('since', new Date(`${f.since}T00:00:00`).toISOString());
+  if (f.until) params.set('until', new Date(`${f.until}T23:59:59.999`).toISOString());
+  return params;
+}
+
+function selectQuickView(key: QuickViewKey) {
+  quickView.value = key;
+  loadServerPage(1);
+}
+
+// Server tab: the level filter is applied by the server, across all pages.
+watch(levelFilter, () => {
+  if (source.value === 'server') loadServerPage(1);
+});
+
+function applyServerFilters() {
+  loadServerPage(1);
+}
+
+function clearServerFilters() {
+  serverFilters.value = { actor: '', resourceId: '', since: '', until: '' };
+  quickView.value = 'all';
+  levelFilter.value = '';
+  loadServerPage(1);
+}
+
+async function loadAuditStatus() {
+  if (!serverCanView.value || selectedServerDisconnected.value) { auditStatus.value = null; return; }
+  try {
+    const res = await getServerApiFetch()('/api/admin/audit-log/status', { suppressAuthRedirect: true });
+    auditStatus.value = res?.ok ? res : null;
+  } catch {
+    // Older servers do not have /status; the panel just shows dashes.
+    auditStatus.value = null;
+  }
+}
+
+async function verifyChain() {
+  verifying.value = true;
+  setAuditMessage('');
+  try {
+    const res = await getServerApiFetch()('/api/admin/audit-log/verify', { suppressAuthRedirect: true, timeoutMs: 120_000, retry: 0 });
+    const chain = res?.chain;
+    if (chain?.ok) setAuditMessage(`Hash chain intact (${chain.checked} rows checked).`);
+    else setAuditMessage(`Hash chain BROKEN at row ${chain?.brokenAtId} (${chain?.reason}). This has been recorded.`, true);
+    await loadAuditStatus();
+  } catch (e: any) {
+    setAuditMessage(e?.message || 'Verification failed', true);
+  } finally {
+    verifying.value = false;
+  }
+}
+
+async function exportAudit(format: 'csv' | 'jsonl') {
+  exporting.value = true;
+  setAuditMessage('');
+  try {
+    const params = serverQueryParams();
+    params.set('format', format);
+    const text = await getServerApiFetch()(`/api/admin/audit-log/export?${params.toString()}`, {
+      suppressAuthRedirect: true,
+      parse: 'text',
+      timeoutMs: 300_000,
+      retry: 0,
+    });
+    const type = format === 'csv' ? 'text/csv' : 'application/x-ndjson';
+    const blob = new Blob([String(text ?? '')], { type });
+    const url = URL.createObjectURL(blob);
+    const server = String(selectedConnection.value?.name || selectedConnection.value?.serverIp || 'server').replace(/[^a-z0-9_.-]/gi, '_');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audit-log-${server}-${stamp}.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setAuditMessage(`Exported ${format.toUpperCase()} (the export itself is recorded in the audit log).`);
+  } catch (e: any) {
+    setAuditMessage(e?.message || 'Export failed', true);
+  } finally {
+    exporting.value = false;
+  }
+}
+
+async function markReviewed() {
+  reviewing.value = true;
+  setAuditMessage('');
+  try {
+    const throughId = serverEntries.value.length ? Math.max(...serverEntries.value.map(e => e.id)) : undefined;
+    const res = await getServerApiFetch()('/api/admin/audit-log/reviewed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note: reviewNote.value.trim() || undefined, throughId }),
+      suppressAuthRedirect: true,
+    });
+    if (!res?.ok) throw new Error(res?.error || 'Could not record review');
+    reviewOpen.value = false;
+    reviewNote.value = '';
+    setAuditMessage('Review recorded in the audit log.');
+    await Promise.all([loadAuditStatus(), loadServerPage(1)]);
+  } catch (e: any) {
+    setAuditMessage(e?.status === 404 ? 'This server does not support review records yet; update the server.' : (e?.message || 'Could not record review'), true);
+  } finally {
+    reviewing.value = false;
+  }
+}
 
 const counts = computed(() => {
   const out = { error: 0, warn: 0, info: 0, debug: 0 };
@@ -550,11 +810,13 @@ async function loadServerPage(page: number) {
   error.value = null;
   serverAccessDenied.value = false;
   try {
-    const params = new URLSearchParams({
-      page: String(page),
-      limit: String(serverPagination.value.limit),
-    });
-    if (levelFilter.value) params.set('level', levelFilter.value);
+    if (!serverCanView.value) {
+      serverEntries.value = [];
+      return;
+    }
+    const params = serverQueryParams();
+    params.set('page', String(page));
+    params.set('limit', String(serverPagination.value.limit));
 
     if (selectedServerDisconnected.value) {
       serverEntries.value = [];
@@ -615,7 +877,7 @@ async function refresh() {
   if (source.value === 'client') {
     await refreshClient();
   } else {
-    await loadServerPage(serverPagination.value.page);
+    await Promise.all([loadServerPage(serverPagination.value.page), loadAuditStatus()]);
   }
 }
 

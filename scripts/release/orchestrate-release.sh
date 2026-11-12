@@ -232,7 +232,7 @@ fi
 ssh_run() {
   local host="$1" user="$2" pass="$3" port="$4" cmd="$5"
   if [[ -n "$pass" ]]; then
-    sshpass -p "$pass" ssh "${SSH_STRICT_OPTS[@]}" -p "$port" -l "$user" "$host" "$cmd"
+    SSHPASS="$pass" sshpass -e ssh "${SSH_STRICT_OPTS[@]}" -p "$port" -l "$user" "$host" "$cmd"
   else
     ssh "${SSH_STRICT_OPTS[@]}" -p "$port" -l "$user" "$host" "$cmd"
   fi
@@ -248,7 +248,7 @@ rsync_to() {
   local ssh_user_escaped
   ssh_user_escaped="$(printf '%q' "$user")"
   if [[ -n "$pass" ]]; then
-    sshpass -p "$pass" rsync -az "${delete_flag[@]}" \
+    SSHPASS="$pass" sshpass -e rsync -az "${delete_flag[@]}" \
       -e "ssh -p $port -l $ssh_user_escaped ${SSH_STRICT_OPTS[*]}" \
       $excludes \
       "$src" "${host}:$dest"
@@ -265,7 +265,7 @@ rsync_from() {
   local ssh_user_escaped
   ssh_user_escaped="$(printf '%q' "$user")"
   if [[ -n "$pass" ]]; then
-    sshpass -p "$pass" rsync -az \
+    SSHPASS="$pass" sshpass -e rsync -az \
       -e "ssh -p $port -l $ssh_user_escaped ${SSH_STRICT_OPTS[*]}" \
       "${host}:$src" "$dest"
   else
@@ -281,7 +281,7 @@ scp_from_file() {
   local remote_spec="${host}:${remote_file_escaped}"
   local user_ssh_opt="${user// /\\ }"
   if [[ -n "$pass" ]]; then
-    sshpass -p "$pass" scp "${SSH_STRICT_OPTS[@]}" -o "User=${user_ssh_opt}" -P "$port" "$remote_spec" "$local_file"
+    SSHPASS="$pass" sshpass -e scp "${SSH_STRICT_OPTS[@]}" -o "User=${user_ssh_opt}" -P "$port" "$remote_spec" "$local_file"
   else
     scp "${SSH_STRICT_OPTS[@]}" -o "User=${user_ssh_opt}" -P "$port" "$remote_spec" "$local_file"
   fi
