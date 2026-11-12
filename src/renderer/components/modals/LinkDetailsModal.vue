@@ -424,10 +424,30 @@
               <p class="flow-subhead">What this link does</p>
               <div class="flow-group">
                 <DetailRow label="Review" description="Share files for clients to view.">
-                  <FlowSwitch v-model="draftShareEnabled" label="Review" />
+                  <template v-if="draftShareEnabled" #summary>
+                    <span v-if="draftFilePaths.length" class="block truncate" :title="sharedFilesDir">
+                      {{ pluralize(draftFilePaths.length, 'file') }} from <code>{{ sharedFilesDir }}</code>
+                    </span>
+                    <span v-else>No files chosen yet.</span>
+                  </template>
+                  <button v-if="draftShareEnabled" type="button" class="btn btn-xs whitespace-nowrap"
+                    :class="draftFilePaths.length ? 'btn-secondary' : 'btn-primary'" @click="openFilesEditor">
+                    {{ draftFilePaths.length ? 'Manage files…' : 'Choose files to share' }}
+                  </button>
+                  <FlowSwitch :model-value="draftShareEnabled" label="Review" @update:model-value="setDraftShare" />
                 </DetailRow>
                 <DetailRow label="Upload" description="Let clients send you files.">
-                  <FlowSwitch v-model="draftUploadEnabled" label="Upload" />
+                  <template v-if="draftUploadEnabled" #summary>
+                    <span v-if="!uploadDirMissing" class="block truncate" :title="draftUploadDir">
+                      Uploads go to <code>{{ draftUploadDir }}</code>
+                    </span>
+                    <span v-else>No upload folder chosen yet.</span>
+                  </template>
+                  <button v-if="draftUploadEnabled" type="button" class="btn btn-xs whitespace-nowrap"
+                    :class="uploadDirMissing ? 'btn-primary' : 'btn-secondary'" @click="goToUploadFolder">
+                    {{ uploadDirMissing ? 'Select upload location' : 'Change…' }}
+                  </button>
+                  <FlowSwitch :model-value="draftUploadEnabled" label="Upload" @update:model-value="setDraftUpload" />
                 </DetailRow>
               </div>
               <FlowNotice v-if="!draftShareEnabled && !draftUploadEnabled" tone="danger" size="sm" class="mt-2">
@@ -757,6 +777,7 @@ const DetailRow = defineComponent({
       const head = h('div', { class: 'min-w-0' }, [
         labelEl,
         props.description ? h('div', { class: 'text-xs text-accent mt-0.5' }, props.description) : null,
+        slots.summary ? h('div', { class: 'text-xs text-default mt-1 min-w-0' }, slots.summary()) : null,
       ])
       if (props.stacked) {
         return h('div', { class: 'py-3 flex flex-col gap-2' }, [head, h('div', { class: 'min-w-0' }, slots.default?.())])
@@ -2211,6 +2232,34 @@ function onEditTabKeydown(e: KeyboardEvent) {
   const key = nextTabKey(e, editTabs.value.map(t => t.key), editTab.value, 'ld-edit-tab-')
   if (key) editTab.value = key
 }
+// Switching Review or Upload on takes you to the tab where it is set up.
+function setDraftShare(on: boolean) {
+  draftShareEnabled.value = on
+  if (on) editTab.value = 'files'
+}
+function setDraftUpload(on: boolean) {
+  draftUploadEnabled.value = on
+  if (on) void goToUploadFolder()
+}
+async function goToUploadFolder() {
+  editTab.value = 'uploads'
+  await nextTick()
+  document.querySelector<HTMLInputElement>('#ld-edit-panel-uploads input')?.focus()
+}
+// Deepest folder holding every shared path, for the Review summary.
+const sharedFilesDir = computed(() => {
+  const dirs = draftFilePaths.value.map(p => p.replace(/\/+$/, '').split('/').slice(0, -1))
+  let common = dirs[0] || []
+  for (const d of dirs) {
+    let i = 0
+    while (i < common.length && common[i] === d[i]) i++
+    common = common.slice(0, i)
+  }
+  const dir = common.join('/').replace(/\/*$/, '/') || '/'
+  // Shared paths are relative to the share root; show them absolute like the upload folder.
+  const root = shareRootPath.value
+  return root && !dir.startsWith(`${root}/`) ? `${root}${dir}` : dir
+})
 function editTabLabel(tab: EditTab) {
   return editTabs.value.find(t => t.key === tab)?.label || ''
 }

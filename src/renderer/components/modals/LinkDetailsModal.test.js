@@ -143,3 +143,38 @@ describe('LinkDetailsModal hosts the real email invitation panel', () => {
     expect(modal.textContent).not.toContain('Invitation sent')
   })
 })
+
+describe('LinkDetailsModal edit: Review and Upload switches', () => {
+  const sharing = { ...link, target: { files: [{ relPath: '/tank/P/a.mov' }, { relPath: '/tank/P/sub/b.mov' }] } }
+  const button = (text) => [...modal.querySelectorAll('button')].find(b => b.textContent.trim() === text)
+  const toggle = (name) => [...modal.querySelectorAll('[role="switch"]')].find(s => s.textContent.trim() === name)
+  const selectedTab = () => modal.querySelector('[role="tablist"][aria-label="Edit link"] [aria-selected="true"]').textContent.trim()
+
+  it('summarises what each one does and jumps to its tab when turned on', async () => {
+    host = document.createElement('div')
+    document.body.appendChild(host)
+    app = createApp(LinkDetailsModal, { modelValue: true, link: sharing, apiFetch: mocks.apiFetch })
+    app.mount(host)
+    await flush()
+    modal = document.querySelector('.flow-modal__panel')
+    button('Edit').click()
+    await flush()
+    expect(modal.textContent).toContain('2 files from /tank/P/')
+    expect(button('Manage files…')).toBeDefined()
+
+    toggle('Upload').click()
+    await flush()
+    expect(selectedTab()).toBe('Uploads')
+
+    button('Details').click()
+    await flush()
+    expect(modal.textContent).toContain('Uploads go to /tank/P/')
+
+    toggle('Review').click()
+    await flush()
+    expect(selectedTab()).toBe('Details')
+    toggle('Review').click()
+    await flush()
+    expect(selectedTab()).toBe('Files')
+  })
+})
