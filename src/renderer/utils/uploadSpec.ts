@@ -86,6 +86,34 @@ export function formatDuration(sec: number | null): string {
     return h ? `${h}:${String(m).padStart(2, '0')}:${r}` : `${m}:${r}`
 }
 
+export type SpecSummaryPart = { label: string; value: string }
+
+function orList(items: string[]): string {
+    return items.length > 1 ? `${items.slice(0, -1).join(', ')} or ${items[items.length - 1]}` : items[0] || ''
+}
+
+/** One short line per requirement that is set, for summaries next to the editor and in link details. */
+export function describeSpecRules(r: UploadSpecRules | null | undefined): SpecSummaryPart[] {
+    if (!r) return []
+    const parts: SpecSummaryPart[] = []
+    const pick = <T extends { label: string }>(list: T[], match: (o: T) => boolean) => list.filter(match).map((o) => o.label)
+    if (r.containers.length) {
+        const exts = pick(SPEC_CONTAINERS, (c) => r.containers.includes(c.id)).map((l) => l.match(/\(([^)]+)\)/)?.[1] || l)
+        parts.push({ label: 'File type', value: orList(exts) })
+    }
+    if (r.videoCodecs.length) parts.push({ label: 'Codec', value: orList(pick(SPEC_VIDEO_CODECS, (c) => r.videoCodecs.includes(c.id))) })
+    if (r.resolutions.length) parts.push({ label: 'Resolution', value: orList(r.resolutions.map((x) => x.replace('x', '×'))) })
+    if (r.frameRates.length) parts.push({ label: 'Frame rate', value: `${orList(r.frameRates.map(String))} fps` })
+    if (r.aspectRatios.length) parts.push({ label: 'Aspect ratio', value: orList(r.aspectRatios) })
+    if (r.minDurationSec != null || r.maxDurationSec != null) {
+        const min = formatDuration(r.minDurationSec)
+        const max = formatDuration(r.maxDurationSec)
+        parts.push({ label: 'Length', value: min && max ? `${min} to ${max}` : min ? `at least ${min}` : `up to ${max}` })
+    }
+    if (r.audioChannels.length) parts.push({ label: 'Audio', value: orList(pick(SPEC_AUDIO_CHANNELS, (a) => r.audioChannels.includes(a.value))) })
+    return parts
+}
+
 export function withSpecDefaults(r: Partial<UploadSpecRules> | null | undefined): UploadSpecRules | null {
     return r ? { ...emptySpecRules(), ...r } : null
 }

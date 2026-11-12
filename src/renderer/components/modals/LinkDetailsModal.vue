@@ -14,7 +14,7 @@
             <ChatBubbleLeftRightIcon class="w-4 h-4" aria-hidden="true" />
             Comments
           </button>
-          <button class="btn btn-primary flex items-center gap-2 whitespace-nowrap" :disabled="!link" @click="beginEdit">
+          <button class="btn btn-primary flex items-center gap-2 whitespace-nowrap" :disabled="!link" @click="beginEdit()">
             <PencilSquareIcon class="w-4 h-4" aria-hidden="true" />
             Edit
           </button>
@@ -114,6 +114,9 @@
                   <DetailRow label="Add uploads to shared files">{{ link?.auto_share_uploads ? 'On' : 'Off' }}</DetailRow>
                   <DetailRow label="Watermark uploads">{{ link?.auto_watermark_uploads ? 'On' : 'Off' }}</DetailRow>
                 </template>
+                <DetailRow v-if="isPremiumActive && !uploadSpecError" label="File requirements" :description="savedUploadSpecSummary">
+                  {{ !hasAnySpecRule(savedUploadSpec) ? 'Off' : savedUploadSpec?.action === 'flag' ? 'Flag mismatches' : 'Reject mismatches' }}
+                </DetailRow>
                 <DetailRow label="Proxy files for uploads">
                   {{ link?.auto_transcode_uploads ? qualityList(link?.auto_transcode_proxy_qualities?.length ? link.auto_transcode_proxy_qualities : ['720p']) : 'Off' }}
                 </DetailRow>
@@ -196,7 +199,7 @@
           <div v-else-if="activeTab === 'review'">
             <LinkReviewPanel :state="linkReview.state.value" :loading="linkReview.loading.value"
               :error="linkReview.error.value" :link-access-mode="currentAccessMode" :users="access" :hour12="hour12"
-              @edit="beginEdit" @change-approver="editApprover" />
+              @edit="beginEdit('access')" @change-approver="editApprover" />
           </div>
 
           <!-- Activity -->
@@ -384,191 +387,217 @@
       </template>
 
       <!-- ═══ Edit ═══════════════════════════════════════════ -->
-      <div v-else class="flex-1 min-h-0 overflow-y-auto px-6 py-5" data-tour="link-details-config">
-        <div class="max-w-3xl mx-auto">
-          <p class="flow-subhead flow-subhead--first">Details</p>
-          <div class="flow-group">
-            <DetailRow label="Title" for-id="ld-edit-title">
-              <input id="ld-edit-title" v-model="draftTitle" type="text" class="input-textlike px-2 py-1 text-sm w-72"
-                :placeholder="link ? fallbackTitle(link) : ''" />
-            </DetailRow>
-            <DetailRow label="Project" for-id="ld-edit-project">
-              <select id="ld-edit-project" v-model="draftProjectId" class="input-textlike px-2 py-1 text-sm w-72">
-                <option :value="null">None</option>
-                <option v-if="draftProjectId != null && !availableProjects.some(p => p.id === draftProjectId)" :value="draftProjectId">
-                  {{ link?.project_name || 'Current project' }}
-                </option>
-                <option v-for="proj in availableProjects" :key="proj.id" :value="proj.id">{{ proj.name }}</option>
-              </select>
-            </DetailRow>
-            <DetailRow label="Notes" description="Internal notes for your team." for-id="ld-edit-notes" stacked>
-              <textarea id="ld-edit-notes" v-model="draftNotes" rows="3" class="input-textlike w-full px-3 py-2 text-sm"></textarea>
-            </DetailRow>
-          </div>
+      <template v-else>
+        <div class="flow-tabs px-6 pt-3 shrink-0" role="tablist" aria-label="Edit link">
+          <button v-for="t in editTabs" :key="t.key" :id="`ld-edit-tab-${t.key}`" type="button" class="flow-tab" role="tab"
+            :aria-selected="editTab === t.key" :aria-controls="`ld-edit-panel-${t.key}`" :tabindex="editTab === t.key ? 0 : -1"
+            @click="editTab = t.key" @keydown="onEditTabKeydown">
+            {{ t.label }}
+            <span v-if="t.problem" class="flow-dot flow-dot--danger" aria-hidden="true" />
+            <span v-if="t.problem" class="sr-only">(needs attention)</span>
+          </button>
+        </div>
 
-          <p class="flow-subhead">What this link does</p>
-          <div class="flow-group">
-            <DetailRow label="Review" description="Share files for clients to view.">
-              <FlowSwitch v-model="draftShareEnabled" label="Review" />
-            </DetailRow>
-            <DetailRow label="Upload" description="Let clients send you files.">
-              <FlowSwitch v-model="draftUploadEnabled" label="Upload" />
-            </DetailRow>
-          </div>
-          <FlowNotice v-if="!draftShareEnabled && !draftUploadEnabled" tone="danger" size="sm" class="mt-2">
-            Turn on Review, Upload or both.
-          </FlowNotice>
-
-          <template v-if="draftShareEnabled">
-            <p class="flow-subhead">Shared files</p>
-            <div class="flow-group">
-              <DetailRow :label="`${pluralize(draftFilePaths.length, 'file')} selected`"
-                :description="filesDirty ? 'Changed. Saved when you click Save & close.' : ''">
-                <button type="button" class="btn btn-secondary btn-sm" @click="openFilesEditor">Manage files…</button>
-              </DetailRow>
-              <div v-if="draftFilePaths.length" class="py-2">
-                <button type="button" class="ld-link text-xs" :aria-expanded="fileListExpanded" @click="fileListExpanded = !fileListExpanded">
-                  {{ fileListExpanded ? 'Hide the file list' : 'Show the file list' }}
-                </button>
-                <ul v-if="fileListExpanded" class="ld-paths">
-                  <li v-for="(p, i) in draftFilePaths" :key="p + ':' + i" class="truncate" :title="p"><code>{{ p }}</code></li>
-                </ul>
+        <div class="flex-1 min-h-0 overflow-y-auto px-6 py-5" data-tour="link-details-config">
+          <div>
+            <div v-show="editTab === 'details'" id="ld-edit-panel-details" role="tabpanel" aria-labelledby="ld-edit-tab-details">
+              <p class="flow-subhead flow-subhead--first">Details</p>
+              <div class="flow-group">
+                <DetailRow label="Title" for-id="ld-edit-title">
+                  <input id="ld-edit-title" v-model="draftTitle" type="text" class="input-textlike px-2 py-1 text-sm w-72"
+                    :placeholder="link ? fallbackTitle(link) : ''" />
+                </DetailRow>
+                <DetailRow label="Project" for-id="ld-edit-project">
+                  <select id="ld-edit-project" v-model="draftProjectId" class="input-textlike px-2 py-1 text-sm w-72">
+                    <option :value="null">None</option>
+                    <option v-if="draftProjectId != null && !availableProjects.some(p => p.id === draftProjectId)" :value="draftProjectId">
+                      {{ link?.project_name || 'Current project' }}
+                    </option>
+                    <option v-for="proj in availableProjects" :key="proj.id" :value="proj.id">{{ proj.name }}</option>
+                  </select>
+                </DetailRow>
+                <DetailRow label="Notes" description="Internal notes for your team." for-id="ld-edit-notes" stacked>
+                  <textarea id="ld-edit-notes" v-model="draftNotes" rows="3" class="input-textlike w-full px-3 py-2 text-sm"></textarea>
+                </DetailRow>
               </div>
-            </div>
-            <FlowNotice v-if="!draftFilePaths.length" tone="warning" size="sm" class="mt-2">
-              No files selected. Use Manage files… to choose some.
-            </FlowNotice>
-          </template>
 
-          <div v-if="draftUploadEnabled" ref="uploadDestSection">
-            <p class="flow-subhead">Uploads</p>
-            <div class="flow-group">
-              <DetailRow label="Save uploads to" description="The folder on your server where uploaded files go." stacked>
-                <PathInput v-model="draftUploadDir" :apiFetch="apiFetch" :dirsOnly="true" />
-                <p v-if="uploadDirDirty" class="text-xs text-muted mt-1">
-                  Currently <code>{{ currentUploadDir || 'not set' }}</code>. Changes when you save.
-                </p>
-              </DetailRow>
-              <template v-if="draftShareEnabled">
-                <DetailRow label="Add uploads to shared files" description="Uploaded files appear in this link's shared files.">
-                  <FlowSwitch v-model="draftAutoShareUploads" label="Add uploads to shared files" />
+              <p class="flow-subhead">What this link does</p>
+              <div class="flow-group">
+                <DetailRow label="Review" description="Share files for clients to view.">
+                  <FlowSwitch v-model="draftShareEnabled" label="Review" />
                 </DetailRow>
-                <DetailRow label="Watermark uploads"
-                  :description="link?.watermark ? 'Apply this link\'s watermark to files uploaded through it.' : 'This link has no watermark configured.'">
-                  <FlowSwitch v-model="draftAutoWatermarkUploads" label="Watermark uploads" :disabled="!link?.watermark" />
+                <DetailRow label="Upload" description="Let clients send you files.">
+                  <FlowSwitch v-model="draftUploadEnabled" label="Upload" />
                 </DetailRow>
-              </template>
-              <DetailRow label="Proxy files for uploads" description="The server makes proxy files for each video uploaded through this link.">
-                <FlowSwitch v-model="draftAutoTranscodeUploads" label="Proxy files for uploads" />
-              </DetailRow>
-              <DetailRow v-if="draftAutoTranscodeUploads" label="Upload proxy qualities">
-                <div class="flex flex-wrap justify-end gap-x-4 gap-y-1">
-                  <label v-for="q in proxyQualityChoices" :key="`auto-${q}`" class="inline-flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" class="styled-checkbox" :value="q" :checked="draftAutoTranscodeProxyQualities.includes(q)"
-                      @change="toggleDraftAutoTranscodeQuality(q, ($event.target as HTMLInputElement).checked)" />
-                    {{ qualityLabel(q) }}
+              </div>
+              <FlowNotice v-if="!draftShareEnabled && !draftUploadEnabled" tone="danger" size="sm" class="mt-2">
+                Turn on Review, Upload or both.
+              </FlowNotice>
+            </div>
+
+            <div v-show="editTab === 'access'" id="ld-edit-panel-access" role="tabpanel" aria-labelledby="ld-edit-tab-access">
+              <p class="flow-subhead flow-subhead--first">Who can open it</p>
+              <ul class="flow-list" role="radiogroup" aria-label="Who can open this link">
+                <li v-for="opt in accessChoices" :key="opt.value">
+                  <label class="flow-list__row flow-list__row--interactive !items-start"
+                    :class="{ 'flow-list__row--selected': accessChoice === opt.value }">
+                    <input type="radio" name="ld-access-choice" class="mt-0.5" :value="opt.value"
+                      :checked="accessChoice === opt.value" @change="accessChoice = opt.value" />
+                    <span class="min-w-0">
+                      <span class="block text-sm font-medium">{{ opt.label }}</span>
+                      <span class="block flow-list__meta">{{ opt.help }}</span>
+                    </span>
                   </label>
+                </li>
+              </ul>
+
+              <div v-if="accessChoice === 'open_password' || (accessChoice !== 'restricted' && supportsComments)" class="flow-group mt-3">
+                <DetailRow v-if="accessChoice === 'open_password'" :label="openPasswordRequired ? 'New password' : 'Password'"
+                  :description="openPasswordRequired ? 'Leave blank to keep the current password.' : 'Share it with the people you send the link to.'"
+                  for-id="ld-edit-password">
+                  <input id="ld-edit-password" v-model.trim="draftPassword" type="password" autocomplete="new-password"
+                    class="input-textlike px-2 py-1 text-sm w-56" :placeholder="openPasswordRequired ? 'Unchanged' : 'Enter a password'" />
+                </DetailRow>
+                <DetailRow v-if="supportsComments" label="Allow comments" description="Viewers can leave review comments.">
+                  <button v-if="draftAllowComments" type="button" class="btn btn-secondary btn-xs whitespace-nowrap"
+                    :disabled="!effectiveToken || !link?.id" @click="categoryManagementOpen = true">Comment categories…</button>
+                  <FlowSwitch v-model="draftAllowComments" label="Allow comments" />
+                </DetailRow>
+              </div>
+              <FlowNotice v-if="mustProvidePassword" tone="danger" size="sm" class="mt-2">
+                Enter a password, or choose a different access option.
+              </FlowNotice>
+
+              <template v-if="accessChoice === 'restricted'">
+                <div class="flex items-center justify-between gap-2 mt-4 mb-2">
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium">Invited</p>
+                    <p class="text-xs text-muted">Changes here are saved when you click Save &amp; close.</p>
+                  </div>
+                  <button type="button" class="btn btn-primary btn-sm whitespace-nowrap" @click="openAccessModal">Invite clients…</button>
                 </div>
-              </DetailRow>
+                <LinkAccessList :users="editAccessUsers" :groups="editAccessGroups" :loading="accessLoading" editable
+                  @remove-user="removeAccess" @remove-team="removeGroupAccess"
+                  @undo-user="undoRemoveAccess" @undo-team="undoRemoveGroupAccess" />
+                <FlowNotice v-if="!accessSatisfied" tone="danger" size="sm" class="mt-2">
+                  Invite at least one client or team, or choose a different access option.
+                </FlowNotice>
+                <div v-if="canChooseApprover" id="ld-edit-approver-row" class="flow-group mt-3 scroll-mt-4">
+                  <DetailRow label="Who approves" for-id="ld-edit-approver"
+                    description="Only this person can approve, request changes or reject files.">
+                    <select id="ld-edit-approver" v-model="draftApproverId"
+                      class="input-textlike pl-2 pr-8 py-1 text-sm min-w-[10rem] max-w-[14rem]">
+                      <option :value="null" class="bg-default text-default">No approver</option>
+                      <option v-for="o in approverChoices" :key="o.id" :value="o.id" class="bg-default text-default">{{ o.label }}</option>
+                    </select>
+                  </DetailRow>
+                </div>
+              </template>
             </div>
-            <FlowNotice v-if="uploadDirMissing" tone="danger" size="sm" class="mt-2">Choose a folder for uploads.</FlowNotice>
-            <template v-if="isPremiumActive">
-              <p class="flow-subhead">File requirements</p>
-              <FlowNotice v-if="uploadSpecError" tone="warning" size="sm">{{ uploadSpecError }}</FlowNotice>
-              <p v-else-if="!link?.upload_enabled" class="text-xs text-muted">Save the link with uploads turned on, then set file requirements here.</p>
-              <UploadSpecRulesEditor v-else v-model="draftUploadSpec" :disabled="saving"
-                @update:invalid="(v) => (uploadSpecInvalid = v)" />
-            </template>
-          </div>
 
-          <p class="flow-subhead">Who can open it</p>
-          <ul class="flow-list" role="radiogroup" aria-label="Who can open this link">
-            <li v-for="opt in accessChoices" :key="opt.value">
-              <label class="flow-list__row flow-list__row--interactive !items-start"
-                :class="{ 'flow-list__row--selected': accessChoice === opt.value }">
-                <input type="radio" name="ld-access-choice" class="mt-0.5" :value="opt.value"
-                  :checked="accessChoice === opt.value" @change="accessChoice = opt.value" />
-                <span class="min-w-0">
-                  <span class="block text-sm font-medium">{{ opt.label }}</span>
-                  <span class="block flow-list__meta">{{ opt.help }}</span>
-                </span>
-              </label>
-            </li>
-          </ul>
-
-          <div v-if="accessChoice === 'open_password' || (accessChoice !== 'restricted' && supportsComments)" class="flow-group mt-3">
-            <DetailRow v-if="accessChoice === 'open_password'" :label="openPasswordRequired ? 'New password' : 'Password'"
-              :description="openPasswordRequired ? 'Leave blank to keep the current password.' : 'Share it with the people you send the link to.'"
-              for-id="ld-edit-password">
-              <input id="ld-edit-password" v-model.trim="draftPassword" type="password" autocomplete="new-password"
-                class="input-textlike px-2 py-1 text-sm w-56" :placeholder="openPasswordRequired ? 'Unchanged' : 'Enter a password'" />
-            </DetailRow>
-            <DetailRow v-if="supportsComments" label="Allow comments" description="Viewers can leave review comments.">
-              <button v-if="draftAllowComments" type="button" class="btn btn-secondary btn-xs whitespace-nowrap"
-                :disabled="!effectiveToken || !link?.id" @click="categoryManagementOpen = true">Comment categories…</button>
-              <FlowSwitch v-model="draftAllowComments" label="Allow comments" />
-            </DetailRow>
-          </div>
-          <FlowNotice v-if="mustProvidePassword" tone="danger" size="sm" class="mt-2">
-            Enter a password, or choose a different access option.
-          </FlowNotice>
-
-          <template v-if="accessChoice === 'restricted'">
-            <div class="flex items-center justify-between gap-2 mt-4 mb-2">
-              <div class="min-w-0">
-                <p class="text-sm font-medium">Invited</p>
-                <p class="text-xs text-muted">Changes here are saved when you click Save &amp; close.</p>
+            <div v-if="draftShareEnabled" v-show="editTab === 'files'" id="ld-edit-panel-files" role="tabpanel" aria-labelledby="ld-edit-tab-files">
+              <p class="flow-subhead flow-subhead--first">Shared files</p>
+              <div class="flow-group">
+                <DetailRow :label="`${pluralize(draftFilePaths.length, 'file')} selected`"
+                  :description="filesDirty ? 'Changed. Saved when you click Save & close.' : ''">
+                  <button type="button" class="btn btn-secondary btn-sm" @click="openFilesEditor">Manage files…</button>
+                </DetailRow>
+                <div v-if="draftFilePaths.length" class="py-2">
+                  <button type="button" class="ld-link text-xs" :aria-expanded="fileListExpanded" @click="fileListExpanded = !fileListExpanded">
+                    {{ fileListExpanded ? 'Hide the file list' : 'Show the file list' }}
+                  </button>
+                  <ul v-if="fileListExpanded" class="ld-paths">
+                    <li v-for="(p, i) in draftFilePaths" :key="p + ':' + i" class="truncate" :title="p"><code>{{ p }}</code></li>
+                  </ul>
+                </div>
               </div>
-              <button type="button" class="btn btn-primary btn-sm whitespace-nowrap" @click="openAccessModal">Invite clients…</button>
+              <FlowNotice v-if="!draftFilePaths.length" tone="warning" size="sm" class="mt-2">
+                No files selected. Use Manage files… to choose some.
+              </FlowNotice>
             </div>
-            <LinkAccessList :users="editAccessUsers" :groups="editAccessGroups" :loading="accessLoading" editable
-              @remove-user="removeAccess" @remove-team="removeGroupAccess"
-              @undo-user="undoRemoveAccess" @undo-team="undoRemoveGroupAccess" />
-            <FlowNotice v-if="!accessSatisfied" tone="danger" size="sm" class="mt-2">
-              Invite at least one client or team, or choose a different access option.
-            </FlowNotice>
-            <div v-if="canChooseApprover" id="ld-edit-approver-row" class="flow-group mt-3 scroll-mt-4">
-              <DetailRow label="Who approves" for-id="ld-edit-approver"
-                description="Only this person can approve, request changes or reject files.">
-                <select id="ld-edit-approver" v-model="draftApproverId"
-                  class="input-textlike pl-2 pr-8 py-1 text-sm min-w-[10rem] max-w-[14rem]">
-                  <option :value="null" class="bg-default text-default">No approver</option>
-                  <option v-for="o in approverChoices" :key="o.id" :value="o.id" class="bg-default text-default">{{ o.label }}</option>
-                </select>
-              </DetailRow>
-            </div>
-          </template>
 
-          <p class="flow-subhead">Playback and watermark</p>
-          <div class="flow-group">
-            <DetailRow label="Proxy files" description="Playback copies made for reviewers.">
-              <FlowSwitch v-model="draftGenerateReviewProxy" label="Proxy files" />
-            </DetailRow>
-            <DetailRow v-if="draftGenerateReviewProxy" label="Qualities">
-              <div class="flex flex-wrap justify-end gap-x-4 gap-y-1">
-                <label v-for="q in proxyQualityChoices" :key="q" class="inline-flex items-center gap-2 cursor-pointer">
-                  <input v-model="draftProxyQualities" type="checkbox" class="styled-checkbox" :value="q" />
-                  {{ qualityLabel(q) }}
-                </label>
+            <div v-if="draftUploadEnabled" v-show="editTab === 'uploads'" id="ld-edit-panel-uploads" role="tabpanel" aria-labelledby="ld-edit-tab-uploads">
+              <p class="flow-subhead flow-subhead--first">Uploads</p>
+              <div class="flow-group">
+                <DetailRow label="Save uploads to" description="The folder on your server where uploaded files go." stacked>
+                  <PathInput v-model="draftUploadDir" :apiFetch="apiFetch" :dirsOnly="true" />
+                  <p v-if="uploadDirDirty" class="text-xs text-muted mt-1">
+                    Currently <code>{{ currentUploadDir || 'not set' }}</code>. Changes when you save.
+                  </p>
+                </DetailRow>
+                <template v-if="draftShareEnabled">
+                  <DetailRow label="Add uploads to shared files" description="Uploaded files appear in this link's shared files.">
+                    <FlowSwitch v-model="draftAutoShareUploads" label="Add uploads to shared files" />
+                  </DetailRow>
+                  <DetailRow label="Watermark uploads"
+                    :description="link?.watermark ? 'Apply this link\'s watermark to files uploaded through it.' : 'This link has no watermark configured.'">
+                    <FlowSwitch v-model="draftAutoWatermarkUploads" label="Watermark uploads" :disabled="!link?.watermark" />
+                  </DetailRow>
+                </template>
+                <DetailRow label="Proxy files for uploads" description="The server makes proxy files for each video uploaded through this link.">
+                  <FlowSwitch v-model="draftAutoTranscodeUploads" label="Proxy files for uploads" />
+                </DetailRow>
+                <DetailRow v-if="draftAutoTranscodeUploads" label="Upload proxy qualities">
+                  <div class="flex flex-wrap justify-end gap-x-4 gap-y-1">
+                    <label v-for="q in proxyQualityChoices" :key="`auto-${q}`" class="inline-flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" class="styled-checkbox" :value="q" :checked="draftAutoTranscodeProxyQualities.includes(q)"
+                        @change="toggleDraftAutoTranscodeQuality(q, ($event.target as HTMLInputElement).checked)" />
+                      {{ qualityLabel(q) }}
+                    </label>
+                  </div>
+                </DetailRow>
               </div>
-            </DetailRow>
-            <DetailRow label="Watermark" :description="watermarkEditHelp">
-              <button v-if="draftWatermarkEnabled" type="button" class="btn btn-secondary btn-xs whitespace-nowrap" @click="openWatermarkConfigModal">Configure…</button>
-              <FlowSwitch v-model="draftWatermarkEnabled" label="Watermark" :disabled="linkHasVideoFiles && !draftGenerateReviewProxy" />
-            </DetailRow>
-            <DetailRow v-if="draftShareEnabled && (draftGenerateReviewProxy || draftWatermarkEnabled)" label="Reprocess proxy files"
-              :description="`Regenerates proxy files and streams with the settings above. ${clientTranscodeEnabled ? 'Uses this computer\'s hardware (client-side transcoding is on).' : 'The server does the processing.'}`">
-              <button type="button" class="btn btn-secondary btn-sm whitespace-nowrap" :disabled="reprocessingMedia" @click="reprocessMedia()">
-                {{ reprocessingMedia ? 'Processing…' : 'Reprocess' }}
-              </button>
-            </DetailRow>
+              <FlowNotice v-if="uploadDirMissing" tone="danger" size="sm" class="mt-2">Choose a folder for uploads.</FlowNotice>
+              <template v-if="isPremiumActive">
+                <p class="flow-subhead">File requirements</p>
+                <FlowNotice v-if="uploadSpecError" tone="warning" size="sm">{{ uploadSpecError }}</FlowNotice>
+                <p v-else-if="!link?.upload_enabled" class="text-xs text-muted">Save the link with uploads turned on, then set file requirements here.</p>
+                <div v-else class="flow-group">
+                  <div class="py-3">
+                    <UploadSpecRulesEditor v-model="draftUploadSpec" :disabled="saving"
+                      @update:invalid="(v) => (uploadSpecInvalid = v)" />
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <div v-show="editTab === 'playback'" id="ld-edit-panel-playback" role="tabpanel" aria-labelledby="ld-edit-tab-playback">
+              <p class="flow-subhead flow-subhead--first">Playback and watermark</p>
+              <div class="flow-group">
+                <DetailRow label="Proxy files" description="Playback copies made for reviewers.">
+                  <FlowSwitch v-model="draftGenerateReviewProxy" label="Proxy files" />
+                </DetailRow>
+                <DetailRow v-if="draftGenerateReviewProxy" label="Qualities">
+                  <div class="flex flex-wrap justify-end gap-x-4 gap-y-1">
+                    <label v-for="q in proxyQualityChoices" :key="q" class="inline-flex items-center gap-2 cursor-pointer">
+                      <input v-model="draftProxyQualities" type="checkbox" class="styled-checkbox" :value="q" />
+                      {{ qualityLabel(q) }}
+                    </label>
+                  </div>
+                </DetailRow>
+                <DetailRow label="Watermark" :description="watermarkEditHelp">
+                  <button v-if="draftWatermarkEnabled" type="button" class="btn btn-secondary btn-xs whitespace-nowrap" @click="openWatermarkConfigModal">Configure…</button>
+                  <FlowSwitch v-model="draftWatermarkEnabled" label="Watermark" :disabled="linkHasVideoFiles && !draftGenerateReviewProxy" />
+                </DetailRow>
+                <DetailRow v-if="draftShareEnabled && (draftGenerateReviewProxy || draftWatermarkEnabled)" label="Reprocess proxy files"
+                  :description="`Regenerates proxy files and streams with the settings above. ${clientTranscodeEnabled ? 'Uses this computer\'s hardware (client-side transcoding is on).' : 'The server does the processing.'}`">
+                  <button type="button" class="btn btn-secondary btn-sm whitespace-nowrap" :disabled="reprocessingMedia" @click="reprocessMedia()">
+                    {{ reprocessingMedia ? 'Processing…' : 'Reprocess' }}
+                  </button>
+                </DetailRow>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </template>
 
       <template v-if="editMode" #footer>
         <div class="min-w-0 mr-auto text-sm" aria-live="polite">
-          <span v-if="editProblem" class="text-flow-danger">{{ editProblem }}</span>
+          <template v-if="editProblem">
+            <span class="text-flow-danger">{{ editProblem }}</span>
+            <button v-if="editProblems[0].tab !== editTab" type="button" class="ld-link text-xs ml-2"
+              @click="editTab = editProblems[0].tab">Go to {{ editTabLabel(editProblems[0].tab) }}</button>
+          </template>
           <span v-else-if="hasUnsavedChanges" class="inline-flex items-center gap-2 font-medium">
             <span class="flow-dot flow-dot--warning" aria-hidden="true" />You have unsaved changes
           </span>
@@ -752,7 +781,7 @@ import CommentsReviewModal from './CommentsReviewModal.vue'
 import CategoryManagementModal from './CategoryManagementModal.vue'
 import PathInput from '../PathInput.vue'
 import UploadSpecRulesEditor from '../UploadSpecRulesEditor.vue'
-import { hasAnySpecRule, withSpecDefaults, type UploadSpecRules } from '../../utils/uploadSpec'
+import { describeSpecRules, hasAnySpecRule, withSpecDefaults, type UploadSpecRules } from '../../utils/uploadSpec'
 import LinkTranscodeStatus from '../LinkTranscodeStatus.vue'
 import LinkRecipientCopies from '../LinkRecipientCopies.vue'
 import EmailInvitationPanel from '../EmailInvitationPanel.vue'
@@ -821,8 +850,8 @@ const linkDetailsEditTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="link-details-config"]',
 		message: isPremiumActive.value
-			? 'You are editing the link.\n\nChange its title and project, whether it is for review, upload or both, its files, who can open it, and its proxy files and watermark (with full position, size and opacity controls in Pro).'
-			: 'You are editing the link.\n\nChange its title and project, whether it is for review, upload or both, its files, who can open it, and its proxy files and watermark.',
+			? 'You are editing the link. Use the tabs to move between its settings.\n\nDetails: title, project, notes and whether it is for review, upload or both. Access: who can open it. Files and Uploads: what it shares and where uploads go, with file requirements for uploads. Playback: proxy files and watermark, with full position, size and opacity controls.\n\nA red dot marks a tab that needs attention before you can save.'
+			: 'You are editing the link. Use the tabs to move between its settings.\n\nDetails: title, project, notes and whether it is for review, upload or both. Access: who can open it. Files and Uploads: what it shares and where uploads go. Playback: proxy files and watermark.\n\nA red dot marks a tab that needs attention before you can save.',
 	},
 	{
 		target: '[data-tour="link-details-save"]',
@@ -1052,6 +1081,10 @@ async function loadUploadSpec() {
       : `Couldn't load file requirements: ${e?.message || 'unknown error'}`
   }
 }
+const savedUploadSpecSummary = computed(() => describeSpecRules(savedUploadSpec.value).map(p => p.value).join(' · '))
+watch([() => props.modelValue, () => props.link?.id, isPremiumActive], ([open, id]) => {
+  if (open && id && !editMode.value) void loadUploadSpec()
+}, { immediate: true })
 const availableProjects = ref<{ id: number; name: string }[]>([])
 const draftGenerateReviewProxy = ref(false)
 const draftProxyQualities = ref<string[]>([])
@@ -1079,7 +1112,6 @@ const originalFilePaths = ref<string[]>([])
 const configuredProjectRootForEdit = ref('')
 const draftUploadDir = ref('')
 const originalUploadDir = ref('')
-const uploadDestSection = ref<HTMLElement | null>(null)
 
 const isDownloadish = computed(() => props.link?.type === 'download' || props.link?.type === 'collection')
 
@@ -1726,7 +1758,7 @@ watch(() => draftShareEnabled.value, async (enabled, wasEnabled) => {
   }
 })
 
-// Auto-focus upload directory when upload capability is enabled on a link that didn't have it
+// Seed an upload folder when upload capability is enabled on a link that didn't have it
 watch(() => draftUploadEnabled.value, (enabled, wasEnabled) => {
   if (!editMode.value || !props.link) return
   const wasUploadEnabled = !!props.link.upload_enabled
@@ -1747,15 +1779,6 @@ watch(() => draftUploadEnabled.value, (enabled, wasEnabled) => {
         }
       }
     }
-    // Scroll to and focus the upload destination input
-    nextTick(() => {
-      const section = uploadDestSection.value
-      if (section) {
-        section.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        const input = section.querySelector('input')
-        if (input) input.focus()
-      }
-    })
   }
 })
 
@@ -2058,18 +2081,21 @@ watch(
 watch(activeTab, (tab) => {
   if ((tab === 'review' || tab === 'versions') && props.modelValue && hasShareCapability.value) linkReview.load()
 })
-function onTabKeydown(e: KeyboardEvent) {
-  const keys = viewTabs.value.map(t => t.key)
-  const i = keys.indexOf(activeTab.value)
+function nextTabKey<K extends string>(e: KeyboardEvent, keys: K[], current: K, idPrefix: string): K | null {
+  const i = keys.indexOf(current)
   let next = -1
   if (e.key === 'ArrowRight') next = (i + 1) % keys.length
   else if (e.key === 'ArrowLeft') next = (i - 1 + keys.length) % keys.length
   else if (e.key === 'Home') next = 0
   else if (e.key === 'End') next = keys.length - 1
-  if (next < 0) return
+  if (next < 0) return null
   e.preventDefault()
-  activeTab.value = keys[next]
-  nextTick(() => document.getElementById(`ld-tab-${keys[next]}`)?.focus())
+  nextTick(() => document.getElementById(`${idPrefix}${keys[next]}`)?.focus())
+  return keys[next]
+}
+function onTabKeydown(e: KeyboardEvent) {
+  const key = nextTabKey(e, viewTabs.value.map(t => t.key), activeTab.value, 'ld-tab-')
+  if (key) activeTab.value = key
 }
 
 const urlCopied = ref(false)
@@ -2150,16 +2176,44 @@ const watermarkEditHelp = computed(() => {
   return 'Place an image over shared media.'
 })
 
-// First thing stopping a save, shown in the footer next to the Save button.
-const editProblem = computed(() => {
-  if (!editMode.value) return ''
-  if (!draftShareEnabled.value && !draftUploadEnabled.value) return 'Turn on Review, Upload or both.'
-  if (draftShareEnabled.value && draftFilePaths.value.length === 0) return 'Choose at least one file to share.'
-  if (uploadDirMissing.value) return 'Choose a folder for uploads.'
-  if (!accessSatisfied.value) return 'Invite at least one client or team.'
-  if (!passwordSatisfied.value) return 'Enter a password.'
-  return ''
+// What's stopping a save and which edit tab fixes it. The first is shown in the footer; every tab with one gets a dot.
+const editProblems = computed<{ tab: EditTab; message: string }[]>(() => {
+  if (!editMode.value) return []
+  const out: { tab: EditTab; message: string }[] = []
+  if (!draftShareEnabled.value && !draftUploadEnabled.value) out.push({ tab: 'details', message: 'Turn on Review, Upload or both.' })
+  if (draftShareEnabled.value && draftFilePaths.value.length === 0) out.push({ tab: 'files', message: 'Choose at least one file to share.' })
+  if (uploadDirMissing.value) out.push({ tab: 'uploads', message: 'Choose a folder for uploads.' })
+  if (canEditUploadSpec.value && uploadSpecInvalid.value) out.push({ tab: 'uploads', message: 'Fix the file requirements.' })
+  if (!accessSatisfied.value) out.push({ tab: 'access', message: 'Invite at least one client or team.' })
+  if (!passwordSatisfied.value) out.push({ tab: 'access', message: 'Enter a password.' })
+  return out
 })
+const editProblem = computed(() => editProblems.value[0]?.message || '')
+
+type EditTab = 'details' | 'access' | 'files' | 'uploads' | 'playback'
+const editTab = ref<EditTab>('details')
+const editTabs = computed(() => {
+  const needsAttention = new Set(editProblems.value.map(p => p.tab))
+  const tabs: { key: EditTab; label: string }[] = [
+    { key: 'details', label: 'Details' },
+    { key: 'access', label: 'Access' },
+    ...(draftShareEnabled.value ? [{ key: 'files' as const, label: 'Files' }] : []),
+    ...(draftUploadEnabled.value ? [{ key: 'uploads' as const, label: 'Uploads' }] : []),
+    { key: 'playback', label: 'Playback' },
+  ]
+  return tabs.map(t => ({ ...t, problem: needsAttention.has(t.key) }))
+})
+// Turning Review or Upload off removes its tab; don't leave the panel blank.
+watch(editTabs, (tabs) => {
+  if (!tabs.some(t => t.key === editTab.value)) editTab.value = 'details'
+})
+function onEditTabKeydown(e: KeyboardEvent) {
+  const key = nextTabKey(e, editTabs.value.map(t => t.key), editTab.value, 'ld-edit-tab-')
+  if (key) editTab.value = key
+}
+function editTabLabel(tab: EditTab) {
+  return editTabs.value.find(t => t.key === tab)?.label || ''
+}
 
 function confirmDiscard() {
   if (!editMode.value || saving.value || !hasUnsavedChanges.value) return true
@@ -3820,9 +3874,10 @@ async function saveDraftAccess() {
   setAccessFromResponse(resp)
 }
 
-function beginEdit() {
+function beginEdit(tab: EditTab = 'details') {
   if (!props.link) return
   editMode.value = true
+  editTab.value = tab
   void loadUploadSpec()
 
   // Tour: show edit-mode tour the first time
@@ -3894,7 +3949,7 @@ function beginEdit() {
 
 // Opened from the Review tab's Change/Choose: land on the approver picker instead of the top of the form.
 async function editApprover() {
-  beginEdit()
+  beginEdit('access')
   await nextTick()
   await new Promise(r => requestAnimationFrame(() => r(null)))
   const row = document.getElementById('ld-edit-approver-row')
