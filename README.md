@@ -86,7 +86,7 @@ app. On Linux, enable/unlock a supported keyring to retain your login.
 ## Architecture
 
 ```
-┌─────────────────────┐         SSH + API (9095)         ┌──────────────────────────┐
+┌─────────────────────┐      SSH + HTTPS API (443)       ┌──────────────────────────┐
 │   45Flow Desktop    │◄────────────────────────────────►│   houston-broadcaster    │
 │   (Electron App)    │                                  │   (Node.js service)      │
 └─────────────────────┘                                  └──────────┬───────────────┘
@@ -112,12 +112,17 @@ app. On Linux, enable/unlock a supported keyring to retain your login.
 | Port | Protocol | Purpose |
 |------|----------|---------|
 | 22 | TCP | SSH (client ↔ server) |
-| 9095 | TCP | API (client ↔ server) |
-| 443 | TCP | HTTPS — share/upload links (must be forwarded for external sharing) |
+| 9095 | TCP | Private discovery/setup and legacy API compatibility only; never forward publicly |
+| 443 | TCP | nginx HTTPS for staff API and recipient links; expose externally only when sharing requires it |
 
 ---
 
 ## Security
+
+See the [security and server administration guides](docs/security/README.md)
+for credential handling, deployment networks, configuration, upgrade/rollback
+and operating limits. The guides distinguish staged server controls from
+features available in published packages.
 
 - Updated servers quarantine uploads and perform malware checks; check the
   reported result because a scan may be skipped if the scanner is unavailable

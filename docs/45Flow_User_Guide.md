@@ -6,6 +6,10 @@
 
 Welcome to **45Flow** — the secure file sharing and collaboration platform by 45Drives. This guide walks you through installing the application, connecting to your server, and using every feature from start to finish.
 
+Server administrators should also read the [security and server administration
+guides](security/README.md) for credential handling, network boundaries, storage
+configuration, upgrades and rollback.
+
 ## About 45Flow Editions
 
 45Flow is available in two modes:
