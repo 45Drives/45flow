@@ -65,7 +65,15 @@
       </table>
     </div>
 
-    <p class="flow-subhead">History</p>
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <p class="flow-subhead">History</p>
+      <div v-if="history.length || files.length" class="flex gap-2" data-testid="review-export">
+        <FlowButton size="xs" variant="ghost" :disabled="!!exporting" title="Every decision and comment, readable in a spreadsheet"
+          @click="emit('export', 'csv')">{{ exporting === 'csv' ? 'Exporting…' : 'Export CSV' }}</FlowButton>
+        <FlowButton size="xs" variant="ghost" :disabled="!!exporting" title="Complete record, including drawings with their page and version"
+          @click="emit('export', 'json')">{{ exporting === 'json' ? 'Exporting…' : 'Export JSON' }}</FlowButton>
+      </div>
+    </div>
     <FlowEmpty v-if="!history.length" compact title="No decisions yet"
       description="Approvals, change requests and rejections will show here." />
     <ul v-else class="flow-list">
@@ -107,11 +115,14 @@ const props = defineProps<{
   linkAccessMode: 'open' | 'restricted'
   users: AccessRow[]
   hour12?: boolean
+  /** The export format currently downloading, if any. */
+  exporting?: 'csv' | 'json' | null
 }>()
 
 const emit = defineEmits<{
   (e: 'edit'): void
   (e: 'change-approver'): void
+  (e: 'export', format: 'csv' | 'json'): void
 }>()
 
 const HISTORY_PREVIEW = 5

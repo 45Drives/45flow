@@ -96,6 +96,21 @@ describe('LinkReviewPanel', () => {
     ],
   }
 
+  it('offers CSV and JSON exports of the review history', async () => {
+    const onExport = vi.fn()
+    mount(LinkReviewPanel, { state, linkAccessMode: 'restricted', users, onExport })
+    await flush()
+    buttons('Export CSV')[0].click()
+    buttons('Export JSON')[0].click()
+    expect(onExport.mock.calls).toEqual([['csv'], ['json']])
+
+    app.unmount(); host.remove()
+    mount(LinkReviewPanel, { state, linkAccessMode: 'restricted', users, exporting: 'csv' })
+    await flush()
+    expect(buttons('Exporting…')).toHaveLength(1)
+    expect(buttons('Export JSON')[0].disabled).toBe(true)
+  })
+
   it('shows each file with its current status and the history with superseded marks', async () => {
     mount(LinkReviewPanel, { state: { ...state, approver: { user_id: 5, name: 'Dana Client' } }, linkAccessMode: 'restricted', users })
     await flush()

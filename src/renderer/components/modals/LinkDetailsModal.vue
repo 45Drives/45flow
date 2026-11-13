@@ -199,7 +199,8 @@
           <div v-else-if="activeTab === 'review'">
             <LinkReviewPanel :state="linkReview.state.value" :loading="linkReview.loading.value"
               :error="linkReview.error.value" :link-access-mode="currentAccessMode" :users="access" :hour12="hour12"
-              @edit="beginEdit('access')" @change-approver="editApprover" />
+              :exporting="reviewExporting"
+              @edit="beginEdit('access')" @change-approver="editApprover" @export="exportReview" />
           </div>
 
           <!-- Activity -->
@@ -3994,6 +3995,33 @@ function beginEdit(tab: EditTab = 'details') {
   }
 
 
+}
+
+// Review tab: download every decision and comment for this link (C2 export).
+const reviewExporting = ref<'csv' | 'json' | null>(null)
+async function exportReview(format: 'csv' | 'json') {
+  const id = props.link?.id
+  if (!id || reviewExporting.value) return
+  reviewExporting.value = format
+  try {
+    const text = await props.apiFetch(`/api/links/${id}/export/review?format=${format}`, { parse: 'text' })
+    const slug = String(props.link?.title || `link-${id}`).replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || `link-${id}`
+    const fileName = `${slug}-review.${format}`
+    const blob = new Blob([text], { type: format === 'csv' ? 'text/csv;charset=utf-8' : 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+    pushNotification(new Notification('Review Exported', `Saved ${fileName}.`, 'success', 5000))
+  } catch (err: any) {
+    pushNotification(new Notification('Export Failed', err?.message || 'Could not export the review history.', 'error', 8000))
+  } finally {
+    reviewExporting.value = null
+  }
 }
 
 // Opened from the Review tab's Change/Choose: land on the approver picker instead of the top of the form.
