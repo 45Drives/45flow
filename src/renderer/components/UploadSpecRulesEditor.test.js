@@ -49,6 +49,17 @@ afterEach(() => {
 })
 
 describe('UploadSpecRulesEditor', () => {
+    it('offers 32- and 64-channel audio requirements', async () => {
+        await mount()
+        await click(toggleSwitch())
+        expect(checkbox('32 channels')).not.toBeUndefined()
+        expect(checkbox('64 channels')).not.toBeUndefined()
+        await click(checkbox('32 channels'))
+        await click(checkbox('64 channels'))
+        await click(button('Done'))
+        expect(model.value.audioChannels).toEqual([32, 64])
+    })
+
     it('is off by default, opens the dialog when turned on and summarises the rules after Done', async () => {
         await mount()
         expect(dialog()).toBeNull()

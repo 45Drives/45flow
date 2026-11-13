@@ -53,6 +53,8 @@ export const SPEC_AUDIO_CHANNELS = [
     { value: 6, label: '5.1 (6)' },
     { value: 8, label: '8 channels' },
     { value: 16, label: '16 channels' },
+    { value: 32, label: '32 channels' },
+    { value: 64, label: '64 channels' },
 ]
 
 export function emptySpecRules(): UploadSpecRules {
