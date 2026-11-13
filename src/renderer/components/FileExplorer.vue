@@ -88,6 +88,8 @@ import { ref, computed, onMounted, watch } from 'vue'
   const props = defineProps<{
     apiFetch: (url: string, init?: any) => Promise<any>,
     startDir?: string,
+    // Server share root (e.g. /tank); "Up" stops here because the server rejects paths above it.
+    rootDir?: string,
     modelValue?: string[], // existing selection passed in (if any)
     compact?: boolean
   }>()
@@ -257,6 +259,8 @@ async function togglePath({ path, isDir }: TogglePayload) {
   const canGoUp = computed(() => {
     const current = viewMode.value === 'list' ? activeDir.value : cwd.value
     if (!current || current === '/') return false
+    const root = ensureSlash((props.rootDir || '').trim())
+    if (root !== '/' && ensureSlash(current) === root) return false
     return true
   })
 

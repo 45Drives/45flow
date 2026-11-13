@@ -69,6 +69,7 @@
 								@remove="onShareRemove"
 								@error="onShareExplorerError"
 								:startDir="fileBrowserBase"
+								:rootDir="configuredRoot"
 								:compact="true"
 							/>
 
