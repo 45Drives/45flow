@@ -72,6 +72,11 @@ upgrade. Do not enable it by changing only `User=`.
    Hide original shared databases and the provider master key from the main
    service. Start/order broker sockets with `Wants` and `After`; a broker outage
    must deny the affected operation without stopping unrelated application APIs.
+   The packaged unit orders the host socket before the main service. If a
+   non-root systemd service lacks `HB_HOST_SOCKET`, discovery uses the packaged
+   host socket by default; other host operations still require the explicit
+   environment setting in step 4. A missing or inaccessible broker is reported,
+   not bypassed by granting the main service write access to Avahi files.
 6. Verify the actual process UID/capabilities, database file descriptors and
    mount namespace—not just the unit text or environment. Exercise real
    browsing, upload completion and antivirus scanning, recipient/media
@@ -242,6 +247,9 @@ when applying this stage manually. Its rollback removes only journaled additions
 not unrelated policy. Verify management access and backend isolation after both
 upgrade and rollback; rolling back deliberately restores the previous exposure.
 Reconcile the restriction when adding zones or changing the backend port.
+Repeat bootstrap checks each zone's existing rules in batches. Initial
+installation or repair of missing rules can still take longer because each
+missing rule is individually verified and added.
 
 If validation fails, use the saved package/configuration recovery procedure for
 that release. Do not assume an older executable can read a newer database schema.
