@@ -3559,7 +3559,8 @@ async function save() {
             (!externalAuto.value && (externalBase.value || "").trim() !== savedExternalBase.value);
         if (externalBaseChanged) {
             try {
-                const certResult = await apiFetch("/api/settings/apply-cert", { method: "POST" });
+                // exposeServerMessage: the server explains why the certificate wasn't updated.
+                const certResult = await apiFetch("/api/settings/apply-cert", { method: "POST", exposeServerMessage: true });
                 if (certResult?.ok) {
                     appLog.info('settings.cert_applied', { changed: certResult.changed, cn: certResult.cn });
                     pushNotification(
@@ -3573,10 +3574,14 @@ async function save() {
                 }
             } catch (certErr: any) {
                 appLog.error('settings.cert_apply_failed', { error: certErr?.message });
+                // Newer servers send a full plain explanation; older ones only an error code.
+                const explained = certErr?.code === 'cert_regen_failed' && certErr?.message && certErr.message !== 'cert_regen_failed';
                 pushNotification(
                     new Notification(
-                        'SSL Certificate Update Failed',
-                        `Settings saved but certificate regeneration failed: ${certErr?.message || 'unknown error'}. You may need to re-run bootstrap.`,
+                        'Certificate Not Updated',
+                        explained
+                            ? certErr.message
+                            : "Your settings are saved, but the server couldn't update its HTTPS certificate for the new address. Until it does, browsers may warn that it doesn't match.",
                         'warning',
                         12000
                     )

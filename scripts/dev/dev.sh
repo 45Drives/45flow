@@ -104,7 +104,11 @@ ensure_deps() {
 }
 
 # ── one-time privileged setup ───────────────────────────────────────────────
-setup_done() { [[ -f "$NGINX_CONF" && -w "$WEB_ROOT" ]] && systemctl is-active --quiet nginx; }
+setup_done() {
+  [[ -f "$NGINX_CONF" && -w "$WEB_ROOT" ]] && systemctl is-active --quiet nginx &&
+    # So the dev backend (not root) can rebuild the certificate and reload nginx.
+    [[ -w /etc/ssl/selfsigned/houston.key && -f /etc/polkit-1/rules.d/49-45flow-dev-nginx-reload.rules ]]
+}
 
 run_setup() {
   [[ -f "$HB_DIR/dist/nginx-config.js" ]] || (cd "$HB_DIR" && yarn build:server)
