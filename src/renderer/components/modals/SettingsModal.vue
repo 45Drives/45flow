@@ -66,6 +66,9 @@
 
                         <!-- ═══ Link Sharing ══════════════════════════════════ -->
                         <template v-if="activeSection === 'sharing' && settingsLoaded">
+                            <PublicAddressSetup v-if="activeConnection" :key="`public-address-${activeConnection.connectionId}`"
+                                :connection-id="activeConnection.connectionId" :external-base="externalBase" :external-auto="externalAuto"
+                                :public-ip="detectedPublicIp" @use-hostname="useHostnameForLinks" @open-section="(s) => (activeSection = s)" />
                             <FlowNotice v-if="externalAuto && egress.isOff('public_ip')" tone="warning" size="sm" class="mb-3"
                                 title="Public IP lookup is off">{{ EGRESS_OFF_TEXT.public_ip }}</FlowNotice>
                             <p class="settings-subhead settings-subhead--first">Internet address</p>
@@ -1534,6 +1537,7 @@ import AdminSmtpPanel from "../AdminSmtpPanel.vue";
 import AdminStaffAlertsPanel from "../AdminStaffAlertsPanel.vue";
 import EmailProblemsPanel from "../EmailProblemsPanel.vue";
 import TranscodeBackfillPanel from "../TranscodeBackfillPanel.vue";
+import PublicAddressSetup from "../PublicAddressSetup.vue";
 import AdminScannerPanel from "../AdminScannerPanel.vue";
 import AdminEgressPanel from "../AdminEgressPanel.vue";
 import { EGRESS_OFF_TEXT, useEgressSwitches } from "../../composables/useEgressSwitches";
@@ -3271,6 +3275,19 @@ function withPortIfNeeded(base: string | null, port: number): string | null {
     } catch {
         return base;
     }
+}
+
+// C1 guided setup: this server's detected public IP (for the DNS instructions),
+// and filling in the internet address with the chosen hostname (saved with Save).
+const detectedPublicIp = computed(() => {
+    try {
+        const host = externalBaseEffective.value ? new URL(externalBaseEffective.value).hostname : '';
+        return /^\d{1,3}(\.\d{1,3}){3}$/.test(host) ? host : null;
+    } catch { return null; }
+});
+function useHostnameForLinks(hostname: string) {
+    externalAuto.value = false;
+    externalBase.value = `https://${hostname}`;
 }
 
 const externalEffectivePreview = computed(() => {
