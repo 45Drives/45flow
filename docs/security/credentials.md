@@ -33,6 +33,19 @@ screenshots, tickets or logs.
 The legacy direct backend port is plain HTTP. It is not a safe replacement for
 HTTPS sign-in, even on a private network. See the [network guide](deployment-network.md).
 
+### Storage Wizard backup reports
+
+The staged shared-server integration can issue backup-only tokens to valid
+PAM accounts when Storage Wizard is registered and login supplies an installation
+ID. These tokens are not staff credentials. They authorize only the verified
+user/installation's backup metadata and reports, not 45Flow, host administration,
+staff settings or setup logs. Existing network restrictions still apply.
+
+No provider-secret storage or Samba-only password verifier is added by this
+contract. The existing Storage Wizard direct-HTTP transport remains a supported
+compatibility limitation, not a confidential channel. Do not use it across
+untrusted networks. See the [ownership and client-upgrade procedure](server-operations.md#storage-wizard-backup-client-authentication).
+
 ## Server-owned provider secrets
 
 On servers with the encrypted credential store, SMTP credentials are stored
@@ -56,6 +69,18 @@ verification. Do not disable verification or downgrade to plaintext to work
 around a configuration failure. Provider credentials necessarily become
 available to the server process when it uses them; encryption at rest does not
 protect against an administrator or a compromised privileged server process.
+
+The staged privilege-separation work adds a restricted local credential broker.
+It performs namespace-bound encryption/decryption and key rotation without
+exporting the master key to the application account. The application still
+receives provider credentials in memory when it uses them; this is key isolation,
+not protection from an already compromised application sending mail. A configured
+broker outage fails closed, without reverting to direct key-file access. Missing
+keys require the root-controlled install/recovery step, not a request that
+silently initializes a replacement.
+The staged broker supports provider objects up to 64 KiB of serialized UTF-8
+JSON, including field names. Oversized existing records must be checked before
+migration; they are not truncated or reset.
 
 ## Unconfigured is not unavailable
 

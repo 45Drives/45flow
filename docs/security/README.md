@@ -8,6 +8,7 @@ houston-broadcaster server:
 | [Credential handling](credentials.md) | Login credentials, provider secrets, encryption, key backup and recovery. |
 | [Reference deployment network](deployment-network.md) | Staff and recipient access, ports, proxies, firewalls and exposure checks. |
 | [Server configuration, upgrades and rollback](server-operations.md) | Approved storage, staff authorization, maintenance, validation and operating limits. |
+| [Manual acceptance checklist](manual-validation.md) | Shared service identity, both applications, upgrade/rollback and deployment checks. |
 
 For application workflows, see the [45Flow user guide](../45Flow_User_Guide.md).
 These documents do not require access to the private Broadcaster source repository.
@@ -18,8 +19,10 @@ Server behavior depends on the installed Broadcaster version, not only the
 desktop or browser client version. Confirm the installed version and its release
 notes before applying configuration changes.
 
-The explicit approved-storage boundary, optional staff-group enforcement and
-optional PAM broker described in the operations guide are **staged B1 changes**.
+The approved-storage boundary, descriptor-relative share operations, optional
+staff-group/network enforcement, privilege brokers and controlled service-account
+migration, shared application profiles and scoped Storage Wizard backup-client
+authentication described in the operations guide are **staged B1 changes**.
 Their documentation here is not a claim that they are available in an existing
 published package. Use those settings only with a server release that includes
 them; older releases may not recognize or enforce them.
@@ -28,8 +31,8 @@ them; older releases may not recognize or enforce them.
 
 Network restrictions, authenticated staff APIs and recipient link permissions
 are separate controls. A license or an accessible sign-in page is not an
-authorization boundary. Storage path checks are not a complete sandbox against
-hostile local filesystem writers.
+authorization boundary. Descriptor-relative storage operations are not a complete
+sandbox for subprocesses or a compromised host.
 
 Deployment diagrams describe an intended policy, not proof that a particular
 installation enforces it. Verify the actual host, interfaces, firewall, router

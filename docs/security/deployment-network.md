@@ -34,11 +34,34 @@ it for authenticated requests. Keep that traffic off untrusted networks and plan
 integration upgrades to HTTPS; an nginx allowlist cannot protect a request that
 bypasses nginx.
 
+The staged B1 backend guard closes that network-policy bypass when
+`ENFORCE_ADMIN_NETWORKS=1` is enabled. It reads the same root-managed
+`/etc/nginx/45flow-admin-allow.conf` as nginx and checks the direct TCP peer,
+not forwarding headers. Keep this non-secret policy root-owned, readable by
+the service, and not writable by the service or other accounts. Staff requests
+from other networks receive 403 even if they carry a valid login. Missing,
+unreadable or invalid policy fails closed with 503 for direct staff requests.
+The same check applies before staff WebSocket upgrades.
+This is an explicit upgrade step, not a claim about older installations.
+
+Public recipient routes retain their existing link authorization. Explicit
+LAN discovery/setup endpoints remain available for compatibility; they do not
+grant staff API access. Loopback remains available for nginx and local recovery,
+so nginx must continue enforcing the staff policy before forwarding requests.
+Neither this guard nor nginx changes SSH or Cockpit access.
+
 The backend normally listens on all IPv4 interfaces. Packaged bootstrap policy
 limits 9095 to private IPv4 sources, but this is not proof of effective filtering
 on every interface, firewall zone, tunnel or upstream router. Where no clients
 need direct access, an administrator can use `HOST=127.0.0.1`; first verify that
 discovery, setup and integrations will still work.
+
+The staged B1 firewalld installer adds backend-port rejection rules to every
+currently configured runtime and permanent zone: non-private/non-loopback IPv4
+and non-loopback IPv6 sources are rejected. This restriction does not grant
+private clients access through otherwise closed zones or change management ports.
+New zones, custom higher-priority rules and other firewall managers still need
+separate review; this is not a claim about older installed packages.
 
 ## Staff networks and proxies
 
@@ -80,6 +103,10 @@ from making their own connections.
 4. Verify 9095 cannot be reached from untrusted sources or through port forwards,
    alternate interfaces, tunnels, IPv6 listeners or cloud/router rules. A timeout
    alone is not proof that the intended firewall rule caused the denial.
+   When the backend guard is enabled, also test from a private but non-approved
+   network: direct staff APIs must return 403 with or without credentials and
+   with forged forwarding headers. On the approved LAN, unauthenticated protected
+   APIs must still require login; network admission alone grants no privileges.
 5. Verify the certificate, TLS policy, public links and certificate renewal.
    Include protected links, upload/download and review workflows actually used
    at the site; a reachable viewer shell is not full functional acceptance.
