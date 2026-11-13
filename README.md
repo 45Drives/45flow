@@ -157,7 +157,7 @@ this repo and run:
 
 ```bash
 scripts/dev/dev.sh          # build, deploy and restart everything
-scripts/dev/dev.sh vite     # same, plus a hot-reload dev server on http://localhost:8081
+scripts/dev/dev.sh vite     # same, plus a hot-reload dev server on https://<your-ip>:8081
 ```
 
 Run it again after each code change. It installs dependencies when lockfiles

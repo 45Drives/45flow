@@ -9,7 +9,7 @@
 #
 # Usage: scripts/dev/dev.sh [command]
 #   up      (default) install deps if changed, build everything, deploy, restart
-#   vite    also start the Vite dev server with hot reload on http://localhost:8081
+#   vite    also start the Vite dev server with hot reload on https://<lan-ip>:8081
 #   restart restart the backend only (no build or deploy)
 #   stop    stop the backend and the Vite dev server
 #   status  show what's running and where
@@ -186,13 +186,43 @@ start_backend() {
 # ── Vite dev server (optional, hot reload) ──────────────────────────────────
 vite_pid() { ss -ltnpH "sport = :$VITE_PORT" 2>/dev/null | grep -o 'pid=[0-9]*' | head -1 | cut -d= -f2; }
 
+# Self-signed cert for the Vite server, covering localhost, every LAN IPv4 and
+# the hostname. Regenerated when those addresses change. User-owned, no sudo.
+ensure_vite_cert() {
+  local -a sans=("DNS:localhost" "IP:127.0.0.1")
+  local ip host_name
+  for ip in $(hostname -I 2>/dev/null); do
+    [[ "$ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ && "$ip" != 127.* ]] && sans+=("IP:$ip")
+  done
+  host_name="$(hostname 2>/dev/null | tr -cd 'A-Za-z0-9.-')"
+  [[ -n "$host_name" && "$host_name" != localhost ]] && sans+=("DNS:$host_name")
+  local san_list; san_list="$(IFS=,; echo "${sans[*]}")"
+
+  if [[ -s "$STATE/etc/vite.key" && -s "$STATE/etc/vite.crt" ]] && ! stamp_changed vite-cert "$san_list"; then
+    return
+  fi
+  say "Creating HTTPS certificate for the Vite dev server ($san_list)"
+  (umask 077; openssl req -x509 -nodes -days 825 -newkey rsa:2048 \
+    -keyout "$STATE/etc/vite.key" -out "$STATE/etc/vite.crt" \
+    -subj "/CN=45flow-dev" -addext "subjectAltName = $san_list" 2>/dev/null)
+  stamp_save vite-cert "$san_list"
+}
+
 start_vite() {
-  if [[ -n "$(vite_pid)" ]]; then say "Vite already running on http://localhost:$VITE_PORT"; return; fi
-  say "Starting Vite dev server on http://localhost:$VITE_PORT"
-  (cd "$FLOW_DIR" && setsid nohup npx vite --config scripts/dev/vite.dev.mjs --mode development \
-    >> "$STATE/logs/vite.log" 2>&1 < /dev/null &)
+  # Always restart so config, certificate and address changes take effect.
+  stop_pid "$(vite_pid)" "Vite"
+  ensure_vite_cert
+  say "Starting Vite dev server on https://$(lan_ip):$VITE_PORT (and https://localhost:$VITE_PORT)"
+  # Same shape as start_backend: a separate statement inside the subshell, so
+  # this script never ends up as Vite's parent waiting on it.
+  (
+    cd "$FLOW_DIR"
+    export FLOW_DEV_VITE_CERT="$STATE/etc/vite.crt" FLOW_DEV_VITE_KEY="$STATE/etc/vite.key"
+    setsid nohup npx vite --config scripts/dev/vite.dev.mjs --mode development \
+      >> "$STATE/logs/vite.log" 2>&1 < /dev/null &
+  )
   local i
-  for i in $(seq 1 40); do curl -s -o /dev/null "http://localhost:$VITE_PORT/" && return 0; sleep 0.5; done
+  for i in $(seq 1 40); do curl -sk -o /dev/null "https://localhost:$VITE_PORT/" && return 0; sleep 0.5; done
   warn "Vite did not answer yet; see $STATE/logs/vite.log"
 }
 
@@ -204,7 +234,7 @@ status() {
   else echo "backend : stopped   log: $STATE/logs/server.log"; fi
   if setup_done; then echo "nginx   : serving https://${ip}/"; else echo "nginx   : not set up (run: $0 setup)"; fi
   local v; v="$(vite_pid)"
-  if [[ -n "$v" ]]; then echo "vite    : running on http://localhost:$VITE_PORT"; else echo "vite    : stopped"; fi
+  if [[ -n "$v" ]]; then echo "vite    : running on https://${ip}:$VITE_PORT/ (hot reload)"; else echo "vite    : stopped"; fi
   echo "web app : https://${ip}/app/"
   echo "data    : $STATE"
   echo "fallback login: user '$(sed -n 1p "$STATE/etc/dev-login" 2>/dev/null)', password in $STATE/etc/dev-login (line 2)"
