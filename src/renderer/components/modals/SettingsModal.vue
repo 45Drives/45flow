@@ -40,6 +40,8 @@
                             :key="activeConnection.connectionId" :connection-id="activeConnection.connectionId" />
                         <AdminStaffAlertsPanel v-if="activeSection === 'adminMail' && adminSession && activeConnection"
                             :key="`staff-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId" />
+                        <EmailProblemsPanel v-if="activeSection === 'adminMail' && adminSession && activeConnection"
+                            :key="`problems-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId" />
 
                         <AdminScannerPanel v-if="activeSection === 'adminSecurity' && adminSession && activeConnection"
                             :key="`scanner-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId" />
@@ -1520,6 +1522,7 @@ import { useApi } from "../../composables/useApi";
 import AdminNetworksPanel from "../AdminNetworksPanel.vue";
 import AdminSmtpPanel from "../AdminSmtpPanel.vue";
 import AdminStaffAlertsPanel from "../AdminStaffAlertsPanel.vue";
+import EmailProblemsPanel from "../EmailProblemsPanel.vue";
 import AdminScannerPanel from "../AdminScannerPanel.vue";
 import AdminEgressPanel from "../AdminEgressPanel.vue";
 import { EGRESS_OFF_TEXT, useEgressSwitches } from "../../composables/useEgressSwitches";
