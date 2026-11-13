@@ -149,6 +149,29 @@ yarn dev
 yarn build
 ```
 
+### Local server for the web app
+
+To run the web app against a real backend on your machine, clone
+[houston-broadcaster](https://github.com/45Drives/houston-broadcaster) next to
+this repo and run:
+
+```bash
+scripts/dev/dev.sh          # build, deploy and restart everything
+scripts/dev/dev.sh vite     # same, plus a hot-reload dev server on http://localhost:8081
+```
+
+Run it again after each code change. It installs dependencies when lockfiles
+change, builds the backend, share player and web app, deploys the web app and
+restarts the backend. The first run asks for `sudo` once to set up nginx, a
+self-signed HTTPS certificate and `/opt/45drives/45flow-web`, the same way a
+real install does. Afterwards:
+
+- Web app: `https://<your-ip>/app/` (sign in with your Linux username and password)
+- Share links: `https://<your-ip>/link/<token>`
+- Data and settings: `~/.local/state/45flow-dev` (edit `dev.env` there to change the shared folder)
+
+`scripts/dev/dev.sh status`, `restart`, `stop` and `logs` do what they say.
+
 Desktop packages include the compiled main process, compiled renderer, static
 runtime resources, production dependencies, package metadata and license.
 Documentation, QA results, source files and release/build scripts are not
