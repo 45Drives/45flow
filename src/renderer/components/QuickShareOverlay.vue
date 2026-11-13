@@ -377,7 +377,7 @@ import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { appLog } from '../composables/useLog'
 import { connectionMetaInjectionKey, currentServerInjectionKey } from '../keys/injection-keys'
 import { useApi } from '../composables/useApi'
-import { useExternalAddressReadiness, describeExternalAddressNotReady, resolveCopyUrl } from '../composables/useExternalAddressReadiness'
+import { useExternalAddressReadiness, describeExternalAddressNotReady, describeExternalLinkCreateError, resolveCopyUrl } from '../composables/useExternalAddressReadiness'
 import { validateUploadBatch } from '../utils/uploadPreflight'
 import { useConnections } from '../composables/useConnections'
 import { useActiveProject } from '../composables/useActiveProject'
@@ -1930,10 +1930,11 @@ async function startUploadAndShare() {
     appLog.info('quick_share.completed', { fileCount: droppedFiles.value.length, mode: usePublicBase.value ? 'external' : 'local' })
   } catch (e: any) {
     uploadPhase.value = 'error'
-    errorMsg.value = e?.message || 'Upload or link generation failed.'
-    appLog.error('quick_share.failed', { error: errorMsg.value })
+    const notReadyMsg = describeExternalLinkCreateError(e)
+    errorMsg.value = notReadyMsg || e?.message || 'Upload or link generation failed.'
+    appLog.error('quick_share.failed', { error: e?.message || errorMsg.value })
     pushNotification(
-      new Notification('Quick Share Failed', errorMsg.value, 'error', 8000)
+      new Notification(notReadyMsg ? 'External Address Not Ready' : 'Quick Share Failed', errorMsg.value, 'error', 8000)
     )
   } finally {
     transfer.state.suppressAutoOpen = false
