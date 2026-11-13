@@ -1444,15 +1444,14 @@ Each link row provides these actions:
 
 Clicking **"Delete"** opens a confirmation modal with a detailed preview of what will be removed:
 
-![Link delete confirmation with file preview](images/link-delete-confirm-v3.png)
-
 The delete preview shows:
 - **Total files** associated with the link
 - **Shared files** — files also used by other links (these are kept)
 - **Option: Delete generated files** — Remove proxy files, transcodes, and streams. Shows how much disk space will be freed.
-- **Option: Delete original source files** — Remove the original uploaded files. **This is destructive** — only enable if you're sure the originals are no longer needed.
 
-You must type "DELETE" to confirm permanent deletion. This action cannot be undone.
+Original uploaded files are retained when a link or project is deleted.
+
+If you choose to delete generated files, type "DELETE" to confirm. Deleting the link itself cannot be undone.
 
 ---
 
@@ -2091,7 +2090,7 @@ A: Expired links become inaccessible to anyone who tries to open them. The link 
 A: Yes. Click **"Disable"** in the link's action column on the Dashboard. This immediately blocks access. You can re-enable it later with the **"Enable"** button.
 
 **Q: How do I permanently delete a link?**  
-A: Click **"Delete"** in the link's action column. A confirmation modal shows a preview of associated files and lets you choose whether to also delete generated files (proxy files and streams) and/or original source files. Type "DELETE" to confirm. This action cannot be undone.
+A: Click **"Delete"** in the link's action column. A confirmation modal shows a preview of associated files and lets you choose whether to also delete generated files (proxy files and streams). Original uploaded files are retained. Type "DELETE" to confirm when deleting generated files. This action cannot be undone.
 
 **Q: What happens to links when I delete a project?**  
 A: When you delete a project, its links are **not deleted** unless you choose to delete them. Kept links appear in the **Links Without a Project** section below your project list. You can move them into another project later from the link edit screen.

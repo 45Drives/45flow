@@ -578,43 +578,10 @@
 							</div>
 						</label>
 
-						<label class="flex items-start gap-2 select-none"
-							:class="nothingToDelete ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'">
-							<input type="checkbox" v-model="deleteOriginalFiles" :disabled="nothingToDelete"
-								class="styled-checkbox mt-0.5" />
-							<div>
-								<span class="text-sm text-flow-danger font-medium">Delete original source files</span>
-								<p class="text-xs text-flow-danger">
-									The actual media files on disk. Cannot be recovered.<template v-if="!nothingToDelete">
-									({{ sizeOfTotal(deletePreview.summary.totalOriginalBytes, deletePreview.summary.allOriginalBytes) }})</template>
-								</p>
-							</div>
-						</label>
-
-						<div v-if="deleteOriginalFiles" class="p-2 rounded flow-tone-danger border">
-							<p class="text-xs text-flow-danger font-medium">
-								Danger: this will permanently delete the original files from disk.
-							</p>
-							<p class="text-xs text-flow-danger mt-1">
-								These are your source media files. Once deleted, they cannot be recovered unless you
-								have a separate backup.
-							</p>
-
-							<div v-if="deletePreview.files.filter((f: any) => !f.sharedWithOtherLinks).length > 0"
-								class="mt-2 max-h-24 overflow-y-auto">
-								<p class="text-xs text-default mb-1">Files that will be deleted:</p>
-								<ul class="text-xs text-flow-danger list-disc list-inside">
-									<li v-for="f in deletePreview.files.filter((f: any) => !f.sharedWithOtherLinks)"
-										:key="f.id" class="truncate">
-										{{ f.relPath }} ({{ formatBytes(f.originalBytes) }})
-									</li>
-								</ul>
-							</div>
-						</div>
 					</template>
 				</div>
 
-				<template v-if="deleteGeneratedFiles || deleteOriginalFiles">
+				<template v-if="deleteGeneratedFiles">
 					<label class="block text-sm text-default mb-1">
 						Type <strong class="text-flow-danger">DELETE</strong> to confirm:
 					</label>
@@ -629,7 +596,7 @@
 					</button>
 					<button
 						class="btn btn-danger px-4 py-2"
-						:disabled="(deleteGeneratedFiles || deleteOriginalFiles) && deleteLinkConfirmText !== 'DELETE'" @click="deleteLink">
+						:disabled="deleteGeneratedFiles && deleteLinkConfirmText !== 'DELETE'" @click="deleteLink">
 						Delete Permanently
 					</button>
 				</template>
@@ -684,24 +651,9 @@
 						</div>
 					</label>
 
-					<label class="flex items-start gap-2 cursor-pointer select-none">
-						<input type="checkbox" v-model="bulkDeleteOriginals" class="styled-checkbox mt-0.5" />
-						<div>
-							<span class="text-sm text-flow-danger font-medium">Delete original source files</span>
-							<p class="text-xs text-flow-danger">
-								The actual media files on disk. Cannot be recovered.
-							</p>
-						</div>
-					</label>
-
-					<div v-if="bulkDeleteOriginals" class="p-2 rounded flow-tone-danger border">
-						<p class="text-xs text-flow-danger font-medium">
-							Danger: original source files will be permanently deleted for each link where they are not shared with other links.
-						</p>
-					</div>
 				</div>
 
-				<template v-if="bulkDeleteGenerated || bulkDeleteOriginals">
+				<template v-if="bulkDeleteGenerated">
 					<label class="block text-sm text-default mb-1">
 						Type <strong class="text-flow-danger">DELETE</strong> to confirm:
 					</label>
@@ -712,7 +664,7 @@
 				<template #footer>
 					<button class="btn btn-dismiss px-4 py-2" @click="cancelBulkDelete">Cancel</button>
 					<button class="btn btn-danger px-4 py-2"
-						:disabled="(bulkDeleteGenerated || bulkDeleteOriginals) && bulkDeleteConfirmText !== 'DELETE'"
+						:disabled="bulkDeleteGenerated && bulkDeleteConfirmText !== 'DELETE'"
 						@click="executeBulkDelete">
 						Delete {{ selectedIds.size }} Links
 					</button>
@@ -1193,13 +1145,11 @@ function cancelBulkExpiry() {
 // Bulk delete
 const bulkDeleteOpen = ref(false)
 const bulkDeleteGenerated = ref(false)
-const bulkDeleteOriginals = ref(false)
 const bulkDeleteConfirmText = ref('')
 
 function cancelBulkDelete() {
 	bulkDeleteOpen.value = false
 	bulkDeleteGenerated.value = false
-	bulkDeleteOriginals.value = false
 	bulkDeleteConfirmText.value = ''
 }
 
@@ -1212,7 +1162,6 @@ async function executeBulkDelete() {
 		try {
 			const qs = new URLSearchParams()
 			if (bulkDeleteGenerated.value) qs.set('deleteGenerated', '1')
-			if (bulkDeleteOriginals.value) qs.set('deleteOriginals', '1')
 			const qsStr = qs.toString() ? `?${qs.toString()}` : ''
 			await apiFetch(`/api/links/${link.id}${qsStr}`, { method: 'DELETE' })
 			deletedIds.add(link.id)
@@ -1653,14 +1602,12 @@ async function executeArchiveLink() {
 const linkToDelete = ref<LinkItem | null>(null)
 const deleteLinkConfirmText = ref('')
 const deleteGeneratedFiles = ref(false)
-const deleteOriginalFiles = ref(false)
 const deletePreview = ref<any>(null)
 const deletePreviewLoading = ref(false)
 
 function confirmDelete(it: LinkItem) {
 	linkToDelete.value = it
 	deleteGeneratedFiles.value = false
-	deleteOriginalFiles.value = false
 	deleteLinkConfirmText.value = ''
 	deletePreview.value = null
 	loadDeletePreview(it)
@@ -1675,7 +1622,6 @@ function cancelDelete() {
 	linkToDelete.value = null
 	deleteLinkConfirmText.value = ''
 	deleteGeneratedFiles.value = false
-	deleteOriginalFiles.value = false
 	deletePreview.value = null
 }
 
@@ -1720,7 +1666,6 @@ async function deleteLink() {
 	try {
 		const qs = new URLSearchParams()
 		if (deleteGeneratedFiles.value) qs.set('deleteGenerated', '1')
-		if (deleteOriginalFiles.value) qs.set('deleteOriginals', '1')
 		const qsStr = qs.toString() ? `?${qs.toString()}` : ''
 		await apiFetch(`/api/links/${linkToDelete.value.id}${qsStr}`, { method: 'DELETE' })
 		const deletedKey = String(linkToDelete.value.id)
@@ -1733,7 +1678,6 @@ async function deleteLink() {
 		linkToDelete.value = null
 		deleteLinkConfirmText.value = ''
 		deleteGeneratedFiles.value = false
-		deleteOriginalFiles.value = false
 		deletePreview.value = null
 		pushNotification(
 			new Notification('Link Deleted', 'The link has been permanently deleted.', 'success', 8000)
