@@ -576,7 +576,7 @@ import { Notification } from '@45drives/houston-common-ui'
 import { useApi } from '../composables/useApi'
 import { useResilientNav } from '../composables/useResilientNav'
 import { useLinkOptions } from '../composables/useLinkOptions'
-import { useExternalAddressReadiness, describeExternalAddressNotReady, resolveCopyUrl } from '../composables/useExternalAddressReadiness'
+import { useExternalAddressReadiness, describeExternalAddressNotReady, describeExternalLinkCreateError, resolveCopyUrl } from '../composables/useExternalAddressReadiness'
 import { useHeader } from '../composables/useHeader'
 import { pushNotification } from '../composables/useNotificationQueue'
 import { signalLinkCreated } from '../composables/useLinkRefresh'
@@ -1512,8 +1512,9 @@ async function generateLink() {
 		signalLinkCreated()
 		pushNotification(new Notification('Link Created', 'Your link has been generated successfully.', 'success', 6000))
 	} catch (e: any) {
-		error.value = e?.message || 'Failed to generate link'
-		pushNotification(new Notification('Link Generation Failed', error.value!, 'error', 8000))
+		const notReadyMsg = describeExternalLinkCreateError(e)
+		error.value = notReadyMsg || e?.message || 'Failed to generate link'
+		pushNotification(new Notification(notReadyMsg ? 'External Address Not Ready' : 'Link Generation Failed', error.value!, 'error', 8000))
 	} finally {
 		loading.value = false
 	}

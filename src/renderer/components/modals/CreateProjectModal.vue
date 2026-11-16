@@ -50,6 +50,9 @@
 			</FlowField>
 		</form>
 		<template #footer>
+			<p v-if="createBlockedReason" class="text-sm text-muted mr-auto self-center" role="status" data-testid="create-project-blocked">
+				{{ createBlockedReason }}
+			</p>
 			<button type="button" class="btn btn-dismiss px-4 py-2" :disabled="creating" @click="close">Cancel</button>
 			<button type="submit" form="create-project-form" class="btn btn-primary px-4 py-2" :disabled="!canCreate">
 				{{ creating ? 'Creating…' : 'Create Project' }}
@@ -88,6 +91,17 @@ const creating = ref(false)
 const finalRootDir = computed(() => rootDir.value.trim())
 
 const canCreate = computed(() => !!name.value.trim() && !!finalRootDir.value && !creating.value)
+
+// Says what's still needed while Create Project is disabled, so it's never disabled without a reason.
+const createBlockedReason = computed(() => {
+	if (creating.value) return ''
+	const needsName = !name.value.trim()
+	const needsFolder = !finalRootDir.value
+	if (needsName && needsFolder) return 'Enter a project name and choose a project folder to continue.'
+	if (needsName) return 'Enter a project name to continue.'
+	if (needsFolder) return 'Choose a project folder to continue.'
+	return ''
+})
 
 function reset() {
 	name.value = ''

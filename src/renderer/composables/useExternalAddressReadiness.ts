@@ -74,6 +74,20 @@ export function describeExternalAddressNotReady(reason?: string): string {
 	)
 }
 
+const NOT_READY_PATTERN = /external_address_not_ready:\s*([a-z_]+)/
+
+/**
+ * When link creation was refused because the public address isn't ready
+ * (server 409 "external_address_not_ready: <reason>"), returns a plain
+ * message for the user that also points at Local Network sharing, which the
+ * server never gates. Returns null for any other error.
+ */
+export function describeExternalLinkCreateError(e: any): string | null {
+	const match = NOT_READY_PATTERN.exec(String(e?.code || '')) || NOT_READY_PATTERN.exec(String(e?.message || ''))
+	if (!match) return null
+	return `${describeExternalAddressNotReady(match[1])} To share on your own network instead, choose Local Network.`
+}
+
 export function useExternalAddressReadiness() {
 	const { apiFetch } = useApi()
 

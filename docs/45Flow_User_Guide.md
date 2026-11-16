@@ -76,6 +76,7 @@ Welcome to **45Flow** — the secure file sharing and collaboration platform by 
    - [Custom Port Configuration](#custom-port-configuration)
    - [License Status & Activation](#license-status--activation)
 4. [Port Forwarding for External Sharing](#4-port-forwarding-for-external-sharing)
+   - [Setting Up a Public Address](#setting-up-a-public-address)
 5. [Projects — Organizing Your Workspace](#5-projects--organizing-your-workspace)
    - [What Are Projects](#what-are-projects)
    - [Links Without a Project](#links-without-a-project)
@@ -424,6 +425,37 @@ Port forwarding tells your router to direct incoming traffic on a specific port 
 > **Tip:** After setting up port forwarding, configure your external URL in [Settings](#7-settings) → URLs & Access to ensure links are generated correctly.
 
 > **Important:** If you only plan to share files within your LAN or VPN, you can skip this step entirely. Links shared locally do not require port forwarding.
+
+### Setting Up a Public Address
+
+Internet links need a **hostname** (a name such as `share.yourstudio.com`) with a **trusted HTTPS certificate**. 45Flow never puts your server's IP address in an internet link, and it won't create or copy one until both are ready. Local Network links don't need any of this.
+
+Open **Settings → Share addresses**. The **Set up a public address** steps at the top walk you through it:
+
+**1. Get a hostname.** Pick one of these:
+
+- **My own domain.** At your domain provider (GoDaddy, Cloudflare, Namecheap and so on), add an **A record** for a name such as `share.yourstudio.com` pointing at your server's public IP. The setup screen shows the IP 45Flow detected. Type the hostname into the screen.
+- **No-IP (Pro).** If you don't have a domain, create a free hostname at [noip.com](https://www.noip.com), such as `yourstudio.ddns.net`. In the setup screen, choose **No-IP (Pro)**, enter the hostname with your No-IP username (or email) and password, leave **Keep it updated** on, and click **Save No-IP**. 45Flow points the hostname at your server straight away, then updates it whenever your internet address changes (it checks every 30 minutes and only contacts No-IP when the address has changed). Click **Update now** at any time to send an update.
+
+  Your No-IP password is stored encrypted on the server and is never shown again. To change it, type a new one and save. **Remove** deletes it and stops updates.
+
+**2. Use it for share links.** Click **Use *hostname***. This fills in **Internet address** below with `https://` and your hostname. Click **Save**.
+
+**3. Get a trusted certificate.** Click **HTTPS certificate** and get a free Let's Encrypt certificate for the same hostname (see [SSL Certificate Management](#ssl-certificate-management)). Port 80 must also be forwarded to the server while Let's Encrypt checks it. When the step shows **Ready**, internet links can be created and copied.
+
+**If No-IP shows a problem:**
+
+| Message | What to do |
+|---|---|
+| No-IP didn't accept the username or password | Enter them again and click **Save No-IP**. |
+| That hostname isn't in this No-IP account | Check the spelling, or create the hostname on noip.com, then save. |
+| No-IP had a problem on its side | Nothing to do. 45Flow tries again in 30 minutes. |
+| Couldn't reach No-IP | Check the server's internet connection. 45Flow tries again at the next check. |
+| No-IP updates are turned off under Scanning & privacy | An admin turned off the No-IP outbound call. Turn it back on under **Settings → Scanning & privacy**. |
+
+Updates stop after a sign-in, hostname or blocking problem so No-IP doesn't lock your account. Saving the settings again starts them again.
+
+> **Note:** No-IP setup is part of 45Flow Pro. Servers that had Pro before keep it after their license ends. Without Pro you can still use your own domain, or keep a No-IP hostname updated with No-IP's own update tool.
 
 ---
 

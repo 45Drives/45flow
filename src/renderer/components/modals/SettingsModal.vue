@@ -40,6 +40,8 @@
                             :key="activeConnection.connectionId" :connection-id="activeConnection.connectionId" />
                         <AdminStaffAlertsPanel v-if="activeSection === 'adminMail' && adminSession && activeConnection"
                             :key="`staff-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId" />
+                        <EmailProblemsPanel v-if="activeSection === 'adminMail' && adminSession && activeConnection"
+                            :key="`problems-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId" />
 
                         <AdminScannerPanel v-if="activeSection === 'adminSecurity' && adminSession && activeConnection"
                             :key="`scanner-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId" />
@@ -64,6 +66,9 @@
 
                         <!-- ═══ Link Sharing ══════════════════════════════════ -->
                         <template v-if="activeSection === 'sharing' && settingsLoaded">
+                            <PublicAddressSetup v-if="activeConnection" :key="`public-address-${activeConnection.connectionId}`"
+                                :connection-id="activeConnection.connectionId" :external-base="externalBase" :external-auto="externalAuto"
+                                :public-ip="detectedPublicIp" @use-hostname="useHostnameForLinks" @open-section="(s) => (activeSection = s)" />
                             <FlowNotice v-if="externalAuto && egress.isOff('public_ip')" tone="warning" size="sm" class="mb-3"
                                 title="Public IP lookup is off">{{ EGRESS_OFF_TEXT.public_ip }}</FlowNotice>
                             <p class="settings-subhead settings-subhead--first">Internet address</p>
@@ -330,6 +335,14 @@
                                                 @change="toggleDefaultProxyQuality(q)" />
                                             <span>{{ q === 'original' ? 'Original' : q }}</span>
                                         </label>
+                                    </div>
+                                </SettingRow>
+                                <SettingRow v-if="speedProfileSupported" label="Server encoding"
+                                    description="How the server makes proxy files. Faster finishes sooner with slightly larger, softer files; Higher quality takes longer.">
+                                    <div class="settings-segmented" role="radiogroup" aria-label="Server encoding">
+                                        <button v-for="p in SPEED_PROFILE_CHOICES" :key="p.id" type="button" role="radio"
+                                            :aria-checked="transcodeSpeedProfile === p.id" :class="{ 'is-on': transcodeSpeedProfile === p.id }"
+                                            :disabled="busy" @click="transcodeSpeedProfile = p.id">{{ p.label }}</button>
                                     </div>
                                 </SettingRow>
                                 <SettingRow label="Watermark videos" description="Stamp an image on videos in new links.">
@@ -1116,6 +1129,8 @@
 
                         <!-- ═══ Maintenance ═══════════════════════════════════ -->
                         <template v-if="activeSection === 'maintenance'">
+                            <TranscodeBackfillPanel v-if="activeConnection" :key="`backfill-${activeConnection.connectionId}`"
+                                :connection-id="activeConnection.connectionId" />
                             <p class="text-xs text-accent mb-3">
                                 Scan for orphaned transcode folders and missing-file metadata, then optionally apply cleanup.
                             </p>
@@ -1520,6 +1535,9 @@ import { useApi } from "../../composables/useApi";
 import AdminNetworksPanel from "../AdminNetworksPanel.vue";
 import AdminSmtpPanel from "../AdminSmtpPanel.vue";
 import AdminStaffAlertsPanel from "../AdminStaffAlertsPanel.vue";
+import EmailProblemsPanel from "../EmailProblemsPanel.vue";
+import TranscodeBackfillPanel from "../TranscodeBackfillPanel.vue";
+import PublicAddressSetup from "../PublicAddressSetup.vue";
 import AdminScannerPanel from "../AdminScannerPanel.vue";
 import AdminEgressPanel from "../AdminEgressPanel.vue";
 import { EGRESS_OFF_TEXT, useEgressSwitches } from "../../composables/useEgressSwitches";
@@ -2004,6 +2022,15 @@ function toggleDefaultProxyQuality(q: string) {
     if (!next.length) return;
     defaultProxyQualities.value = PROXY_QUALITY_CHOICES.filter(c => next.includes(c));
 }
+// Server speed/quality profile for server-side transcodes (C4). Hidden for older servers.
+const SPEED_PROFILE_CHOICES = [
+    { id: 'fast', label: 'Faster' },
+    { id: 'balanced', label: 'Balanced' },
+    { id: 'quality', label: 'Higher quality' },
+] as const;
+type SpeedProfile = typeof SPEED_PROFILE_CHOICES[number]['id'];
+const speedProfileSupported = ref(false);
+const transcodeSpeedProfile = ref<SpeedProfile>('balanced');
 const defaultExpiryValue = ref<number>(1);
 const defaultExpiryUnit = ref<'hours' | 'days' | 'weeks'>('days');
 const defaultExpiryNever = ref(true);
@@ -3156,7 +3183,7 @@ function coreSnapshot() {
     return JSON.stringify([
         defaultLinkAccess.value, externalHttpsPort.value, externalAuto.value, externalBase.value.trim(),
         internalAuto.value, internalBase.value.trim(), defaultRestrictAccess.value, defaultAllowComments.value,
-        defaultUseProxyFiles.value, defaultProxyQualities.value, defaultExpiryNever.value,
+        defaultUseProxyFiles.value, defaultProxyQualities.value, transcodeSpeedProfile.value, defaultExpiryNever.value,
         defaultExpiryNever.value ? null : [defaultExpiryValue.value, defaultExpiryUnit.value],
         defaultWatermarkEnabled.value,
         defaultWatermarkEnabled.value ? (selectedExistingWatermark.value || defaultWatermarkId.value) : null,
@@ -3248,6 +3275,19 @@ function withPortIfNeeded(base: string | null, port: number): string | null {
     } catch {
         return base;
     }
+}
+
+// C1 guided setup: this server's detected public IP (for the DNS instructions),
+// and filling in the internet address with the chosen hostname (saved with Save).
+const detectedPublicIp = computed(() => {
+    try {
+        const host = externalBaseEffective.value ? new URL(externalBaseEffective.value).hostname : '';
+        return /^\d{1,3}(\.\d{1,3}){3}$/.test(host) ? host : null;
+    } catch { return null; }
+});
+function useHostnameForLinks(hostname: string) {
+    externalAuto.value = false;
+    externalBase.value = `https://${hostname}`;
 }
 
 const externalEffectivePreview = computed(() => {
@@ -3405,6 +3445,9 @@ async function reload() {
         // Older servers don't send this field; keep the row hidden for them.
         proxyQualitiesSupported.value = "defaultProxyQualities" in data;
         defaultProxyQualities.value = Array.isArray(data.defaultProxyQualities) ? data.defaultProxyQualities : null;
+        speedProfileSupported.value = "transcodeSpeedProfile" in data;
+        transcodeSpeedProfile.value = SPEED_PROFILE_CHOICES.some(c => c.id === data.transcodeSpeedProfile)
+            ? data.transcodeSpeedProfile : 'balanced';
         projectRoot.value = typeof data.projectRoot === "string" ? data.projectRoot : "";
         forceProjectRoot.value = typeof data.forceProjectRoot === "boolean" ? data.forceProjectRoot : false;
         
@@ -3448,6 +3491,7 @@ async function save() {
             defaultAllowComments: !!defaultAllowComments.value,
             defaultUseProxyFiles: !!defaultUseProxyFiles.value,
             ...(proxyQualitiesSupported.value && defaultProxyQualities.value ? { defaultProxyQualities: defaultProxyQualities.value } : {}),
+            ...(speedProfileSupported.value ? { transcodeSpeedProfile: transcodeSpeedProfile.value } : {}),
             defaultExpirySeconds: defaultExpiryNever.value ? 0 : computeDefaultExpirySec(),
             defaultWatermarkId: defaultWatermarkEnabled.value ? (selectedExistingWatermark.value || defaultWatermarkId.value) : null,
             projectRoot: (projectRoot.value || "").trim() || null,
@@ -3515,7 +3559,8 @@ async function save() {
             (!externalAuto.value && (externalBase.value || "").trim() !== savedExternalBase.value);
         if (externalBaseChanged) {
             try {
-                const certResult = await apiFetch("/api/settings/apply-cert", { method: "POST" });
+                // exposeServerMessage: the server explains why the certificate wasn't updated.
+                const certResult = await apiFetch("/api/settings/apply-cert", { method: "POST", exposeServerMessage: true });
                 if (certResult?.ok) {
                     appLog.info('settings.cert_applied', { changed: certResult.changed, cn: certResult.cn });
                     pushNotification(
@@ -3529,10 +3574,14 @@ async function save() {
                 }
             } catch (certErr: any) {
                 appLog.error('settings.cert_apply_failed', { error: certErr?.message });
+                // Newer servers send a full plain explanation; older ones only an error code.
+                const explained = certErr?.code === 'cert_regen_failed' && certErr?.message && certErr.message !== 'cert_regen_failed';
                 pushNotification(
                     new Notification(
-                        'SSL Certificate Update Failed',
-                        `Settings saved but certificate regeneration failed: ${certErr?.message || 'unknown error'}. You may need to re-run bootstrap.`,
+                        'Certificate Not Updated',
+                        explained
+                            ? certErr.message
+                            : "Your settings are saved, but the server couldn't update its HTTPS certificate for the new address. Until it does, browsers may warn that it doesn't match.",
                         'warning',
                         12000
                     )

@@ -585,6 +585,7 @@ import { useServerFilter } from '../composables/useServerFilter'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
 import { useActiveProject } from '../composables/useActiveProject'
+import { startEmailProblemAlerts } from '../composables/useEmailProblemAlerts'
 import { useLicenseStatus } from '../composables/useLicenseStatus'
 import { useThemeFromAlias } from '../composables/useThemeFromAlias'
 import { signOutSession } from '../web-session'
@@ -607,6 +608,14 @@ const { setCustomThemeEnabled, setCustomThemeColors } = useThemeFromAlias()
 // Start background license polling while dashboard is mounted
 startBackgroundCheck()
 onUnmounted(() => stopBackgroundCheck())
+
+// C3: notify (and fill the bell) when an email from any link isn't delivered.
+let stopEmailAlerts: (() => void) | null = null
+watch(() => activeConnection.value?.connectionId, (id) => {
+	stopEmailAlerts?.()
+	stopEmailAlerts = id ? startEmailProblemAlerts(apiFetch, id) : null
+}, { immediate: true })
+onUnmounted(() => stopEmailAlerts?.())
 
 // ── License Banner ──
 // Show banner only when server WAS licensed but background check detects it's now unlicensed

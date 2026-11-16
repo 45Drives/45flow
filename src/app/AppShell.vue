@@ -3,7 +3,7 @@
     class="w-screen h-screen overflow-hidden flex flex-col text-default bg-default app-bg-textured">
     <header
       v-if="!hideHeader"
-      class="grid grid-cols-3 items-center w-full h-16 px-4 bg-accent"       :class="''"
+      class="grid grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-3 items-center w-full h-16 px-2 sm:px-4 gap-2 bg-accent"
     >
       <!-- Left (logo) -->
       <div class="justify-self-start">
@@ -15,7 +15,8 @@
       </div>
 
       <!-- Center (title) -->
-      <div class="justify-self-center text-center items-center text-2xl font-semibold whitespace-nowrap">
+      <!-- Phones: the branding logo would collide with the controls, so it shows from sm up. -->
+      <div class="hidden sm:block justify-self-center text-center items-center text-2xl font-semibold whitespace-nowrap">
         <!-- {{ headerTitle || (route.meta.title as string) || '45Flow' }} -->
         <!-- <div class="flow-logo-gradient mx-auto my-auto ml-2" role="img" aria-label="45Flow" data-tour="flow-logo" :style="{
           '--flow-logo-src': `url(${flowLogo})`,
@@ -25,8 +26,9 @@
       </div>
 
       <!-- Right (menu) -->
-      <div class="justify-self-end text-right flex items-center gap-2">
-        <div data-tour="connection-switcher">
+      <div class="col-start-3 justify-self-end text-right flex items-center gap-1 sm:gap-2 min-w-0">
+        <!-- The server name also shows on the project page; on phones the controls need the room. -->
+        <div data-tour="connection-switcher" class="hidden md:block">
           <ConnectionSwitcher v-if="route.name !== 'server-selection' && isPremiumActive && !isWeb" />
           <BasicServerBadge v-else-if="route.name !== 'server-selection'" />
         </div>
