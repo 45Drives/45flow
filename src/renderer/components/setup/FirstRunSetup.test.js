@@ -19,7 +19,10 @@ vi.mock('../modals/CreateProjectModal.vue', () => ({
   default: { props: ['modelValue', 'storageRoot'], emits: ['created'], template: '<button v-if="modelValue" :data-project-root="storageRoot" @click="$emit(\'created\', {id:1})">Save project</button>' },
 }))
 let app, host
-const flush = async () => { for (let i = 0; i < 6; i++) await nextTick() }
+const flush = async () => {
+  await new Promise(resolve => setTimeout(resolve)) // lets the async SettingsModal resolve
+  for (let i = 0; i < 6; i++) await nextTick()
+}
 const button = text => [...host.querySelectorAll('button')].find(item => item.textContent === text)
 async function mount(configured = false, persistenceKey) {
   const complete = vi.fn()

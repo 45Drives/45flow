@@ -27,14 +27,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { readSetupProgress, saveSetupProgress, type SetupStatus, type SetupSection } from '../../composables/useSetupStatus'
 import SetupSettingsPanel from './SetupSettingsPanel.vue'
-import SettingsModal from '../modals/SettingsModal.vue'
 import CreateProjectModal from '../modals/CreateProjectModal.vue'
 import FlowModal from '../../ui/FlowModal.vue'
 import FlowButton from '../../ui/FlowButton.vue'
 import FlowNotice from '../../ui/FlowNotice.vue'
+
+const SettingsModal = defineAsyncComponent(() => import('../modals/SettingsModal.vue').then(m => m.default))
 
 const props = defineProps<{ status: SetupStatus; connectionId?: string; persistenceKey?: string }>()
 const emit = defineEmits<{ complete: []; refreshed: [status: SetupStatus] }>()

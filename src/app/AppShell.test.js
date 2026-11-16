@@ -111,6 +111,8 @@ const connected = () => ({
   baseUrl: 'https://server.example', serverIp: 'server.example', username: 'admin', name: 'Test server',
 })
 const quickShare = () => host.querySelector('[data-quick-share]')
+// Quick Share is an async component, so its chunk needs a macrotask to resolve.
+const settle = () => new Promise(resolve => setTimeout(resolve))
 
 beforeEach(async () => {
   mocks.connection = ref(connected())
@@ -123,7 +125,7 @@ beforeEach(async () => {
   app = createApp(AppShell)
   app.component('router-view', { template: '<div data-route-view />' })
   app.mount(host)
-  await nextTick()
+  await settle()
 })
 
 afterEach(() => {
@@ -139,7 +141,7 @@ describe('Quick Share session lifetime', () => {
     expect(host.querySelector('[data-route-view]')).toBeNull()
     expect(quickShare()).toBeNull()
     mocks.setupBlocked.value = false
-    await nextTick()
+    await settle()
     expect(host.querySelector('[data-route-view]')).not.toBeNull()
     expect(quickShare()).not.toBeNull()
   })
@@ -160,7 +162,7 @@ describe('Quick Share session lifetime', () => {
     expect(quickShare()).toBeNull()
     mocks.connection.value = connected()
     mocks.route.name = 'dashboard'
-    await nextTick()
+    await settle()
     expect(quickShare().textContent).toBe('Quick Share dialog')
   })
 
