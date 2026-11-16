@@ -16,7 +16,7 @@
         <template v-if="accountsLoaded">
           <p class="text-sm text-muted">Choose existing server accounts that can administer 45Flow. This changes staff-group access; it does not create user accounts. You cannot remove yourself or the last staff member.</p>
           <p class="text-sm">Staff users: {{ members.join(', ') || 'None' }}</p>
-          <ul class="flow-list max-h-72 overflow-y-auto">
+          <ul class="flow-list bg-default max-h-72 overflow-y-auto">
             <li v-for="account in accounts" :key="account.username" class="flow-list__row">
               <span class="min-w-0 flex-1 break-all">{{ account.username }}</span>
               <FlowButton :variant="account.member ? 'danger' : 'secondary'" size="sm"
@@ -128,18 +128,30 @@ async function refresh(includeStatus = !props.initialStatus) {
   } catch (e: any) { error.value = e?.message || 'Could not load server setup.' }
   finally { refreshing.value = false }
 }
-async function action(work: () => Promise<void>, message: string) {
+async function action(work: () => Promise<void>, message: string, reload = true) {
+  if (busy.value) return
   busy.value = true
   error.value = ''
   saved.value = ''
-  try { await work(); await refresh(true); if (!error.value) saved.value = message }
+  try { await work(); if (reload) await refresh(true); if (!error.value) saved.value = message }
   catch (e: any) { error.value = e?.message || 'Could not save. Try again.' }
   finally { busy.value = false }
 }
 async function setMember(username: string, member: boolean) {
+  if (busy.value) return
   pendingUsername.value = username
   try {
-    await action(async () => { await apiFetch('/api/admin/staff-accounts', { method: 'POST', body: JSON.stringify({ username, member }), retry: 0 }) }, 'Staff users updated.')
+    await action(async () => {
+      const data = await apiFetch('/api/admin/staff-accounts', { method: 'POST', body: JSON.stringify({ username, member }), retry: 0 })
+      const account = data.accounts?.find((item: { username: string }) => item.username === username)
+      accounts.value = accounts.value.map(item => item.username === username ? { ...item, member: account?.member ?? member } : item)
+      members.value = data.members ?? accounts.value.filter(item => item.member).map(item => item.username)
+      if (status.value?.adminGroup) updated({
+        ...status.value,
+        adminGroup: { ...status.value.adminGroup, exists: data.exists ?? status.value.adminGroup.exists,
+          members: members.value, currentUserIsMember: members.value.includes(currentUsername || '') },
+      })
+    }, 'Staff users updated.', false)
   } finally {
     pendingUsername.value = ''
   }

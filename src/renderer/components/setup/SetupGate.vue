@@ -66,6 +66,12 @@ watch(() => [persistenceKey.value, activeConnection.value?.token], (value, previ
   unsupported.value = false
   if (activeConnection.value?.token) void check()
 }, { immediate: true })
+watch(replay.requested, requested => {
+  if (requested && activeConnection.value?.token) {
+    status.value = null
+    void check()
+  }
+})
 function complete(projectCreated = false) {
   if (!projectCreated || !status.value?.storageRoot?.configured) return
   status.value = { ...status.value, projects: { ...status.value.projects, count: Math.max(status.value.projects?.count ?? 0, 1) } }

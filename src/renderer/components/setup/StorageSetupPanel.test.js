@@ -13,6 +13,60 @@ const flush = async () => { for (let i = 0; i < 10; i++) { await Promise.resolve
 const button = text => [...host.querySelectorAll('button')].find(item => item.textContent.includes(text))
 afterEach(() => { app?.unmount(); host?.remove(); vi.useRealTimers() })
 describe('storage selection and restart', () => {
+  it('creates a folder in the selected filesystem without selecting it as the root', async () => {
+    const apiFetch = vi.fn(async (url, init) => {
+      if (url.endsWith('/candidates')) return { candidates: [{ path: '/tank', fstype: 'zfs', zfsDataset: 'tank' }] }
+      if (init?.method === 'POST') return { ok: true, path: '/tank/media' }
+      if (url.includes('path=%2Ftank%2Fmedia')) return { path: '/tank/media', dirs: [] }
+      return { path: '/tank', dirs: [] }
+    })
+    host = document.createElement('div')
+    document.body.appendChild(host)
+    app = createApp(StorageSetupPanel, { apiFetch, status: { ready: false } })
+    app.mount(host)
+    await flush()
+    button('Browse').click()
+    await flush()
+    button('New folder').click()
+    await flush()
+    const input = host.querySelector('input[type=text]')
+    input.value = 'media'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await flush()
+    host.querySelector('#setup-new-directory').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    await flush()
+    expect(apiFetch).toHaveBeenCalledWith('/api/admin/storage/dirs', expect.objectContaining({
+      method: 'POST', body: JSON.stringify({ path: '/tank', name: 'media' }),
+    }))
+    expect(host.querySelector('[aria-label="Storage path"]').textContent).toContain('media')
+    expect(apiFetch.mock.calls.some(([url]) => url.endsWith('/root'))).toBe(false)
+    expect(button('New ZFS dataset')).toBeUndefined()
+  })
+  it('keeps the creation dialog and error visible if filesystem creation fails', async () => {
+    const apiFetch = vi.fn(async (url, init) => {
+      if (init?.method === 'POST') throw new Error('Storage permission denied')
+      if (url.endsWith('/candidates')) return { candidates: [{ path: '/srv', fstype: 'ext4' }] }
+      return { path: '/srv', dirs: [] }
+    })
+    host = document.createElement('div')
+    document.body.appendChild(host)
+    app = createApp(StorageSetupPanel, { apiFetch, status: { ready: false } })
+    app.mount(host)
+    await flush()
+    button('Browse').click()
+    await flush()
+    expect(button('New ZFS dataset')).toBeUndefined()
+    button('New folder').click()
+    await flush()
+    const input = host.querySelector('input[type=text]')
+    input.value = 'media'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await flush()
+    host.querySelector('#setup-new-directory').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    await flush()
+    expect(host.querySelector('#setup-new-directory')).not.toBeNull()
+    expect(host.textContent).toContain('Storage permission denied')
+  })
   it('uses a non-ZFS storage mount and folder navigation before confirming a root change', async () => {
     vi.useFakeTimers()
     let statusCalls = 0

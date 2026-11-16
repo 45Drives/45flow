@@ -42,13 +42,32 @@ describe('shared setup / Settings panels', () => {
     })
     await mount('staff')
     const removes = [...host.querySelectorAll('button')].filter(item => item.textContent === 'Remove from staff')
+    const list = host.querySelector('ul')
+    const bobRow = removes[1].closest('li')
     expect(removes[0].disabled).toBe(true)
     removes[1].click()
     await flush()
+    expect(host.querySelector('ul')).toBe(list)
+    expect(bobRow.isConnected).toBe(true)
     expect(mocks.apiFetch).toHaveBeenCalledWith('/api/admin/staff-accounts', expect.objectContaining({ method: 'POST', body: JSON.stringify({ username: 'bob', member: false }) }))
     button('Add to staff').click()
     await flush()
     expect(mocks.apiFetch).toHaveBeenCalledWith('/api/admin/staff-accounts', expect.objectContaining({ method: 'POST', body: JSON.stringify({ username: 'bob', member: true }) }))
+    expect(mocks.apiFetch.mock.calls.filter(([url, init]) => url === '/api/admin/staff-accounts' && !init?.method)).toHaveLength(1)
+    expect(mocks.apiFetch.mock.calls.filter(([url]) => url === '/api/setup/status')).toHaveLength(1)
+  })
+  it('keeps staff membership unchanged and shows an error when the save fails', async () => {
+    mocks.apiFetch.mockImplementation(async (url, init) => {
+      if (init?.method === 'POST') throw new Error('Membership denied')
+      return { members: ['alice'], accounts: [{ username: 'alice', member: true }, { username: 'bob', member: false }] }
+    })
+    await mount('staff', status())
+    button('Add to staff').click()
+    await flush()
+    expect(host.textContent).toContain('Membership denied')
+    expect(button('Add to staff')).toBeDefined()
+    expect(host.textContent).toContain('Staff users: alice')
+    expect(mocks.apiFetch).toHaveBeenCalledTimes(2)
   })
   it('shows a spinner while loading staff accounts and reuses wizard setup status', async () => {
     let resolveAccounts

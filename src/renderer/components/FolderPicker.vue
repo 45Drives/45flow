@@ -9,7 +9,7 @@
         v-if="!hideProjectControls && internalProject && internalProject.trim().length > 0">
         <span class="font-semibold">Project:</span>
         <code>{{ internalProject }}</code>
-        <button class="btn btn-secondary" @click="changeProject()">Change Project Directory</button>
+        <button type="button" class="btn btn-secondary" @click="changeProject()">Change Project Directory</button>
       </div>
 
       <div v-if="pickerReady" class="flex flex-row gap-2 items-center">
@@ -30,7 +30,7 @@
 
     <div class="fp-browser border rounded overflow-hidden bg-accent flex flex-col min-w-0" :class="containerHeights">
       <div class="fp-toolbar bg-primary border-b border-default px-2 py-1 flex flex-wrap items-center gap-2 z-20 shrink-0 min-w-0">
-        <button class="btn btn-secondary" :disabled="!canGoUp || browseMode === 'roots'" @click="goUpOne"
+        <button type="button" class="btn btn-secondary" :disabled="!canGoUp || browseMode === 'roots'" @click="goUpOne"
           title="Go up one directory">
           <FontAwesomeIcon :icon="faArrowLeft" />
         </button>
@@ -101,13 +101,13 @@
             </div>
             <div>ZFS Pool</div>
             <div class="px-2 py-1">
-              <button class="btn btn-secondary" @click="chooseProject(r.mountpoint)">Select</button>
+              <button type="button" class="btn btn-secondary" @click="chooseProject(r.mountpoint)">Select</button>
             </div>
           </div>
         </template>
         <div v-else class="flex flex-col items-center justify-center gap-3 py-10 text-sm opacity-80">
           <span>No ZFS pools detected.</span>
-          <button class="btn btn-secondary text-xs" @click="retryDetect">Retry</button>
+          <button type="button" class="btn btn-secondary text-xs" @click="retryDetect">Retry</button>
         </div>
       </template>
       <template v-if="pickerReady && browseMode !== 'roots' && viewMode === 'tree'">
@@ -138,7 +138,7 @@
             Current Path: <code>{{ newFolderBasePath }}</code>
           </p>
 
-          <form id="fp-new-folder-form" @submit.prevent="confirmNewFolder">
+          <form id="fp-new-folder-form" @submit.stop.prevent="confirmNewFolder">
             <input ref="folderNameInput" type="text" v-model="newFolderName" placeholder="Enter folder name" required
               autofocus aria-label="Folder name" class="w-full px-3 py-2 input-textlike text-default" />
           </form>

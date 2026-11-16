@@ -41,6 +41,44 @@ function mount(storageRoot = '/tank') {
 }
 
 describe('project folder typed paths', () => {
+  it('does not create a project when navigating up after entering a valid name and folder', async () => {
+    mocks.apiFetch.mockResolvedValue({ entries: [] })
+    mount()
+    await flush()
+    const name = host.querySelector('#new-project-name')
+    name.value = 'Still choosing'
+    name.dispatchEvent(new Event('input', { bubbles: true }))
+    const input = host.querySelector('[data-path-input-root] input')
+    input.focus()
+    input.value = '/tank/first-choice'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    input.blur()
+    await flush()
+    const up = host.querySelector('[title="Go up one directory"]')
+    expect(up.disabled).toBe(false)
+    up.click()
+    await flush()
+    expect(mocks.apiFetch.mock.calls.some(([url]) => url === '/api/projects')).toBe(false)
+    expect(input.value).toBe('/tank/')
+  })
+  it('creates a folder without submitting the project form', async () => {
+    mocks.apiFetch.mockImplementation(async (url) => url === '/api/mkdir' ? { success: true } : { entries: [] })
+    mount()
+    await flush()
+    const name = host.querySelector('#new-project-name')
+    name.value = 'Still choosing'
+    name.dispatchEvent(new Event('input', { bubbles: true }))
+    host.querySelector('[title="Create a new folder in current directory"]').click()
+    await flush()
+    const folder = host.querySelector('[aria-label="Folder name"]')
+    folder.value = 'new-choice'
+    folder.dispatchEvent(new Event('input', { bubbles: true }))
+    await flush()
+    host.querySelector('#fp-new-folder-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    await flush()
+    expect(mocks.apiFetch).toHaveBeenCalledWith('/api/mkdir', expect.objectContaining({ body: JSON.stringify({ path: '/tank/new-choice' }) }))
+    expect(mocks.apiFetch.mock.calls.some(([url]) => url === '/api/projects')).toBe(false)
+  })
   it.each(['Enter', 'blur'])('submits the typed folder after %s even without autocomplete results', async method => {
     mocks.apiFetch.mockImplementation(async (_url, init) => init?.method === 'POST'
       ? { project: { id: 1 } } : { entries: [] })

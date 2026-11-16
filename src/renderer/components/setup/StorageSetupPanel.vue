@@ -17,11 +17,11 @@
         <ArrowPathIcon class="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" />
         Searching for available storage…
       </p>
-      <ul class="flow-list max-h-64 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]" aria-label="Mounted filesystems">
+      <ul class="flow-list bg-default max-h-64 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]" aria-label="Mounted filesystems">
         <li v-for="candidate in candidates" :key="candidate.path" class="flow-list__row flex-wrap" :class="{ 'flow-list__row--selected': candidate.path === anchor }">
           <div class="min-w-0 flex-1">
             <p class="flow-list__title break-all">{{ candidate.path }}</p>
-            <p class="flow-list__meta break-all">{{ candidate.zfsDataset || candidate.source }} · {{ candidate.fstype }} · {{ formatSize(candidate.size) }} total · {{ formatSize(candidate.avail) }} free<span v-if="candidate.network"> · Network</span></p>
+            <p class="flow-list__meta break-all">{{ candidate.zfsDataset ? `Dataset: ${candidate.zfsDataset}` : candidate.source }} · {{ candidate.fstype }} · {{ formatSize(candidate.size) }} total · {{ formatSize(candidate.avail) }} free<span v-if="candidate.network"> · Network</span></p>
           </div>
           <FlowButton size="sm" :disabled="busy" @click="open(candidate.path, candidate.path)">Browse</FlowButton>
         </li>
@@ -39,7 +39,7 @@
               @click="open(crumb.path, anchor)">{{ crumb.name }}</button>
           </template>
         </nav>
-        <ul class="flow-list max-h-48 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]" aria-label="Storage subfolders">
+        <ul class="flow-list bg-default max-h-48 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]" aria-label="Storage subfolders">
           <li v-for="dir in dirs" :key="dir.path" class="flow-list__row flow-list__row--interactive">
             <button type="button" class="flex min-w-0 flex-1 items-center gap-3 text-left" :disabled="busy"
               :aria-label="`Browse into ${dir.name}`" @click="open(dir.path, anchor)">
@@ -50,9 +50,26 @@
           </li>
         </ul>
         <p v-if="!dirs.length && !busy" class="text-sm text-muted">No subfolders.</p>
+        <FlowButton :disabled="busy" @click="startCreate">New folder</FlowButton>
         <FlowButton variant="primary" :disabled="busy || path === '/'" @click="review">Use this folder</FlowButton>
         <p v-if="path === '/'" class="text-sm text-muted">Open a data folder. The system root cannot be used for storage.</p>
       </template>
+      <FlowModal v-model="creatingDirectory" title="New folder" :busy="busy" size="sm">
+        <p class="text-sm mb-3">Create inside <code class="break-all">{{ path }}</code>.</p>
+        <form id="setup-new-directory" @submit.stop.prevent="createDirectory">
+          <FlowField label="Name" help="Start with a letter or digit. Use letters, digits, dot, dash or underscore.">
+            <template #default="{ id }">
+              <input :id="id" v-model.trim="directoryName" type="text" required autofocus maxlength="128" pattern="[a-zA-Z0-9][a-zA-Z0-9_.-]*"
+                :disabled="busy" class="input-textlike w-full px-3 py-2" />
+            </template>
+          </FlowField>
+        </form>
+        <FlowNotice v-if="error" tone="danger" size="sm" live class="mt-3">{{ error }}</FlowNotice>
+        <template #footer>
+          <FlowButton variant="dismiss" :disabled="busy" @click="creatingDirectory = false">Cancel</FlowButton>
+          <FlowButton type="submit" form="setup-new-directory" variant="primary" :disabled="busy || !validDirectoryName" :loading="busy" loading-text="Creating…">Create</FlowButton>
+        </template>
+      </FlowModal>
     </template>
     <FlowModal v-model="confirming" title="Change storage root?" :busy="busy" size="lg">
       <p class="text-sm mb-3">Use <code class="break-all">{{ path }}</code> as the storage root? The server will restart. Existing files are not moved.</p>
@@ -76,13 +93,15 @@
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import { ArrowPathIcon, ChevronRightIcon, FolderIcon } from '@heroicons/vue/24/outline'
 import { readSetupProgress, saveSetupProgress, type SetupStatus } from '../../composables/useSetupStatus'
+import type { useApi } from '../../composables/useApi'
 import { BACKGROUND_REQUEST } from '../../background-request'
 import FlowButton from '../../ui/FlowButton.vue'
 import FlowNotice from '../../ui/FlowNotice.vue'
 import FlowModal from '../../ui/FlowModal.vue'
+import FlowField from '../../ui/FlowField.vue'
 
 type Candidate = { path: string; fstype: string; source: string; size: number | string; avail: number | string; network?: boolean; zfsDataset?: string }
-const props = defineProps<{ apiFetch: (url: string, init?: RequestInit) => Promise<any>; status: SetupStatus | null; persistenceKey?: string }>()
+const props = defineProps<{ apiFetch: ReturnType<typeof useApi>['apiFetch']; status: SetupStatus | null; persistenceKey?: string }>()
 const emit = defineEmits<{ refreshed: [status: SetupStatus]; restarting: [value: boolean] }>()
 const candidates = ref<Candidate[]>([])
 const dirs = ref<{ name: string; path: string }[]>([])
@@ -93,6 +112,9 @@ const error = ref('')
 const restarting = ref(false)
 const confirming = ref(false)
 const acknowledged = ref(false)
+const creatingDirectory = ref(false)
+const directoryName = ref('')
+const validDirectoryName = computed(() => /^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$/.test(directoryName.value))
 const impact = ref<{ projects: any[]; activeLinks: any[]; transfers: any[] }>({ projects: [], activeLinks: [], transfers: [] })
 const impactGroups = computed(() => [
   { label: 'Projects outside the new root', items: impact.value.projects },
@@ -138,6 +160,24 @@ async function open(nextPath: string, nextAnchor: string) {
     path.value = data.path || nextPath
     anchor.value = nextAnchor
     dirs.value = data.dirs || data.directories || []
+  })
+}
+function startCreate() {
+  directoryName.value = ''
+  error.value = ''
+  creatingDirectory.value = true
+}
+async function createDirectory() {
+  if (busy.value || !validDirectoryName.value) return
+  await action(async () => {
+    const data = await props.apiFetch('/api/admin/storage/dirs', { method: 'POST', retry: 0, timeoutMs: 120_000, exposeServerMessage: true, body: JSON.stringify({
+      path: path.value, name: directoryName.value,
+    }) })
+    creatingDirectory.value = false
+    // Keep creation and selection separate: nothing changes the storage root here.
+    const listing = await props.apiFetch(`/api/admin/storage/dirs?path=${encodeURIComponent(data.path)}`)
+    path.value = listing.path
+    dirs.value = listing.dirs || listing.directories || []
   })
 }
 async function review() {

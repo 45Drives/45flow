@@ -8,7 +8,7 @@
 		:busy="creating"
 		@update:model-value="(v) => emit('update:modelValue', v)"
 	>
-		<form id="create-project-form" @submit.prevent="submit" class="flex flex-col gap-4">
+		<form id="create-project-form" @submit.self.prevent="submit" class="flex flex-col gap-4">
 			<FlowField label="Project name" id="new-project-name" required>
 				<template #default="{ id }">
 					<input
@@ -25,6 +25,7 @@
 			<FlowField label="Project folder" id="new-project-folder">
 				<p class="flow-field__help -mt-0.5 mb-1">Pick the folder that holds this project's media. Use <b>New Folder</b> in the browser below to make one.</p>
 				<FolderPicker
+					v-if="modelValue"
 					v-model="rootDir"
 					:apiFetch="apiFetch"
 					useCase="upload"

@@ -90,6 +90,21 @@ describe('setup gate by server status and role', () => {
     await mount()
     expect(host.querySelector('[data-wizard]')).not.toBeNull()
   })
+  it('rechecks server projects before reopening setup after a project was deleted', async () => {
+    mocks.apiFetch.mockResolvedValue(status(true, 1))
+    await mount()
+    let resolveStatus
+    mocks.apiFetch.mockReturnValue(new Promise(resolve => { resolveStatus = resolve }))
+    useSetupReplay(() => serverSetupKey(mocks.activeConnection.value)).request()
+    await flush()
+    expect(host.querySelector('[data-wizard]')).toBeNull()
+    expect(host.textContent).toContain('Checking server setup')
+    resolveStatus(status(true, 0))
+    await flush()
+    expect(host.querySelector('[data-wizard]')).not.toBeNull()
+    expect(mocks.projectsConfigured).toHaveBeenLastCalledWith(false)
+    expect(mocks.apiFetch).toHaveBeenCalledTimes(2)
+  })
   it('does not force a replay on non-admin sessions', async () => {
     mocks.activeConnection.value.token = token(['open'])
     useSetupReplay(() => serverSetupKey(mocks.activeConnection.value)).request()

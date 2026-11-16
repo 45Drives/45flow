@@ -8,8 +8,8 @@
     <template v-else-if="step === 3">
       <p v-if="!hasExistingProjects" class="text-sm text-muted mb-4">Create a project to finish setup. Its folder will be inside your storage root.</p>
       <p class="text-sm mb-4">Storage root: <code class="break-all">{{ localStatus.storageRoot?.path }}</code></p>
-      <FlowButton v-if="!projectCreated" variant="primary" @click="creatingProject = true">Create project</FlowButton>
-      <FlowNotice v-else tone="success" size="sm" live>{{ hasExistingProjects ? 'Your existing projects are ready. Choose Finish setup to return to 45Flow.' : 'Your project is ready. Choose Finish setup to start using 45Flow.' }}</FlowNotice>
+      <FlowNotice v-if="projectCreated" tone="success" size="sm" live class="mb-3">{{ hasExistingProjects ? 'Your existing projects are ready. Create another project or choose Finish setup.' : 'Your project is ready. Create another project or choose Finish setup.' }}</FlowNotice>
+      <FlowButton variant="primary" @click="creatingProject = true">{{ projectCreated ? 'Create another project' : 'Create project' }}</FlowButton>
     </template>
     <template #footer>
       <FlowButton :disabled="step === 0 || restarting" @click="step--">Back</FlowButton>
@@ -17,7 +17,7 @@
       <FlowButton v-if="step < 3" variant="primary" :disabled="restarting || (step === 0 && !storageConfigured)" @click="advance">Next</FlowButton>
       <FlowButton v-else-if="projectCreated" variant="primary" @click="advance">Finish setup</FlowButton>
     </template>
-    <CreateProjectModal v-model="creatingProject" :storage-root="localStatus.storageRoot?.path" @created="created" />
+    <CreateProjectModal v-if="creatingProject" v-model="creatingProject" :storage-root="localStatus.storageRoot?.path" @created="created" />
   </FlowModal>
 </template>
 
@@ -33,8 +33,8 @@ import FlowNotice from '../../ui/FlowNotice.vue'
 
 const props = defineProps<{ status: SetupStatus; connectionId?: string; persistenceKey?: string }>()
 const emit = defineEmits<{ complete: [projectCreated: boolean]; refreshed: [status: SetupStatus] }>()
-const hasExistingProjects = (props.status.projects?.count ?? 0) > 0
-const steps = ['Storage', 'Staff users', 'Sharing settings', hasExistingProjects ? 'Projects' : 'New project']
+const hasExistingProjects = computed(() => (props.status.projects?.count ?? 0) > 0)
+const steps = computed(() => ['Storage', 'Staff users', 'Sharing settings', hasExistingProjects.value ? 'Projects' : 'New project'])
 const savedStep = props.persistenceKey ? readSetupProgress(props.persistenceKey).step : 0
 const pendingRoot = props.persistenceKey ? readSetupProgress(props.persistenceKey + ':storage').restartPath : ''
 const rootStillPending = pendingRoot && props.status.storageRoot?.path !== pendingRoot
@@ -44,10 +44,12 @@ const localStatus = ref(props.status)
 const storageConfigured = computed(() => localStatus.value.storageRoot?.configured === true)
 const restarting = ref(false)
 const creatingProject = ref(false)
-const projectCreated = ref(hasExistingProjects)
+const createdDuringSetup = ref(false)
+const projectCreated = computed(() => createdDuringSetup.value || (localStatus.value.projects?.count ?? 0) > 0)
 const stepPanels: (SetupSection | null)[] = ['storage', 'staff', null, null]
 const panel = computed(() => stepPanels[step.value])
 watch(step, value => { if (props.persistenceKey) saveSetupProgress(props.persistenceKey, { step: value }) }, { flush: 'sync' })
+watch(() => props.status, status => { localStatus.value = status })
 function restartChanged(value: boolean) {
   const wasRestarting = restarting.value
   restarting.value = value
@@ -62,5 +64,8 @@ function advance() {
   }
   else step.value++
 }
-function created() { projectCreated.value = true; creatingProject.value = false }
+function created() {
+  createdDuringSetup.value = true
+  creatingProject.value = false
+}
 </script>

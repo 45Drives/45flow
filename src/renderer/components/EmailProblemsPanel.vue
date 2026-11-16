@@ -2,8 +2,9 @@
   <section v-if="supported" aria-label="Email delivery problems" class="mt-6">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <p class="flow-subhead">Delivery problems</p>
-      <FlowButton size="xs" variant="ghost" :disabled="loading" @click="load">Refresh</FlowButton>
+      <FlowButton size="xs" variant="ghost" :disabled="loading || retryingId !== null || dismissingId !== null" @click="load">Refresh</FlowButton>
     </div>
+    <p v-if="emails.length" class="text-xs text-muted mb-3">Dismiss hides a problem for everyone on this server. Delivery history is kept; it does not cancel or recall email.</p>
     <FlowNotice v-if="error" tone="danger" size="sm" live class="mb-3">{{ error }}</FlowNotice>
     <FlowNotice v-if="retryError" tone="danger" size="sm" live class="mb-3">{{ retryError }}</FlowNotice>
 
@@ -37,8 +38,10 @@
               <p class="text-xs text-muted mt-1 whitespace-normal">{{ emailReasonHelp(e.reason) || statusOf(e).help }}</p>
             </td>
             <td class="text-right whitespace-nowrap">
-              <FlowButton v-if="canRetryEmail(e.status) && !e.linkArchived" size="xs" :loading="retryingId === e.id"
-                loading-text="Retrying…" :disabled="retryingId !== null" @click="retry(e)">Retry</FlowButton>
+              <FlowButton v-if="canRetryEmail(e.status) && !e.linkArchived && !e.linkMissing" size="xs" :loading="retryingId === e.id"
+                loading-text="Retrying…" :disabled="loading || retryingId !== null || dismissingId !== null" @click="retry(e)">Retry</FlowButton>
+              <FlowButton size="xs" variant="dismiss" :loading="dismissingId === e.id" loading-text="Dismissing…"
+                :disabled="loading || retryingId !== null || dismissingId !== null" @click="dismiss(e)">Dismiss</FlowButton>
             </td>
           </tr>
         </tbody>
@@ -70,6 +73,7 @@ export type EmailProblemRow = {
   linkId: number
   linkTitle: string | null
   linkArchived?: boolean
+  linkMissing?: boolean
   kind: 'invitation' | 'download' | 'review'
   recipientEmail: string
   status: EmailStatus
@@ -97,6 +101,7 @@ const supported = ref(true)
 const error = ref('')
 const retryError = ref('')
 const retryingId = ref<number | null>(null)
+const dismissingId = ref<number | null>(null)
 const showAll = ref(false)
 
 const visibleEmails = computed(() => (showAll.value ? emails.value : emails.value.slice(0, PREVIEW)))
@@ -131,7 +136,7 @@ async function load() {
 }
 
 async function retry(e: EmailProblemRow) {
-  if (retryingId.value !== null) return
+  if (loading.value || retryingId.value !== null || dismissingId.value !== null) return
   retryingId.value = e.id
   retryError.value = ''
   try {
@@ -150,6 +155,20 @@ async function retry(e: EmailProblemRow) {
         : (err?.message ? `Couldn't retry: ${err.message}` : "Couldn't retry.")
   } finally {
     retryingId.value = null
+  }
+}
+
+async function dismiss(e: EmailProblemRow) {
+  if (loading.value || retryingId.value !== null || dismissingId.value !== null) return
+  dismissingId.value = e.id
+  retryError.value = ''
+  try {
+    await apiFetch(`/api/emails/${e.id}/dismiss`, { method: 'POST', retry: 0 })
+    emails.value = emails.value.filter(row => row.id !== e.id)
+  } catch (err: unknown) {
+    retryError.value = err instanceof Error ? `Couldn't dismiss: ${err.message}` : "Couldn't dismiss this email problem."
+  } finally {
+    dismissingId.value = null
   }
 }
 

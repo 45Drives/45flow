@@ -36,7 +36,7 @@
                 <div class="flex items-center gap-2 min-w-0"
                     :style="{ paddingInlineStart: `${indentPx(depth)}px` }">
                     <!-- arrow (stop to avoid double toggle) -->
-                    <button
+                    <button type="button"
                         class="w-4 h-4 rounded border border-current text-[10px] leading-none inline-flex items-center justify-center shrink-0"
                         @click.stop="modeIsUpload ? toggleOpen() : onFolderExpandToggle()" :aria-label="open ? 'Collapse' : 'Expand'">
                         {{ open ? '▾' : '▸' }}
@@ -49,7 +49,7 @@
                     </span>
 
                     <!-- label (also stops bubbling; the row already handles click) -->
-                    <button class="underline truncate font-semibold min-w-0" :title="(relPath || label) + '/'"
+                    <button type="button" class="underline truncate font-semibold min-w-0" :title="(relPath || label) + '/'"
                         @click.stop="modeIsUpload ? emit('select-folder', props.relPath || '') : onFolderExpandToggle()">
                         {{ label }}/
                     </button>

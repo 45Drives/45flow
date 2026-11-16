@@ -19,6 +19,7 @@ vi.mock('../modals/CreateProjectModal.vue', () => ({
   default: { props: ['modelValue', 'storageRoot'], emits: ['created'], template: '<button v-if="modelValue" :data-project-root="storageRoot" @click="$emit(\'created\', {id:1})">Save project</button>' },
 }))
 let app, host
+let refreshed
 const flush = async () => {
   await new Promise(resolve => setTimeout(resolve)) // lets the async SettingsModal resolve
   for (let i = 0; i < 6; i++) await nextTick()
@@ -26,9 +27,10 @@ const flush = async () => {
 const button = text => [...host.querySelectorAll('button')].find(item => item.textContent === text)
 async function mount(configured = false, persistenceKey, projectCount = 0) {
   const complete = vi.fn()
+  refreshed = vi.fn()
   host = document.createElement('div')
   document.body.appendChild(host)
-  app = createApp(FirstRunSetup, { status: { ready: configured, storageRoot: { configured, path: configured ? '/tank' : '' }, projects: { count: projectCount } }, persistenceKey, onComplete: complete })
+  app = createApp(FirstRunSetup, { status: { ready: configured, storageRoot: { configured, path: configured ? '/tank' : '' }, projects: { count: projectCount } }, persistenceKey, onComplete: complete, onRefreshed: refreshed })
   app.mount(host)
   await flush()
   return complete
@@ -44,7 +46,7 @@ describe('first-run setup', () => {
       await flush()
     }
     expect(host.textContent).toContain('Your existing projects are ready.')
-    expect(button('Create project')).toBeUndefined()
+    expect(button('Create another project')).toBeDefined()
     button('Finish setup').click()
     expect(complete).toHaveBeenCalledWith(true)
   })
@@ -81,6 +83,13 @@ describe('first-run setup', () => {
     expect(host.querySelector('[data-project-root="/tank"]')).not.toBeNull()
     button('Save project').click()
     await flush()
+    expect(complete).not.toHaveBeenCalled()
+    expect(refreshed).not.toHaveBeenCalled()
+    button('Create another project').click()
+    await flush()
+    button('Save project').click()
+    await flush()
+    expect(host.querySelector('[data-project-root]')).toBeNull()
     button('Finish setup').click()
     expect(complete).toHaveBeenCalledWith(true)
     expect(setupSections.map(item => item.key)).toEqual(expect.arrayContaining(['storage', 'staff', 'uploads', 'watermarks']))

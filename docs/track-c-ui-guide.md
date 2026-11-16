@@ -72,6 +72,20 @@ Only the link's designated approver can decide, and only on an invite-only link.
 
 "Sent" never means the inbox received it. "Unconfirmed" means it may or may not have arrived, so a retry can send it twice; say so in the help text. Retry is allowed for every status except `sending` and `accepted`. The app uses `emailStatusView()` in `src/renderer/utils/emailStatus.ts`; mirror it in the player if the player ever shows email state.
 
+Settings' **Delivery problems** includes failed/unconfirmed emails and emails
+that have stayed pending or sending for ten minutes. **Dismiss** persistently
+hides that email's problem for everyone on the server, including when its link
+has been deleted. It keeps delivery status and attempt history and does not
+cancel, retry or recall mail. Per-link email history remains available for
+existing links; missing or archived links cannot be retried from this list.
+
+Dismissal uses authenticated `POST /api/emails/{invitationId}/dismiss` with no
+payload and returns `{ ok: true, dismissed: true, invitationId }`. It is
+idempotent and available without a Pro license. Invalid ids return 400, missing
+email records 404, and persistence failures 500; failed dismissals leave the row
+visible. The server lazily creates the additive `mail_problem_dismissals` table;
+existing mail rows, delivery claims and SMTP outcomes are not rewritten.
+
 ## Button choices
 
 | Action | Variant | Why |

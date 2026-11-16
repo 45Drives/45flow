@@ -56,3 +56,30 @@ it('says so when nothing needs attention, and hides on servers without the route
   await flush()
   expect(host.textContent.trim()).toBe('')
 })
+
+it.each(['sending', 'ambiguous', 'pending'])('dismisses a %s problem even if its link is missing', async status => {
+  api.apiFetch.mockImplementation(async url => url === '/api/emails/problems'
+    ? { emails: [problem(3, { status, linkMissing: true, linkTitle: null })] }
+    : { ok: true, dismissed: true })
+  mount()
+  await flush()
+  const row = host.querySelector('[data-testid="email-problem-3"]')
+  expect([...row.querySelectorAll('button')].some(b => b.textContent.trim() === 'Retry')).toBe(false)
+  ;[...row.querySelectorAll('button')].find(b => b.textContent.trim() === 'Dismiss').click()
+  await flush()
+  expect(api.apiFetch).toHaveBeenCalledWith('/api/emails/3/dismiss', { method: 'POST', retry: 0 })
+  expect(host.querySelector('[data-testid="email-problem-3"]')).toBeNull()
+})
+
+it('keeps the problem visible when dismissal fails', async () => {
+  api.apiFetch.mockImplementation(async url => {
+    if (url === '/api/emails/problems') return { emails: [problem(1)] }
+    throw new Error('Connection interrupted')
+  })
+  mount()
+  await flush()
+  ;[...host.querySelectorAll('button')].find(b => b.textContent.trim() === 'Dismiss').click()
+  await flush()
+  expect(host.querySelector('[data-testid="email-problem-1"]')).not.toBeNull()
+  expect(host.textContent).toContain("Couldn't dismiss: Connection interrupted")
+})
