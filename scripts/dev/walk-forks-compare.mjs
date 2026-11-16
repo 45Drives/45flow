@@ -474,7 +474,7 @@ async function main() {
     await layoutChecks({ context, video, origV2, fork, dirAbs });
 
     if (opts.only === 'all' && fork?.attached) {
-      await measureBandwidth({ context, video, origV2, fork });
+      await measureBandwidth({ browser, video, origV2, fork });
     }
   } finally {
     report.finished = new Date().toISOString();
@@ -756,24 +756,40 @@ async function layoutChecks({ context, video, origV2, fork, dirAbs }) {
 // Bytes the browser pulls for both panes while they play, in Best and in Data
 // Saver. The compare view has no mode switch of its own, so the mode is chosen
 // on the single-file share page and carries into Compare.
-async function measureBandwidth({ context, video, origV2, fork }) {
+async function measureBandwidth({ browser, video, origV2, fork }) {
   const forkV1 = fork.versions?.get(1);
   const result = { dataSaver: false, bothSidesMbps: 0, windowSeconds: opts.bandwidthSeconds, best: null, dataSaverMeasured: null };
   await step('bandwidth: both panes in Best and Data Saver', async () => {
     for (const mode of ['Best', 'Data Saver']) {
-      const page = await context.newPage();
+      // A fresh browser context per mode: its HTTP and media caches are empty, so
+      // each pane fetches its own media from the network and every byte of it is
+      // counted from navigation on (a pane buffered earlier would read as 0).
+      const ctx = await browser.newContext(contextOptions());
+      const page = await ctx.newPage();
       shotPage = page;
-      const cdp = await context.newCDPSession(page);
+      const cdp = await ctx.newCDPSession(page);
       await cdp.send('Network.enable');
+      try {
       const urls = new Map();
       const bytes = { a: 0, b: 0, other: 0 };
+      // Each pane's media URL prefixes (its own asset version), learned from the
+      // pane's video once it has loaded; the version ids are the fallback.
+      const keys = { a: [`asset_version_id=${origV2}`, `/${origV2}/`], b: [`asset_version_id=${forkV1}`, `/${forkV1}/`] };
+      const learnKeys = async () => {
+        for (const side of ['a', 'b']) {
+          const st = await videoState(page, side);
+          if (!st?.currentSrc || st.currentSrc.startsWith('blob:')) continue;
+          const u = new URL(st.currentSrc);
+          const dir = `${u.pathname.slice(0, u.pathname.lastIndexOf('/') + 1)}`;
+          if (dir.length > 1 && !keys[side].includes(dir)) keys[side].push(dir);
+        }
+      };
       cdp.on('Network.requestWillBeSent', (e) => urls.set(e.requestId, e.request.url));
-      cdp.on('Network.loadingFinished', (e) => {
+      cdp.on('Network.dataReceived', (e) => {
         const url = urls.get(e.requestId) || '';
-        if (!/\/(stream|v|hls|media|download)\/|\.(m4s|ts|mp4|aac|m3u8)(\?|$)/i.test(url)) return;
-        const side = url.includes(`asset_version_id=${origV2}`) || url.includes(`/${origV2}/`) ? 'a'
-          : url.includes(`asset_version_id=${forkV1}`) || url.includes(`/${forkV1}/`) ? 'b' : 'other';
-        bytes[side] += e.encodedDataLength || 0;
+        if (!/\/(stream|v|hls|media|download|transcodes)\/|\.(m4s|ts|mp4|aac|m3u8)(\?|$)/i.test(url)) return;
+        const side = keys.a.some((k) => url.includes(k)) ? 'a' : keys.b.some((k) => url.includes(k)) ? 'b' : 'other';
+        bytes[side] += e.encodedDataLength || e.dataLength || 0;
       });
       await page.goto(`${video.url}?version=${origV2}`, { waitUntil: 'domcontentloaded' });
       const modeButton = page.getByRole('radio', { name: mode, exact: true }).first();
@@ -783,25 +799,30 @@ async function measureBandwidth({ context, video, origV2, fork }) {
       await page.waitForSelector('[data-testid="compare-workspace"]', { timeout: 60000 });
       await page.getByTestId('version-picker-b').selectOption(String(forkV1));
       await waitBothVideosReady(page);
-      for (const k of Object.keys(bytes)) bytes[k] = 0;
+      await learnKeys();
       const t0 = Date.now();
-      await page.getByTestId('compare-play').click();
+      const playBtn = page.getByTestId('compare-play');
+      if (!(await page.evaluate(() => [...document.querySelectorAll('[data-testid^="compare-pane-"] video')].every((v) => !v.paused)))) await playBtn.click();
       await sleep(opts.bandwidthSeconds * 1000);
       const seconds = (Date.now() - t0) / 1000;
       const states = [await videoState(page, 'a'), await videoState(page, 'b')];
-      const mbps = (n) => Number(((n * 8) / seconds / 1e6).toFixed(3));
-      const sides = { aMbps: mbps(bytes.a), bMbps: mbps(bytes.b), unattributedMbps: mbps(bytes.other) };
-      const both = mbps(bytes.a + bytes.b + bytes.other);
+      // Bytes fetched for a pane over the media seconds it played from a cold start.
+      const mbps = (n, played = seconds) => Number(((n * 8) / Math.max(1, played) / 1e6).toFixed(3));
+      const sides = { aMbps: mbps(bytes.a, states[0]?.currentTime), bMbps: mbps(bytes.b, states[1]?.currentTime), unattributedMbps: mbps(bytes.other) };
+      const both = Number((sides.aMbps + sides.bMbps).toFixed(3));
       const out = { ...sides, bothSidesMbps: both, seconds: Number(seconds.toFixed(1)), pictureHeights: await page.evaluate(() => [...document.querySelectorAll('[data-testid^="compare-pane-"] video')].map((v) => v.videoHeight)), played: states.map((s) => s && Number(s.currentTime.toFixed(2))) };
+      check(`bandwidth: both panes moved data in ${mode}`, out.aMbps > 0 && out.bMbps > 0, JSON.stringify(out));
+      check(`bandwidth: ${mode} both = A + B`, Math.abs(out.bothSidesMbps - (out.aMbps + out.bMbps)) < 0.01, JSON.stringify(out));
       if (mode === 'Best') result.best = out;
       else {
         result.dataSaverMeasured = out;
         result.dataSaver = true;
         result.bothSidesMbps = both;
       }
-      await cdp.detach().catch(() => {});
-      await page.close();
-      shotPage = null;
+      } finally {
+        await ctx.close().catch(() => {});
+        shotPage = null;
+      }
     }
     check('bandwidth: both panes moved data in Data Saver', result.bothSidesMbps > 0, JSON.stringify(result));
     check('bandwidth: Best was measured', (result.best?.bothSidesMbps || 0) > 0, JSON.stringify(result));
