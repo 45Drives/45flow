@@ -321,10 +321,28 @@
                         <td class="text-right whitespace-nowrap">
                           <button type="button" class="btn btn-secondary btn-xs" :disabled="!v.snapshot_rel"
                             :title="v.snapshot_rel ? undefined : 'This version is still being saved'" @click="openFork(v)">Fork from this version</button>
+                          <button type="button" class="btn btn-secondary btn-xs ml-1.5" data-testid="compare-with"
+                            :disabled="!primaryUrl || compareOptions(v).length === 0"
+                            :title="compareDisabledReason(v) || undefined" @click="openCompare(v)">Compare with…</button>
                           <button type="button" class="btn btn-secondary btn-xs ml-1.5" @click="restoreVersion(v)">Restore</button>
                           <span v-if="forkSourceNote(v.asset_version_id)" class="text-xs text-muted ml-1.5" data-testid="fork-kept">{{ forkSourceNote(v.asset_version_id) }}</span>
                           <button v-else type="button" class="btn btn-danger btn-xs ml-1.5" :disabled="versions.length <= 1"
                             :title="versions.length <= 1 ? 'The only version can\'t be deleted' : undefined" @click="deleteVersion(v)">Delete</button>
+                        </td>
+                      </tr>
+                      <tr v-if="compareFrom && Number(compareFrom.asset_version_id) === Number(v.asset_version_id)" class="ld-extra-row" data-testid="compare-picker">
+                        <td :colspan="showReviewColumn ? 6 : 5">
+                          <div class="flex flex-wrap items-end gap-2">
+                            <label class="flex flex-col gap-1 flex-1 min-w-[16rem]">
+                              <span class="text-xs font-medium text-muted">Compare v{{ v.version_index }} with</span>
+                              <select v-model="compareTargetId" class="input-textlike px-2 py-1.5 text-sm w-full" data-testid="compare-target">
+                                <option v-for="o in compareOptions(v)" :key="o.assetVersionId" :value="o.assetVersionId">{{ o.label }}</option>
+                              </select>
+                            </label>
+                            <button type="button" class="btn btn-primary btn-sm" :disabled="!compareTargetId" data-testid="compare-open" @click="startCompare(v)">Open comparison</button>
+                            <button type="button" class="btn btn-dismiss btn-sm" @click="compareFrom = null">Cancel</button>
+                          </div>
+                          <p class="text-xs text-muted mt-2">Opens the share page in a new tab. Only files on this link can be compared.</p>
                         </td>
                       </tr>
                       <tr v-if="showExtraFiles" class="ld-extra-row">
@@ -993,6 +1011,10 @@ const versions = ref<any[]>([])
 const selectedVersionFileId = ref<number | null>(null)
 // Versions another file was forked from (LF1): they are kept, never deleted.
 const forkSourcesByVersionId = ref<Map<number, Array<{ fileId: number; filename: string; label: string | null }>>>(new Map())
+// Every file in the selected file's fork family (LF1 lineage), for Compare with… (LF5).
+const lineageFamily = ref<any[]>([])
+const compareFrom = ref<any | null>(null)
+const compareTargetId = ref<number | null>(null)
 const forkOpen = ref(false)
 const forkSource = ref<ForkSource | null>(null)
 const restoreBackup = ref(true)
@@ -3662,10 +3684,58 @@ async function loadForkSources(fileId: number) {
       map.set(key, [...(map.get(key) ?? []), { fileId: Number(member.fileId), filename: String(member.filename ?? ''), label: member.label ?? null }])
     }
     forkSourcesByVersionId.value = map
+    lineageFamily.value = Array.isArray(resp?.family) ? resp.family : []
   } catch {
     // An older server has no lineage; the tab then behaves as before.
     forkSourcesByVersionId.value = new Map()
+    lineageFamily.value = []
   }
+}
+
+// Versions the share page can compare with `v`: any version of a related file
+// that is attached to this link (the share page refuses files that aren't).
+function compareOptions(v: any): Array<{ assetVersionId: number; label: string }> {
+  const self = Number(v?.asset_version_id)
+  const out: Array<{ assetVersionId: number; label: string }> = []
+  const fileId = selectedVersionFileId.value
+  const members = lineageFamily.value.length
+    ? lineageFamily.value
+    : [{ fileId, filename: versionFileById.value.get(Number(fileId))?.name, label: null, versions: versions.value.map((x: any) => ({ assetVersionId: x.asset_version_id, versionNumber: x.version_index })) }]
+  for (const m of members) {
+    if (!versionFileById.value.has(Number(m?.fileId))) continue
+    const name = m.label || m.filename || `File ${m.fileId}`
+    for (const mv of Array.isArray(m.versions) ? m.versions : []) {
+      const id = Number(mv.assetVersionId)
+      if (!id || id === self) continue
+      out.push({ assetVersionId: id, label: `${name} · v${mv.versionNumber}` })
+    }
+  }
+  return out
+}
+
+function compareDisabledReason(v: any): string {
+  if (!primaryUrl.value) return 'This link has no share page to compare on'
+  if (compareOptions(v).length === 0) return 'Nothing else on this link to compare with. Another version, or a fork added to this link, is needed.'
+  return ''
+}
+
+function openCompare(v: any) {
+  compareFrom.value = v
+  compareTargetId.value = compareOptions(v)[0]?.assetVersionId ?? null
+}
+
+// ?compare=<a>,<b> (asset version IDs) on the share page; other query parameters are kept.
+function compareUrl(base: string, a: number, b: number): string {
+  const [noHash] = base.split('#')
+  const [path, query = ''] = noHash.split('?')
+  const kept = query.split('&').filter(p => p && !p.startsWith('compare='))
+  return `${path}?${[...kept, `compare=${a},${b}`].join('&')}`
+}
+
+function startCompare(v: any) {
+  if (!compareTargetId.value || !primaryUrl.value) return
+  window.open(compareUrl(primaryUrl.value, Number(v.asset_version_id), compareTargetId.value), '_blank', 'noopener,noreferrer')
+  compareFrom.value = null
 }
 
 function forkSourceNote(assetVersionId: number): string {
@@ -3690,6 +3760,8 @@ function openFork(v: any) {
   }
   forkOpen.value = true
 }
+
+watch(selectedVersionFileId, () => { compareFrom.value = null; lineageFamily.value = [] })
 
 async function onForked(payload: { fileId: number | null; attachedToLink: boolean }) {
   pushNotification(new Notification('Fork Created', 'The copy is ready.', 'success', 6000))

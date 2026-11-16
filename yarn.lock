@@ -42,6 +42,7 @@ __metadata:
     node-ssh: "npm:^13.2.1"
     pdfjs-dist: "npm:^6.5.438"
     pinia: "npm:^3.0.3"
+    playwright-core: "npm:1.56.1"
     postcss: "npm:^8.4.38"
     postcss-modules: "npm:^6.0.0"
     ssh2: "npm:^1.16.0"
@@ -76,7 +77,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@45drives/houston-common-lib@workspace:houston-common/houston-common-lib"
   dependencies:
-    "@types/electron": "npm:^1.6.12"
     "@types/node": "npm:^22.13.4"
     "@types/node-localstorage": "npm:^1.3.3"
     monet: "npm:0.9.3"
@@ -2209,15 +2209,6 @@ __metadata:
   version: 1.0.4
   resolution: "@types/deep-equal@npm:1.0.4"
   checksum: 10c0/583d41df5d7655b0bd5fdd4b173b045396108fad2191e1bd3b1bfc188f98d24fafff34a8a09c04f9c650c87d82e9f25a8119d269044522da0770a05075fbf74d
-  languageName: node
-  linkType: hard
-
-"@types/electron@npm:^1.6.12":
-  version: 1.6.12
-  resolution: "@types/electron@npm:1.6.12"
-  dependencies:
-    electron: "npm:*"
-  checksum: 10c0/0cc0a2d3cf31afd3d0a6db0f35d37c44532db2211813540c6888d389db113f044b4f923ef7d0624f105b0d937b715b59c92ad53fcffa83b3070d79e07f73101b
   languageName: node
   linkType: hard
 
@@ -7537,6 +7528,15 @@ __metadata:
     binary-split: "npm:^1.0.5"
     split2: "npm:^4.2.0"
   checksum: 10c0/8d60ae0b60cdb93a866154d46612977eef9406311294234f911c58181075988c5035010b1639bdeabbe28015eeeac8bb532bd9016418fb888e82e1829bd5de52
+  languageName: node
+  linkType: hard
+
+"playwright-core@npm:1.56.1":
+  version: 1.56.1
+  resolution: "playwright-core@npm:1.56.1"
+  bin:
+    playwright-core: cli.js
+  checksum: 10c0/ffd40142b99c68678b387445d5b42f1fee4ab0b65d983058c37f342e5629f9cdbdac0506ea80a0dfd41a8f9f13345bad54e9a8c35826ef66dc765f4eb3db8da7
   languageName: node
   linkType: hard
 
