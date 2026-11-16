@@ -161,6 +161,7 @@ async function poll(token: number) {
   try {
     const job = await props.apiFetch(`/api/fork-jobs/${jobId.value}`)
     if (token !== pollToken) return
+    error.value = null
     state.value = job?.state ?? 'copying'
     progress.value = Math.max(0, Math.min(100, Number(job?.progress) || 0))
     if (state.value === 'done') {
@@ -174,6 +175,7 @@ async function poll(token: number) {
   } catch (e: any) {
     if (token !== pollToken) return
     error.value = e?.message || 'Could not read the fork progress.'
+    if (e?.status === 404) return // the job is gone; polling again cannot help
   }
   pollTimer = setTimeout(() => { void poll(token) }, POLL_MS)
 }
