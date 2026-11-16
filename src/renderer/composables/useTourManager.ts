@@ -24,6 +24,7 @@ export interface TourRegistration {
 
 const _activeTour = ref<TourRegistration | null>(null)
 const _queue: TourRegistration[] = []
+const _setupPending = ref(false)
 
 export function useTourManager() {
   const { toursDisabled } = useTourPreferences()
@@ -35,7 +36,7 @@ export function useTourManager() {
     if (_activeTour.value?.id === id || _queue.some(t => t.id === id)) return false
 
     const registration: TourRegistration = { id, steps, onDone, onSkip }
-    if (!_activeTour.value) {
+    if (!_activeTour.value && !_setupPending.value) {
       _activeTour.value = registration
     } else {
       _queue.push(registration)
@@ -69,12 +70,19 @@ export function useTourManager() {
   }
 
   function advanceQueue() {
-    if (_queue.length > 0 && !_activeTour.value) {
+    if (_queue.length > 0 && !_activeTour.value && !_setupPending.value) {
       _activeTour.value = _queue.shift()!
     }
   }
 
   return {
+    setSetupPending(pending: boolean) {
+      _setupPending.value = pending
+      if (pending && _activeTour.value) {
+        _queue.unshift(_activeTour.value)
+        _activeTour.value = null
+      } else if (!pending) advanceQueue()
+    },
     activeTour: readonly(_activeTour) as Readonly<Ref<TourRegistration | null>>,
     requestTour,
     cancelTour,

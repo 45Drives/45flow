@@ -29,8 +29,10 @@
 					:apiFetch="apiFetch"
 					useCase="upload"
 					subtitle=""
-					:auto-detect-roots="true"
-					:allow-entire-tree="true"
+					:auto-detect-roots="!storageRoot"
+					:base="storageRoot"
+					:start-dir="storageRoot"
+					:hide-project-controls="!!storageRoot"
 					:is-root-user="isRootUser"
 					v-model:project="pickerBase"
 					v-model:dest="rootDir"
@@ -72,7 +74,7 @@ import FolderSpaceNotice from '../FolderSpaceNotice.vue'
 import FlowModal from '../../ui/FlowModal.vue'
 import FlowField from '../../ui/FlowField.vue'
 
-const props = defineProps<{ modelValue: boolean }>()
+const props = defineProps<{ modelValue: boolean; storageRoot?: string }>()
 const emit = defineEmits<{
 	(e: 'update:modelValue', v: boolean): void
 	(e: 'created', project: { id: number; name: string; root_dir: string; description: string | null }): void

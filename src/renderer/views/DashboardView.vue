@@ -349,37 +349,11 @@
 									</div>
 								</label>
 
-								<label class="flex items-start gap-2 cursor-pointer select-none ml-5">
-									<input type="checkbox" v-model="projectDeleteOriginals" class="styled-checkbox mt-0.5" />
-									<div>
-										<span class="text-sm text-flow-danger font-medium">Delete original source files</span>
-										<p class="text-xs text-flow-danger">
-											The actual media files on disk. Cannot be recovered.
-											({{ formatBytes(projectDeletePreview.summary.totalOriginalBytes) }})
-										</p>
-									</div>
-								</label>
-
-								<div v-if="projectDeleteOriginals" class="p-2 rounded flow-tone-danger border ml-5">
-									<p class="text-xs text-flow-danger font-medium">
-										Danger: this will permanently delete the original source files from disk.
-									</p>
-									<div v-if="projectDeletePreview.files.filter((f: any) => !f.sharedWithOtherLinks).length > 0"
-										class="mt-2 max-h-24 overflow-y-auto">
-										<p class="text-xs text-default mb-1">Files that will be deleted:</p>
-										<ul class="text-xs text-flow-danger list-disc list-inside">
-											<li v-for="f in projectDeletePreview.files.filter((f: any) => !f.sharedWithOtherLinks)"
-												:key="f.id" class="truncate">
-												{{ f.relPath }} ({{ formatBytes(f.originalBytes) }})
-											</li>
-										</ul>
-									</div>
-								</div>
 							</template>
 						</template>
 					</div>
 
-					<template v-if="projectDeleteGenerated || projectDeleteOriginals">
+					<template v-if="projectDeleteGenerated">
 						<label class="block text-sm text-default mb-1">
 							Type <strong class="text-flow-danger">DELETE</strong> to confirm:
 						</label>
@@ -391,7 +365,7 @@
 					<div class="flex items-center justify-end gap-2">
 						<button class="btn btn-dismiss px-4 py-2" @click="editModalConfirm = null">Back</button>
 						<button class="btn btn-danger px-4 py-2"
-							:disabled="(projectDeleteGenerated || projectDeleteOriginals) && projectDeleteConfirmText !== 'DELETE'"
+							:disabled="projectDeleteGenerated && projectDeleteConfirmText !== 'DELETE'"
 							@click="deleteProject">Delete Permanently</button>
 					</div>
 				</template>
@@ -509,39 +483,11 @@
 								</div>
 							</label>
 
-							<label class="flex items-start gap-2 select-none ml-5"
-								:class="projectNothingToDelete ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'">
-								<input type="checkbox" v-model="projectDeleteOriginals" :disabled="projectNothingToDelete"
-									class="styled-checkbox mt-0.5" />
-								<div>
-									<span class="text-sm text-flow-danger font-medium">Delete original source files</span>
-									<p class="text-xs text-flow-danger">
-										The actual media files on disk. Cannot be recovered.<template v-if="!projectNothingToDelete">
-										({{ formatBytes(projectDeletePreview.summary.totalOriginalBytes) }})</template>
-									</p>
-								</div>
-							</label>
-
-							<div v-if="projectDeleteOriginals" class="p-2 rounded flow-tone-danger border ml-5">
-								<p class="text-xs text-flow-danger font-medium">
-									Danger: this will permanently delete the original source files from disk.
-								</p>
-								<div v-if="projectDeletePreview.files.filter((f: any) => !f.sharedWithOtherLinks).length > 0"
-									class="mt-2 max-h-24 overflow-y-auto">
-									<p class="text-xs text-default mb-1">Files that will be deleted:</p>
-									<ul class="text-xs text-flow-danger list-disc list-inside">
-										<li v-for="f in projectDeletePreview.files.filter((f: any) => !f.sharedWithOtherLinks)"
-											:key="f.id" class="truncate">
-											{{ f.relPath }} ({{ formatBytes(f.originalBytes) }})
-										</li>
-									</ul>
-								</div>
-							</div>
 						</template>
 					</template>
 				</div>
 
-				<template v-if="projectDeleteGenerated || projectDeleteOriginals">
+				<template v-if="projectDeleteGenerated">
 					<label class="block text-sm text-default mb-1">
 						Type <strong class="text-flow-danger">DELETE</strong> to confirm:
 					</label>
@@ -553,7 +499,7 @@
 				<template #footer>
 					<button class="btn btn-dismiss px-4 py-2" @click="clearCardAction()">Cancel</button>
 					<button class="btn btn-danger px-4 py-2"
-						:disabled="(projectDeleteGenerated || projectDeleteOriginals) && projectDeleteConfirmText !== 'DELETE'"
+						:disabled="projectDeleteGenerated && projectDeleteConfirmText !== 'DELETE'"
 						@click="deleteProject">Delete Permanently</button>
 				</template>
 	</FlowModal>
@@ -935,7 +881,6 @@ const projectDeletePreview = ref<any>(null)
 const projectDeletePreviewLoading = ref(false)
 const projectDeleteLinks = ref(false)
 const projectDeleteGenerated = ref(false)
-const projectDeleteOriginals = ref(false)
 const projectDeleteConfirmText = ref('')
 
 function resetProjectDeleteState() {
@@ -943,7 +888,6 @@ function resetProjectDeleteState() {
 	projectDeletePreviewLoading.value = false
 	projectDeleteLinks.value = false
 	projectDeleteGenerated.value = false
-	projectDeleteOriginals.value = false
 	projectDeleteConfirmText.value = ''
 }
 
@@ -1017,7 +961,6 @@ async function deleteProject() {
 		const qs = new URLSearchParams({ hard: '1' })
 		if (projectDeleteLinks.value) qs.set('deleteLinks', '1')
 		if (projectDeleteGenerated.value) qs.set('deleteGenerated', '1')
-		if (projectDeleteOriginals.value) qs.set('deleteOriginals', '1')
 		await apiFetch(`/api/projects/${target.id}?${qs.toString()}`, { method: 'DELETE' })
 		editModalConfirm.value = null
 		showEditProjectModal.value = false

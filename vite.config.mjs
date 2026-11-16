@@ -37,6 +37,8 @@ export default defineConfig(({ command, mode }) => {
     build: {
       outDir: r('build', 'renderer'),
       emptyOutDir: true,
+      // pdfjs-dist (~550 kB) is the largest chunk; it is lazy-loaded for PDF previews only.
+      chunkSizeWarningLimit: 600,
       rollupOptions: {
         output: {
           // Emit .mjs assets (the pdf.js worker) as .js: older nginx mime.types
@@ -46,6 +48,12 @@ export default defineConfig(({ command, mode }) => {
             : 'assets/[name][extname]'),
           entryFileNames: 'assets/[name].js',
           chunkFileNames: 'assets/[name].js',
+          // Vendor code changes less often than the app, so it gets its own cacheable chunks.
+          manualChunks(id) {
+            if (/[\\/]houston-common-(lib|ui)[\\/]dist[\\/]index\.js$/.test(id)) return 'vendor-houston';
+            if (/[\\/]node_modules[\\/](@vue|vue|vue-router)[\\/]/.test(id)) return 'vendor-vue';
+            if (/[\\/]node_modules[\\/]@fortawesome[\\/]/.test(id)) return 'vendor-icons';
+          },
         },
       },
     },

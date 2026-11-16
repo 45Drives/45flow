@@ -1,7 +1,8 @@
 <!-- src/renderer/components/TransferProgressDock.vue -->
 <template>
     <!-- Single wrapper: tab + panel slide together -->
-    <div ref="wrapperRef" class="drawer-wrapper" :class="{ 'drawer-wrapper--open': state.open }">
+    <div ref="wrapperRef" class="drawer-wrapper" :class="{ 'drawer-wrapper--open': state.open }"
+        :style="{ '--drawer-scrollbar-width': `${scrollbarWidth}px` }">
 
         <!-- Tab (absolutely positioned on the left edge of the wrapper) -->
         <button
@@ -166,6 +167,8 @@ const { onboarding, markDone } = useOnboarding()
 
 // ── Highlight tab when active count changes ──
 const tabHighlight = ref(false)
+const scrollbarWidth = ref(0)
+let rootResizeObserver: ResizeObserver | null = null
 watch(activeCount, (newVal, oldVal) => {
     if (newVal > oldVal) {
         tabHighlight.value = true
@@ -183,11 +186,23 @@ function onDocumentClick(e: MouseEvent) {
     setOpen(false)
 }
 
+function updateScrollbarWidth() {
+    scrollbarWidth.value = Math.max(0, window.innerWidth - document.documentElement.clientWidth)
+}
+
 onMounted(() => {
     document.addEventListener('mousedown', onDocumentClick, true)
+    window.addEventListener('resize', updateScrollbarWidth)
+    updateScrollbarWidth()
+    if (typeof ResizeObserver !== 'undefined') {
+        rootResizeObserver = new ResizeObserver(updateScrollbarWidth)
+        rootResizeObserver.observe(document.documentElement)
+    }
 })
 onBeforeUnmount(() => {
     document.removeEventListener('mousedown', onDocumentClick, true)
+    window.removeEventListener('resize', updateScrollbarWidth)
+    rootResizeObserver?.disconnect()
 })
 
 const transferDockTourSteps: TourStep[] = [
@@ -587,7 +602,7 @@ function dismissGroup(groupKey: string) {
 .drawer-wrapper {
     position: fixed;
     top: 4rem;   /* below app header */
-    right: 0;
+    right: var(--drawer-scrollbar-width, 0px);
     bottom: 0;
     width: 26rem;
     z-index: 50;
@@ -606,7 +621,7 @@ function dismissGroup(groupKey: string) {
 .drawer-tab {
     position: absolute;
     top: 50%;
-    right: calc(100% + 0.75rem);   /* offset from scrollbar when closed */
+    right: 100%;
     transform: translateY(-50%);
     z-index: 2;
     pointer-events: auto;
@@ -628,7 +643,6 @@ function dismissGroup(groupKey: string) {
     box-shadow: -2px 0 8px rgba(0, 0, 0, 0.18);
     user-select: none;
 
-    transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .drawer-wrapper--open .drawer-tab {

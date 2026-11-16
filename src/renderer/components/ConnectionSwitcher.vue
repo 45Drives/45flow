@@ -134,13 +134,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, defineAsyncComponent } from 'vue'
 import { useConnections } from '../composables/useConnections'
 import { useServerFilter } from '../composables/useServerFilter'
 import { useRouter } from 'vue-router'
 import ConnectionManagerModal from './modals/ConnectionManagerModal.vue'
-import SettingsModal from './modals/SettingsModal.vue'
-import LogViewModal from './modals/LogViewModal.vue'
+const SettingsModal = defineAsyncComponent(() => import('./modals/SettingsModal.vue').then(m => m.default))
+const LogViewModal = defineAsyncComponent(() => import('./modals/LogViewModal.vue').then(m => m.default))
 
 const router = useRouter()
 const { sortedConnections, activeConnection, setActive } = useConnections()

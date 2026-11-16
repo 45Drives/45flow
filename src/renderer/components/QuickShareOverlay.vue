@@ -368,6 +368,8 @@
 </template>
 
 <script setup lang="ts">
+import { loadProjectWatermarks, canonicalWatermarkSelection } from '../composables/projectWatermarks'
+import { uploadErrorMessage } from '../utils/uploadErrorMessage'
 import { writeClipboard } from '../clipboard'
 import { ref, computed, inject, watch, onMounted, onBeforeUnmount, toRaw } from 'vue'
 import { useRoute } from 'vue-router'
@@ -1107,8 +1109,8 @@ function resolveWatermarkStorageRoot() {
 }
 
 function resolveWatermarkDirRel() {
-  // Watermarks are stored at .45flow/watermarks/ relative to the effective share root
-  return '.45flow/watermarks'
+  const root = activeProject.value?.root_dir || configuredProjectRoot.value
+  return `${root.replace(/^\/+|\/+$/g, '')}/.45flow/watermarks`
 }
 
 function resolveWatermarkUploadDir() {
@@ -1123,6 +1125,8 @@ function resolveWatermarkRelPath() {
 
 /** Convert a watermark ID (e.g. '45flow-grad') to the path the dropdown/server expects */
 function resolveWatermarkPathForApi(idOrPath: string) {
+  const canonical = canonicalWatermarkSelection(idOrPath, validDefaultWatermarks.value)
+  if (canonical !== idOrPath) return canonical
   const builtin = DEFAULT_45FLOW_WATERMARKS.find(wm => wm.id === idOrPath)
   if (builtin) return builtin.path
   return idOrPath
@@ -1183,49 +1187,24 @@ async function ensureServerDirExists(dir: string) {
 
 async function loadExistingWatermarkFiles() {
   try {
-    // Fetch custom watermarks from both the specific directory AND the global search
-    const dirRel = resolveWatermarkDirRel()
-    const [dirData, globalData] = await Promise.all([
-      apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' }).catch(() => null),
-      apiFetch('/api/files/watermarks', { method: 'GET' }).catch(() => null),
-    ])
-    
-    // Directory-specific watermarks
-    const dirEntries = Array.isArray(dirData?.entries) ? dirData.entries : []
-    const dirWatermarks = dirEntries
-      .filter((e: any) => !e?.isDir && typeof e?.name === 'string' && String(e.name).trim())
-      .map((e: any) => `${dirRel}/${String(e.name).trim()}`)
-    
-    // Global watermarks from all .45flow/watermarks/ dirs
-    const globalWatermarks = Array.isArray(globalData?.watermarks) ? globalData.watermarks : []
-    
-    // Merge and deduplicate
-    const allCustom = [...new Set([...dirWatermarks, ...globalWatermarks])].sort()
-    
-    // Check which built-in watermarks actually exist on the server
-    const base = connectionMeta.value.apiBase ?? ''
-    const token = connectionMeta.value.token ?? ''
-    const builtinChecks = await Promise.allSettled(
-      DEFAULT_45FLOW_WATERMARKS.map(async (wm) => {
-        const url = `${base}/api/watermarks/defaults/${wm.id}/stream`
-        const res = await fetch(url, { method: 'HEAD', headers: { 'Authorization': `Bearer ${token}` } })
-        return res.ok ? wm : null
-      })
-    )
-    validDefaultWatermarks.value = builtinChecks
-      .filter((r): r is PromiseFulfilledResult<Default45FlowWatermark> => r.status === 'fulfilled' && r.value !== null)
-      .map(r => r.value)
+    const projectId = activeProject.value?.id
+    const { custom: allCustom, defaults } = await loadProjectWatermarks(apiFetch, projectId)
+    if (projectId !== activeProject.value?.id) return
+    validDefaultWatermarks.value = defaults
+    selectedExistingWatermark.value = canonicalWatermarkSelection(selectedExistingWatermark.value, defaults)
     
     existingWatermarkFiles.value = allCustom
+    if (selectedExistingWatermark.value && ![...allCustom, ...defaults.map(item => item.path)].includes(selectedExistingWatermark.value)) selectedExistingWatermark.value = ''
     
     // Auto-select last used watermark if available
     try {
       const allFiles = [...allCustom, ...validDefaultWatermarks.value.map(w => w.path)]
-      const lastUsed = localStorage.getItem('45flow-last-watermark')
+      const lastUsed = canonicalWatermarkSelection(localStorage.getItem('45flow-last-watermark') || '', defaults)
       if (lastUsed && allFiles.includes(lastUsed) && !watermarkFile.value && !selectedExistingWatermark.value) {
         selectedExistingWatermark.value = lastUsed
         void fetchExistingWatermarkPreview(lastUsed)
       }
+      watch(() => activeProject.value?.id, () => { void loadExistingWatermarkFiles() })
     } catch { /* ignore storage errors */ }
   } catch {
     existingWatermarkFiles.value = []
@@ -1273,7 +1252,7 @@ async function uploadWatermarkToProject() {
     dest: destDir,
   })
   const res = await done
-  if (!res?.ok) return { ok: false, error: res?.error || 'watermark upload failed' }
+  if (!res?.ok) return { ok: false, error: uploadErrorMessage(res?.error) }
   return { ok: true, relPath: resolveWatermarkRelPath() }
 }
 
@@ -1558,9 +1537,10 @@ async function startUploadAndShare() {
           break
         }
         perFileStatus.value[f.path] = 'error'
-        perFileDetail.value[f.path] = res?.error || 'Upload failed'
-        transfer.finishUpload(taskId, false, res?.error || 'Upload failed')
-        throw new Error(res?.error || `Upload failed for ${f.name}`)
+        const message = uploadErrorMessage(res?.error)
+        perFileDetail.value[f.path] = message
+        transfer.finishUpload(taskId, false, message)
+        throw new Error(message)
       }
       transfer.finishUpload(taskId, true)
       perFileProgress.value[f.path] = 100

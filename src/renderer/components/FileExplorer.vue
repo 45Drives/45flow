@@ -7,7 +7,7 @@
       <div class="flex flex-row gap-2 items-center min-w-0">
         <span class="whitespace-nowrap text-xs">Root:</span>
         <div class="min-w-0 flex-1">
-          <PathInput v-model="cwd" :apiFetch="apiFetch" :dirsOnly="true" @choose="onChoose" />
+          <PathInput v-model="boundedCwd" :apiFetch="apiFetch" :dirsOnly="true" @choose="onChoose" />
         </div>
       </div>
     </div>
@@ -88,6 +88,8 @@ import { ref, computed, onMounted, watch } from 'vue'
   const props = defineProps<{
     apiFetch: (url: string, init?: any) => Promise<any>,
     startDir?: string,
+    // Server share root (e.g. /tank); "Up" stops here because the server rejects paths above it.
+    rootDir?: string,
     modelValue?: string[], // existing selection passed in (if any)
     compact?: boolean
   }>()
@@ -107,15 +109,29 @@ const emit = defineEmits<{
   
   const cwd = ref<string>('') // drives what TreeNode/IconMode show
   const activeDir = ref<string>('') // drives "Showing" + Select All target in list mode
+  const boundedCwd = computed({
+    get: () => cwd.value,
+    set: (value: string) => { cwd.value = boundedDir(value) },
+  })
+  function boundedDir(value: string) {
+    const parts: string[] = []
+    for (const part of normalizePath(value).split('/')) {
+      if (part === '..') parts.pop()
+      else if (part && part !== '.') parts.push(part)
+    }
+    const target = '/' + parts.join('/')
+    const root = normalizePath(props.rootDir || '/').replace(/\/+$/, '') || '/'
+    return normDir(root !== '/' && target !== root && !target.startsWith(root + '/') ? root : target)
+  }
   onMounted(() => {
-    const initial = normDir(props.startDir || '/')
+    const initial = boundedDir(props.startDir || props.rootDir || '/')
     cwd.value = initial
     activeDir.value = initial
   })
   
   // keep cwd in sync if parent changes it
-  watch(() => props.startDir, (v) => {
-    const next = normDir(v || '/')
+  watch(() => [props.startDir, props.rootDir], ([v]) => {
+    const next = boundedDir(v || props.rootDir || '/')
     cwd.value = next
     activeDir.value = next
   })
@@ -228,12 +244,12 @@ async function togglePath({ path, isDir }: TogglePayload) {
   function onChoose(pick: { path: string; isDir: boolean }) {
     // PathInput "choose" means explicit navigation
     if (pick.isDir) {
-      const next = pick.path.endsWith('/') ? pick.path : (pick.path + '/')
+      const next = boundedDir(pick.path)
       cwd.value = next
       activeDir.value = next
     } else {
       const parent = pick.path.replace(/\/[^/]+$/, '') || '/'
-      const next = parent.endsWith('/') ? parent : (parent + '/')
+      const next = boundedDir(parent)
       cwd.value = next
       activeDir.value = next
     }
@@ -241,7 +257,7 @@ async function togglePath({ path, isDir }: TogglePayload) {
   
   function navigateTo(rel: string) {
     const clean = rel.replace(/^\/+/, '')
-    const next = ensureSlash('/' + clean)
+    const next = boundedDir('/' + clean)
     // Grid behaves like an icon browser (enter folder). List keeps tree root, but updates "Showing".
     if (viewMode.value === 'grid') cwd.value = next
     activeDir.value = next
@@ -257,6 +273,8 @@ async function togglePath({ path, isDir }: TogglePayload) {
   const canGoUp = computed(() => {
     const current = viewMode.value === 'list' ? activeDir.value : cwd.value
     if (!current || current === '/') return false
+    const root = ensureSlash((props.rootDir || '').trim())
+    if (root !== '/' && ensureSlash(current) === root) return false
     return true
   })
 
@@ -268,9 +286,10 @@ async function togglePath({ path, isDir }: TogglePayload) {
   }
 
   function goUpOne() {
+    if (!canGoUp.value) return
     // Both view modes must move the actual root (cwd) — otherwise the visible
     // tree/grid never changes and "Showing:" desyncs from what's on screen.
-    const next = parentPath((viewMode.value === 'list' ? activeDir.value : cwd.value) || cwd.value || '/')
+    const next = boundedDir(parentPath((viewMode.value === 'list' ? activeDir.value : cwd.value) || cwd.value || '/'))
     cwd.value = next
     activeDir.value = next
   }

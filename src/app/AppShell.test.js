@@ -3,7 +3,7 @@ import { createApp, nextTick, reactive, ref } from 'vue'
 import AppShell from './AppShell.vue'
 
 const mocks = vi.hoisted(() => ({
-  connection: null, route: null, unmounted: vi.fn(), replace: vi.fn(async () => {}),
+  connection: null, route: null, setupBlocked: null, projectsConfigured: null, unmounted: vi.fn(), replace: vi.fn(async () => {}),
 }))
 vi.mock('vue-router', () => ({
   useRoute: () => mocks.route,
@@ -67,7 +67,7 @@ vi.mock('../renderer/composables/useTourManager', async () => {
     useTourManager: () => ({ activeTour: ref(null), cancelTour: vi.fn() }),
   }
 })
-vi.mock('../renderer/components/TransferProgressDock.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('../renderer/components/TransferProgressDock.vue', () => ({ default: { template: '<div data-transfer-dock />' } }))
 vi.mock('../renderer/components/UpdateBanner.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../renderer/components/GlobalMenu.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../renderer/components/ConnectionSwitcher.vue', () => ({ default: { template: '<div />' } }))
@@ -76,6 +76,19 @@ vi.mock('../renderer/components/GuidedTour.vue', () => ({ default: { template: '
 vi.mock('../renderer/components/NotificationBell.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../renderer/components/modals/SettingsModal.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../renderer/components/modals/LogViewModal.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('../renderer/components/setup/SetupGate.vue', async () => {
+  const { h, watch } = await import('vue')
+  return {
+    default: {
+      emits: ['blocked', 'projects-configured'],
+      setup(_props, { emit, slots }) {
+        watch(mocks.setupBlocked, value => emit('blocked', value), { immediate: true })
+        watch(mocks.projectsConfigured, value => emit('projects-configured', value), { immediate: true })
+        return () => mocks.setupBlocked.value ? h('div', { 'data-setup': '' }) : slots.default?.()
+      },
+    },
+  }
+})
 vi.mock('../renderer/components/QuickShareOverlay.vue', async () => {
   const { h, onUnmounted, ref } = await import('vue')
   return {
@@ -99,9 +112,13 @@ const connected = () => ({
   baseUrl: 'https://server.example', serverIp: 'server.example', username: 'admin', name: 'Test server',
 })
 const quickShare = () => host.querySelector('[data-quick-share]')
+// Quick Share is an async component, so its chunk needs a macrotask to resolve.
+const settle = () => new Promise(resolve => setTimeout(resolve))
 
-beforeEach(() => {
+beforeEach(async () => {
   mocks.connection = ref(connected())
+  mocks.setupBlocked = ref(false)
+  mocks.projectsConfigured = ref(false)
   mocks.route = reactive({ name: 'dashboard', path: '/dashboard', meta: {} })
   mocks.unmounted.mockClear()
   mocks.replace.mockClear()
@@ -110,6 +127,7 @@ beforeEach(() => {
   app = createApp(AppShell)
   app.component('router-view', { template: '<div data-route-view />' })
   app.mount(host)
+  await settle()
 })
 
 afterEach(() => {
@@ -118,6 +136,25 @@ afterEach(() => {
 })
 
 describe('Quick Share session lifetime', () => {
+  it('keeps the transfer dock hidden until a project exists', async () => {
+    expect(host.querySelector('[data-transfer-dock]')).toBeNull()
+    mocks.projectsConfigured.value = true
+    await nextTick()
+    expect(host.querySelector('[data-transfer-dock]')).not.toBeNull()
+  })
+
+  it('blocks authenticated routes and Quick Share until server setup completes', async () => {
+    mocks.setupBlocked.value = true
+    await nextTick()
+    expect(host.querySelector('[data-setup]')).not.toBeNull()
+    expect(host.querySelector('[data-route-view]')).toBeNull()
+    expect(quickShare()).toBeNull()
+    mocks.setupBlocked.value = false
+    await settle()
+    expect(host.querySelector('[data-route-view]')).not.toBeNull()
+    expect(quickShare()).not.toBeNull()
+  })
+
   it.each([false, true])('discards the open overlay on logout (minimized: %s)', async minimized => {
     if (minimized) {
       quickShare().click()
@@ -134,7 +171,7 @@ describe('Quick Share session lifetime', () => {
     expect(quickShare()).toBeNull()
     mocks.connection.value = connected()
     mocks.route.name = 'dashboard'
-    await nextTick()
+    await settle()
     expect(quickShare().textContent).toBe('Quick Share dialog')
   })
 

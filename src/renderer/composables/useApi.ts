@@ -333,7 +333,10 @@ function createApiClient(
                     const parsedError = parsed && typeof parsed.error === 'string' ? parsed.error : ''
                     const parsedMessage = parsed && typeof parsed.message === 'string' ? parsed.message : ''
                     // Prefer human-readable message over error codes for user-facing errors
-                    const baseMessage = res.status >= 500 && !init.exposeServerMessage
+                    const scannerMissing = parsedError === 'scanner_unavailable' || parsed?.code === 'scanner_unavailable'
+                    const baseMessage = scannerMissing
+                        ? 'Malware scanning is required but not installed. An administrator can install it or turn scanning off in Settings.'
+                        : res.status >= 500 && !init.exposeServerMessage
                         ? 'Internal server error'
                         : (parsedMessage || parsedError || detail || `HTTP ${res.status}`)
 

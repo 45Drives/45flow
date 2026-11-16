@@ -793,6 +793,8 @@ const DetailRow = defineComponent({
 </script>
 
 <script setup lang="ts">
+import { loadProjectWatermarks, canonicalWatermarkSelection } from '../../composables/projectWatermarks'
+import { uploadErrorMessage } from '../../utils/uploadErrorMessage'
 import { writeClipboard } from '../../clipboard'
 import { computed, inject, nextTick, ref, watch, toRaw } from 'vue'
 import { useTimeFormat } from '../../composables/useTimeFormat'
@@ -1107,7 +1109,7 @@ const savedUploadSpecSummary = computed(() => describeSpecRules(savedUploadSpec.
 watch([() => props.modelValue, () => props.link?.id, isPremiumActive], ([open, id]) => {
   if (open && id && !editMode.value) void loadUploadSpec()
 }, { immediate: true })
-const availableProjects = ref<{ id: number; name: string }[]>([])
+const availableProjects = ref<{ id: number; name: string; root_dir?: string }[]>([])
 const draftGenerateReviewProxy = ref(false)
 const draftProxyQualities = ref<string[]>([])
 const originalProxyQualities = ref<string[]>([])
@@ -1614,7 +1616,7 @@ async function hydrateMediaSettingsFromArtifacts() {
 async function fetchAvailableProjects() {
   try {
     const data = await props.apiFetch('/api/projects')
-    availableProjects.value = (data?.projects || []).map((p: any) => ({ id: p.id, name: p.name }))
+    availableProjects.value = (data?.projects || []).map((p: any) => ({ id: p.id, name: p.name, root_dir: p.root_dir }))
   } catch {
     availableProjects.value = []
   }
@@ -1816,39 +1818,22 @@ async function loadExistingWatermarkFilesForEdit() {
         }
       } catch {}
     }
-    const dirRel = resolveWatermarkDirRelForEdit()
-    const [dirData, globalData] = await Promise.all([
-      props.apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' }).catch(() => null),
-      props.apiFetch('/api/files/watermarks', { method: 'GET' }).catch(() => null),
-    ])
-    const dirEntries = Array.isArray(dirData?.entries) ? dirData.entries : []
-    const dirWatermarks = dirEntries
-      .filter((e: any) => !e?.isDir && typeof e?.name === 'string' && String(e.name).trim())
-      .map((e: any) => resolveWatermarkRelPathForEdit(String(e.name).trim()))
-    const globalWatermarks = Array.isArray(globalData?.watermarks) ? globalData.watermarks : []
-    const serverWatermarks = [...new Set([...dirWatermarks, ...globalWatermarks])].sort()
-    
-    // Check which built-in watermarks actually exist on the server
-    const base = connectionMeta?.value?.apiBase ?? ''
-    const token = connectionMeta?.value?.token ?? ''
-    const builtinChecks = await Promise.allSettled(
-      DEFAULT_45FLOW_WATERMARKS.map(async (wm) => {
-        const url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(wm.path)}`
-        const res = await fetch(url, { method: 'HEAD', headers: { 'Authorization': `Bearer ${token}` } })
-        return res.ok ? wm : null
-      })
-    )
-    validDefaultWatermarksForEdit.value = builtinChecks
-      .filter((r): r is PromiseFulfilledResult<Default45FlowWatermark> => r.status === 'fulfilled' && r.value !== null)
-      .map(r => r.value)
+    const projectId = draftProjectId.value
+    const { custom: serverWatermarks, defaults } = await loadProjectWatermarks(props.apiFetch, projectId)
+    if (projectId !== draftProjectId.value) return
+    validDefaultWatermarksForEdit.value = defaults
+    const previousSelection = draftWatermarkFile.value
+    draftWatermarkFile.value = canonicalWatermarkSelection(previousSelection, defaults)
+    if (previousSelection === originalWatermarkFile.value) originalWatermarkFile.value = draftWatermarkFile.value
     
     existingWatermarkFilesForEdit.value = serverWatermarks
     
     // Auto-select: prefer current watermark from link metadata (what's actually in the video),
     // then fall back to localStorage last-used
     const allFiles = [...serverWatermarks, ...validDefaultWatermarksForEdit.value.map(w => w.path)]
+    if (projectId !== ((props.link as any)?.project_id ?? null) && draftWatermarkFile.value && !allFiles.includes(draftWatermarkFile.value)) draftWatermarkFile.value = ''
     if (!draftWatermarkLocalFile.value && !draftWatermarkFile.value) {
-      const detected = currentWatermarkFile.value
+      const detected = canonicalWatermarkSelection(currentWatermarkFile.value || '', defaults)
       if (detected && allFiles.includes(detected)) {
         draftWatermarkFile.value = detected
         originalWatermarkFile.value = detected
@@ -1856,7 +1841,7 @@ async function loadExistingWatermarkFilesForEdit() {
       }
 
       try {
-        const lastUsed = localStorage.getItem('45flow-last-watermark')
+        const lastUsed = canonicalWatermarkSelection(localStorage.getItem('45flow-last-watermark') || '', defaults)
         if (lastUsed && allFiles.includes(lastUsed)) {
           draftWatermarkFile.value = lastUsed
           originalWatermarkFile.value = lastUsed
@@ -1896,9 +1881,13 @@ function resolveWatermarkStorageRootForEdit() {
 }
 
 function resolveWatermarkDirRelForEdit() {
+  const project = availableProjects.value.find(item => item.id === draftProjectId.value)
+  const projectRoot = project?.root_dir || (draftProjectId.value === (props.link as any)?.project_id ? props.link?.project_root_dir : '')
+  if (projectRoot) return `${projectRoot.replace(/^\/+|\/+$/g, '')}/.45flow/watermarks`
   const { rel } = resolveWatermarkStorageRootForEdit()
   return rel ? `${rel}/.45flow/watermarks` : '.45flow/watermarks'
 }
+watch(draftProjectId, () => { if (editMode.value) void loadExistingWatermarkFilesForEdit() })
 
 function resolveWatermarkUploadDirForEdit() {
   return `/${resolveWatermarkDirRelForEdit()}`
@@ -1935,7 +1924,7 @@ async function uploadDraftLocalWatermark() {
     dest: destDir,
   })
   const res = await done
-  if (!res?.ok) return { ok: false, error: res?.error || 'watermark upload failed' as string }
+  if (!res?.ok) return { ok: false, error: uploadErrorMessage(res?.error) }
   return { ok: true, relPath: resolveWatermarkRelPathForEdit(draftWatermarkLocalFile.value.name) }
 }
 

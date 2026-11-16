@@ -21,7 +21,7 @@
         <!-- <div class="flow-logo-gradient mx-auto my-auto ml-2" role="img" aria-label="45Flow" data-tour="flow-logo" :style="{
           '--flow-logo-src': `url(${flowLogo})`,
         }" /> -->
-        <DynamicBrandingLogo :division="divisionCode" :height="12" />
+        <DivisionLogo :division="divisionCode" />
         
       </div>
 
@@ -79,23 +79,27 @@
       {{ credentialStorageNotice }}
     </p>
     <main class="flex-1 min-h-0 w-full overflow-hidden">
-      <router-view v-if="hasActiveSession || route.name === 'server-selection'" />
+      <router-view v-if="route.name === 'server-selection'" />
+      <SetupGate v-else-if="hasActiveSession" @blocked="setupBlocked = $event" @projects-configured="setupProjectsConfigured = $event">
+        <router-view />
+      </SetupGate>
     </main>
-    <QuickShareOverlay v-if="hasActiveSession && route.name !== 'server-selection'" />
+    <QuickShareOverlay v-if="hasActiveSession && route.name !== 'server-selection' && !setupBlocked" />
     <SettingsModal v-if="showSettings" @close="showSettings = false" />
     <LogViewModal v-if="showLogs" @close="showLogs = false" />
     <GlobalModalConfirm />
     <NotificationView />
     <SessionIdlePrompt v-if="isWeb" />
     <UpdateBanner v-if="!isWeb" />
-    <TransferProgressDock v-if="!hideTransfers" />
-    <GuidedTour v-if="ENABLE_TOUR && activeTour" :steps="activeTour.steps" :active="true" @done="finishTour" @skip="skipTour" />
+    <TransferProgressDock v-if="!hideTransfers && !setupBlocked && setupProjectsConfigured !== false" />
+    <GuidedTour v-if="ENABLE_TOUR && activeTour && !setupBlocked" :steps="activeTour.steps" :active="true" @done="finishTour" @skip="skipTour" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, provide, onMounted, onBeforeUnmount, watch, computed } from 'vue'
-import { DynamicBrandingLogo, GlobalModalConfirm, NotificationView, toggleDarkMode, useDarkModeState } from '@45drives/houston-common-ui'
+import { ref, provide, onMounted, onBeforeUnmount, watch, computed, defineAsyncComponent } from 'vue'
+import { GlobalModalConfirm, NotificationView, toggleDarkMode, useDarkModeState } from '@45drives/houston-common-ui'
+import DivisionLogo from './DivisionLogo.vue'
 import { reportError, reportSuccess } from '../renderer/composables/useNotificationQueue'
 import { MoonIcon, SunIcon, Cog6ToothIcon, ClipboardDocumentListIcon } from '@heroicons/vue/24/outline'
 import { divisionCodeInjectionKey, currentServerInjectionKey, discoveryStateInjectionKey, thisOsInjectionKey, connectionMetaInjectionKey } from '../renderer/keys/injection-keys'
@@ -117,13 +121,15 @@ import GlobalMenu from '../renderer/components/GlobalMenu.vue'
 import ConnectionSwitcher from '../renderer/components/ConnectionSwitcher.vue'
 import BasicServerBadge from '../renderer/components/BasicServerBadge.vue'
 import GuidedTour from '../renderer/components/GuidedTour.vue'
-import QuickShareOverlay from '../renderer/components/QuickShareOverlay.vue'
+import SetupGate from '../renderer/components/setup/SetupGate.vue'
 import SessionIdlePrompt from '../renderer/components/SessionIdlePrompt.vue'
 import { useSessionIdle } from '../renderer/composables/useSessionIdle'
 import { useDesktopSession } from '../renderer/composables/useDesktopSession'
 import NotificationBell from '../renderer/components/NotificationBell.vue'
-import SettingsModal from '../renderer/components/modals/SettingsModal.vue'
-import LogViewModal from '../renderer/components/modals/LogViewModal.vue'
+// Loaded on first use to keep them out of the entry chunk.
+const QuickShareOverlay = defineAsyncComponent(() => import('../renderer/components/QuickShareOverlay.vue').then(m => m.default))
+const SettingsModal = defineAsyncComponent(() => import('../renderer/components/modals/SettingsModal.vue').then(m => m.default))
+const LogViewModal = defineAsyncComponent(() => import('../renderer/components/modals/LogViewModal.vue').then(m => m.default))
 import { initNotificationCenter } from '../renderer/composables/useNotificationCenter'
 import { useTourManager } from '../renderer/composables/useTourManager'
 import flowLogo from '../../assets/logos/45Flow-w.png'
@@ -208,6 +214,8 @@ const hasActiveSession = computed(() =>
 // Global utility modals opened from the header icon buttons
 const showSettings = ref(false)
 const showLogs = ref(false)
+const setupBlocked = ref(true)
+const setupProjectsConfigured = ref<boolean | null>(null)
 
 // Browser sessions end after a period of inactivity; keep them alive while the user is active.
 const sessionIdle = useSessionIdle()

@@ -69,6 +69,7 @@
 								@remove="onShareRemove"
 								@error="onShareExplorerError"
 								:startDir="fileBrowserBase"
+								:rootDir="configuredRoot"
 								:compact="true"
 							/>
 
@@ -598,6 +599,8 @@ import CheckPortForwarding from '../components/CheckPortForwarding.vue'
 import VideoOptionsPanel from '../components/VideoOptionsPanel.vue'
 import WatermarkCustomizer from '../components/WatermarkCustomizer.vue'
 import WatermarkImagePicker from '../components/WatermarkImagePicker.vue'
+import { loadProjectWatermarks, canonicalWatermarkSelection } from '../composables/projectWatermarks'
+import { uploadErrorMessage } from '../utils/uploadErrorMessage'
 import WatermarkPreview from '../components/WatermarkPreview.vue'
 import { useLicenseStatus } from '../composables/useLicenseStatus'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
@@ -895,35 +898,16 @@ function removeShareGroup(files: string[]) {
 // ── Watermark ──
 async function loadExistingWatermarks() {
 	try {
-		const wmDir = '.45flow/watermarks'
-		let serverWatermarks: string[] = []
-		try {
-			const data = await apiFetch(`/api/files?dir=${encodeURIComponent(wmDir)}`, { method: 'GET' })
-			const entries = Array.isArray(data?.entries) ? data.entries : []
-			serverWatermarks = entries
-				.filter((e: any) => !e?.isDir && typeof e?.name === 'string' && String(e.name).trim())
-				.map((e: any) => `${wmDir}/${String(e.name).trim()}`)
-				.sort((a: string, b: string) => a.localeCompare(b))
-		} catch { /* no user watermarks dir yet */ }
-
-		const base = meta.value.apiBase ?? ''
-		const token = meta.value.token ?? ''
-		const builtinChecks = await Promise.allSettled(
-			DEFAULT_45FLOW_WATERMARKS.map(async (wm) => {
-				const url = `${base}/api/files/watermark-preview?path=${encodeURIComponent(wm.path)}`
-				const res = await fetch(url, { method: 'HEAD', headers: { 'Authorization': `Bearer ${token}` } })
-				return res.ok ? wm : null
-			})
-		)
-		validDefaultWatermarks.value = builtinChecks
-			.filter((r): r is PromiseFulfilledResult<Default45FlowWatermark> => r.status === 'fulfilled' && r.value !== null)
-			.map(r => r.value)
-
+		const projectId = selectedProjectId.value
+		const { custom: serverWatermarks, defaults } = await loadProjectWatermarks(apiFetch, projectId)
+		if (projectId !== selectedProjectId.value) return
+		validDefaultWatermarks.value = defaults
+		selectedExistingWatermark.value = canonicalWatermarkSelection(selectedExistingWatermark.value, defaults)
 		existingWatermarkFiles.value = serverWatermarks
-
 		const allFiles = [...serverWatermarks, ...validDefaultWatermarks.value.map(w => w.path)]
+		if (selectedExistingWatermark.value && !allFiles.includes(selectedExistingWatermark.value)) selectedExistingWatermark.value = ''
 		if (!selectedExistingWatermark.value && allFiles.length) {
-			const last = localStorage.getItem('45flow-last-watermark')
+			const last = canonicalWatermarkSelection(localStorage.getItem('45flow-last-watermark') || '', defaults)
 			if (last && allFiles.includes(last)) {
 				selectedExistingWatermark.value = last
 			} else if (allFiles.length) {
@@ -953,9 +937,8 @@ function clearWatermark() {
 
 // ── Watermark upload helpers ──
 function resolveWatermarkDirRel() {
-	// Watermarks are stored at .45flow/watermarks/ relative to the effective share root
-	// (the server uses the configured root as its effective root, so no pool prefix needed)
-	return '.45flow/watermarks'
+	const root = selectedProject.value?.root_dir || configuredRoot.value
+	return `${root.replace(/^\/+|\/+$/g, '')}/.45flow/watermarks`
 }
 
 function resolveWatermarkRelPath() {
@@ -965,6 +948,8 @@ function resolveWatermarkRelPath() {
 }
 
 function resolveWatermarkPathForApi(idOrPath: string) {
+	const canonical = canonicalWatermarkSelection(idOrPath, validDefaultWatermarks.value)
+	if (canonical !== idOrPath) return canonical
 	const builtin = DEFAULT_45FLOW_WATERMARKS.find(wm => wm.id === idOrPath)
 	if (builtin) return builtin.path
 	return idOrPath
@@ -1032,7 +1017,7 @@ async function uploadWatermarkToServer(): Promise<{ ok: boolean; relPath?: strin
 		dest: destDir,
 	})
 	const res = await done
-	if (!res?.ok) return { ok: false, error: res?.error || 'watermark upload failed' }
+	if (!res?.ok) return { ok: false, error: uploadErrorMessage(res?.error) }
 	return { ok: true, relPath: resolveWatermarkRelPath() }
 }
 
@@ -1136,6 +1121,7 @@ watch(autoWatermarkUploads, (checked) => {
 watch(configuredRoot, () => {
 	void loadExistingWatermarks()
 })
+watch(selectedProjectId, () => { void loadExistingWatermarks() })
 
 // ── Outputs Exist Dialog ──
 const showOutputsExistModal = ref(false)

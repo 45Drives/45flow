@@ -1,68 +1,98 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createApp, defineComponent, h, nextTick } from 'vue'
+import { createApp, h, nextTick, ref } from 'vue'
 
-vi.mock('@45drives/houston-common-ui', () => ({ Notification: vi.fn() }))
-vi.mock('../../composables/useApi', () => ({ useApi: () => ({ apiFetch: vi.fn() }) }))
-vi.mock('../../composables/useConnections', () => ({ useConnections: () => ({ activeConnection: { value: null } }) }))
+const mocks = vi.hoisted(() => ({ apiFetch: vi.fn(), configuredProjectRoot: '/tank' }))
+vi.mock('../../composables/useApi', () => ({ useApi: () => ({ apiFetch: mocks.apiFetch }) }))
+vi.mock('../../composables/useConnections', () => ({ useConnections: () => ({ activeConnection: ref({ username: 'root' }) }) }))
 vi.mock('../../composables/useNotificationQueue', () => ({ pushNotification: vi.fn() }))
-vi.mock('../FolderPicker.vue', () => ({
-  default: defineComponent({
-    props: ['modelValue'],
-    emits: ['update:modelValue'],
-    setup(props, { emit }) {
-      return () => h('input', {
-        'data-testid': 'folder',
-        value: props.modelValue,
-        onInput: e => emit('update:modelValue', e.target.value),
-      })
-    },
+vi.mock('@45drives/houston-common-ui', () => ({ pushNotification: vi.fn(), Notification: class {} }))
+vi.mock('../../composables/useProjectChoices', () => ({
+  useProjectChoices: () => ({
+    detecting: ref(false), detectingRoots: ref(false), projectRoots: ref([]),
+    loadProjectChoices: vi.fn().mockResolvedValue(undefined),
+    configuredProjectRoot: ref(mocks.configuredProjectRoot),
+    useConfiguredProjectRoot: ref(!!mocks.configuredProjectRoot),
   }),
 }))
-vi.mock('../FolderSpaceNotice.vue', () => ({ default: defineComponent({ render: () => null }) }))
+vi.mock('../TreeNode.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('../IconMode.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('../FolderSpaceNotice.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../../ui/FlowModal.vue', () => ({
-  default: defineComponent({ setup: (_p, { slots }) => () => h('div', [slots.default?.(), slots.footer?.()]) }),
-}))
-vi.mock('../../ui/FlowField.vue', () => ({
-  default: defineComponent({ props: ['id'], setup: (p, { slots }) => () => h('div', slots.default?.({ id: p.id })) }),
+  default: { setup(_, { slots }) { return () => h('div', [slots.default?.(), slots.footer?.()]) } },
 }))
 
 import CreateProjectModal from './CreateProjectModal.vue'
 
-let app
-let root
-afterEach(() => { app?.unmount(); root?.remove() })
+let app, host
+const flush = async () => { for (let i = 0; i < 10; i++) { await Promise.resolve(); await nextTick() } }
+afterEach(() => {
+  app?.unmount()
+  host?.remove()
+  localStorage.clear()
+  mocks.configuredProjectRoot = '/tank'
+  vi.clearAllMocks()
+})
 
-async function mount() {
-  root = document.createElement('div')
-  document.body.appendChild(root)
-  app = createApp(CreateProjectModal, { modelValue: true })
-  app.mount(root)
-  await nextTick()
+function mount(storageRoot = '/tank') {
+  host = document.createElement('div')
+  document.body.appendChild(host)
+  app = createApp(CreateProjectModal, { modelValue: true, ...(storageRoot ? { storageRoot } : {}) })
+  app.mount(host)
 }
 
-const hint = () => root.querySelector('[data-testid="create-project-blocked"]')?.textContent.trim() || ''
-const createButton = () => root.querySelector('button[type="submit"]')
-
-async function type(el, value) {
-  el.value = value
-  el.dispatchEvent(new Event('input'))
-  await nextTick()
-}
+describe('project folder typed paths', () => {
+  it.each(['Enter', 'blur'])('submits the typed folder after %s even without autocomplete results', async method => {
+    mocks.apiFetch.mockImplementation(async (_url, init) => init?.method === 'POST'
+      ? { project: { id: 1 } } : { entries: [] })
+    mount()
+    await flush()
+    const name = host.querySelector('#new-project-name')
+    name.value = 'Typed folder proof'
+    name.dispatchEvent(new Event('input', { bubbles: true }))
+    const input = host.querySelector('[data-path-input-root] input')
+    input.focus()
+    input.value = '/tank/typed-project'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    if (method === 'Enter') input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    else input.blur()
+    await flush()
+    host.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    await flush()
+    const [, init] = mocks.apiFetch.mock.calls.find(([url, init]) => url === '/api/projects' && init?.method === 'POST')
+    expect('/' + JSON.parse(init.body).rootDir.replace(/^\/+/, '')).toBe('/tank/typed-project')
+  })
+})
 
 describe('CreateProjectModal disabled-Create hint', () => {
   it('says what is missing and clears once the form is complete', async () => {
-    await mount()
+    mocks.apiFetch.mockResolvedValue({ entries: [] })
+    mocks.configuredProjectRoot = null
+    mount(null)
+    await flush()
+    const hint = () => host.querySelector('[data-testid="create-project-blocked"]')?.textContent.trim() || ''
+    const createButton = () => host.querySelector('button[form="create-project-form"]')
+
     expect(createButton().disabled).toBe(true)
     expect(hint()).toBe('Enter a project name and choose a project folder to continue.')
 
-    await type(root.querySelector('#new-project-name'), 'Spring Edit')
+    const name = host.querySelector('#new-project-name')
+    name.value = 'Spring Edit'
+    name.dispatchEvent(new Event('input', { bubbles: true }))
+    await flush()
     expect(hint()).toBe('Choose a project folder to continue.')
 
-    await type(root.querySelector('[data-testid="folder"]'), '/home/me/Downloads/flowtesting')
+    const folder = host.querySelector('[data-path-input-root] input')
+    folder.focus()
+    folder.value = '/tank/SpringEdit'
+    folder.dispatchEvent(new Event('input', { bubbles: true }))
+    folder.blur()
+    await flush()
     expect(hint()).toBe('')
     expect(createButton().disabled).toBe(false)
 
-    await type(root.querySelector('#new-project-name'), '   ')
+    name.value = '   '
+    name.dispatchEvent(new Event('input', { bubbles: true }))
+    await flush()
     expect(hint()).toBe('Enter a project name to continue.')
     expect(createButton().disabled).toBe(true)
   })

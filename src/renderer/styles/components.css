@@ -460,7 +460,7 @@
 .flow-list {
   border: 1px solid var(--flow-line);
   border-radius: var(--flow-radius-lg);
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 .flow-list__row {

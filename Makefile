@@ -48,7 +48,7 @@ web-deploy: web-build
 
 # Safe to repeat; only needed when nginx-config.js changes, until the package ships /app itself.
 web-nginx:
-	cd $(HB_DIR) && yarn build:server
+	cd $(HB_DIR) && ./node_modules/.bin/esbuild server/utils/nginx-config.js --bundle --platform=node --target=node22 --format=cjs --log-level=warning --outfile=dist/nginx-config.js
 	scp $(HB_DIR)/dist/nginx-config.js $(REMOTE):$(HB_APPDIR)/dist/nginx-config.js
 	ssh $(REMOTE) 'FLOW_WEB_ROOT=$(WEB_ROOT) node $(HB_APPDIR)/dist/nginx-config.js --upgrade --reload'
 
