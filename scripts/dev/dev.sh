@@ -51,8 +51,8 @@ ROOT_DIR="$HOME/Downloads"
 REQUIRE_MALWARE_SCAN=false
 # Local server is unlicensed; keep the web app open.
 WEB_APP_LICENSE_GATE=off
-# The backend can't reach the license server unless you set this. Uncomment to
-# activate a license or trial; this machine then registers with the real server.
+# License server, as in production. This machine registers with it. Set
+# http://127.0.0.1:9 to keep it offline (a license or trial can't be activated).
 #LICENSE_SERVER_URL=https://studio-license.45d.io
 EOF
     say "Created $STATE/dev.env (edit it to change the shared folder etc.)"
@@ -169,7 +169,7 @@ start_backend() {
     export NODE_ENV=development HOST=127.0.0.1 BCAST_PORT ENABLE_BONJOUR=false
     export DB_FILE="$STATE/db/studioShare.db" SW_DB_FILE="$STATE/db/storageWizard.db"
     export HB_SECRETS_PATH="$STATE/etc/secrets.json" HB_CREDENTIALS_KEY_PATH="$STATE/etc/credentials.key"
-    export LICENSE_CERT_PATH="$STATE/etc/license-cert.json" LICENSE_SERVER_URL="${LICENSE_SERVER_URL:-http://127.0.0.1:9}"
+    export LICENSE_CERT_PATH="$STATE/etc/license-cert.json" LICENSE_SERVER_URL="${LICENSE_SERVER_URL:-https://studio-license.45d.io}"
     export SETUP_JSON="$STATE/etc/setup.json" SERVER_INFO_JSON="$STATE/etc/server_info.json"
     export OPSLOG_DIR="$STATE/logs" UPLOAD_BASE="$STATE/uploads" QUARANTINE_BASE="$STATE/quarantine"
     export ROOT_DIR REQUIRE_MALWARE_SCAN WEB_APP_LICENSE_GATE
