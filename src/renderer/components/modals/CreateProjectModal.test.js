@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, h, nextTick, ref } from 'vue'
-import CreateProjectModal from './CreateProjectModal.vue'
 
-const mocks = vi.hoisted(() => ({ apiFetch: vi.fn() }))
+const mocks = vi.hoisted(() => ({ apiFetch: vi.fn(), configuredProjectRoot: '/tank' }))
 vi.mock('../../composables/useApi', () => ({ useApi: () => ({ apiFetch: mocks.apiFetch }) }))
 vi.mock('../../composables/useConnections', () => ({ useConnections: () => ({ activeConnection: ref({ username: 'root' }) }) }))
 vi.mock('../../composables/useNotificationQueue', () => ({ pushNotification: vi.fn() }))
@@ -11,7 +10,8 @@ vi.mock('../../composables/useProjectChoices', () => ({
   useProjectChoices: () => ({
     detecting: ref(false), detectingRoots: ref(false), projectRoots: ref([]),
     loadProjectChoices: vi.fn().mockResolvedValue(undefined),
-    configuredProjectRoot: ref('/tank'), useConfiguredProjectRoot: ref(true),
+    configuredProjectRoot: ref(mocks.configuredProjectRoot),
+    useConfiguredProjectRoot: ref(!!mocks.configuredProjectRoot),
   }),
 }))
 vi.mock('../TreeNode.vue', () => ({ default: { template: '<div />' } }))
@@ -21,18 +21,30 @@ vi.mock('../../ui/FlowModal.vue', () => ({
   default: { setup(_, { slots }) { return () => h('div', [slots.default?.(), slots.footer?.()]) } },
 }))
 
+import CreateProjectModal from './CreateProjectModal.vue'
+
 let app, host
 const flush = async () => { for (let i = 0; i < 10; i++) { await Promise.resolve(); await nextTick() } }
-afterEach(() => { app?.unmount(); host?.remove(); localStorage.clear(); vi.clearAllMocks() })
+afterEach(() => {
+  app?.unmount()
+  host?.remove()
+  localStorage.clear()
+  mocks.configuredProjectRoot = '/tank'
+  vi.clearAllMocks()
+})
+
+function mount(storageRoot = '/tank') {
+  host = document.createElement('div')
+  document.body.appendChild(host)
+  app = createApp(CreateProjectModal, { modelValue: true, ...(storageRoot ? { storageRoot } : {}) })
+  app.mount(host)
+}
 
 describe('project folder typed paths', () => {
   it.each(['Enter', 'blur'])('submits the typed folder after %s even without autocomplete results', async method => {
     mocks.apiFetch.mockImplementation(async (_url, init) => init?.method === 'POST'
       ? { project: { id: 1 } } : { entries: [] })
-    host = document.createElement('div')
-    document.body.appendChild(host)
-    app = createApp(CreateProjectModal, { modelValue: true, storageRoot: '/tank' })
-    app.mount(host)
+    mount()
     await flush()
     const name = host.querySelector('#new-project-name')
     name.value = 'Typed folder proof'
@@ -48,5 +60,40 @@ describe('project folder typed paths', () => {
     await flush()
     const [, init] = mocks.apiFetch.mock.calls.find(([url, init]) => url === '/api/projects' && init?.method === 'POST')
     expect('/' + JSON.parse(init.body).rootDir.replace(/^\/+/, '')).toBe('/tank/typed-project')
+  })
+})
+
+describe('CreateProjectModal disabled-Create hint', () => {
+  it('says what is missing and clears once the form is complete', async () => {
+    mocks.apiFetch.mockResolvedValue({ entries: [] })
+    mocks.configuredProjectRoot = null
+    mount(null)
+    await flush()
+    const hint = () => host.querySelector('[data-testid="create-project-blocked"]')?.textContent.trim() || ''
+    const createButton = () => host.querySelector('button[form="create-project-form"]')
+
+    expect(createButton().disabled).toBe(true)
+    expect(hint()).toBe('Enter a project name and choose a project folder to continue.')
+
+    const name = host.querySelector('#new-project-name')
+    name.value = 'Spring Edit'
+    name.dispatchEvent(new Event('input', { bubbles: true }))
+    await flush()
+    expect(hint()).toBe('Choose a project folder to continue.')
+
+    const folder = host.querySelector('[data-path-input-root] input')
+    folder.focus()
+    folder.value = '/tank/SpringEdit'
+    folder.dispatchEvent(new Event('input', { bubbles: true }))
+    folder.blur()
+    await flush()
+    expect(hint()).toBe('')
+    expect(createButton().disabled).toBe(false)
+
+    name.value = '   '
+    name.dispatchEvent(new Event('input', { bubbles: true }))
+    await flush()
+    expect(hint()).toBe('Enter a project name to continue.')
+    expect(createButton().disabled).toBe(true)
   })
 })
