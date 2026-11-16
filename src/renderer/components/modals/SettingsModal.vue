@@ -1101,6 +1101,13 @@
 
                         <!-- ═══ Maintenance ═══════════════════════════════════ -->
                         <template v-if="activeSection === 'maintenance'">
+                            <div v-if="adminSession && activeConnection" class="mb-6">
+                                <h4 class="settings-subhead">Setup wizard</h4>
+                                <p class="text-sm text-muted mb-3">Review storage, staff users, and sharing settings in the four-step wizard. Nothing is reset or deleted, and you do not need to create another project if one already exists.</p>
+                                <button class="btn btn-secondary text-sm" type="button" :disabled="busy || cleanupBusy" @click="runSetupAgain">
+                                    Run setup again
+                                </button>
+                            </div>
                             <p class="text-xs text-accent mb-3">
                                 Scan for orphaned transcode folders and missing-file metadata, then optionally apply cleanup.
                             </p>
@@ -1514,7 +1521,7 @@ import { pushNotification, Notification } from '@45drives/houston-common-ui';
 import PathInput from "../PathInput.vue";
 import { useOnboarding } from "../../composables/useOnboarding";
 import SetupSettingsPanel from '../setup/SetupSettingsPanel.vue';
-import { setupSections, type SetupSection } from '../../composables/useSetupStatus';
+import { setupSections, serverSetupKey, useSetupReplay, type SetupSection } from '../../composables/useSetupStatus';
 import { loadProjectWatermarks } from '../../composables/projectWatermarks';
 import { useTimeFormat } from "../../composables/useTimeFormat";
 import { useClientTranscode, type TranscodePreset } from "../../composables/useClientTranscode";
@@ -1589,6 +1596,7 @@ async function toggleBrowserNotifications() {
     notifyOn.value = notificationsEnabled();
 }
 const { connections, activeConnection, updateConnection } = useConnections();
+const { request: requestSetupReplay } = useSetupReplay(() => serverSetupKey(activeConnection.value));
 const adminSession = computed(() => isAdminSession(activeConnection.value?.token));
 const isWeb = window.electron?.isWeb === true
 const { isPremiumActive, isTrial, isTrialExpired, isFallback, trialDaysRemaining, licenseInfo } = useLicenseStatus();
@@ -1653,8 +1661,8 @@ type SectionMeta = {
 
 const SECTION_META: Record<Section, SectionMeta> = {
     storage: { label: 'Storage', icon: ServerIcon, description: 'The storage root that contains every project folder.', keywords: 'root filesystem mount disk free space folder change' },
-    staff: { label: 'Staff server accounts', icon: ShieldCheckIcon, description: 'Manage which existing server users can administer 45Flow.', keywords: 'group membership local users staff access' },
-    uploads: { label: 'Uploads', icon: BugAntIcon, description: 'Install a malware scanner and choose the upload scanning policy.', keywords: 'clamav scanner install malware virus require skip' },
+    staff: { label: 'Staff users', icon: ShieldCheckIcon, description: 'Choose which existing server users can administer 45Flow.', keywords: 'group membership local users staff access' },
+    uploads: { label: 'Upload security', icon: BugAntIcon, description: 'Install a malware scanner and choose the upload scanning policy.', keywords: 'uploads clamav scanner install malware virus require skip' },
     watermarks: { label: 'Watermarks', icon: SwatchIcon, description: 'Optional global watermark images shared across projects.', keywords: 'global folder image watermark enable' },
     linkOptions: {
         label: 'New link defaults', icon: LinkIcon, savable: true,
@@ -1703,8 +1711,8 @@ const SECTION_META: Record<Section, SectionMeta> = {
     },
     maintenance: {
         label: 'Maintenance', icon: WrenchScrewdriverIcon,
-        description: 'Clean up leftover files and records on the server.',
-        keywords: 'cleanup orphan prune missing files transcode directories',
+        description: 'Reopen setup or clean up leftover files and records on the server.',
+        keywords: 'setup wizard restart cleanup orphan prune missing files transcode directories',
     },
     adminNetworks: {
         label: 'Admin networks', icon: ShieldCheckIcon,
@@ -3130,6 +3138,12 @@ async function revertToSelfSigned() {
 
 function close() {
     if (!busy.value) emit("close");
+}
+
+function runSetupAgain() {
+    if (!adminSession.value || !activeConnection.value || busy.value || cleanupBusy.value || !confirmDiscard()) return;
+    requestSetupReplay();
+    close();
 }
 
 // ── Unsaved changes ────────────────────────────────────────────────────

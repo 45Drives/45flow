@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApp, h, nextTick, ref } from 'vue'
 import SetupGate from './SetupGate.vue'
+import { serverSetupKey, useSetupReplay } from '../../composables/useSetupStatus'
 
-const mocks = vi.hoisted(() => ({ apiFetch: vi.fn(), activeConnection: null, pending: vi.fn() }))
+const mocks = vi.hoisted(() => ({ apiFetch: vi.fn(), activeConnection: null, pending: vi.fn(), projectsConfigured: vi.fn() }))
 vi.mock('../../composables/useApi', () => ({ useApi: () => ({ apiFetch: mocks.apiFetch }) }))
 vi.mock('../../composables/useConnections', () => ({ useConnections: () => ({ activeConnection: mocks.activeConnection }) }))
 vi.mock('../../composables/useTourManager', () => ({ useTourManager: () => ({ setSetupPending: mocks.pending }) }))
 vi.mock('./FirstRunSetup.vue', () => ({
-  default: { emits: ['complete'], template: '<button data-wizard @click="$emit(\'complete\')">Complete setup</button>' },
+  default: { emits: ['complete'], template: '<button data-wizard @click="$emit(\'complete\', false)">Finish without a project</button><button data-created @click="$emit(\'complete\', true)">Finish after creating</button>' },
 }))
 let app, host
 const flush = async () => { for (let i = 0; i < 10; i++) { await Promise.resolve(); await nextTick() } }
@@ -16,7 +17,7 @@ const status = (ready, count = 0) => ({ ready, storageRoot: { configured: ready,
 async function mount() {
   host = document.createElement('div')
   document.body.appendChild(host)
-  app = createApp({ render: () => h(SetupGate, {}, { default: () => h('p', { 'data-content': '' }, 'Projects') }) })
+  app = createApp({ render: () => h(SetupGate, { onProjectsConfigured: mocks.projectsConfigured }, { default: () => h('p', { 'data-content': '' }, 'Projects') }) })
   app.mount(host)
   await flush()
 }
@@ -25,9 +26,24 @@ beforeEach(() => {
   mocks.activeConnection = ref({ connectionId: 'server-one', token: token(['pam']) })
   mocks.apiFetch.mockReset()
   mocks.pending.mockReset()
+  mocks.projectsConfigured.mockReset()
 })
-afterEach(() => { app?.unmount(); host?.remove(); vi.useRealTimers() })
+afterEach(() => {
+  app?.unmount()
+  host?.remove()
+  useSetupReplay(() => serverSetupKey(mocks.activeConnection.value)).finish()
+  vi.useRealTimers()
+})
 describe('setup gate by server status and role', () => {
+  it('centers and announces the server setup check while it is pending', async () => {
+    mocks.apiFetch.mockReturnValue(new Promise(() => {}))
+    await mount()
+    const loading = host.querySelector('[role="status"]')
+    expect(loading.textContent).toContain('Checking server setup…')
+    expect(loading.classList.contains('items-center')).toBe(true)
+    expect(loading.parentElement.classList.contains('justify-center')).toBe(true)
+  })
+
   it.each([[false, 0], [true, 0]])('shows the wizard for admin ready=%s projects=%s', async (ready, count) => {
     mocks.apiFetch.mockResolvedValue(status(ready, count))
     await mount()
@@ -41,6 +57,53 @@ describe('setup gate by server status and role', () => {
     expect(host.querySelector('[data-wizard]')).toBeNull()
     expect(host.querySelector('[data-content]')).not.toBeNull()
     expect(mocks.pending).toHaveBeenLastCalledWith(false)
+  })
+  it('reopens setup for the selected server and clears the request on completion without changing settings', async () => {
+    mocks.apiFetch.mockResolvedValue(status(true, 3))
+    await mount()
+    const key = serverSetupKey(mocks.activeConnection.value)
+    sessionStorage.setItem(key, JSON.stringify({ complete: true, step: 3 }))
+    const replay = useSetupReplay(() => key)
+    replay.request()
+    await flush()
+    expect(host.querySelector('[data-wizard]')).not.toBeNull()
+    expect(JSON.parse(sessionStorage.getItem(key))).toEqual({ step: 0 })
+    expect(sessionStorage.getItem(`${key}:replay`)).toBe('1')
+    mocks.activeConnection.value = { ...mocks.activeConnection.value, connectionId: 'server-two' }
+    await flush()
+    expect(host.querySelector('[data-content]')).not.toBeNull()
+    mocks.activeConnection.value = { ...mocks.activeConnection.value, connectionId: 'server-one' }
+    await flush()
+    expect(host.querySelector('[data-wizard]')).not.toBeNull()
+    host.querySelector('[data-created]').click()
+    await flush()
+    expect(host.querySelector('[data-content]')).not.toBeNull()
+    expect(replay.requested.value).toBe(false)
+    expect(sessionStorage.getItem(`${key}:replay`)).toBeNull()
+    expect(mocks.apiFetch.mock.calls.every(([url, init]) => url === '/api/setup/status' && !init?.method)).toBe(true)
+  })
+  it('restores a pending wizard replay after a page reload', async () => {
+    mocks.activeConnection.value.connectionId = 'restored-server'
+    const key = serverSetupKey(mocks.activeConnection.value)
+    sessionStorage.setItem(`${key}:replay`, '1')
+    mocks.apiFetch.mockResolvedValue(status(true, 2))
+    await mount()
+    expect(host.querySelector('[data-wizard]')).not.toBeNull()
+  })
+  it('does not force a replay on non-admin sessions', async () => {
+    mocks.activeConnection.value.token = token(['open'])
+    useSetupReplay(() => serverSetupKey(mocks.activeConnection.value)).request()
+    mocks.apiFetch.mockResolvedValue(status(true, 2))
+    await mount()
+    expect(host.querySelector('[data-wizard]')).toBeNull()
+    expect(host.querySelector('[data-content]')).not.toBeNull()
+  })
+  it('reports the first project after the setup wizard creates it', async () => {
+    mocks.apiFetch.mockResolvedValue(status(true, 0))
+    await mount()
+    host.querySelector('[data-created]').click()
+    await flush()
+    expect(mocks.projectsConfigured).toHaveBeenLastCalledWith(true)
   })
   it.each([false, true])('never shows admin setup to non-admins (ready=%s)', async ready => {
     mocks.activeConnection.value.token = token(['open'])
@@ -65,6 +128,7 @@ describe('setup gate by server status and role', () => {
     await mount()
     expect(host.querySelector('[data-content]')).not.toBeNull()
     expect(host.textContent).toContain('does not support storage setup')
+    expect(mocks.projectsConfigured).toHaveBeenLastCalledWith(null)
     expect(mocks.pending).toHaveBeenLastCalledWith(false)
   })
   it.each([
@@ -75,30 +139,18 @@ describe('setup gate by server status and role', () => {
     expect(host.querySelector('[data-content]')).toBeNull()
     expect(host.textContent).toContain('Status unavailable')
   })
-  it('allows skipping the first project only for the current connection', async () => {
+  it('does not complete setup without a first project and ignores legacy skip state', async () => {
+    sessionStorage.setItem('45flow-setup:v1:server-one:', JSON.stringify({ complete: true, step: 5 }))
     mocks.apiFetch.mockResolvedValue(status(true, 0))
     await mount()
     host.querySelector('[data-wizard]').click()
     await flush()
-    expect(host.querySelector('[data-content]')).not.toBeNull()
-    mocks.activeConnection.value = { connectionId: 'server-two', token: token(['pam']) }
-    await flush()
     expect(host.querySelector('[data-wizard]')).not.toBeNull()
-  })
-  it('remembers skipping the first project after remount, but never bypasses missing storage', async () => {
-    mocks.apiFetch.mockResolvedValue(status(true, 0))
-    await mount()
-    host.querySelector('[data-wizard]').click()
+    expect(host.querySelector('[data-content]')).toBeNull()
+    host.querySelector('[data-created]').click()
     await flush()
-    app.unmount()
-    host.remove()
-    await mount()
     expect(host.querySelector('[data-content]')).not.toBeNull()
-    app.unmount()
-    host.remove()
-    mocks.apiFetch.mockResolvedValue(status(false, 0))
-    await mount()
-    expect(host.querySelector('[data-wizard]')).not.toBeNull()
+    expect(mocks.projectsConfigured).toHaveBeenLastCalledWith(true)
   })
   it('uses background retries with a visible terminal timeout instead of polling forever', async () => {
     vi.useFakeTimers()

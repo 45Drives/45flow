@@ -20,10 +20,10 @@ const status = extra => ({
   adminGroup: { required: true, exists: true, members: ['alice', 'bob'], currentUserIsMember: true },
   watermarks: { globalEnabled: false, globalDir: '' }, ...extra,
 })
-async function mount(section) {
+async function mount(section, initialStatus) {
   host = document.createElement('div')
   document.body.appendChild(host)
-  app = createApp(SetupSettingsPanel, { section, connectionId: 'server-one' })
+  app = createApp(SetupSettingsPanel, { section, connectionId: 'server-one', initialStatus })
   app.mount(host)
   await flush()
 }
@@ -41,14 +41,27 @@ describe('shared setup / Settings panels', () => {
       return { members: bobMember ? ['alice', 'bob'] : ['alice'], accounts: [{ username: 'alice', member: true }, { username: 'bob', member: bobMember }] }
     })
     await mount('staff')
-    const removes = [...host.querySelectorAll('button')].filter(item => item.textContent === 'Remove')
+    const removes = [...host.querySelectorAll('button')].filter(item => item.textContent === 'Remove from staff')
     expect(removes[0].disabled).toBe(true)
     removes[1].click()
     await flush()
     expect(mocks.apiFetch).toHaveBeenCalledWith('/api/admin/staff-accounts', expect.objectContaining({ method: 'POST', body: JSON.stringify({ username: 'bob', member: false }) }))
-    button('Add').click()
+    button('Add to staff').click()
     await flush()
     expect(mocks.apiFetch).toHaveBeenCalledWith('/api/admin/staff-accounts', expect.objectContaining({ method: 'POST', body: JSON.stringify({ username: 'bob', member: true }) }))
+  })
+  it('shows a spinner while loading staff accounts and reuses wizard setup status', async () => {
+    let resolveAccounts
+    mocks.apiFetch.mockImplementation(url => url === '/api/admin/staff-accounts'
+      ? new Promise(resolve => { resolveAccounts = resolve })
+      : Promise.resolve(status()))
+    await mount('staff', status())
+    expect(host.querySelector('[role="status"]').textContent).toContain('Loading staff users')
+    expect(host.textContent).not.toContain('No eligible local accounts found')
+    expect(mocks.apiFetch.mock.calls.map(([url]) => url)).toEqual(['/api/admin/staff-accounts'])
+    resolveAccounts({ members: ['alice'], accounts: [{ username: 'alice', member: true }] })
+    await flush()
+    expect(host.textContent).toContain('Staff users: alice')
   })
   it('warns before saving an unscanned upload policy and supports scanner installation', async () => {
     mocks.apiFetch.mockImplementation(async url => url === '/api/setup/status' ? status() : { ok: true })

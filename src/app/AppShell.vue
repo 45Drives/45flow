@@ -78,7 +78,7 @@
     </p>
     <main class="flex-1 min-h-0 w-full overflow-hidden">
       <router-view v-if="route.name === 'server-selection'" />
-      <SetupGate v-else-if="hasActiveSession" @blocked="setupBlocked = $event">
+      <SetupGate v-else-if="hasActiveSession" @blocked="setupBlocked = $event" @projects-configured="setupProjectsConfigured = $event">
         <router-view />
       </SetupGate>
     </main>
@@ -89,7 +89,7 @@
     <NotificationView />
     <SessionIdlePrompt v-if="isWeb" />
     <UpdateBanner v-if="!isWeb" />
-    <TransferProgressDock v-if="!hideTransfers" />
+    <TransferProgressDock v-if="!hideTransfers && !setupBlocked && setupProjectsConfigured !== false" />
     <GuidedTour v-if="ENABLE_TOUR && activeTour && !setupBlocked" :steps="activeTour.steps" :active="true" @done="finishTour" @skip="skipTour" />
   </div>
 </template>
@@ -213,6 +213,7 @@ const hasActiveSession = computed(() =>
 const showSettings = ref(false)
 const showLogs = ref(false)
 const setupBlocked = ref(true)
+const setupProjectsConfigured = ref<boolean | null>(null)
 
 // Browser sessions end after a period of inactivity; keep them alive while the user is active.
 const sessionIdle = useSessionIdle()

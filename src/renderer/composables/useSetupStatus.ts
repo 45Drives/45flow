@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { BACKGROUND_REQUEST } from '../background-request'
 
 export interface SetupStatus {
@@ -6,7 +6,7 @@ export interface SetupStatus {
   storageRoot?: { configured: boolean; path: string; fstype: string }
   adminGroup?: { required: boolean; exists: boolean; members: string[]; currentUserIsMember: boolean }
   malwareScan?: { required: boolean; scannerAvailable: boolean; locked: boolean; scanner?: 'clamscan' | 'clamd' | null; definitionsAvailable?: boolean; detail?: string | null }
-  shareAddress?: { externalBase: string; httpsPort: number }
+  shareAddress?: { externalBase: string | null; httpsPort: number }
   watermarks?: { globalEnabled: boolean; globalDir: string }
   projects?: { count: number }
 }
@@ -30,10 +30,31 @@ export function readSetupProgress(key: string): { step?: number; complete?: bool
 export function saveSetupProgress(key: string, value: { step?: number; complete?: boolean; restartPath?: string }) {
   try { sessionStorage.setItem(key, JSON.stringify(value)) } catch { /* Setup still works when browser storage is disabled. */ }
 }
+
+const setupReplays = reactive<Record<string, boolean>>({})
+export function useSetupReplay(key: () => string) {
+  const requested = computed(() => {
+    if (setupReplays[key()] !== undefined) return setupReplays[key()]
+    try { return sessionStorage.getItem(`${key()}:replay`) === '1' } catch { return false }
+  })
+  function setRequested(value: boolean) {
+    setupReplays[key()] = value
+    try {
+      if (value) sessionStorage.setItem(`${key()}:replay`, '1')
+      else sessionStorage.removeItem(`${key()}:replay`)
+    } catch { /* The wizard can still be reopened when browser storage is disabled. */ }
+  }
+  function request() {
+    saveSetupProgress(key(), { step: 0 })
+    setRequested(true)
+  }
+  return { requested, request, finish: () => setRequested(false) }
+}
+
 export const setupSections = [
   { key: 'storage', label: 'Storage' },
-  { key: 'staff', label: 'Staff server accounts' },
-  { key: 'uploads', label: 'Uploads' },
+  { key: 'staff', label: 'Staff users' },
+  { key: 'uploads', label: 'Upload security' },
   { key: 'watermarks', label: 'Watermarks' },
 ] as const
 

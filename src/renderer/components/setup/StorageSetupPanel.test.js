@@ -13,18 +13,18 @@ const flush = async () => { for (let i = 0; i < 10; i++) { await Promise.resolve
 const button = text => [...host.querySelectorAll('button')].find(item => item.textContent.includes(text))
 afterEach(() => { app?.unmount(); host?.remove(); vi.useRealTimers() })
 describe('storage selection and restart', () => {
-  it('drills into a discovery-only system mount and requires an impact confirmation before restarting', async () => {
+  it('uses a non-ZFS storage mount and folder navigation before confirming a root change', async () => {
     vi.useFakeTimers()
     let statusCalls = 0
     const apiFetch = vi.fn(async (url, init) => {
-      if (url.endsWith('/candidates')) return { candidates: [{ path: '/', fstype: 'ext4', source: '/dev/sda', size: 10e9, avail: 5e9 }] }
-      if (url.includes('/dirs?path=%2F') && !url.includes('%2Fsrv')) return { path: '/', dirs: [{ name: 'srv', path: '/srv' }] }
-      if (url.includes('/dirs?')) return { path: '/srv', dirs: [] }
+      if (url.endsWith('/candidates')) return { candidates: [{ path: '/srv', fstype: 'ext4', source: '/dev/sda', size: 10e9, avail: 5e9 }] }
+      if (url.includes('/dirs?path=%2Fsrv') && !url.includes('45flow-data')) return { path: '/srv', dirs: [{ name: '45flow-data', path: '/srv/45flow-data' }] }
+      if (url.includes('/dirs?')) return { path: '/srv/45flow-data', dirs: [] }
       if (url.includes('/impact?')) return { projects: [{ id: 2, name: 'Outside project' }], activeLinks: [{ title: 'Client review' }], transfers: [{ filename: 'Upload.mov' }] }
       if (url.endsWith('/root') && init?.method === 'POST') return { restartPending: true }
       if (url === '/api/setup/status') {
         if (++statusCalls === 1) throw new Error('Restarting')
-        return { ready: true, storageRoot: { configured: true, path: '/srv', fstype: 'ext4' } }
+        return { ready: true, storageRoot: { configured: true, path: '/srv/45flow-data', fstype: 'ext4' } }
       }
       throw new Error(url)
     })
@@ -36,9 +36,13 @@ describe('storage selection and restart', () => {
     await flush()
     button('Browse').click()
     await flush()
-    expect(button('Use this folder').disabled).toBe(true)
-    button('Open').click()
+    expect(button('Use this folder').disabled).toBe(false)
+    expect(host.querySelector('[aria-label="Storage path"]')).not.toBeNull()
+    expect(button('Up')).toBeUndefined()
+    expect(button('Open')).toBeUndefined()
+    button('45flow-data').click()
     await flush()
+    expect(host.querySelector('[aria-label="Storage path"]').textContent).toContain('45flow-data')
     button('Use this folder').click()
     await flush()
     expect(host.textContent).toContain('Outside project')
@@ -50,10 +54,10 @@ describe('storage selection and restart', () => {
     await flush()
     button('Confirm storage root').click()
     await flush()
-    expect(apiFetch).toHaveBeenCalledWith('/api/admin/storage/root', expect.objectContaining({ method: 'POST', body: JSON.stringify({ path: '/srv' }) }))
+    expect(apiFetch).toHaveBeenCalledWith('/api/admin/storage/root', expect.objectContaining({ method: 'POST', body: JSON.stringify({ path: '/srv/45flow-data' }) }))
     await vi.advanceTimersByTimeAsync(5000)
     await flush()
-    expect(refreshed).toHaveBeenCalledWith(expect.objectContaining({ storageRoot: expect.objectContaining({ path: '/srv' }) }))
+    expect(refreshed).toHaveBeenCalledWith(expect.objectContaining({ storageRoot: expect.objectContaining({ path: '/srv/45flow-data' }) }))
     expect(host.textContent).not.toContain('Waiting for the server')
   })
   it('continues polling a pending root after session recovery without reapplying the change', async () => {

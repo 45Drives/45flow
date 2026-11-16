@@ -832,6 +832,7 @@ Click **"Refresh"** to fetch the latest stats from the server.
 
 For administrators to manage server health:
 
+- **Run setup again** — Reopen the four-step wizard (Storage, Staff users, Sharing settings, Projects) on this computer/browser. This does not reset settings or delete projects, media, or accounts. Existing projects satisfy the final step; a first project is still required on a new server. Changes you explicitly save in the wizard take effect normally.
 - **Delete orphan transcode directories** — Remove transcode output folders that no longer have associated links.
 - **Prune DB rows for missing source files** — Clean up database entries where the original files no longer exist on disk.
 - Configure **orphan min age** (hours) and **max missing file checks** to control scan scope.

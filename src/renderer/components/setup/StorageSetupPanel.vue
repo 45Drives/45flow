@@ -5,15 +5,19 @@
       <span v-if="status.storageRoot.fstype"> · {{ status.storageRoot.fstype }}</span>
       <span v-if="currentCandidate"> · {{ formatSize(currentCandidate.avail) }} free</span>
     </FlowNotice>
-    <p class="text-sm text-muted">All project folders must be inside one storage root. Choose a mounted filesystem, then optionally open a subfolder.</p>
+    <p class="text-sm text-muted">All project folders must be inside one storage root. Choose a mounted filesystem, then optionally open a subfolder. ZFS is optional; other local and network filesystems are supported too.</p>
     <FlowNotice v-if="error" tone="danger" size="sm" live>{{ error }}</FlowNotice>
     <FlowNotice v-if="restarting" tone="info" live title="Waiting for the server">
       The storage change restarts the server. Keep this window open while it reconnects.
       <template #actions><FlowButton :disabled="busy" @click="checkRestart(false)">Check again</FlowButton></template>
     </FlowNotice>
     <template v-else>
-      <FlowButton :disabled="busy" @click="loadCandidates">{{ busy ? 'Loading…' : 'Refresh filesystems' }}</FlowButton>
-      <ul class="flow-list max-h-56 overflow-y-auto" aria-label="Mounted filesystems">
+      <FlowButton :disabled="busy" @click="loadCandidates">{{ busy ? 'Searching…' : 'Refresh filesystems' }}</FlowButton>
+      <p v-if="busy && !candidates.length" class="flex items-center gap-2 text-sm text-muted" role="status" aria-live="polite">
+        <ArrowPathIcon class="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" />
+        Searching for available storage…
+      </p>
+      <ul class="flow-list max-h-64 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]" aria-label="Mounted filesystems">
         <li v-for="candidate in candidates" :key="candidate.path" class="flow-list__row flex-wrap" :class="{ 'flow-list__row--selected': candidate.path === anchor }">
           <div class="min-w-0 flex-1">
             <p class="flow-list__title break-all">{{ candidate.path }}</p>
@@ -22,17 +26,27 @@
           <FlowButton size="sm" :disabled="busy" @click="open(candidate.path, candidate.path)">Browse</FlowButton>
         </li>
       </ul>
-      <p v-if="!busy && !candidates.length" class="text-sm text-muted">No storage filesystems found. Mount a data filesystem on the server, then refresh.</p>
+      <p v-if="!busy && !candidates.length" class="text-sm text-muted">No supported storage locations were found. A ZFS pool is optional: mount a supported filesystem, or use an existing /srv or /mnt folder on the server, then refresh.</p>
       <template v-if="path">
         <FlowNotice v-if="selectedCandidate?.network" tone="warning" size="sm">Network storage can be slower and may have different file-locking behaviour. 45Flow uses this existing mount; it does not mount shares or manage credentials.</FlowNotice>
-        <div class="flex items-center gap-2">
-          <FlowButton :disabled="busy || path === anchor" @click="open(parentPath, anchor)">Up</FlowButton>
-          <code class="text-sm break-all min-w-0">{{ path }}</code>
-        </div>
-        <ul class="flow-list max-h-48 overflow-y-auto" aria-label="Storage subfolders">
-          <li v-for="dir in dirs" :key="dir.path" class="flow-list__row">
-            <span class="min-w-0 flex-1 break-all">{{ dir.name }}</span>
-            <FlowButton size="sm" :disabled="busy" @click="open(dir.path, anchor)">Open</FlowButton>
+        <nav class="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1 text-sm" aria-label="Storage path">
+          <button type="button" class="min-w-0 max-w-full break-all rounded px-1 py-1 text-primary hover:underline disabled:cursor-default disabled:no-underline"
+            :disabled="busy || path === anchor" :aria-current="path === anchor ? 'location' : undefined" @click="open(anchor, anchor)">{{ anchor }}</button>
+          <template v-for="crumb in breadcrumbs" :key="crumb.path">
+            <ChevronRightIcon class="h-3.5 w-3.5 shrink-0 text-muted" aria-hidden="true" />
+            <button type="button" class="min-w-0 max-w-full break-all rounded px-1 py-1 text-primary hover:underline disabled:cursor-default disabled:no-underline"
+              :disabled="busy || path === crumb.path" :aria-current="path === crumb.path ? 'location' : undefined"
+              @click="open(crumb.path, anchor)">{{ crumb.name }}</button>
+          </template>
+        </nav>
+        <ul class="flow-list max-h-48 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]" aria-label="Storage subfolders">
+          <li v-for="dir in dirs" :key="dir.path" class="flow-list__row flow-list__row--interactive">
+            <button type="button" class="flex min-w-0 flex-1 items-center gap-3 text-left" :disabled="busy"
+              :aria-label="`Browse into ${dir.name}`" @click="open(dir.path, anchor)">
+              <FolderIcon class="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+              <span class="min-w-0 flex-1 break-all">{{ dir.name }}</span>
+              <ChevronRightIcon class="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+            </button>
           </li>
         </ul>
         <p v-if="!dirs.length && !busy" class="text-sm text-muted">No subfolders.</p>
@@ -60,6 +74,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
+import { ArrowPathIcon, ChevronRightIcon, FolderIcon } from '@heroicons/vue/24/outline'
 import { readSetupProgress, saveSetupProgress, type SetupStatus } from '../../composables/useSetupStatus'
 import { BACKGROUND_REQUEST } from '../../background-request'
 import FlowButton from '../../ui/FlowButton.vue'
@@ -86,7 +101,16 @@ const impactGroups = computed(() => [
 ])
 const selectedCandidate = computed(() => candidates.value.find(item => item.path === anchor.value))
 const currentCandidate = computed(() => candidates.value.filter(item => props.status?.storageRoot?.path === item.path || props.status?.storageRoot?.path.startsWith(item.path.replace(/\/$/, '') + '/')).sort((a, b) => b.path.length - a.path.length)[0])
-const parentPath = computed(() => path.value.replace(/\/+$/, '').split('/').slice(0, -1).join('/') || '/')
+const breadcrumbs = computed(() => {
+  const base = anchor.value.replace(/\/+$/, '') || '/'
+  const prefix = base === '/' ? '/' : `${base}/`
+  const remainder = path.value === base ? '' : path.value.slice(prefix.length)
+  let current = base
+  return remainder.split('/').filter(Boolean).map(name => {
+    current = current === '/' ? `/${name}` : `${current}/${name}`
+    return { name, path: current }
+  })
+})
 let timer: ReturnType<typeof setTimeout> | undefined
 let disposed = false
 let attempts = 0
