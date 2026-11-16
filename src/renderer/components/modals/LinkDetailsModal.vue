@@ -319,8 +319,11 @@
                           <span v-else class="text-muted">—</span>
                         </td>
                         <td class="text-right whitespace-nowrap">
-                          <button type="button" class="btn btn-secondary btn-xs" @click="restoreVersion(v)">Restore</button>
-                          <button type="button" class="btn btn-danger btn-xs ml-1.5" :disabled="versions.length <= 1"
+                          <button type="button" class="btn btn-secondary btn-xs" :disabled="!v.snapshot_rel"
+                            :title="v.snapshot_rel ? undefined : 'This version is still being saved'" @click="openFork(v)">Fork from this version</button>
+                          <button type="button" class="btn btn-secondary btn-xs ml-1.5" @click="restoreVersion(v)">Restore</button>
+                          <span v-if="forkSourceNote(v.asset_version_id)" class="text-xs text-muted ml-1.5" data-testid="fork-kept">{{ forkSourceNote(v.asset_version_id) }}</span>
+                          <button v-else type="button" class="btn btn-danger btn-xs ml-1.5" :disabled="versions.length <= 1"
                             :title="versions.length <= 1 ? 'The only version can\'t be deleted' : undefined" @click="deleteVersion(v)">Delete</button>
                         </td>
                       </tr>
@@ -337,10 +340,12 @@
                               <button type="button" class="btn btn-danger btn-xs" :disabled="isDeletingArtifacts(v, 'transcodes')" @click="deleteVersionArtifacts(v, 'transcodes')">
                                 {{ isDeletingArtifacts(v, 'transcodes') ? 'Deleting…' : 'Delete proxy files/HLS' }}
                               </button>
-                              <button type="button" class="btn btn-danger btn-xs" :disabled="isDeletingArtifacts(v, 'snapshot')" @click="deleteVersionArtifacts(v, 'snapshot')">
+                              <button type="button" class="btn btn-danger btn-xs" :disabled="isDeletingArtifacts(v, 'snapshot') || !!forkSourceNote(v.asset_version_id)"
+                                :title="forkSourceNote(v.asset_version_id) || undefined" @click="deleteVersionArtifacts(v, 'snapshot')">
                                 {{ isDeletingArtifacts(v, 'snapshot') ? 'Deleting…' : 'Delete snapshot' }}
                               </button>
-                              <button type="button" class="btn btn-danger btn-xs" :disabled="isDeletingArtifacts(v, 'all')" @click="deleteVersionArtifacts(v, 'all')">
+                              <button type="button" class="btn btn-danger btn-xs" :disabled="isDeletingArtifacts(v, 'all') || !!forkSourceNote(v.asset_version_id)"
+                                :title="forkSourceNote(v.asset_version_id) || undefined" @click="deleteVersionArtifacts(v, 'all')">
                                 {{ isDeletingArtifacts(v, 'all') ? 'Deleting…' : 'Delete all extra' }}
                               </button>
                             </div>
@@ -657,6 +662,9 @@
         :initialPaths="draftFilePaths"
         :base="linkProjectBase" :startDir="linkStartDir" @apply="onApplyFilePaths" />
 
+      <ForkVersionModal v-model="forkOpen" :api-fetch="apiFetch" :source="forkSource" :link-id="link?.id ?? null"
+        @forked="onForked" />
+
       <!-- Comments modal -->
       <CommentsReviewModal v-model="commentsModalOpen" :link="link" />
 
@@ -803,6 +811,7 @@ import AddUsersModal from './AddUsersModal.vue'
 import EditLinkFilesModal from './EditLinkFilesModal.vue'
 import CommentsReviewModal from './CommentsReviewModal.vue'
 import CategoryManagementModal from './CategoryManagementModal.vue'
+import ForkVersionModal, { type ForkSource } from './ForkVersionModal.vue'
 import PathInput from '../PathInput.vue'
 import UploadSpecRulesEditor from '../UploadSpecRulesEditor.vue'
 import { describeSpecRules, hasAnySpecRule, withSpecDefaults, type UploadSpecRules } from '../../utils/uploadSpec'
@@ -982,6 +991,10 @@ const versionsLoading = ref(false)
 const versionsError = ref<string | null>(null)
 const versions = ref<any[]>([])
 const selectedVersionFileId = ref<number | null>(null)
+// Versions another file was forked from (LF1): they are kept, never deleted.
+const forkSourcesByVersionId = ref<Map<number, Array<{ fileId: number; filename: string; label: string | null }>>>(new Map())
+const forkOpen = ref(false)
+const forkSource = ref<ForkSource | null>(null)
 const restoreBackup = ref(true)
 const showExtraFiles = ref(false)
 const deletingArtifactKeys = ref<Set<string>>(new Set())
@@ -3610,6 +3623,7 @@ async function loadVersions(fileId: number, opts?: { force?: boolean }) {
     const list = Array.isArray(resp?.versions) ? resp.versions : [];
     versions.value = list;
     resetArtifactData();
+    void loadForkSources(fileId);
 
     if (list.length === 0) {
       // Sticky "none exist" so we don't keep re-fetching
@@ -3634,6 +3648,53 @@ async function loadVersions(fileId: number, opts?: { force?: boolean }) {
     versionsLoading.value = false;
     if (showExtraFiles.value) await loadArtifactsForVisibleVersions()
   }
+}
+
+async function loadForkSources(fileId: number) {
+  try {
+    const resp = await props.apiFetch(`/api/files/${fileId}/lineage`)
+    if (selectedVersionFileId.value !== fileId) return
+    const map = new Map<number, Array<{ fileId: number; filename: string; label: string | null }>>()
+    for (const member of Array.isArray(resp?.family) ? resp.family : []) {
+      const from = member?.forkedFrom
+      if (!from || Number(from.fileId) !== fileId) continue
+      const key = Number(from.assetVersionId)
+      map.set(key, [...(map.get(key) ?? []), { fileId: Number(member.fileId), filename: String(member.filename ?? ''), label: member.label ?? null }])
+    }
+    forkSourcesByVersionId.value = map
+  } catch {
+    // An older server has no lineage; the tab then behaves as before.
+    forkSourcesByVersionId.value = new Map()
+  }
+}
+
+function forkSourceNote(assetVersionId: number): string {
+  const forks = forkSourcesByVersionId.value.get(Number(assetVersionId))
+  if (!forks?.length) return ''
+  const names = forks.map(f => f.label || f.filename)
+  return `Kept: ${names.join(', ')} ${names.length === 1 ? 'was' : 'were'} forked from this version`
+}
+
+function openFork(v: any) {
+  const fileId = selectedVersionFileId.value
+  if (!fileId || !v?.asset_version_id) return
+  const f = versionFileById.value.get(fileId)
+  const relPath = String(f?.relPath || '').replace(/^\/+/, '')
+  const slash = relPath.lastIndexOf('/')
+  forkSource.value = {
+    fileId,
+    fileName: String(f?.name || relPath.slice(slash + 1) || `File ${fileId}`),
+    versionId: Number(v.asset_version_id),
+    versionNumber: Number(v.version_index),
+    relDir: slash >= 0 ? relPath.slice(0, slash) : '',
+  }
+  forkOpen.value = true
+}
+
+async function onForked(payload: { fileId: number | null; attachedToLink: boolean }) {
+  pushNotification(new Notification('Fork Created', 'The copy is ready.', 'success', 6000))
+  if (payload.attachedToLink) await fetchDetailsFor()
+  else if (selectedVersionFileId.value) await loadForkSources(selectedVersionFileId.value)
 }
 
 async function refreshVersions() {
