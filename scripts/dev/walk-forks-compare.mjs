@@ -16,7 +16,7 @@
 // read at run time and never printed or written to the report.
 //
 // Options
-//   --base <url>        server origin (default https://127.0.0.1)
+//   --base <url>        server origin, loopback host only (default https://127.0.0.1)
 //   --report <file>     JSON report path (default /tmp/lf5-walk.json)
 //   --viewport WxH      browser viewport (default 1280x900); a narrower-than-
 //                       500px viewport also uses a touch user agent
@@ -59,6 +59,13 @@ function parseArgs(argv) {
     else if (a === '--chromium') opts.chromium = next();
     else if (a === '--bandwidth-seconds') opts.bandwidthSeconds = Number(next());
     else throw new Error(`Unknown option ${a}`);
+  }
+  // TLS verification is off for the dev certificate and the dev password is sent:
+  // only ever talk to this machine.
+  let host = '';
+  try { host = new URL(opts.base).hostname.replace(/^\[|\]$/g, ''); } catch {}
+  if (!['127.0.0.1', '::1', 'localhost'].includes(host)) {
+    throw new Error(`--base must be a loopback host (127.0.0.1, ::1, localhost), got ${opts.base}`);
   }
   const m = /^(\d+)x(\d+)$/.exec(opts.viewport);
   if (!m) throw new Error('--viewport must look like 390x844');
@@ -491,12 +498,12 @@ async function forkViaApi({ video, origV2 }) {
   return { fileId: done.fileId, relPath, attached: true };
 }
 
-// Attach the way the link was made: with web copies (proxy and adaptive
-// streaming) on, so the fork gets its own. A fork added with no web-copy
-// request has none to play (see the LF5 report).
+// Attach the way Edit -> Files does by default: the file list alone, no web-copy
+// options (the app adds them only when adaptive streaming is switched on). The
+// fork therefore has no web copy of its own until compare asks for one.
 function attachFork(video, forkRelPath) {
   return api('PUT', `/api/links/${video.id}/files`, {
-    filePaths: [`${run.dirRel}/clip.mp4`, forkRelPath], proxy: true, keepExistingOutputs: true,
+    filePaths: [`${run.dirRel}/clip.mp4`, forkRelPath],
   });
 }
 
