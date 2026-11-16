@@ -1,7 +1,7 @@
 # Linked Forks and Version Compare
 
 Date: 2026-11-13, scope revised 2026-11-16
-Status: Planned (threads LF1–LF5 under Princess #15210); implementation not started
+Status: Planned; threads LF1–LF5 added to Princess #15210 on 2026-11-16 (Inactive, owner mpyne); implementation not started
 Decisions: [linked-forks-and-version-diff-decisions.md](linked-forks-and-version-diff-decisions.md)
 
 ## Summary
@@ -83,13 +83,13 @@ These are fixed by this plan so threads can start in parallel. A change to a con
 
 One thread per unknown. Full gates are in `houston-broadcaster/gates/`.
 
-| Thread | Unknown | Gates file | Repos |
-|---|---|---|---|
-| LF1 Fork lineage and copy | Can a fork be made as an independent copy of an exact version, linked to it, without ever leaving a partial or duplicate fork, and can its source never be deleted? | `gates/lf1-fork-lineage-and-copy.md` | server, app |
-| LF2 Faithful version media | Can every version be shown with its own media only, prepared on demand when missing? | `gates/lf2-faithful-version-media.md` | server |
-| LF3 Family compare access | What can a recipient compare without revealing files that aren't shared? | `gates/lf3-family-compare-access.md` | server |
-| LF4 Compare workspace | Can two panes stay in step on one timeline, with comments on the right side, at desktop and phone widths? | `gates/lf4-compare-workspace.md` | player |
-| LF5 End-to-end acceptance | Does fork → attach → compare → comment work end to end in real browsers and phones? | `gates/lf5-forks-compare-acceptance.md` | all three |
+| Thread | Unknown | Gates file | Repos | Princess thread |
+|---|---|---|---|---|
+| LF1 Fork lineage and copy | Can a fork be made as an independent copy of an exact version, linked to it, without ever leaving a partial or duplicate fork, and can its source never be deleted? | `gates/lf1-fork-lineage-and-copy.md` | server, app | `5e41b18c-4e3a-4c88-b08e-a47e923de127` |
+| LF2 Faithful version media | Can every version be shown with its own media only, prepared on demand when missing? | `gates/lf2-faithful-version-media.md` | server | `c47778c2-9659-47c3-929f-978bb1b44101` |
+| LF3 Family compare access | What can a recipient compare without revealing files that aren't shared? | `gates/lf3-family-compare-access.md` | server | `a4e7104c-aec2-41d0-900a-3785c1f8fc3f` |
+| LF4 Compare workspace | Can two panes stay in step on one timeline, with comments on the right side, at desktop and phone widths? | `gates/lf4-compare-workspace.md` | player | `900eb7f3-2bcb-4f57-b6d9-72d1688d7f3e` |
+| LF5 End-to-end acceptance | Does fork → attach → compare → comment work end to end in real browsers and phones? | `gates/lf5-forks-compare-acceptance.md` | all three | `df018d02-d2c5-43a5-a290-ebb1a757c199` |
 
 ## Dependency graph
 
