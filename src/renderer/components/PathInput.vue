@@ -1,6 +1,6 @@
 <template>
     <div class="relative w-full" data-path-input-root>
-        <input :value="input" @input="onInput" @focus="openMenu" @keydown="onKey"
+        <input :value="input" @input="onInput" @focus="openMenu" @blur="onBlur" @keydown="onKey"
             :placeholder="placeholder || 'Type a path… (e.g. /, /projects, /media/foo.mp4)'"
             class="input-textlike text-default w-full" autocomplete="off" spellcheck="false" />
         <div v-if="open && suggestions.length"
@@ -29,6 +29,7 @@ const props = defineProps<{
     placeholder?: string
     // If true, only suggest directories (common for “choose a folder”)
     dirsOnly?: boolean
+    commitOnBlur?: boolean
 }>()
 const emit = defineEmits<{
     (e: 'update:modelValue', v: string): void
@@ -75,6 +76,7 @@ const parentAndLeaf = computed(() => {
 
 // Debounce fetch
 let t: number | undefined
+onBeforeUnmount(() => window.clearTimeout(t))
 watch(parentAndLeaf, ({ parent }) => {
     window.clearTimeout(t)
     t = window.setTimeout(() => loadDir(parent), 80)
@@ -111,11 +113,25 @@ function openMenu() {
 }
 
 function onInput(e: Event) {
-    emit('update:modelValue', normalize((e.target as HTMLInputElement).value))
+    input.value = normalize((e.target as HTMLInputElement).value)
+    emit('update:modelValue', input.value)
+    suggestions.value = []
     openMenu()
-    filterByLeaf()
 }
 
+function commitDirectory() {
+    const path = normalize(input.value)
+    if (!path) return
+    input.value = path
+    emit('update:modelValue', path)
+    emit('choose', { path, isDir: true })
+    open.value = false
+}
+
+function onBlur() {
+    if (props.dirsOnly && props.commitOnBlur) commitDirectory()
+    open.value = false
+}
 watch(suggestions, () => {
     clampHighlight()
     highlighted.value = suggestions.value.length ? 0 : 0
@@ -125,7 +141,10 @@ watch(suggestions, () => {
 
 function accept(item?: { path: string; isDir: boolean }) {
     const pick = item ?? suggestions.value[highlighted.value]
-    if (!pick) return
+    if (!pick) {
+        if (props.dirsOnly) commitDirectory()
+        return
+    }
     // If dir, append trailing slash and keep menu open (like your screenshots)
     if (pick.isDir) {
         const next = normalize(pick.path + '/')

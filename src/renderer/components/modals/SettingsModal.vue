@@ -33,6 +33,9 @@
                         </header>
                         <AdminNetworksPanel v-if="activeSection === 'adminNetworks' && adminSession && activeConnection"
                             :key="activeConnection.connectionId" :connection-id="activeConnection.connectionId" />
+                        <SetupSettingsPanel v-if="setupSection && adminSession && activeConnection"
+                            :key="`${activeConnection.connectionId}-${setupSection}`"
+                            :section="setupSection" :connection-id="activeConnection.connectionId" />
 
                         <FlowNotice v-if="activeSection === 'adminMail' && egress.isOff('smtp')" tone="warning" size="sm" class="mb-3"
                             title="Email is off">{{ EGRESS_OFF_TEXT.smtp }}</FlowNotice>
@@ -408,24 +411,6 @@
                                     >
                                         {{ notifyOn ? 'Turn off' : 'Turn on' }}
                                     </button>
-                                </SettingRow>
-                            </div>
-
-                            <p class="settings-subhead">Server folders</p>
-                            <div class="settings-group">
-                                <div class="py-3">
-                                    <p class="text-sm font-medium text-default">Default server folder</p>
-                                    <p class="text-xs text-accent mt-0.5 mb-2">
-                                        Holds the hidden .45flow folder (proxy files and streams) for links that aren't in a project. Each project keeps its own .45flow folder inside its project folder.
-                                    </p>
-                                    <PathInput
-                                        v-model="projectRoot"
-                                        :apiFetch="apiFetch"
-                                        :dirsOnly="true"
-                                    />
-                                </div>
-                                <SettingRow label="Start folder pickers here" description="Folder pickers open in the default server folder. Projects still use their own folders.">
-                                    <FlowSwitch v-model="forceProjectRoot" :disabled="busy" label="Start folder pickers in the default server folder" />
                                 </SettingRow>
                             </div>
 
@@ -1528,6 +1513,9 @@ import { disableNotifications, enableNotifications, notificationPermission, noti
 import { pushNotification, Notification } from '@45drives/houston-common-ui';
 import PathInput from "../PathInput.vue";
 import { useOnboarding } from "../../composables/useOnboarding";
+import SetupSettingsPanel from '../setup/SetupSettingsPanel.vue';
+import { setupSections, type SetupSection } from '../../composables/useSetupStatus';
+import { loadProjectWatermarks } from '../../composables/projectWatermarks';
 import { useTimeFormat } from "../../composables/useTimeFormat";
 import { useClientTranscode, type TranscodePreset } from "../../composables/useClientTranscode";
 import { useLinkListDefault } from "../../composables/useLinkListDefault";
@@ -1554,6 +1542,7 @@ import {
 
 const props = withDefaults(defineProps<{
     initialSection?: string
+    deferTour?: boolean
 }>(), {
     initialSection: undefined,
 });
@@ -1649,7 +1638,7 @@ const settingsTourSteps = computed<TourStep[]>(() => [
 ])
 
 // ── Section navigation ──────────────────────────────────────────────────
-type Section = 'sharing' | 'publicSharing' | 'app' | 'performance' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade' | 'adminNetworks' | 'adminMail' | 'adminSecurity';
+type Section = SetupSection | 'sharing' | 'publicSharing' | 'app' | 'performance' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade' | 'adminNetworks' | 'adminMail' | 'adminSecurity';
 
 type SectionMeta = {
     label: string
@@ -1663,6 +1652,10 @@ type SectionMeta = {
 }
 
 const SECTION_META: Record<Section, SectionMeta> = {
+    storage: { label: 'Storage', icon: ServerIcon, description: 'The storage root that contains every project folder.', keywords: 'root filesystem mount disk free space folder change' },
+    staff: { label: 'Staff server accounts', icon: ShieldCheckIcon, description: 'Manage which existing server users can administer 45Flow.', keywords: 'group membership local users staff access' },
+    uploads: { label: 'Uploads', icon: BugAntIcon, description: 'Install a malware scanner and choose the upload scanning policy.', keywords: 'clamav scanner install malware virus require skip' },
+    watermarks: { label: 'Watermarks', icon: SwatchIcon, description: 'Optional global watermark images shared across projects.', keywords: 'global folder image watermark enable' },
     linkOptions: {
         label: 'New link defaults', icon: LinkIcon, savable: true,
         description: 'Starting values for every new link. You can still change them on each link.',
@@ -1693,9 +1686,9 @@ const SECTION_META: Record<Section, SectionMeta> = {
     },
     app: {
         label: 'Preferences', icon: AdjustmentsHorizontalIcon, savable: true,
-        description: 'How 45Flow looks and behaves, and where folder pickers start.',
-        keywords: 'time format 12 24 hour link list view notifications default server folder project root path',
-        saveHint: 'Time format and link list view apply right away. The default folder is saved for the server.',
+        description: 'How 45Flow looks and behaves on this computer.',
+        keywords: 'time format 12 24 hour link list view notifications',
+        saveHint: 'Time format and link list view apply right away.',
     },
     performance: {
         label: 'Video processing', icon: FilmIcon, savable: true,
@@ -1744,6 +1737,7 @@ const activeSection = ref<Section>(
     props.initialSection && props.initialSection in SECTION_META ? (props.initialSection as Section) : 'linkOptions'
 );
 const currentMeta = computed(() => SECTION_META[activeSection.value]);
+const setupSection = computed(() => setupSections.some(item => item.key === activeSection.value) ? activeSection.value as SetupSection : null);
 const contentRef = ref<HTMLElement | null>(null);
 watch(activeSection, () => { contentRef.value?.scrollTo?.({ top: 0 }); void egress.load() }, { immediate: true });
 
@@ -1774,7 +1768,7 @@ const navGroups = computed(() => {
             items: [
                 item('health'),
                 item('maintenance'),
-                ...(adminSession.value ? [item('adminNetworks'), item('adminMail'), item('adminSecurity')] : []),
+                ...(adminSession.value ? [...setupSections.map(section => item(section.key)), item('adminNetworks'), item('adminMail'), item('adminSecurity')] : []),
             ],
         },
         {
@@ -1803,6 +1797,7 @@ const filteredNavGroups = computed(() => {
 });
 
 onMounted(() => {
+    if (props.deferTour) return
 	if (!onboarding.value.settingsTourDone) {
 		setTimeout(() => {
 			requestTour('settings', settingsTourSteps.value, () => markDone('settingsTourDone'))
@@ -2300,10 +2295,8 @@ watch(defaultWatermarkId, async (newId) => {
 
 async function loadAvailableWatermarks() {
     try {
-        const res = await apiFetch('/api/files/watermarks');
-        if (res?.ok && Array.isArray(res.watermarks)) {
-            availableWatermarks.value = res.watermarks;
-        }
+        const { items } = await loadProjectWatermarks(apiFetch);
+        availableWatermarks.value = items.map(item => item.path);
     } catch (err) {
         console.warn('[settings] Failed to load watermarks:', err);
     }
@@ -2416,18 +2409,7 @@ async function onSelectExistingWatermark() {
 
 async function loadExistingWatermarkFiles() {
     try {
-        // Load server watermarks from both local dir and global search
-        const dirRel = '.45flow/watermarks';
-        const [dirData, globalData] = await Promise.all([
-            apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`).catch(() => null),
-            apiFetch('/api/files/watermarks', { method: 'GET' }).catch(() => null),
-        ]);
-        const dirEntries = Array.isArray(dirData?.entries) ? dirData.entries : [];
-        const dirWatermarks = dirEntries
-            .filter((e: any) => !e?.isDir && typeof e?.name === 'string' && String(e.name).trim())
-            .map((e: any) => `${dirRel}/${String(e.name).trim()}`);
-        const globalWatermarks = Array.isArray(globalData?.watermarks) ? globalData.watermarks : [];
-        const serverWatermarks = [...new Set([...dirWatermarks, ...globalWatermarks])].sort();
+        const { custom: serverWatermarks } = await loadProjectWatermarks(apiFetch);
         
         existingWatermarkFiles.value = serverWatermarks;
     } catch (err) {
@@ -3161,7 +3143,6 @@ function coreSnapshot() {
         defaultWatermarkEnabled.value,
         defaultWatermarkEnabled.value ? (selectedExistingWatermark.value || defaultWatermarkId.value) : null,
         isPremiumActive.value && defaultWatermarkEnabled.value ? watermarkSettings.value : null,
-        projectRoot.value.trim(), forceProjectRoot.value,
     ]);
 }
 
@@ -3296,10 +3277,6 @@ const validationError = computed(() => {
         if (!normalizeUrlInput(internalBase.value, "http")) {
             return "The custom local address isn't valid. Use an IP or hostname, like 192.168.1.20.";
         }
-    }
-
-    if (forceProjectRoot.value && !projectRoot.value.trim()) {
-        return "Choose a default server folder to turn this on (Preferences).";
     }
 
     return null;
@@ -3450,8 +3427,6 @@ async function save() {
             ...(proxyQualitiesSupported.value && defaultProxyQualities.value ? { defaultProxyQualities: defaultProxyQualities.value } : {}),
             defaultExpirySeconds: defaultExpiryNever.value ? 0 : computeDefaultExpirySec(),
             defaultWatermarkId: defaultWatermarkEnabled.value ? (selectedExistingWatermark.value || defaultWatermarkId.value) : null,
-            projectRoot: (projectRoot.value || "").trim() || null,
-            forceProjectRoot: !!forceProjectRoot.value,
         };
 
         // Only send watermark settings if premium (server enforces license check)

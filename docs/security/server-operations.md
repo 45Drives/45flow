@@ -17,19 +17,50 @@ exist; the latter takes precedence for duplicate keys. Check both before editing
 and keep deliberate overrides consistent. Do not assume a client update changes
 server policy.
 
+On builds with packaged storage setup, root-owned `flow45-state.env` and then
+`storage.env` under `/etc/45drives/houston-broadcaster/` are loaded afterwards.
+They select isolated application state and the approved storage root. Use the
+Storage setup screen to change that root: editing only the legacy environment
+files does not update the systemd writable-path grant.
+
 | Setting or control | Meaning |
 |---|---|
 | `ROOT_DIR` (staged) | Existing, approved, non-root storage directory. |
 | `ADMIN_GROUP` (staged) | Approved local staff group; default `houston-broadcaster-admins`. |
-| `REQUIRE_ADMIN_GROUP` (staged) | `1` enables the group requirement; staged default `0` preserves existing access until enrollment. |
+| `REQUIRE_ADMIN_GROUP` (staged) | `1` enables the group requirement. Packaged-setup builds enable it and enroll root; earlier staged builds default to `0` until enrollment. |
 | `HOST` | Backend bind address; normally `0.0.0.0`, optionally `127.0.0.1` after compatibility checks. |
-| `HB_PAM_SOCKET` (staged, opt-in) | Enables verification through the installed private PAM broker rather than direct PAM. Configure only after the broker is installed and verified. |
-| `HB_HOST_SOCKET` (staged, opt-in) | Routes supported privileged host administration through the installed restricted host broker. |
-| `HB_CREDENTIAL_SOCKET` (staged, opt-in) | Isolates the provider master key in the credential broker; unavailable brokers fail closed. |
+| `HB_PAM_SOCKET` (staged) | Enables verification through the installed private PAM broker rather than direct PAM. Packaged setup configures it; older builds require verified manual configuration. |
+| `HB_HOST_SOCKET` (staged) | Routes supported privileged host administration through the installed restricted host broker; configured by packaged setup. |
+| `HB_CREDENTIAL_SOCKET` (staged) | Isolates the provider master key in the credential broker; configured by packaged setup and unavailable brokers fail closed. |
 | `ENFORCE_ADMIN_NETWORKS` (staged, opt-in) | `1` applies the root-managed nginx staff CIDRs to direct backend staff requests too. Configure and verify the readable allow file first; see the [network guide](deployment-network.md#staff-networks-and-proxies). |
 | Admin Networks | nginx staff-access policy; separate from the backend firewall, account approval, SSH and Cockpit. |
 
-### Dedicated service account: preparation only
+### Packaged service account and first-run storage setup
+
+Supporting builds now install the service sandbox, not just its preparation
+helpers. The installer stops Broadcaster, snapshots selected application state
+under `/var/lib/45flow`, preserves signing keys and original databases, and
+generates the state environment. It never refreshes that state from an old
+legacy database after activation.
+
+The packaged main process runs as `houston45` without capabilities. All three
+broker sockets are ordered before it. With no approved storage root, file APIs
+remain unavailable until an administrator completes Storage setup. A pre-existing
+valid root is preserved together with a matching systemd writable-path grant.
+Customer-file ownership is not recursively changed; filesystem access for the
+service account must be granted by the storage administrator.
+
+The staff group requirement is enabled for packaged setup. Root is enrolled to
+allow first-run administration; manage other existing local users through
+**Staff server accounts**. These are server accounts, not recipient-link accounts.
+An administrator's custom service overrides remain their responsibility.
+
+Migration errors stop activation rather than falling back to a root service or
+stale database. Keep independent SSH/Cockpit access and review the private
+migration manifest before retrying. These changes remain subject to the
+release-specific package acceptance checks.
+
+### Earlier staged builds: preparation only
 
 The staged installer prepares a locked, non-login Unix account and exclusive
 group named `houston45`, shared by Broadcaster's application modules. Earlier
@@ -45,8 +76,8 @@ reserved service account during rollback while files may still refer to its UID.
 
 ### Controlled privilege migration
 
-This remains an administrator-controlled B1 stage, not an automatic package
-upgrade. Do not enable it by changing only `User=`.
+For earlier staged builds without packaged activation, use this
+administrator-controlled procedure. Do not enable it by changing only `User=`.
 
 1. Install and verify all three broker services and their `root:houston45`,
    mode-`0660` sockets. Keep their executables, units, parent directories and

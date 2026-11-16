@@ -273,6 +273,8 @@
 </template>
 
 <script setup lang="ts">
+import { loadProjectWatermarks, canonicalWatermarkSelection } from '../composables/projectWatermarks'
+import { uploadErrorMessage } from '../utils/uploadErrorMessage'
 import FlowCard from '../ui/FlowCard.vue'
 import FlowChip from '../ui/FlowChip.vue'
 import { ref, computed, inject, watch, onMounted } from 'vue'
@@ -698,43 +700,18 @@ function clearWatermark() {
 
 async function loadExistingWatermarkFiles() {
 	try {
-		const dirRel = resolveWatermarkDirRel()
-		const [dirData, globalData] = await Promise.all([
-			apiFetch(`/api/files?dir=${encodeURIComponent(dirRel)}`, { method: 'GET' }).catch(() => null),
-			apiFetch('/api/files/watermarks', { method: 'GET' }).catch(() => null),
-		])
-		
-		// Directory-specific watermarks
-		const dirEntries = Array.isArray(dirData?.entries) ? dirData.entries : []
-		const dirWatermarks = dirEntries
-			.filter((e: any) => !e?.isDir && typeof e?.name === 'string' && String(e.name).trim())
-			.map((e: any) => `${dirRel}/${String(e.name).trim()}`)
-		
-		// Global watermarks from all .45flow/watermarks/ dirs
-		const globalWatermarks = Array.isArray(globalData?.watermarks) ? globalData.watermarks : []
-		
-		// Merge and deduplicate
-		const allCustom = [...new Set([...dirWatermarks, ...globalWatermarks])].sort()
-		
-		// Check which built-in watermarks actually exist on the server
-		const base = connectionMeta.value.apiBase ?? ''
-		const token = connectionMeta.value.token ?? ''
-		const builtinChecks = await Promise.allSettled(
-			DEFAULT_45FLOW_WATERMARKS.map(async (wm) => {
-				const url = `${base}/api/watermarks/defaults/${wm.id}/stream`
-				const res = await fetch(url, { method: 'HEAD', headers: { 'Authorization': `Bearer ${token}` } })
-				return res.ok ? wm : null
-			})
-		)
-		validDefaultWatermarks.value = builtinChecks
-			.filter((r): r is PromiseFulfilledResult<Default45FlowWatermark> => r.status === 'fulfilled' && r.value !== null)
-			.map(r => r.value)
-		
+		const projectId = activeProject.value?.id
+		const { custom: allCustom, defaults } = await loadProjectWatermarks(apiFetch, projectId)
+		if (projectId !== activeProject.value?.id) return
+		validDefaultWatermarks.value = defaults
+		selectedExistingWatermark.value = canonicalWatermarkSelection(selectedExistingWatermark.value, defaults)
 		existingWatermarkFiles.value = allCustom
+		if (selectedExistingWatermark.value && ![...allCustom, ...defaults.map(item => item.path)].includes(selectedExistingWatermark.value)) selectedExistingWatermark.value = ''
 	} catch {
 		existingWatermarkFiles.value = []
 		validDefaultWatermarks.value = []
 	}
+	watch(() => activeProject.value?.id, () => { void loadExistingWatermarkFiles() })
 }
 
 async function fetchExistingWatermarkPreview(relPath: string) {
@@ -857,8 +834,8 @@ function resolveWatermarkStorageRoot() {
 }
 
 function resolveWatermarkDirRel() {
-	// Watermarks are stored at .45flow/watermarks/ relative to the effective share root
-	return '.45flow/watermarks'
+	const root = activeProject.value?.root_dir || configuredProjectRoot.value
+	return `${root.replace(/^\/+|\/+$/g, '')}/.45flow/watermarks`
 }
 
 function resolveWatermarkUploadDir() {
@@ -873,6 +850,8 @@ function resolveWatermarkRelPath() {
 
 /** Convert a watermark ID (e.g. '45flow-grad') to the path the dropdown/server expects */
 function resolveWatermarkPathForApi(idOrPath: string) {
+	const canonical = canonicalWatermarkSelection(idOrPath, validDefaultWatermarks.value)
+	if (canonical !== idOrPath) return canonical
 	const builtin = DEFAULT_45FLOW_WATERMARKS.find(wm => wm.id === idOrPath)
 	if (builtin) return builtin.path
 	return idOrPath
@@ -1670,8 +1649,8 @@ function uploadOneFile(
 				}
 			} else if (row.status !== 'canceled') {
 				row.status = 'error';
-				row.error = res.error || 'Upload failed';
-				transfer.finishUpload(taskId, false, res.error || 'Upload failed');
+				row.error = uploadErrorMessage(res.error);
+				transfer.finishUpload(taskId, false, row.error);
 				failedSinceStart++;
 				scheduleBatchNotification();
 			}
@@ -1759,7 +1738,7 @@ async function startUploads() {
 				pushNotification(
 					new Notification(
 						'Watermark Upload Failed',
-						res?.error || 'Unable to upload the watermark image.',
+						uploadErrorMessage(res?.error),
 						'error',
 						8000
 					)

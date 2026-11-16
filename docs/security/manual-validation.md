@@ -17,8 +17,8 @@ passed merely because its API report was accepted.
   remains usable before and after the update, restart and rollback.
 - [ ] Check `systemctl show houston-broadcaster -p User -p Group -p MainPID`.
   After the controlled rename, expect `houston45` for both names and the same
-  numeric UID/GID as before. A source/package update alone does not perform the
-  controlled UID migration.
+  numeric UID/GID as before. Packaged-setup builds activate the sandbox during
+  installation; earlier staged builds require controlled manual migration.
 - [ ] Inspect the reported PID's actual user/group and `/proc/<pid>/status`.
   The migrated main process must have zero effective/permitted capabilities and
   `NoNewPrivs: 1`; do not rely on unit text alone.
@@ -46,6 +46,26 @@ passed merely because its API report was accepted.
 
 ## 3. 45Flow file and sharing workflows
 
+- [ ] On a fresh installation, first-run setup requires Storage selection before
+  the first project. Existing mounts are offered, ZFS first, with network mounts
+  labelled. System folders, traversal and outward symlinks are refused.
+- [ ] Select an approved test root and verify the backend restarts, retains the
+  session, and reports the same root as its systemd writable-path grant. A root
+  inaccessible to `houston45` must fail explicitly without changing file owners.
+- [ ] Changing the root shows affected projects, active links and running
+  transfers before confirmation. Cancelling leaves the current root unchanged.
+- [ ] Staff server accounts can enroll/remove an existing local test user;
+  removing yourself or the last staff member is refused.
+- [ ] The folder picker and both Create/Edit Link file browsers stop at the
+  storage root and retain the complete path after navigating up and back down.
+- [ ] Project watermarks list only the chosen project's directory, enabled
+  global directory and built-in defaults. Opening the picker must not traverse
+  the storage tree or delay unrelated requests.
+- [ ] Turning the global watermark switch off removes those choices. A global
+  directory outside the storage root is refused.
+- [ ] Malware scanning shows scanner availability and whether server policy
+  locks the setting. Requiring an unavailable scanner rejects uploads with an
+  actionable message; opting out warns explicitly that uploads are not scanned.
 - [ ] Browse an approved project, upload a small file and verify the stored
   bytes. Test multi-chunk upload and cancellation separately.
 - [ ] Rename, move and delete only disposable files inside the approved root.

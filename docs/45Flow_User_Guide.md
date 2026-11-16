@@ -316,6 +316,23 @@ The app will display status messages as it connects:
 
 On success, you'll be taken to the **Projects** screen.
 
+### First-run server setup
+
+On a new server, administrators see **Set up your server** before opening projects. An existing server with configured storage and at least one project goes straight to Projects. Other users see “Server setup is not finished. Ask your administrator” until the server is ready.
+
+Older servers without setup support remain usable and show an update notice. Update Broadcaster to use the storage and staff-account setup controls.
+
+1. **Storage** — Required. Choose a detected filesystem, then use **Browse** and **Open** to choose a data folder. ZFS filesystems appear first. Existing network mounts are labelled **Network**; 45Flow does not create mounts or store mount credentials. The system root itself cannot be selected.
+2. **Staff server accounts** — Add or remove existing server users who may administer 45Flow. These are separate from client accounts. You cannot remove yourself or the last staff member.
+3. **Share address** — Open the existing share-address settings and internet-sharing checks.
+4. **Uploads** — Check whether a malware scanner is available, install one, or explicitly allow uploads without scanning. A policy locked by the server configuration cannot be changed here.
+5. **Watermarks** — Optionally enable a shared folder of watermark images inside the storage root.
+6. **First project** — Create a project and choose its folder inside the storage root, or skip and create it later from Projects.
+
+Only Storage is required. Other steps can be skipped and revisited in Settings. Setup remembers your current step for this server in the current app/browser session, including after reconnecting. Guided tours wait until setup finishes.
+
+Choosing a storage root restarts the server. Keep the setup window open while it reconnects. If it cannot reconnect automatically, check the server connection and choose **Check again**.
+
 ![Connecting to server with status messages](images/login-connecting-v3.png)
 
 At the bottom of the card:
@@ -476,7 +493,7 @@ To switch to a different project, return to the project list and open another on
 From the Projects screen, click **"+ New Project"** to create a new project:
 
 1. Enter a **Project name** — A descriptive name (e.g., "Acme Corp Review", "Spring Campaign Edit").
-2. Pick the **Project folder** — The folder on the server that holds this project's media. The folder picker detects your **ZFS pools** (storage locations) so you can start from one of them. To use a fresh folder, click **"New Folder"** in the folder browser, then select it.
+2. Pick the **Project folder** — The folder on the server that holds this project's media, inside the configured storage root. Browse to it, or type its full path and press **Enter** or leave the path field to apply it. To use a fresh folder, click **"New Folder"** in the folder browser, then select it. Storage can use ZFS or another supported mounted filesystem.
 3. *(Optional)* Add **Notes** about the project — client, deliverables, anything your team should know.
 4. Click **"Create Project"**.
 
@@ -491,7 +508,7 @@ While you pick a folder, 45Flow checks it and shows what it finds:
 - **Low space** — A red warning appears when less than 50 GB is free or the disk is 90% or more used. Pick a folder with more room for proxy files and client uploads.
 - **New folder** — If the folder doesn't exist yet, 45Flow notes that it will create it.
 
-> **Note:** 45Flow keeps each project's proxy files and streams in a hidden `.45flow` folder inside the project folder. Links that are not in a project use the `.45flow` folder in the default server folder (see [Settings → Preferences](#preferences)).
+> **Note:** 45Flow keeps each project's proxy files and streams in a hidden `.45flow` folder inside the project folder. Links that are not in a project use the `.45flow` folder in the storage root (see [Storage](#storage)).
 
 Once created, the new project opens immediately so you can start creating links or adding files.
 
@@ -626,7 +643,8 @@ The Settings panel is organized into sections via the left-hand navigation sideb
 
 - **Link Sharing** — URLs & Access, Public Sharing, Certificate, Link Options
 - **Branding** — White Label (see [Custom Branding](#8-custom-branding-white-label--pro-feature))
-- **Application** — Preferences, Performance, Server Health, Maintenance, Admin Networks (server administrators)
+- **This app** — Preferences and Video processing
+- **Server** — Server health and Maintenance; administrators also have Storage, Staff server accounts, Uploads, Watermarks, Admin networks, Email, and Scanning & privacy
 - **Help** — Guides
 
 ![Settings modal](images/settings-v3.png)
@@ -741,12 +759,25 @@ These defaults are applied automatically when creating new links, but can be cha
 | **Time format** | Toggle between 24-hour and 12-hour time display throughout the app. |
 | **Default link list view** | Choose which links are shown by default (All Links or Active Only). |
 
-**Path Defaults:**
+### Storage
 
-| Setting | Description |
-|---------|-------------|
-| **Use default server folder** | When on, folder pickers start in the default server folder below. Projects keep their own folders. |
-| **Default server folder** | Absolute path on the server. It holds the hidden `.45flow` folder (proxy files and streams) for links that are not in a project. Each project keeps its own `.45flow` folder inside its project folder. |
+Administrators can view the current storage root, filesystem type and available space, then select another root. Before applying the change, review the listed projects outside the new root, active links, and running transfers or processing jobs, and explicitly confirm. The server restarts; files are never moved automatically. Projects outside the new root may become unavailable.
+
+Folder pickers browse within the storage root. **Up** cannot browse above that boundary. The old **Default server folder** preference has been replaced by this server-wide setting.
+
+### Staff server accounts
+
+Manage existing local server users from **Settings → Staff server accounts**, using the same controls as first-run setup. The panel shows whether staff-group enforcement is enabled and lists current members. These controls do not create server users or change client-account access.
+
+### Uploads
+
+**Settings → Uploads** shows scanner availability and whether scanning is required. If scanning is required but no scanner is available, uploads are rejected. An administrator can install the scanner here or, if the policy is not locked, choose **Allow uploads without scanning**. Unscanned uploads may contain malware.
+
+### Watermarks
+
+The watermark picker lists built-in images, the enabled global folder, and images directly inside the selected project's `.45flow/watermarks` folder. It does not search nested folders or other projects.
+
+To share images across projects, open **Settings → Watermarks**, turn on **Enable global watermark folder**, select a folder inside the storage root, and choose **Save watermarks**. Turning the switch off hides global-folder images without deleting files. New images uploaded for a project are stored with that project.
 
 ### Performance
 

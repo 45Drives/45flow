@@ -77,9 +77,12 @@
       {{ credentialStorageNotice }}
     </p>
     <main class="flex-1 min-h-0 w-full overflow-hidden">
-      <router-view v-if="hasActiveSession || route.name === 'server-selection'" />
+      <router-view v-if="route.name === 'server-selection'" />
+      <SetupGate v-else-if="hasActiveSession" @blocked="setupBlocked = $event">
+        <router-view />
+      </SetupGate>
     </main>
-    <QuickShareOverlay v-if="hasActiveSession && route.name !== 'server-selection'" />
+    <QuickShareOverlay v-if="hasActiveSession && route.name !== 'server-selection' && !setupBlocked" />
     <SettingsModal v-if="showSettings" @close="showSettings = false" />
     <LogViewModal v-if="showLogs" @close="showLogs = false" />
     <GlobalModalConfirm />
@@ -87,7 +90,7 @@
     <SessionIdlePrompt v-if="isWeb" />
     <UpdateBanner v-if="!isWeb" />
     <TransferProgressDock v-if="!hideTransfers" />
-    <GuidedTour v-if="ENABLE_TOUR && activeTour" :steps="activeTour.steps" :active="true" @done="finishTour" @skip="skipTour" />
+    <GuidedTour v-if="ENABLE_TOUR && activeTour && !setupBlocked" :steps="activeTour.steps" :active="true" @done="finishTour" @skip="skipTour" />
   </div>
 </template>
 
@@ -116,6 +119,7 @@ import ConnectionSwitcher from '../renderer/components/ConnectionSwitcher.vue'
 import BasicServerBadge from '../renderer/components/BasicServerBadge.vue'
 import GuidedTour from '../renderer/components/GuidedTour.vue'
 import QuickShareOverlay from '../renderer/components/QuickShareOverlay.vue'
+import SetupGate from '../renderer/components/setup/SetupGate.vue'
 import SessionIdlePrompt from '../renderer/components/SessionIdlePrompt.vue'
 import { useSessionIdle } from '../renderer/composables/useSessionIdle'
 import { useDesktopSession } from '../renderer/composables/useDesktopSession'
@@ -206,6 +210,7 @@ const hasActiveSession = computed(() =>
 // Global utility modals opened from the header icon buttons
 const showSettings = ref(false)
 const showLogs = ref(false)
+const setupBlocked = ref(true)
 
 // Browser sessions end after a period of inactivity; keep them alive while the user is active.
 const sessionIdle = useSessionIdle()

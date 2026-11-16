@@ -11,7 +11,7 @@
         :class="compact ? 'input-textlike border rounded px-2 py-1 text-xs min-w-[12rem] flex-1' : 'input-textlike border rounded px-2 py-1 text-sm min-w-[14rem] flex-1'"
         @change="emit('update:selectedExistingWatermark', ($event.target as HTMLSelectElement).value)">
         <option value="">{{ compact ? 'Existing watermark…' : 'Select existing watermark file…' }}</option>
-        <optgroup v-if="showDefaultWatermarks && defaultWatermarks.length && existingWatermarkFiles.length" label="Client Uploads">
+        <optgroup v-if="showDefaultWatermarks && defaultWatermarks.length && existingWatermarkFiles.length" label="Project & global images">
           <option v-for="wm in existingWatermarkFiles" :key="wm" :value="wm">{{ wm.split('/').pop() }}</option>
         </optgroup>
         <template v-else-if="existingWatermarkFiles.length">

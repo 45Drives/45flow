@@ -34,6 +34,20 @@ afterEach(() => {
     mocks.updateConnection.mockReset()
 })
 
+describe('missing malware scanner guidance', () => {
+    it('keeps the actionable scanner-unavailable message for a 503 without exposing other server details', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+            error: 'scanner_unavailable', message: 'Internal scanner probe details',
+        }), { status: 503, headers: { 'Content-Type': 'application/json' } })))
+        const { apiFetch } = useApi('test-connection')
+        await expect(apiFetch('/api/uploads/complete', { method: 'POST', body: '{}', retry: 0 }))
+            .rejects.toMatchObject({
+                code: 'scanner_unavailable',
+                message: 'Malware scanning is required but not installed. An administrator can install it or turn scanning off in Settings.',
+            })
+    })
+})
+
 describe('nginx HTTPS transport for admin networks', () => {
     it('verifies HTTPS through saved SSH before fetching and reuses verification for policy confirmation', async () => {
         Object.assign(mocks.connections[0], {

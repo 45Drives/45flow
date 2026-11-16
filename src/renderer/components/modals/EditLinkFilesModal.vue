@@ -4,8 +4,9 @@
                     Click on files to select or deselect them. Shift-click to select a range. Click on folders to enter. Use folder checkboxes to select all contents.
                 </div>
 
-                <FileExplorer :apiFetch="apiFetch" :modelValue="selected" :base="base" :startDir="startDir"
+                <FileExplorer v-if="storageRoot" :apiFetch="apiFetch" :modelValue="selected" :base="base" :startDir="startDir" :root-dir="storageRoot"
                     @add="onExplorerAdd" @remove="onExplorerRemove" @error="explorerError = $event" />
+                <p v-else-if="!explorerError" class="text-sm text-muted">Loading storage root…</p>
 
                 <div v-if="explorerError" class="text-sm text-flow-danger">
                     {{ explorerError }}
@@ -60,6 +61,7 @@ const props = defineProps<{
     initialPaths: string[]
     base?: string
     startDir?: string
+    rootDir?: string
 }>()
 
 const emit = defineEmits<{
@@ -69,6 +71,8 @@ const emit = defineEmits<{
 
 const selected = ref<string[]>([])
 const showSelected = ref(true)
+const storageRoot = ref(props.rootDir || '')
+const explorerError = ref('')
 
 function normalizeAbs(p: string) {
     const s = (p || '').trim()
@@ -95,14 +99,24 @@ const startDir = computed(() => {
 
 watch(
     () => props.modelValue,
-    (open) => {
+    async (open) => {
         if (open) {
+            explorerError.value = ''
+            storageRoot.value = props.rootDir || ''
+            if (!storageRoot.value) {
+                try {
+                    const settings = await props.apiFetch('/api/settings')
+                    storageRoot.value = settings.projectRoot || ''
+                    if (!storageRoot.value) explorerError.value = 'Storage is not configured. Ask your administrator.'
+                } catch (e: any) { explorerError.value = e?.message || 'Could not load the storage root.' }
+            }
             selected.value = Array.isArray(props.initialPaths)
                 ? props.initialPaths.map(normalizeAbs).filter(Boolean)
                 : []
             showSelected.value = true
         }
-    }
+    },
+    { immediate: true }
 )
 
 function close() {
@@ -128,8 +142,6 @@ function onExplorerRemove(paths: string[]) {
     const removeSet = new Set(paths.map(normalizeAbs).filter(Boolean))
     selected.value = selected.value.filter((p) => !removeSet.has(normalizeAbs(p)))
 }
-
-const explorerError = ref('')
 
 const validationError = computed(() => {
     if (selected.value.length < 1) return 'Select at least 1 file.'

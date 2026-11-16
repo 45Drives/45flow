@@ -3,7 +3,7 @@ import { createApp, nextTick, reactive, ref } from 'vue'
 import AppShell from './AppShell.vue'
 
 const mocks = vi.hoisted(() => ({
-  connection: null, route: null, unmounted: vi.fn(), replace: vi.fn(async () => {}),
+  connection: null, route: null, setupBlocked: null, unmounted: vi.fn(), replace: vi.fn(async () => {}),
 }))
 vi.mock('vue-router', () => ({
   useRoute: () => mocks.route,
@@ -76,6 +76,18 @@ vi.mock('../renderer/components/GuidedTour.vue', () => ({ default: { template: '
 vi.mock('../renderer/components/NotificationBell.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../renderer/components/modals/SettingsModal.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../renderer/components/modals/LogViewModal.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('../renderer/components/setup/SetupGate.vue', async () => {
+  const { h, watch } = await import('vue')
+  return {
+    default: {
+      emits: ['blocked'],
+      setup(_props, { emit, slots }) {
+        watch(mocks.setupBlocked, value => emit('blocked', value), { immediate: true })
+        return () => mocks.setupBlocked.value ? h('div', { 'data-setup': '' }) : slots.default?.()
+      },
+    },
+  }
+})
 vi.mock('../renderer/components/QuickShareOverlay.vue', async () => {
   const { h, onUnmounted, ref } = await import('vue')
   return {
@@ -100,8 +112,9 @@ const connected = () => ({
 })
 const quickShare = () => host.querySelector('[data-quick-share]')
 
-beforeEach(() => {
+beforeEach(async () => {
   mocks.connection = ref(connected())
+  mocks.setupBlocked = ref(false)
   mocks.route = reactive({ name: 'dashboard', path: '/dashboard', meta: {} })
   mocks.unmounted.mockClear()
   mocks.replace.mockClear()
@@ -110,6 +123,7 @@ beforeEach(() => {
   app = createApp(AppShell)
   app.component('router-view', { template: '<div data-route-view />' })
   app.mount(host)
+  await nextTick()
 })
 
 afterEach(() => {
@@ -118,6 +132,18 @@ afterEach(() => {
 })
 
 describe('Quick Share session lifetime', () => {
+  it('blocks authenticated routes and Quick Share until server setup completes', async () => {
+    mocks.setupBlocked.value = true
+    await nextTick()
+    expect(host.querySelector('[data-setup]')).not.toBeNull()
+    expect(host.querySelector('[data-route-view]')).toBeNull()
+    expect(quickShare()).toBeNull()
+    mocks.setupBlocked.value = false
+    await nextTick()
+    expect(host.querySelector('[data-route-view]')).not.toBeNull()
+    expect(quickShare()).not.toBeNull()
+  })
+
   it.each([false, true])('discards the open overlay on logout (minimized: %s)', async minimized => {
     if (minimized) {
       quickShare().click()

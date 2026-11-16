@@ -1,10 +1,7 @@
 <template>
   <section class="fp-shell bg-accent flex flex-col text-left rounded-md min-h-0 w-full min-w-0" :class="[compact ? 'fp-compact gap-1 text-sm' : 'gap-2 text-base']">
     <div class="fp-meta flex flex-col gap-2 text-sm">
-      <label v-if="canShowEntireTree && !hideProjectControls" class="flex items-center gap-2 cursor-pointer select-none">
-        <input type="checkbox" v-model="showEntireTree" @change="changeProject" />
-        <span>Show entire directory tree from root</span>
-      </label>
+      <p v-if="configuredProjectRoot && !hideProjectControls" class="text-xs text-muted">Browse from storage root (<code>{{ configuredProjectRoot }}</code>)</p>
 
       <div v-if="subtitle && !compact" class="opacity-80">{{ subtitle }}</div>
 
@@ -17,35 +14,18 @@
 
       <div v-if="pickerReady" class="flex flex-row gap-2 items-center">
         <span class="whitespace-nowrap text-xs">Destination:</span>
-        <PathInput v-model="destAbs" :apiFetch="pathInputApiFetch" :dirsOnly="true" @choose="onChooseDest" />
+        <PathInput v-model="destAbs" :apiFetch="pathInputApiFetch" :dirsOnly="true" commit-on-blur @choose="onChooseDest" />
       </div>
       <div v-else class="text-xs opacity-70">Loading destination...</div>
 
       <div v-if="!hideProjectControls && (autoDetectRoots ?? true) && !showEntireTree" class="text-xs opacity-70">
         <template v-if="useConfiguredProjectRoot && configuredProjectRoot">
-          Using configured project root: <code>{{ configuredProjectRoot }}</code>
+          Storage root: <code>{{ configuredProjectRoot }}</code>
         </template>
-        <template v-else-if="detecting">Detecting ZFS pools…</template>
-        <template v-else-if="browseMode === 'roots' && !projectRoots.length">No ZFS pools found; browsing /</template>
+        <template v-else-if="detecting">Loading storage root…</template>
+        <template v-else-if="browseMode === 'roots' && !projectRoots.length">Storage is not configured. Ask your administrator.</template>
       </div>
 
-      <label
-        v-if="!hideProjectControls && hasConfiguredProjectRoot && !showEntireTree && (autoDetectRoots ?? true)"
-        class="flex items-center gap-2 cursor-pointer select-none text-xs opacity-80"
-      >
-        <input type="checkbox" v-model="useConfiguredProjectRoot" />
-        <span>Use configured project root by default</span>
-      </label>
-
-      <label
-        v-if="!hideProjectControls && showDefaultRootOption"
-        class="flex items-center gap-2 cursor-pointer select-none text-xs opacity-80"
-      >
-        <input type="checkbox" v-model="rememberProjectAsDefault" :disabled="savingDefaultRoot" />
-        <span>
-          Use this folder as the default server folder (change later in Settings → Preferences).
-        </span>
-      </label>
     </div>
 
     <div class="fp-browser border rounded overflow-hidden bg-accent flex flex-col min-w-0" :class="containerHeights">
@@ -242,19 +222,15 @@ const selectedFolderBridge = computed<string | null>({
   },
 })
 
-/* Roots auto-detect */
+/* Keep legacy request-coordinate support while browsing within storage. */
 const showEntireTree = ref(false)
-// Only root users can browse the entire filesystem tree
-const canShowEntireTree = computed(() => (props.allowEntireTree ?? false) && (props.isRootUser ?? true))
 const {
   detecting,
   detectingRoots,
   projectRoots,
   loadProjectChoices,
-  forceProjectRoot,
   configuredProjectRoot,
   useConfiguredProjectRoot,
-  hasConfiguredProjectRoot,
 } = useProjectChoices(showEntireTree)
 
 /* Local state */
@@ -315,16 +291,6 @@ function refreshBrowser() {
   refreshKey.value++
 }
 const pickerReady = ref(false)
-const rememberProjectAsDefault = ref(true)
-const savingDefaultRoot = ref(false)
-const showDefaultRootOption = computed(
-  () =>
-    browseMode.value === 'roots' &&
-    !showEntireTree.value &&
-    (props.autoDetectRoots ?? true) &&
-    !configuredProjectRoot.value &&
-    !forceProjectRoot.value,
-)
 
 /* Persist view mode */
 onMounted(() => {
@@ -348,6 +314,7 @@ watch(
 onMounted(async () => {
   pickerReady.value = false
   await loadProjectChoices()
+  if (!clampBase.value && configuredProjectRoot.value) clampBase.value = configuredProjectRoot.value
 
   if (props.startDir) {
     browseMode.value = 'dir'
@@ -444,6 +411,7 @@ function toAbsUnder(base: string, p: string) {
   const clean = (p || '').replace(/^\/+/, '')
   if (!bName) return '/' + clean
   if (clean === bName || clean.startsWith(bName + '/')) return '/' + clean
+  if (p.startsWith('/')) return '/' + bName
   return '/' + bName + '/' + clean
 }
 
@@ -650,7 +618,6 @@ function onSelectFolder(relOrAbs: string) {
 
 async function chooseProject(dirPath: string) {
   const absNoTrail = ensureSlash(dirPath).replace(/\/+$/, '')
-  void maybePersistDefaultProjectRoot(absNoTrail)
   internalProject.value = absNoTrail
   browseMode.value = 'dir'
 
@@ -659,44 +626,6 @@ async function chooseProject(dirPath: string) {
 
   destAbs.value = browseCwd.value
   internalDest.value = absNoTrail.replace(/^\/+/, '')
-}
-
-async function maybePersistDefaultProjectRoot(absNoTrail: string) {
-  if (!showDefaultRootOption.value) return
-  if (!rememberProjectAsDefault.value) return
-  if (savingDefaultRoot.value) return
-  if (!absNoTrail) return
-  savingDefaultRoot.value = true
-  try {
-    await props.apiFetch('/api/settings', {
-      method: 'POST',
-      body: JSON.stringify({
-        projectRoot: absNoTrail,
-        forceProjectRoot: true,
-      }),
-    })
-    configuredProjectRoot.value = absNoTrail
-    forceProjectRoot.value = true
-    pushNotification(
-      new Notification(
-        'Default Share Root Saved',
-        `Using ${absNoTrail} as the default share root. Update this in Settings -> Preferences -> Default share/upload root.`,
-        'success',
-        8000,
-      ),
-    )
-  } catch (e: any) {
-    pushNotification(
-      new Notification(
-        'Could Not Save Default Share Root',
-        e?.message || 'Project was selected, but the default share root could not be saved.',
-        'warning',
-        8000,
-      ),
-    )
-  } finally {
-    savingDefaultRoot.value = false
-  }
 }
 
 async function changeProject() {
