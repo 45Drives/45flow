@@ -3,7 +3,8 @@
         <!-- Non-root row -->
         <div v-if="!isRoot" data-fp-item :class="[
             'tree-node-row grid auto-rows-[28px] items-center border-b border-default text-default cursor-pointer focus:outline-none',
-            isActiveFolder ? 'active-folder-row' : 'ss-explorer-hover'
+            isActiveFolder ? 'active-folder-row' : 'ss-explorer-hover',
+            { 'tree-node-row--folders': hideMetadata }
         ]"
             @click="modeIsUpload ? selectFolder() : onRowClick()"
             @keydown.enter.prevent="modeIsUpload ? selectFolder() : onRowClick()"
@@ -56,9 +57,9 @@
                 </div>
             </div>
 
-            <div class="px-2 py-1">Folder</div>
-            <div class="px-2 py-1">—</div>
-            <div class="px-2 py-1 whitespace-nowrap overflow-hidden text-ellipsis tabular-nums"
+            <div v-if="!hideMetadata" class="px-2 py-1">Folder</div>
+            <div v-if="!hideMetadata" class="px-2 py-1">—</div>
+            <div v-if="!hideMetadata" class="px-2 py-1 whitespace-nowrap overflow-hidden text-ellipsis tabular-nums"
                 :title="fmtDateFull(entryMtime)">
                 {{ fmtDate(entryMtime) }}
             </div>
@@ -67,8 +68,9 @@
         <!-- children -->
         <div v-show="isRoot || open" class="">
             <div v-if="loading" class="opacity-70 text-xs p-2">Loading…</div>
+            <FlowNotice v-if="loadError" tone="danger" size="sm" live>{{ loadError }} Use Refresh to try again.</FlowNotice>
             <!-- empty directory notice -->
-            <div v-if="!loading && open && !children.length"
+            <div v-if="!loading && !loadError && open && !children.length"
                 class="p-2">
                 <div class="opacity-70 text-sm italic p-6 text-center border border-dashed rounded-lg">
                     This folder is empty
@@ -78,6 +80,7 @@
                 <TreeNode v-if="ch.isDir" :label="ch.name" :relPath="ch.path" :apiFetch="apiFetch" :useCase="useCase"
                     :selectedFolder="selectedFolder" :selected="selected" :selectedVersion="selectedVersion"
                     :getFilesFor="getFilesFor" :depth="depth + 1" :activeFolder="activeFolder" @select-folder="$emit('select-folder', $event)"
+                    :hide-metadata="hideMetadata"
                     @toggle="$emit('toggle', $event)" @navigate="$emit('navigate', $event)"
                     @select-range="$emit('select-range', $event)" />
                 <div v-else :class="[
@@ -126,6 +129,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick, computed } from 'vue'
 import { useTimeFormat } from '../composables/useTimeFormat'
+import FlowNotice from '../ui/FlowNotice.vue'
 defineOptions({ name: 'TreeNode' })
 
 type TogglePayload = { path: string; isDir: boolean }
@@ -142,6 +146,7 @@ const props = defineProps<{
     useCase?: 'upload' | 'share'
     selectedFolder?: string | null
     activeFolder?: string | null
+    hideMetadata?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -221,6 +226,7 @@ function parentDir(path: string) {
 
 const open = ref<boolean>(isRoot ? true : false)
 const loading = ref(false)
+const loadError = ref('')
 const children = ref<Array<{ name: string; isDir: boolean; path: string; size?: number; mtime?: number }>>([])
 
 const entryMtime = computed(() => 0)
@@ -237,13 +243,19 @@ function onFolderExpandToggle() {
 async function ensureChildren() {
     if (children.value.length || loading.value) return
     loading.value = true
-    const data = await props.apiFetch(`/api/files?dir=${encodeURIComponent(props.relPath)}`)
-    const dir = data.dir ?? props.relPath
-    const ents = (data.entries || [])
-        .map((e: any) => ({ ...e, path: (dir ? dir + '/' : '') + e.name }))
-        .sort((a: any, b: any) => (Number(b.isDir) - Number(a.isDir)) || a.name.localeCompare(b.name))
-    children.value = ents
-    loading.value = false
+    loadError.value = ''
+    try {
+        const data = await props.apiFetch(`/api/files?dir=${encodeURIComponent(props.relPath)}`)
+        const dir = data.dir ?? props.relPath
+        const ents = (data.entries || [])
+            .map((e: any) => ({ ...e, path: (dir ? dir + '/' : '') + e.name }))
+            .sort((a: any, b: any) => (Number(b.isDir) - Number(a.isDir)) || a.name.localeCompare(b.name))
+        children.value = ents
+    } catch (error) {
+        loadError.value = error instanceof Error ? error.message : 'Could not load this folder.'
+    } finally {
+        loading.value = false
+    }
 }
 
 function toggleOpen() {
@@ -257,7 +269,7 @@ function toggleOpen() {
 const allFiles = ref<string[] | null>(null)
 
 async function ensureAllFiles() {
-    if (isRoot) return
+    if (isRoot || modeIsUpload.value) return
     if (allFiles.value === null) {
         allFiles.value = await props.getFilesFor(props.relPath || '')
     }
@@ -373,5 +385,9 @@ function selectFolder() {
     .tree-node-row > :nth-child(5) {
         display: none;
     }
+}
+
+.tree-node-row.tree-node-row--folders {
+    grid-template-columns: 2rem minmax(0, 1fr);
 }
 </style>

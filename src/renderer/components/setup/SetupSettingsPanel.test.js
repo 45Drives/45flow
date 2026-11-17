@@ -14,6 +14,7 @@ vi.mock('../../ui/FlowSwitch.vue', () => ({
 let app, host
 const flush = async () => { for (let i = 0; i < 10; i++) { await Promise.resolve(); await nextTick() } }
 const button = text => [...host.querySelectorAll('button')].find(item => item.textContent.includes(text))
+const staffButton = username => [...host.querySelectorAll('li')].find(item => item.firstElementChild.textContent === username)?.querySelector('button')
 const status = extra => ({
   ready: true, storageRoot: { configured: true, path: '/tank', fstype: 'zfs' },
   malwareScan: { required: true, scannerAvailable: false, locked: false },
@@ -41,16 +42,16 @@ describe('shared setup / Settings panels', () => {
       return { members: bobMember ? ['alice', 'bob'] : ['alice'], accounts: [{ username: 'alice', member: true }, { username: 'bob', member: bobMember }] }
     })
     await mount('staff')
-    const removes = [...host.querySelectorAll('button')].filter(item => item.textContent === 'Remove from staff')
     const list = host.querySelector('ul')
-    const bobRow = removes[1].closest('li')
-    expect(removes[0].disabled).toBe(true)
-    removes[1].click()
+    const bobRow = staffButton('bob').closest('li')
+    expect(staffButton('alice').disabled).toBe(true)
+    staffButton('bob').click()
     await flush()
     expect(host.querySelector('ul')).toBe(list)
     expect(bobRow.isConnected).toBe(true)
     expect(mocks.apiFetch).toHaveBeenCalledWith('/api/admin/staff-accounts', expect.objectContaining({ method: 'POST', body: JSON.stringify({ username: 'bob', member: false }) }))
-    button('Add to staff').click()
+    expect(staffButton('bob').textContent).toContain('Add to staff')
+    staffButton('bob').click()
     await flush()
     expect(mocks.apiFetch).toHaveBeenCalledWith('/api/admin/staff-accounts', expect.objectContaining({ method: 'POST', body: JSON.stringify({ username: 'bob', member: true }) }))
     expect(mocks.apiFetch.mock.calls.filter(([url, init]) => url === '/api/admin/staff-accounts' && !init?.method)).toHaveLength(1)
@@ -62,12 +63,44 @@ describe('shared setup / Settings panels', () => {
       return { members: ['alice'], accounts: [{ username: 'alice', member: true }, { username: 'bob', member: false }] }
     })
     await mount('staff', status())
-    button('Add to staff').click()
+    staffButton('bob').click()
     await flush()
     expect(host.textContent).toContain('Membership denied')
-    expect(button('Add to staff')).toBeDefined()
+    expect(staffButton('bob').textContent).toContain('Add to staff')
     expect(host.textContent).toContain('Staff users: alice')
     expect(mocks.apiFetch).toHaveBeenCalledTimes(2)
+  })
+  it('keeps the row and button footprint during independent concurrent membership saves', async () => {
+    const saves = new Map()
+    mocks.apiFetch.mockImplementation((url, init) => {
+      if (init?.method === 'POST') return new Promise(resolve => saves.set(JSON.parse(init.body).username, resolve))
+      return Promise.resolve({ members: ['alice', 'bob'], accounts: [
+        { username: 'alice', member: true }, { username: 'bob', member: true }, { username: 'carol', member: false },
+      ] })
+    })
+    await mount('staff', status())
+    const list = host.querySelector('ul')
+    const bob = staffButton('bob')
+    const originalText = bob.textContent
+    bob.click()
+    await flush()
+    expect(bob.disabled).toBe(true)
+    expect(bob.getAttribute('aria-busy')).toBe('true')
+    expect(bob.textContent).toBe(originalText)
+    expect(staffButton('carol').disabled).toBe(false)
+    expect(host.querySelector('ul')).toBe(list)
+    staffButton('carol').click()
+    await flush()
+    saves.get('carol')({ members: ['alice', 'bob', 'carol'], accounts: [{ username: 'carol', member: true }] })
+    await flush()
+    saves.get('bob')({ members: ['alice'], accounts: [{ username: 'bob', member: false }] })
+    await flush()
+    expect(staffButton('bob')).toBe(bob)
+    expect(staffButton('bob').textContent).toContain('Add to staff')
+    expect(staffButton('carol').textContent.replace('Remove from staff', '')).toContain('Remove from staff')
+    expect(host.textContent).toContain('Staff users: alice, carol')
+    expect(host.querySelector('.flow-notice--success')).toBeNull()
+    expect(mocks.apiFetch.mock.calls.filter(([, init]) => !init?.method)).toHaveLength(1)
   })
   it('shows a spinner while loading staff accounts and reuses wizard setup status', async () => {
     let resolveAccounts

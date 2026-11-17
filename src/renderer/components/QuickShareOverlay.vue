@@ -47,19 +47,28 @@
           </button>
       </template>
 
-      <!-- Dropped files list (pinned above the options, scrolls on its own) -->
-      <div v-show="qsView === 'setup'" class="shrink-0 border border-default rounded-md p-2 mb-4 max-h-24 overflow-y-auto" aria-label="Files to upload" data-tour="qs-files">
-        <div v-for="f in droppedFiles" :key="f.path" class="flex items-center justify-between text-sm py-0.5 min-w-0">
-          <span class="truncate min-w-0 flex-1" :title="f.path">{{ f.name }}</span>
-          <span class="text-muted ml-2 shrink-0">{{ formatSize(f.size) }}</span>
-        </div>
-      </div>
-
       <!-- Content area -->
       <div class="flex-1 min-h-0 flex flex-col overflow-y-auto">
 
       <!-- ===== Setup: where it goes + how the link works, all on one screen ===== -->
       <section v-show="qsView === 'setup'" class="qs-lane shrink-0 flex flex-col gap-4" data-tour="qs-step-options">
+        <div class="shrink-0 border-b border-default pb-4 mb-4" data-tour="qs-link-title">
+          <label class="flex flex-col gap-1.5 min-w-0">
+            <span class="text-base font-semibold">Link name <span class="text-xs font-normal opacity-70">(optional)</span></span>
+            <input id="qs-link-title" type="text" v-model.trim="linkTitle"
+              class="input-textlike border rounded-lg px-3 py-2 w-full text-sm"
+              placeholder="e.g. Rough Cut v2 for review" />
+          </label>
+        </div>
+
+        <!-- Dropped files list (pinned above the options, scrolls on its own) -->
+        <div class="shrink-0 border border-default rounded-md p-2 mb-4 max-h-24 overflow-y-auto" aria-label="Files to upload" data-tour="qs-files">
+          <div v-for="f in droppedFiles" :key="f.path" class="flex items-center justify-between text-sm py-0.5 min-w-0">
+            <span class="truncate min-w-0 flex-1" :title="f.path">{{ f.name }}</span>
+            <span class="text-muted ml-2 shrink-0">{{ formatSize(f.size) }}</span>
+          </div>
+        </div>
+
         <!-- Where the files go -->
         <div class="flex flex-col gap-2 min-w-0" data-tour="qs-step-destination">
           <div v-if="!rawActiveProject" class="flex flex-wrap items-center gap-3 min-w-0">
@@ -182,26 +191,18 @@
           @update:recipients="(v) => (emailRecipients = v)" @update:invalid="(v) => (emailInvalid = v)" />
 
         <!-- ── Advanced Options (collapsible) ── -->
-        <Disclosure v-slot="{ open }" as="div" class="border border-default rounded-lg bg-default" data-tour="qs-advanced">
+        <Disclosure v-if="hasMedia" v-slot="{ open }" as="div" class="border border-default rounded-lg bg-default" data-tour="qs-advanced">
           <DisclosureButton class="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left rounded-lg hover:bg-well/30 transition" data-tour="qs-advanced-btn">
             <div class="min-w-0">
               <span class="font-semibold text-sm">Advanced Options</span>
               <span class="text-xs text-muted ml-2">
-                Link title{{ hasVideo ? `, proxy files (${proxyQualities.join(', ') || 'none'})` : '' }}{{ hasMedia ? `, watermark ${watermarkEnabled ? 'on' : 'off'}` : '' }}
+                {{ hasVideo ? `Proxy files (${proxyQualities.join(', ') || 'none'}), ` : '' }}Watermark {{ watermarkEnabled ? 'on' : 'off' }}
               </span>
             </div>
             <ChevronDownIcon class="h-5 w-5 text-muted transition-transform duration-200" :class="open ? 'rotate-180' : ''" />
           </DisclosureButton>
 
           <DisclosurePanel class="px-4 pb-4 pt-1 border-t border-default flex flex-col gap-4" data-tour="qs-advanced-panel">
-            <!-- Link title -->
-            <div class="flex flex-wrap items-center gap-3 min-w-0" data-tour="qs-link-title">
-              <label for="qs-link-title" class="font-semibold text-sm whitespace-nowrap">Link Title:</label>
-              <input id="qs-link-title" type="text" v-model.trim="linkTitle"
-                class="input-textlike border rounded px-3 py-2 flex-1 min-w-[12rem]"
-                placeholder="Optional title" />
-            </div>
-
             <!-- Video/Image options (shown for media files) -->
             <VideoOptionsPanel
               v-if="hasMedia"
@@ -484,11 +485,20 @@ const quickShareTourSteps = computed<TourStep[]>(() => [
   // ── Overview ──
   {
     target: '[data-tour="qs-modal"]',
-    message: 'This is Quick Share.\n\nWhen you drop files onto 45Flow from most screens, this opens automatically. Everything is on one screen: pick where the files go, set up the link, then click Upload & Share.\n\nThe list at the top shows what you dropped. Here we\'re using a sample file for the tour.',
+    message: 'This is Quick Share.\n\nWhen you drop files onto 45Flow from most screens, this opens automatically. Everything is on one screen: name the link, pick where the files go, set up the link, then click Upload & Share.\n\nThe list near the top shows what you dropped. Here we\'re using a sample file for the tour.',
     beforeShow: () => {
       tourQuickShareStep.value = 'setup'
       tourQuickShareShowDone.value = false
       tourQuickShareOpen.value = true
+    },
+  },
+  // ── Link name ──
+  {
+    target: '[data-tour="qs-link-title"]',
+    message: 'Give your link an optional descriptive name. It helps you identify the link later in the dashboard.',
+    beforeShow: () => {
+      tourQuickShareOpen.value = true
+      tourQuickShareStep.value = 'setup'
     },
   },
   // ── Destination ──
@@ -527,19 +537,6 @@ const quickShareTourSteps = computed<TourStep[]>(() => [
     beforeShow: () => {
       tourQuickShareOpen.value = true
       tourQuickShareStep.value = 'setup'
-    },
-  },
-  // ── Advanced Options: title ──
-  {
-    target: '[data-tour="qs-link-title"]',
-    message: 'Advanced Options holds the extras.\n\nGive your link a descriptive title. This is optional but helps you identify the link later in the dashboard.',
-    beforeShow: async () => {
-      tourQuickShareOpen.value = true
-      tourQuickShareStep.value = 'setup'
-      await new Promise(r => setTimeout(r, 100))
-      const btn = document.querySelector<HTMLElement>('[data-tour="qs-advanced-btn"]')
-      const panel = document.querySelector('[data-tour="qs-advanced-panel"]')
-      if (btn && !panel) btn.click()
     },
   },
   // ── Advanced Options: media ──

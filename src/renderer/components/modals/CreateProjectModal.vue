@@ -1,7 +1,7 @@
 <template>
 	<FlowModal
 		:model-value="modelValue"
-		title="New Project"
+		:title="project ? 'Edit Project' : 'New Project'"
 		description="A project is a folder on your server for one job or production. Everything you share for it lives in that folder."
 		size="xl"
 		hide-close
@@ -32,7 +32,7 @@
 					subtitle=""
 					:auto-detect-roots="!storageRoot"
 					:base="storageRoot"
-					:start-dir="storageRoot"
+					:start-dir="project?.root_dir || storageRoot"
 					:hide-project-controls="!!storageRoot"
 					:is-root-user="isRootUser"
 					v-model:project="pickerBase"
@@ -58,7 +58,7 @@
 			</p>
 			<button type="button" class="btn btn-dismiss px-4 py-2" :disabled="creating" @click="close">Cancel</button>
 			<button type="submit" form="create-project-form" class="btn btn-primary px-4 py-2" :disabled="!canCreate">
-				{{ creating ? 'Creating…' : 'Create Project' }}
+				{{ creating ? (project ? 'Saving…' : 'Creating…') : (project ? 'Save changes' : 'Create Project') }}
 			</button>
 		</template>
 	</FlowModal>
@@ -75,13 +75,15 @@ import FolderSpaceNotice from '../FolderSpaceNotice.vue'
 import FlowModal from '../../ui/FlowModal.vue'
 import FlowField from '../../ui/FlowField.vue'
 
-const props = defineProps<{ modelValue: boolean; storageRoot?: string }>()
+export type ProjectDetails = { id: number; name: string; root_dir: string; description: string | null }
+const props = defineProps<{ modelValue: boolean; storageRoot?: string; project?: ProjectDetails; connectionId?: string }>()
 const emit = defineEmits<{
 	(e: 'update:modelValue', v: boolean): void
-	(e: 'created', project: { id: number; name: string; root_dir: string; description: string | null }): void
+	(e: 'created', project: ProjectDetails): void
+	(e: 'saved', project: ProjectDetails): void
 }>()
 
-const { apiFetch } = useApi()
+const { apiFetch } = useApi(props.connectionId)
 const { activeConnection } = useConnections()
 const isRootUser = computed(() => activeConnection.value?.username === 'root')
 
@@ -106,14 +108,14 @@ const createBlockedReason = computed(() => {
 	return ''
 })
 
-function reset() {
-	name.value = ''
-	rootDir.value = ''
+function reset(open = false) {
+	name.value = open ? props.project?.name || '' : ''
+	rootDir.value = open ? props.project?.root_dir || '' : ''
 	pickerBase.value = ''
-	description.value = ''
+	description.value = open ? props.project?.description || '' : ''
 }
 
-watch(() => props.modelValue, (open) => { if (!open) reset() })
+watch(() => props.modelValue, open => reset(open), { immediate: true })
 
 function close() {
 	emit('update:modelValue', false)
@@ -123,8 +125,9 @@ async function submit() {
 	if (!canCreate.value) return
 	creating.value = true
 	try {
-		const data = await apiFetch('/api/projects', {
-			method: 'POST',
+		const data = await apiFetch(props.project ? `/api/projects/${props.project.id}` : '/api/projects', {
+			method: props.project ? 'PATCH' : 'POST',
+			retry: 0,
 			body: JSON.stringify({
 				name: name.value.trim(),
 				rootDir: finalRootDir.value,
@@ -132,10 +135,12 @@ async function submit() {
 			}),
 		})
 		const project = data?.project
+		if (!project) throw new Error('The server did not return the saved project. Refresh the project list before trying again.')
 		emit('update:modelValue', false)
-		if (project) emit('created', project)
+		if (props.project) emit('saved', project)
+		else emit('created', project)
 	} catch (e: any) {
-		pushNotification(new Notification('Couldn\'t create the project', e?.message || '', 'error', 8000))
+		pushNotification(new Notification(props.project ? 'Couldn\'t save the project' : 'Couldn\'t create the project', e?.message || '', 'error', 8000))
 	} finally {
 		creating.value = false
 	}

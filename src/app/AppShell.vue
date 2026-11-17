@@ -16,7 +16,7 @@
 
       <!-- Center (title) -->
       <!-- Phones: the branding logo would collide with the controls, so it shows from sm up. -->
-      <div class="hidden sm:block justify-self-center text-center items-center text-2xl font-semibold whitespace-nowrap">
+      <div class="header-division-logo justify-self-center text-center items-center text-2xl font-semibold whitespace-nowrap">
         <!-- {{ headerTitle || (route.meta.title as string) || '45Flow' }} -->
         <!-- <div class="flow-logo-gradient mx-auto my-auto ml-2" role="img" aria-label="45Flow" data-tour="flow-logo" :style="{
           '--flow-logo-src': `url(${flowLogo})`,
@@ -313,6 +313,16 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.header-division-logo {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .header-division-logo {
+    display: block;
+  }
+}
+
 .theme-icon-btn {
   display: inline-flex;
   align-items: center;

@@ -68,7 +68,10 @@ const loading = ref(false)
 let timer: ReturnType<typeof setTimeout> | null = null
 let requestSeq = 0
 
-const normalizedPath = computed(() => (props.path || '').trim())
+const normalizedPath = computed(() => {
+  const path = (props.path || '').trim()
+  return path ? '/' + path.replace(/^\/+/, '') : ''
+})
 const spaceKnown = computed(() => typeof info.value?.availBytes === 'number' && typeof info.value?.totalBytes === 'number')
 const lowSpace = computed(() => {
   const i = info.value
@@ -102,13 +105,13 @@ async function load(path: string) {
 
 watch(normalizedPath, (p) => {
   if (timer) clearTimeout(timer)
-  if (!p) {
-    info.value = null
-    return
-  }
+  requestSeq++
+  info.value = null
+  loading.value = !!p
+  if (!p) return
   timer = setTimeout(() => void load(p), 350)
 }, { immediate: true })
 
-onUnmounted(() => { if (timer) clearTimeout(timer) })
+onUnmounted(() => { requestSeq++; if (timer) clearTimeout(timer) })
 </script>
 

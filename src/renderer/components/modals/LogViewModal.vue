@@ -88,25 +88,25 @@
             <div
               v-if="source === 'server' && serverCanView"
               class="rounded-md border p-3 mb-4 bg-default"
-              :class="auditHealthy ? 'border-default' : 'border-red-700'"
+              :class="auditHealthy ? 'border-default' : 'flow-tone-danger'"
               data-testid="audit-status-panel"
             >
               <div class="flex flex-wrap items-start gap-x-6 gap-y-2">
                 <div>
                   <div class="text-xs text-muted">Audit writes</div>
                   <div v-if="!auditStatus" class="text-sm text-muted">—</div>
-                  <div v-else-if="auditStatus.writes?.ok" class="text-sm font-semibold text-green-500">OK</div>
-                  <div v-else class="text-sm font-semibold text-red-400">
+                  <div v-else-if="auditStatus.writes?.ok" class="text-sm font-semibold text-flow-success">OK</div>
+                  <div v-else class="text-sm font-semibold text-flow-danger">
                     Failing since {{ formatTs(auditStatus.writes?.since) }} · {{ auditStatus.writes?.dropped }} lost
                   </div>
                 </div>
                 <div>
                   <div class="text-xs text-muted">Hash chain</div>
                   <div v-if="!auditStatus?.lastVerification" class="text-sm text-muted">Not checked yet</div>
-                  <div v-else-if="auditStatus.lastVerification.ok" class="text-sm font-semibold text-green-500">
+                  <div v-else-if="auditStatus.lastVerification.ok" class="text-sm font-semibold text-flow-success">
                     Intact <span class="font-normal text-muted">({{ auditStatus.lastVerification.checked }} rows, {{ formatTs(auditStatus.lastVerification.at) }})</span>
                   </div>
-                  <div v-else class="text-sm font-semibold text-red-400">
+                  <div v-else class="text-sm font-semibold text-flow-danger">
                     BROKEN at row {{ auditStatus.lastVerification.brokenAtId }} ({{ auditStatus.lastVerification.reason }})
                   </div>
                 </div>
@@ -115,13 +115,13 @@
                   <div v-if="auditStatus?.lastReview" class="text-sm">
                     {{ formatTs(auditStatus.lastReview.ts) }} by <span class="font-semibold">{{ auditStatus.lastReview.actor || 'unknown' }}</span>
                   </div>
-                  <div v-else class="text-sm text-amber-400">Never reviewed</div>
+                  <div v-else class="text-sm text-flow-warning">Never reviewed</div>
                 </div>
                 <div v-if="auditStatus">
                   <div class="text-xs text-muted">{{ auditStatus.lastReview ? 'Since last review' : 'All time' }}</div>
                   <div class="text-sm">
-                    <span class="text-red-400 font-semibold">{{ auditStatus.lastReview ? auditStatus.sinceLastReview?.errors : auditStatus.errors }}</span> errors ·
-                    <span class="text-amber-400 font-semibold">{{ auditStatus.lastReview ? auditStatus.sinceLastReview?.warnings : auditStatus.warnings }}</span> warnings
+                    <span class="text-flow-danger font-semibold">{{ auditStatus.lastReview ? auditStatus.sinceLastReview?.errors : auditStatus.errors }}</span> errors ·
+                    <span class="text-flow-warning font-semibold">{{ auditStatus.lastReview ? auditStatus.sinceLastReview?.warnings : auditStatus.warnings }}</span> warnings
                   </div>
                 </div>
                 <div v-if="auditStatus">
@@ -148,9 +148,9 @@
                 <button class="btn btn-primary text-xs" type="button" :disabled="reviewing" @click="markReviewed">
                   {{ reviewing ? 'Saving…' : 'Record review' }}
                 </button>
-                <button class="btn btn-secondary text-xs" type="button" @click="reviewOpen = false">Cancel</button>
+                <button class="btn btn-dismiss text-xs" type="button" @click="reviewOpen = false">Cancel</button>
               </div>
-              <div v-if="auditMessage" class="mt-2 text-xs" :class="auditMessageError ? 'text-red-400' : 'text-green-500'">{{ auditMessage }}</div>
+              <div v-if="auditMessage" class="mt-2 text-xs" :class="auditMessageError ? 'text-flow-danger' : 'text-flow-success'">{{ auditMessage }}</div>
             </div>
 
             <!-- Quick views & server-side filters -->
@@ -161,7 +161,7 @@
                   :key="view.key"
                   type="button"
                   class="px-3 py-1 rounded-full text-xs border"
-                  :class="quickView === view.key ? 'border-blue-500 text-blue-400 bg-blue-900/20' : 'border-default text-muted hover:text-default'"
+                  :class="quickView === view.key ? 'flow-tone-info' : 'border-default text-muted hover:text-default'"
                   :title="view.hint"
                   @click="selectQuickView(view.key)"
                 >

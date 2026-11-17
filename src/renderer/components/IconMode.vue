@@ -3,6 +3,7 @@
         <!-- header / path + up -->
         <div v-if="loading" class="opacity-70 text-xs p-2">Loading…</div>
 
+        <FlowNotice v-else-if="loadError" tone="danger" size="sm" live>{{ loadError }} Use Refresh to try again.</FlowNotice>
         <div v-else-if="!entries.length"
             class="opacity-70 text-sm italic p-6 text-center border border-dashed rounded-lg">
             This folder is empty
@@ -92,6 +93,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted, computed } from 'vue'
 import { useTimeFormat } from '../composables/useTimeFormat'
+import FlowNotice from '../ui/FlowNotice.vue'
 defineOptions({ name: 'IconBrowserGrid' })
 import { FolderIcon, FileIcon, ImageIcon, VideoIcon, AudioIcon } from "../assets/icons/index"
 
@@ -122,10 +124,12 @@ const localSelectedFolder = ref<string | null>(props.selectedFolder ?? null)
 const cwd = ref(props.relPath || '')
 
 const loading = ref(false)
+const loadError = ref('')
 const entries = ref<Entry[]>([])
 
 async function loadDir() {
     loading.value = true
+    loadError.value = ''
     try {
         const data = await props.apiFetch(`/api/files?dir=${encodeURIComponent(cwd.value)}`)
         const dir = data.dir ?? cwd.value
@@ -133,6 +137,8 @@ async function loadDir() {
             .map((e: any) => ({ ...e, path: (dir ? dir + '/' : '') + e.name }))
             .sort((a: any, b: any) => (Number(b.isDir) - Number(a.isDir)) || a.name.localeCompare(b.name))
         entries.value = ents as Entry[]
+    } catch (error) {
+        loadError.value = error instanceof Error ? error.message : 'Could not load this folder.'
     } finally {
         loading.value = false
     }
@@ -143,7 +149,7 @@ async function loadDir() {
 const folderFilesMap = ref<Record<string, string[]>>({})
 
 async function preloadFolderFiles() {
-    if (!props.getFilesFor) return
+    if (modeIsUpload.value || !props.getFilesFor) return
     const folders = entries.value.filter(e => e.isDir)
     if (!folders.length) return
     const results: Record<string, string[]> = {}

@@ -14,8 +14,6 @@ vi.mock('../../composables/useProjectChoices', () => ({
     useConfiguredProjectRoot: ref(!!mocks.configuredProjectRoot),
   }),
 }))
-vi.mock('../TreeNode.vue', () => ({ default: { template: '<div />' } }))
-vi.mock('../IconMode.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../FolderSpaceNotice.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../../ui/FlowModal.vue', () => ({
   default: { setup(_, { slots }) { return () => h('div', [slots.default?.(), slots.footer?.()]) } },
@@ -33,14 +31,88 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-function mount(storageRoot = '/tank') {
+function mount(storageRoot = '/tank', extra = {}) {
   host = document.createElement('div')
   document.body.appendChild(host)
-  app = createApp(CreateProjectModal, { modelValue: true, ...(storageRoot ? { storageRoot } : {}) })
+  app = createApp(CreateProjectModal, { modelValue: true, ...(storageRoot ? { storageRoot } : {}), ...extra })
   app.mount(host)
 }
 
 describe('project folder typed paths', () => {
+  it.each(['grid', 'list'])('uses the server path once when selecting a folder in %s view', async view => {
+    mocks.apiFetch.mockImplementation(async (url, init) => {
+      if (init?.method === 'POST' && url === '/api/projects') return { project: { id: 1 } }
+      if (url.startsWith('/api/files?')) {
+        const dir = new URL(url, 'http://localhost').searchParams.get('dir')
+        return { dir: dir || 'tank', entries: dir === 'tank' || !dir ? [{ name: 'PROJECT_A', isDir: true }, { name: 'tank', isDir: true }] : [] }
+      }
+      return { entries: [] }
+    })
+    mount()
+    await flush()
+    const name = host.querySelector('#new-project-name')
+    name.value = 'Project A'
+    name.dispatchEvent(new Event('input', { bubbles: true }))
+    if (view === 'list') {
+      host.querySelector('[aria-label="List view"]').click()
+      await flush()
+      host.querySelector('[title="tank/PROJECT_A/"]').click()
+    } else {
+      host.querySelector('[aria-label="PROJECT_A folder"]').click()
+    }
+    await flush()
+    expect(host.querySelector('[data-path-input-root] input').value).toBe('/tank/PROJECT_A/')
+    if (view === 'grid') {
+      expect(mocks.apiFetch.mock.calls.some(([url]) => url === '/api/files?dir=tank%2FPROJECT_A')).toBe(true)
+    }
+    host.querySelector('#create-project-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    await flush()
+    const [, init] = mocks.apiFetch.mock.calls.find(([url, opts]) => url === '/api/projects' && opts?.method === 'POST')
+    expect(JSON.parse(init.body).rootDir).toBe('tank/PROJECT_A')
+  })
+
+  it('preserves a real child folder with the same name as the storage root', async () => {
+    mocks.apiFetch.mockImplementation(async url => url.startsWith('/api/files?')
+      ? { dir: 'tank', entries: [{ name: 'tank', isDir: true }] }
+      : { entries: [] })
+    mount()
+    await flush()
+    host.querySelector('[aria-label="tank folder"]').click()
+    await flush()
+    expect(host.querySelector('[data-path-input-root] input').value).toBe('/tank/tank/')
+  })
+
+  it('edits a project using its current fields and allows selecting a sibling folder', async () => {
+    const saved = vi.fn()
+    const created = vi.fn()
+    mocks.apiFetch.mockImplementation(async (url, init) => init?.method === 'PATCH'
+      ? { project: { id: 8, name: 'Renamed project', root_dir: '/tank/second', description: 'Updated notes' } }
+      : { entries: [] })
+    mount('/tank', { project: { id: 8, name: 'Original project', root_dir: '/tank/first', description: 'Notes' }, onSaved: saved, onCreated: created })
+    await flush()
+    expect(host.querySelector('#new-project-name').value).toBe('Original project')
+    expect(host.querySelector('#new-project-description').value).toBe('Notes')
+    expect(host.querySelector('[data-path-input-root] input').value).toBe('/tank/first/')
+    const name = host.querySelector('#new-project-name')
+    name.value = 'Renamed project'
+    name.dispatchEvent(new Event('input', { bubbles: true }))
+    const folder = host.querySelector('[data-path-input-root] input')
+    folder.focus()
+    folder.value = '/tank/second'
+    folder.dispatchEvent(new Event('input', { bubbles: true }))
+    folder.blur()
+    const notes = host.querySelector('#new-project-description')
+    notes.value = 'Updated notes'
+    notes.dispatchEvent(new Event('input', { bubbles: true }))
+    await flush()
+    host.querySelector('#create-project-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    await flush()
+    expect(mocks.apiFetch).toHaveBeenCalledWith('/api/projects/8', expect.objectContaining({
+      method: 'PATCH', body: JSON.stringify({ name: 'Renamed project', rootDir: 'tank/second', description: 'Updated notes' }),
+    }))
+    expect(saved).toHaveBeenCalledWith({ id: 8, name: 'Renamed project', root_dir: '/tank/second', description: 'Updated notes' })
+    expect(created).not.toHaveBeenCalled()
+  })
   it('does not create a project when navigating up after entering a valid name and folder', async () => {
     mocks.apiFetch.mockResolvedValue({ entries: [] })
     mount()
@@ -77,6 +149,7 @@ describe('project folder typed paths', () => {
     host.querySelector('#fp-new-folder-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     await flush()
     expect(mocks.apiFetch).toHaveBeenCalledWith('/api/mkdir', expect.objectContaining({ body: JSON.stringify({ path: '/tank/new-choice' }) }))
+    expect(host.querySelector('[data-path-input-root] input').value).toBe('/tank/new-choice/')
     expect(mocks.apiFetch.mock.calls.some(([url]) => url === '/api/projects')).toBe(false)
   })
   it.each(['Enter', 'blur'])('submits the typed folder after %s even without autocomplete results', async method => {

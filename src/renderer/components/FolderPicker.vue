@@ -13,10 +13,11 @@
       </div>
 
       <div v-if="pickerReady" class="flex flex-row gap-2 items-center">
-        <span class="whitespace-nowrap text-xs">Destination:</span>
-        <PathInput v-model="destAbs" :apiFetch="pathInputApiFetch" :dirsOnly="true" commit-on-blur @choose="onChooseDest" />
+        <span class="whitespace-nowrap text-xs">{{ storageBrowse ? 'Storage location:' : 'Destination:' }}</span>
+        <PathInput v-model="destAbs" class="min-w-0 flex-1" :apiFetch="pathInputApiFetch" :dirsOnly="true" commit-on-blur @choose="onChooseDest" />
       </div>
       <div v-else class="text-xs opacity-70">Loading destination...</div>
+      <FlowNotice v-if="storageTruncated" tone="warning" size="sm">This listing is incomplete. Type a folder path in Storage location to open it.</FlowNotice>
 
       <div v-if="!hideProjectControls && (autoDetectRoots ?? true) && !showEntireTree" class="text-xs opacity-70">
         <template v-if="useConfiguredProjectRoot && configuredProjectRoot">
@@ -115,6 +116,7 @@
           <TreeNode :key="'tree-' + browseCwd + refreshKey" :apiFetch="fileApiFetch" :selected="internalSelected"
             :selectedVersion="selectedVersion" :getFilesFor="getFilesForFolder" :relPath="rootRel" :depth="0"
             :isRoot="true" :useCase="useCase || 'upload'" v-model:selectedFolder="selectedFolderBridge"
+            :hide-metadata="storageBrowse"
             @select-folder="onSelectFolder" @toggle="togglePath" @navigate="navigateTo" />
         </div>
       </template>
@@ -133,14 +135,18 @@
       </div>
       </div>
 
-      <FlowModal v-model="showNewFolderModal" title="Create New Folder" size="sm" hide-close>
+      <FlowModal v-model="showNewFolderModal" title="Create New Folder" size="sm" hide-close :busy="creatingFolder">
           <p class="text-sm mb-4 text-muted">
             Current Path: <code>{{ newFolderBasePath }}</code>
           </p>
 
           <form id="fp-new-folder-form" @submit.stop.prevent="confirmNewFolder">
             <input ref="folderNameInput" type="text" v-model="newFolderName" placeholder="Enter folder name" required
-              autofocus aria-label="Folder name" class="w-full px-3 py-2 input-textlike text-default" />
+              autofocus aria-label="Folder name" :disabled="creatingFolder"
+              :pattern="storageBrowse ? '[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}' : undefined"
+              :maxlength="storageBrowse ? 128 : undefined"
+              class="w-full px-3 py-2 input-textlike text-default" />
+            <p v-if="storageBrowse" class="text-xs text-muted mt-2">Start with a letter or digit. Use letters, digits, dot, dash or underscore.</p>
           </form>
 
           <FlowNotice v-if="newFolderError" tone="danger" size="sm" class="mt-4">
@@ -148,11 +154,11 @@
           </FlowNotice>
 
           <template #footer>
-              <button type="button" @click="showNewFolderModal = false" class="btn btn-dismiss">
+              <button type="button" @click="showNewFolderModal = false" :disabled="creatingFolder" class="btn btn-dismiss">
                 Cancel
               </button>
-              <button type="submit" form="fp-new-folder-form" :disabled="!newFolderName.trim()" class="btn btn-primary">
-                Create
+              <button type="submit" form="fp-new-folder-form" :disabled="creatingFolder || !newFolderName.trim()" class="btn btn-primary">
+                {{ creatingFolder ? 'Creating…' : 'Create' }}
               </button>
           </template>
       </FlowModal>
@@ -169,6 +175,7 @@ import PathInput from './PathInput.vue'
 import TreeNode from './TreeNode.vue'
 import IconMode from './IconMode.vue'
 import { useProjectChoices } from '../composables/useProjectChoices'
+import type { useApi } from '../composables/useApi'
 import FlowModal from '../ui/FlowModal.vue'
 import FlowNotice from '../ui/FlowNotice.vue'
 
@@ -176,7 +183,8 @@ type ViewMode = 'tree' | 'icons'
 
 const props = defineProps<{
   modelValue: string
-  apiFetch: (url: string, init?: RequestInit) => Promise<any>
+  apiFetch: ReturnType<typeof useApi>['apiFetch']
+  storageBrowse?: boolean
   useCase?: 'upload' | 'share'
   title?: string
   subtitle?: string
@@ -199,6 +207,7 @@ const emit = defineEmits<{
   (e: 'changed-cwd', v: string): void
   (e: 'update:project', v: string): void
   (e: 'update:dest', v: string): void
+  (e: 'browse-ready', v: boolean): void
 }>()
 
 const internalProject = computed({
@@ -223,7 +232,7 @@ const selectedFolderBridge = computed<string | null>({
 })
 
 /* Keep legacy request-coordinate support while browsing within storage. */
-const showEntireTree = ref(false)
+const showEntireTree = ref(!!props.storageBrowse)
 const {
   detecting,
   detectingRoots,
@@ -242,21 +251,15 @@ const browseCwd = ref<string>(props.startDir ?? props.base ?? '/')
 /* Destination (what PathInput shows) */
 const destAbs = ref<string>('')
 
-/* Root rel for children (driven by browseCwd) */
+/* Non-fromRoot file listings use filesystem-relative paths, including the storage root. */
 const rootRel = computed(() => {
   const raw = (browseCwd.value || '/').replace(/\/+$/, '') || '/'
-  // When restricted to configured root, make path relative to it
-  if (!showEntireTree.value && configuredProjectRoot.value) {
-    const root = configuredProjectRoot.value.replace(/\/+$/, '')
-    if (raw === root) return ''
-    if (raw.startsWith(root + '/')) return raw.slice(root.length + 1)
-  }
-  // In entire-tree mode or no configured root, strip leading slash for relative path
   return raw.replace(/^\/+/, '')
 })
 
 /* Wrap apiFetch to add fromRoot=1 when in "show entire tree" mode */
 const fileApiFetch = computed(() => {
+  if (props.storageBrowse) return storageFileApiFetch
   if (showEntireTree.value) {
     return (url: string, init?: any) => {
       const sep = url.includes('?') ? '&' : '?'
@@ -268,6 +271,7 @@ const fileApiFetch = computed(() => {
 
 /* PathInput always uses absolute paths, so always needs fromRoot=1 */
 const pathInputApiFetch = (url: string, init?: any) => {
+  if (props.storageBrowse) return storageFileApiFetch(url)
   const sep = url.includes('?') ? '&' : '?'
   return props.apiFetch(url + sep + 'fromRoot=1', init)
 }
@@ -285,9 +289,41 @@ const internalSelected = ref<Set<string>>(new Set())
 const selectedVersion = ref(0)
 const expandCache = new Map<string, string[]>()
 const refreshKey = ref(0)
+type StorageListing = { path: string; dirs: { name: string; path: string }[]; truncated?: boolean }
+const storageListings = new Map<string, Promise<StorageListing>>()
+const storageTruncated = ref(false)
+
+async function storageFileApiFetch(url: string) {
+  const dir = new URL(url, 'http://picker').searchParams.get('dir') || ''
+  const absolute = '/' + dir.replace(/^\/+|\/+$/g, '')
+  const base = (props.base || '').replace(/\/+$/, '')
+  if (absolute !== base && !absolute.startsWith(base + '/')) return { dir, entries: [] }
+  const isCurrent = () => absolute === browseCwd.value.replace(/\/+$/, '')
+  if (isCurrent()) emit('browse-ready', false)
+  let request = storageListings.get(absolute)
+  if (!request) {
+    request = props.apiFetch(`/api/admin/storage/dirs?path=${encodeURIComponent(absolute)}`)
+    storageListings.set(absolute, request)
+  }
+  try {
+    const data = await request
+    if (isCurrent() && storageListings.get(absolute) === request) {
+      storageTruncated.value = !!data.truncated
+      emit('browse-ready', true)
+    }
+    return { dir: data.path.replace(/^\/+/, ''), entries: data.dirs.map(item => ({ name: item.name, isDir: true })) }
+  } catch (error) {
+    if (storageListings.get(absolute) === request) {
+      storageListings.delete(absolute)
+      if (isCurrent()) emit('browse-ready', false)
+    }
+    throw error
+  }
+}
 
 function refreshBrowser() {
   expandCache.clear()
+  storageListings.clear()
   refreshKey.value++
 }
 const pickerReady = ref(false)
@@ -313,13 +349,13 @@ watch(
 /* Initial mount logic */
 onMounted(async () => {
   pickerReady.value = false
-  await loadProjectChoices()
+  if (!props.storageBrowse) await loadProjectChoices()
   if (!clampBase.value && configuredProjectRoot.value) clampBase.value = configuredProjectRoot.value
 
   if (props.startDir) {
     browseMode.value = 'dir'
     browseCwd.value = ensureSlash(props.startDir)
-    clampBase.value = props.startDir.replace(/\/+$/, '')
+    clampBase.value = (props.base || props.startDir).replace(/\/+$/, '')
   } else if (internalProject.value) {
     browseMode.value = 'dir'
     browseCwd.value = ensureSlash(internalProject.value)
@@ -417,6 +453,7 @@ function toAbsUnder(base: string, p: string) {
 
 /* Data providers */
 async function getFilesForFolder(folder: string): Promise<string[]> {
+  if ((props.useCase || 'upload') === 'upload') return []
   if (expandCache.has(folder)) return expandCache.get(folder)!
   try {
     const resp = await props.apiFetch('/api/expand-paths', {
@@ -452,9 +489,6 @@ function navigateTo(rel: string) {
   let absLike: string
   if (rel.startsWith('/')) {
     absLike = ensureSlash(rel)
-  } else if (!showEntireTree.value && configuredProjectRoot.value) {
-    const root = configuredProjectRoot.value.replace(/\/+$/, '')
-    absLike = ensureSlash(rel ? root + '/' + rel : root)
   } else {
     absLike = ensureSlash('/' + rel.replace(/^\/+/, ''))
   }
@@ -503,6 +537,7 @@ function onBrowserBackgroundClick(e: MouseEvent) {
 const showNewFolderModal = ref(false)
 const newFolderName = ref('')
 const newFolderError = ref<string | null>(null)
+const creatingFolder = ref(false)
 const folderNameInput = ref<HTMLInputElement | null>(null)
 const newFolderBasePath = ref<string>('/')
 
@@ -525,16 +560,23 @@ function createNewFolder() {
 
 async function confirmNewFolder() {
   const name = newFolderName.value.trim()
-  if (!name) return
+  if (!name || creatingFolder.value) return
 
   const current = (newFolderBasePath.value || browseCwd.value || '/').replace(/\/+$/, '')
   const newPath = current + '/' + name
 
+  creatingFolder.value = true
+  newFolderError.value = null
   try {
-    const response = await props.apiFetch('/api/mkdir', {
-      method: 'POST',
-      body: JSON.stringify({ path: newPath }),
-    })
+    const response = props.storageBrowse
+      ? await props.apiFetch('/api/admin/storage/dirs', {
+        method: 'POST', retry: 0, timeoutMs: 120_000, exposeServerMessage: true,
+        body: JSON.stringify({ path: current, name }),
+      })
+      : await props.apiFetch('/api/mkdir', {
+        method: 'POST',
+        body: JSON.stringify({ path: newPath }),
+      })
 
     if (response.error) {
       newFolderError.value = response.error
@@ -543,6 +585,7 @@ async function confirmNewFolder() {
 
     expandCache.delete(ensureSlash(current))
     if (current === '') expandCache.delete('/')
+    storageListings.clear()
 
     refreshKey.value++
     showNewFolderModal.value = false
@@ -561,6 +604,8 @@ async function confirmNewFolder() {
   } catch (e: any) {
     console.error(e)
     newFolderError.value = `API failed: ${e.message || 'Unknown error'}`
+  } finally {
+    creatingFolder.value = false
   }
 }
 
@@ -600,13 +645,6 @@ function onSelectFolder(relOrAbs: string) {
   let abs: string
   if (looksAbs) {
     abs = ensureSlash(relOrAbs)
-  } else if (!showEntireTree.value && configuredProjectRoot.value) {
-    // Path is relative to the configured root
-    const root = configuredProjectRoot.value.replace(/\/+$/, '')
-    abs = ensureSlash(relOrAbs ? root + '/' + relOrAbs : root)
-  } else if (showEntireTree.value) {
-    // Path is relative to filesystem root
-    abs = ensureSlash(relOrAbs ? '/' + relOrAbs : '/')
   } else {
     abs = ensureSlash('/' + relOrAbs.replace(/^\/+/, ''))
   }

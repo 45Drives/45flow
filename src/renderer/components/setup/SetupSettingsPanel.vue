@@ -7,7 +7,8 @@
     </p>
     <FlowButton v-if="!status && error" @click="refresh">Try again</FlowButton>
     <template v-if="status">
-      <StorageSetupPanel v-if="section === 'storage'" :api-fetch="apiFetch" :status="status" :persistence-key="storageKey" @refreshed="updated" @restarting="emit('restarting', $event)" />
+      <StorageSetupPanel v-if="section === 'storage'" ref="storagePanel" :api-fetch="apiFetch" :status="status" :persistence-key="storageKey" :wizard="wizard"
+        @refreshed="updated" @restarting="emit('restarting', $event)" @can-continue="emit('can-continue', $event)" />
       <template v-else-if="section === 'staff'">
         <FlowNotice :tone="status.adminGroup?.required ? 'info' : 'warning'" size="sm">
           {{ status.adminGroup?.required ? 'Staff group membership is required for server administration.' : 'Staff group enforcement is off on this server.' }}
@@ -20,14 +21,20 @@
             <li v-for="account in accounts" :key="account.username" class="flow-list__row">
               <span class="min-w-0 flex-1 break-all">{{ account.username }}</span>
               <FlowButton :variant="account.member ? 'danger' : 'secondary'" size="sm"
-                :disabled="busy || (account.member && (account.username === currentUsername || members.length <= 1))"
-                :loading="busy && pendingUsername === account.username"
-                :loading-text="account.member ? 'Removing…' : 'Adding…'"
-                @click="setMember(account.username, !account.member)">{{ account.member ? 'Remove from staff' : 'Add to staff' }}</FlowButton>
+                :aria-label="`${account.member ? 'Remove from staff' : 'Add to staff'}: ${account.username}`"
+                :disabled="refreshing || (account.member && (account.username === currentUsername || members.length <= 1))"
+                :loading="pendingUsers.has(account.username)"
+                @click="setMember(account.username, !account.member)">
+                <span class="grid items-center justify-items-center">
+                  <span class="invisible [grid-area:1/1]" aria-hidden="true">Remove from staff</span>
+                  <span class="[grid-area:1/1]" :class="{ invisible: pendingUsers.has(account.username) }">{{ account.member ? 'Remove from staff' : 'Add to staff' }}</span>
+                  <ArrowPathIcon v-if="pendingUsers.has(account.username)" class="h-4 w-4 motion-safe:animate-spin [grid-area:1/1]" aria-hidden="true" />
+                </span>
+              </FlowButton>
             </li>
           </ul>
           <p v-if="!accounts.length" class="text-sm text-muted">No eligible local accounts found.</p>
-          <FlowButton :disabled="busy" @click="refresh(false)">Refresh staff users</FlowButton>
+          <FlowButton :disabled="refreshing || pendingUsers.size > 0" @click="refresh(false)">Refresh staff users</FlowButton>
         </template>
         <template v-else>
           <p v-if="refreshing" class="flex items-center gap-2 text-sm text-muted" role="status" aria-live="polite">
@@ -67,7 +74,8 @@
         </FlowField>
         <FlowButton variant="primary" :disabled="busy || (globalEnabled && !globalDir)" @click="saveWatermarks">Save watermarks</FlowButton>
       </template>
-      <FlowNotice v-if="saved" tone="success" size="sm" live>{{ saved }}</FlowNotice>
+      <p v-if="section === 'staff'" class="sr-only" role="status" aria-live="polite">{{ saved }}</p>
+      <FlowNotice v-else-if="saved" tone="success" size="sm" live>{{ saved }}</FlowNotice>
     </template>
   </section>
 </template>
@@ -85,8 +93,10 @@ import FlowNotice from '../../ui/FlowNotice.vue'
 import FlowField from '../../ui/FlowField.vue'
 import FlowSwitch from '../../ui/FlowSwitch.vue'
 
-const props = defineProps<{ section: SetupSection; connectionId?: string; initialStatus?: SetupStatus }>()
-const emit = defineEmits<{ refreshed: [status: SetupStatus]; restarting: [value: boolean] }>()
+const props = defineProps<{ section: SetupSection; connectionId?: string; initialStatus?: SetupStatus; wizard?: boolean }>()
+const emit = defineEmits<{ refreshed: [status: SetupStatus]; restarting: [value: boolean]; 'can-continue': [value: boolean] }>()
+const storagePanel = ref<InstanceType<typeof StorageSetupPanel> | null>(null)
+defineExpose({ prepareContinue: () => storagePanel.value?.prepareContinue() ?? Promise.resolve(false) })
 const { apiFetch } = useApi(props.connectionId)
 const { activeConnection } = useConnections()
 const storageKey = computed(() => serverSetupKey(activeConnection.value) + ':storage')
@@ -98,7 +108,7 @@ const members = ref<string[]>([])
 const busy = ref(false)
 const refreshing = ref(false)
 const accountsLoaded = ref(false)
-const pendingUsername = ref('')
+const pendingUsers = ref(new Set<string>())
 const saved = ref('')
 const requireScan = ref(true)
 const globalEnabled = ref(false)
@@ -106,7 +116,6 @@ const globalDir = ref('')
 function updated(data: SetupStatus) { status.value = data; emit('refreshed', data) }
 async function refresh(includeStatus = !props.initialStatus) {
   refreshing.value = true
-  if (props.section === 'staff') accountsLoaded.value = false
   error.value = ''
   try {
     const statusRequest = includeStatus || !status.value ? load() : Promise.resolve(status.value)
@@ -138,22 +147,28 @@ async function action(work: () => Promise<void>, message: string, reload = true)
   finally { busy.value = false }
 }
 async function setMember(username: string, member: boolean) {
-  if (busy.value) return
-  pendingUsername.value = username
+  if (refreshing.value || pendingUsers.value.has(username)) return
+  pendingUsers.value.add(username)
+  error.value = ''
+  saved.value = ''
   try {
-    await action(async () => {
-      const data = await apiFetch('/api/admin/staff-accounts', { method: 'POST', body: JSON.stringify({ username, member }), retry: 0 })
-      const account = data.accounts?.find((item: { username: string }) => item.username === username)
-      accounts.value = accounts.value.map(item => item.username === username ? { ...item, member: account?.member ?? member } : item)
-      members.value = data.members ?? accounts.value.filter(item => item.member).map(item => item.username)
-      if (status.value?.adminGroup) updated({
-        ...status.value,
-        adminGroup: { ...status.value.adminGroup, exists: data.exists ?? status.value.adminGroup.exists,
-          members: members.value, currentUserIsMember: members.value.includes(currentUsername || '') },
-      })
-    }, 'Staff users updated.', false)
+    const data = await apiFetch('/api/admin/staff-accounts', { method: 'POST', body: JSON.stringify({ username, member }), retry: 0 })
+    const account = accounts.value.find(item => item.username === username)
+    const updatedAccount = data.accounts?.find((item: { username: string }) => item.username === username)
+    if (account) account.member = updatedAccount?.member ?? member
+    // Merge only this user: other membership changes may still be in flight.
+    members.value = members.value.filter(item => item !== username)
+    if (account?.member) members.value.push(username)
+    if (status.value?.adminGroup) updated({
+      ...status.value,
+      adminGroup: { ...status.value.adminGroup, exists: data.exists ?? status.value.adminGroup.exists,
+        members: members.value, currentUserIsMember: members.value.includes(currentUsername || '') },
+    })
+    saved.value = `${username} ${account?.member ? 'added to' : 'removed from'} staff.`
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : 'Could not update staff membership. Try again.'
   } finally {
-    pendingUsername.value = ''
+    pendingUsers.value.delete(username)
   }
 }
 async function install() {

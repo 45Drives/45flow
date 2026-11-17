@@ -28,6 +28,10 @@ For C2, the approver's **Approve this version / Request changes** actions, comme
   not the desktop token. An existing staff browser session also works. **Staff
   sign out** revokes that browser session (also signing out the web app in that
   browser); desktop sessions and invited-recipient credentials stay separate.
+  The player header offers **Staff sign in** beside the recipient's **Log out**.
+  While a staff browser session is active, **Staff sign out** replaces both.
+  The Comments panel does not duplicate staff sign-in or sign-out.
+  Sign-out failures remain visible and do not clear local identity state.
   Staff can view a valid review without impersonating an invited recipient;
   that access does not grant recipient comment/upload/download or approval
   authority. Link expiry and disablement still apply to viewing.

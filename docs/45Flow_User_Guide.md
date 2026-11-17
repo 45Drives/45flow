@@ -793,13 +793,26 @@ These defaults are applied automatically when creating new links, but can be cha
 
 ### Storage
 
-Administrators can view the current storage root, filesystem type and available space, then select another root. Before applying the change, review the listed projects outside the new root, active links, and running transfers or processing jobs, and explicitly confirm. The server restarts; files are never moved automatically. Projects outside the new root may become unavailable.
+The storage location is the main folder 45Flow uses across the server, not an individual project folder. Each project folder is selected separately and must be inside this location.
+
+Administrators can view the current storage location, filesystem type and available space, then select another location. Before applying the change, review the listed projects outside the new location, active links, and running transfers or processing jobs, and explicitly confirm. The server restarts; files are never moved automatically. Projects outside the new location may become unavailable.
 
 Folder pickers browse within the storage root. **Up** cannot browse above that boundary. The old **Default server folder** preference has been replaced by this server-wide setting.
+
+When choosing a storage root, choose a filesystem from the dropdown to use the same
+folder browser as project creation, including breadcrumbs, list/grid views,
+typed paths and **New Folder**. Visited listings are reused until you choose
+**Refresh file listing** or create a folder. Selecting or creating a folder does
+not apply a storage change. Choose **Next** during setup, or **Save storage location**
+in Settings, to review and confirm a change. Keeping the current location requires
+no confirmation or restart.
 
 ### Staff server accounts
 
 Manage existing local server users from **Settings → Staff server accounts**, using the same controls as first-run setup. The panel shows whether staff-group enforcement is enabled and lists current members. These controls do not create server users or change client-account access.
+
+Adding or removing a staff member updates only that row. Other eligible users
+remain editable while a save is in progress.
 
 ### Uploads
 
@@ -865,6 +878,14 @@ Click **"Refresh"** to fetch the latest stats from the server.
 For administrators to manage server health:
 
 - **Run setup again** — Reopen the four-step wizard (Storage, Staff users, Sharing settings, Projects) on this computer/browser. This does not reset settings or delete projects, media, or accounts. Existing projects satisfy the final step; a first project is still required on a new server. Changes you explicitly save in the wizard take effect normally.
+
+The **Projects** step lists each project's name and exact folder. Create more
+projects, use the pencil button to edit a project's name, folder or notes, or
+use the trash button to delete its 45Flow record after confirmation. Deleting
+here keeps its folder, source files and existing share links; those links no
+longer belong to the deleted project. At least one project must remain before
+you can finish setup. The folder selected in the project browser is used
+directly; 45Flow does not append another folder to it.
 - **Delete orphan transcode directories** — Remove transcode output folders that no longer have associated links.
 - **Prune DB rows for missing source files** — Clean up database entries where the original files no longer exist on disk.
 - Configure **orphan min age** (hours) and **max missing file checks** to control scan scope.
