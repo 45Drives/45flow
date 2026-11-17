@@ -427,6 +427,26 @@
                                 </SettingRow>
                             </div>
 
+                            <template v-if="feedbackPrefs.serverName.value && !feedbackPrefs.unsupported.value">
+                                <p class="settings-subhead">Feedback notifications</p>
+                                <p class="text-xs text-muted mb-2">
+                                    Which client feedback shows in the notification bell. Saved right away for your account on {{ feedbackPrefs.serverName.value }}.
+                                </p>
+                                <FlowNotice v-if="feedbackPrefs.error.value" tone="danger" size="sm" class="mb-2" live>
+                                    {{ feedbackPrefs.error.value }}
+                                    <template #actions><FlowButton size="xs" :disabled="feedbackPrefs.saving.value" @click="feedbackPrefs.refresh">Reload</FlowButton></template>
+                                </FlowNotice>
+                                <div class="settings-group" data-testid="feedback-notification-settings">
+                                    <SettingRow v-for="option in feedbackEventOptions" :key="option.key" :label="option.label" :description="option.description">
+                                        <FlowSwitch
+                                            :model-value="feedbackPrefs.events.value[option.key]"
+                                            :disabled="feedbackPrefs.saving.value || feedbackPrefs.loading.value"
+                                            :label="option.label"
+                                            @update:model-value="(on: boolean) => setFeedbackEvent(option.key, on)"
+                                        />
+                                    </SettingRow>
+                                </div>
+                            </template>
                         </template>
 
                         <!-- ═══ Performance ═══════════════════════════════════ -->
@@ -1535,6 +1555,7 @@ import AdminEgressPanel from "../AdminEgressPanel.vue";
 import { EGRESS_OFF_TEXT, useEgressSwitches } from "../../composables/useEgressSwitches";
 import { isAdminSession } from "../../composables/adminSession";
 import { disableNotifications, enableNotifications, notificationPermission, notificationsEnabled } from "../../web-notify";
+import { useFeedbackNotifications } from "../../composables/useFeedbackNotifications";
 import { pushNotification, Notification } from '@45drives/houston-common-ui';
 import PathInput from "../PathInput.vue";
 import { useOnboarding } from "../../composables/useOnboarding";
@@ -1557,6 +1578,7 @@ import { createDefaultWatermarkSettings, DEFAULT_45FLOW_WATERMARKS } from "../..
 import FlowModal from '../../ui/FlowModal.vue';
 import FlowSwitch from '../../ui/FlowSwitch.vue';
 import FlowNotice from '../../ui/FlowNotice.vue';
+import FlowButton from '../../ui/FlowButton.vue';
 import FlowChip from '../../ui/FlowChip.vue';
 import { useExternalAddressReadiness, describeExternalAddressNotReady, type ExternalAddressReadiness } from '../../composables/useExternalAddressReadiness';
 import type { Component } from 'vue';
@@ -1606,6 +1628,15 @@ const notifyDescription = computed(() =>
     notifyPermission.value === 'unsupported' ? 'This browser does not support notifications.'
     : notifyPermission.value === 'denied' ? 'Notifications are blocked for this site. Allow them in your browser settings to turn this on.'
     : 'Show a browser notification when an upload finishes or fails while this tab is in the background.');
+const feedbackPrefs = useFeedbackNotifications(ref(false), { poll: false });
+const feedbackEventOptions = [
+    { key: 'comments', label: 'New comments', description: 'Someone comments on a shared link.' },
+    { key: 'replies', label: 'Replies', description: 'Someone replies in a comment thread.' },
+    { key: 'reopened', label: 'Reopened feedback', description: 'Resolved feedback is opened again.' },
+] as const;
+function setFeedbackEvent(key: typeof feedbackEventOptions[number]['key'], on: boolean) {
+    void feedbackPrefs.setEvents({ ...feedbackPrefs.events.value, [key]: on });
+}
 async function toggleBrowserNotifications() {
     if (notifyOn.value) {
         disableNotifications();
@@ -1714,7 +1745,7 @@ const SECTION_META: Record<Section, SectionMeta> = {
     app: {
         label: 'Preferences', icon: AdjustmentsHorizontalIcon, savable: true,
         description: 'How 45Flow looks and behaves on this computer.',
-        keywords: 'time format 12 24 hour link list view notifications',
+        keywords: 'time format 12 24 hour link list view notifications feedback comments replies reopened bell',
         saveHint: 'Time format and link list view apply right away.',
     },
     performance: {

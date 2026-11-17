@@ -41,7 +41,11 @@
         <section v-if="feedback.serverName.value" class="px-4 py-3 border-b border-default" aria-label="Feedback notifications">
           <div class="flex items-center justify-between gap-2">
             <h3 class="text-sm font-semibold">Feedback · {{ feedback.serverName.value }}</h3>
-            <FlowButton v-if="feedback.unreadCount.value" size="xs" :disabled="feedback.saving.value" @click="feedback.markRead">Mark read</FlowButton>
+            <div class="flex items-center gap-1">
+              <FlowButton v-if="feedback.unreadCount.value" size="xs" :disabled="feedback.saving.value" @click="feedback.markRead">Mark read</FlowButton>
+              <FlowButton v-if="!feedback.unsupported.value" size="xs" title="Choose which feedback shows here"
+                data-testid="feedback-settings" @click="openSettings">Settings</FlowButton>
+            </div>
           </div>
           <FlowNotice v-if="feedback.unsupported.value" tone="info" size="sm" class="mt-2">Update this server to use the feedback inbox.</FlowNotice>
           <FlowNotice v-if="feedback.error.value" tone="danger" size="sm" class="mt-2" live>
@@ -49,16 +53,6 @@
             <template #actions><FlowButton size="xs" :disabled="feedback.saving.value" @click="feedback.refresh">Reload</FlowButton></template>
           </FlowNotice>
           <p v-if="feedback.loading.value && !feedback.items.value.length" class="text-sm text-muted mt-2" role="status">Loading feedback...</p>
-          <details v-if="!feedback.unsupported.value" class="mt-2 text-sm">
-            <summary class="cursor-pointer">In-app feedback preferences</summary>
-            <div class="mt-2 flex flex-col gap-2">
-              <label v-for="option in feedbackOptions" :key="option.key" class="inline-flex items-center gap-2">
-                <input type="checkbox" :checked="feedback.events.value[option.key]" :disabled="feedback.saving.value"
-                  @change="changeFeedbackEvent(option.key, $event)" />
-                {{ option.label }}
-              </label>
-            </div>
-          </details>
           <ul class="mt-3 flex flex-col gap-3">
             <li v-for="item in feedback.items.value" :key="item.id" class="text-sm">
               <p class="font-medium">{{ feedbackLabels[item.kind] }} · {{ item.link_title || 'Shared link' }}</p>
@@ -107,19 +101,15 @@ import FlowNotice from '../ui/FlowNotice.vue'
 const { history, unreadCount, bellOpen, toggleBell, clearHistory } = useNotificationCenter()
 const feedback = useFeedbackNotifications(bellOpen)
 const totalUnread = computed(() => unreadCount.value + feedback.unreadCount.value)
-const feedbackOptions = [
-  { key: 'comments', label: 'New comments' }, { key: 'replies', label: 'Replies' }, { key: 'reopened', label: 'Reopened feedback' },
-] as const
+const emit = defineEmits<{ (e: 'open-settings', section: 'app'): void }>()
 const feedbackLabels = { comments: 'New comment', replies: 'New reply', reopened: 'Feedback reopened' }
 function clearAll() {
   clearHistory()
   void feedback.clear()
 }
-function changeFeedbackEvent(key: 'comments' | 'replies' | 'reopened', event: Event) {
-  if (!(event.target instanceof HTMLInputElement)) return
-  const enabled = event.target.checked
-  event.target.checked = feedback.events.value[key]
-  void feedback.setEvents({ ...feedback.events.value, [key]: enabled })
+function openSettings() {
+  bellOpen.value = false
+  emit('open-settings', 'app')
 }
 const bellRef = ref<HTMLElement | null>(null)
 const expandedId = ref<symbol | null>(null)

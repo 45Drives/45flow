@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, nextTick } from 'vue'
 import NotificationBell from './NotificationBell.vue'
 
-const center = vi.hoisted(() => ({ state: null }))
+const center = vi.hoisted(() => ({ state: null, serverName: '' }))
 vi.mock('../composables/useNotificationCenter', async () => {
   const { ref, computed } = await import('vue')
   const history = ref([{ id: Symbol('n'), title: 'Upload done', body: 'x', level: 'success', timestamp: Date.now(), read: false }])
@@ -22,7 +22,7 @@ vi.mock('../composables/useNotificationCenter', async () => {
 vi.mock('../composables/useFeedbackNotifications', async () => {
   const { ref } = await import('vue')
   return { useFeedbackNotifications: () => ({
-    serverName: ref(''), items: ref([]), unreadCount: ref(0), events: ref({}),
+    serverName: ref(center.serverName || ''), items: ref([]), unreadCount: ref(0), events: ref({}),
     error: ref(''), unsupported: ref(false), loading: ref(false), saving: ref(false),
     clear: vi.fn(), refresh: vi.fn(), markRead: vi.fn(), setEvents: vi.fn(),
   }) }
@@ -33,6 +33,7 @@ let host
 afterEach(() => {
   app?.unmount()
   host?.remove()
+  center.serverName = ''
 })
 
 describe('NotificationBell', () => {
@@ -57,6 +58,23 @@ describe('NotificationBell', () => {
     expect(center.state.bellOpen.value).toBe(true)
 
     document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(center.state.bellOpen.value).toBe(false)
+  })
+
+  it('keeps feedback preferences out of the dropdown and links to Settings instead', async () => {
+    center.serverName = 'f8x1-rnd.local'
+    const onOpenSettings = vi.fn()
+    host = document.createElement('div')
+    document.body.appendChild(host)
+    app = createApp(NotificationBell, { onOpenSettings })
+    app.mount(host)
+    center.state.bellOpen.value = true
+    await nextTick()
+
+    expect(host.querySelector('input[type="checkbox"]')).toBeNull()
+    expect(host.textContent).not.toContain('In-app feedback preferences')
+    host.querySelector('[data-testid="feedback-settings"]').click()
+    expect(onOpenSettings).toHaveBeenCalledWith('app')
     expect(center.state.bellOpen.value).toBe(false)
   })
 })

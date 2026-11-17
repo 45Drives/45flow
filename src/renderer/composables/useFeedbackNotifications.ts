@@ -19,7 +19,8 @@ type Events = Record<'comments' | 'replies' | 'reopened', boolean>
 const defaultEvents = (): Events => ({ comments: true, replies: true, reopened: true })
 const endpoint = '/api/feedback/notifications'
 
-export function useFeedbackNotifications(open: Ref<boolean>) {
+/** `poll: false` loads once per connection; use it where only the preferences are shown. */
+export function useFeedbackNotifications(open: Ref<boolean>, { poll = true }: { poll?: boolean } = {}) {
     const { apiFetch } = useApi()
     const { activeConnection } = useConnections()
     const serverName = computed(() => activeConnection.value?.name || '')
@@ -94,7 +95,7 @@ export function useFeedbackNotifications(open: Ref<boolean>) {
         void refresh()
     }, { immediate: true })
     watch(open, value => { if (value && unreadCount.value) void update({ action: 'read' }) })
-    onMounted(() => { timer = setInterval(() => { void refresh() }, 30_000) })
+    onMounted(() => { if (poll) timer = setInterval(() => { void refresh() }, 30_000) })
     onUnmounted(() => { generation++; clearInterval(timer) })
 
     function reviewUrl(item: FeedbackNotification) {

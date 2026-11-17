@@ -41,7 +41,7 @@
         <span v-else-if="isTrialExpired && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="flow-chip flow-chip--danger whitespace-nowrap">
           Trial Expired
         </span>
-        <NotificationBell />
+        <NotificationBell @open-settings="openSettingsAt" />
         <button
           v-if="hasActiveSession && route.name !== 'server-selection'"
           class="p-1.5 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
@@ -58,7 +58,7 @@
           title="Settings"
           aria-label="Settings"
           data-tour="settings"
-          @click="showSettings = true"
+          @click="openSettingsAt()"
         >
           <Cog6ToothIcon class="w-5 h-5 text-default" />
         </button>
@@ -85,7 +85,7 @@
       </SetupGate>
     </main>
     <QuickShareOverlay v-if="hasActiveSession && route.name !== 'server-selection' && !setupBlocked" />
-    <SettingsModal v-if="showSettings" @close="showSettings = false" />
+    <SettingsModal v-if="showSettings" :initial-section="settingsSection" @close="showSettings = false" />
     <LogViewModal v-if="showLogs" @close="showLogs = false" />
     <GlobalModalConfirm />
     <NotificationView />
@@ -213,6 +213,11 @@ const hasActiveSession = computed(() =>
 
 // Global utility modals opened from the header icon buttons
 const showSettings = ref(false)
+const settingsSection = ref<string | undefined>()
+function openSettingsAt(section?: string) {
+  settingsSection.value = section
+  showSettings.value = true
+}
 const showLogs = ref(false)
 const setupBlocked = ref(true)
 const setupProjectsConfigured = ref<boolean | null>(null)

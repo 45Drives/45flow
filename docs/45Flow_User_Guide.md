@@ -792,6 +792,9 @@ These defaults are applied automatically when creating new links, but can be cha
 | **Time format** | Toggle between 24-hour and 12-hour time display throughout the app. |
 | **Default link list view** | Choose which links are shown by default (All Links or Active Only). |
 
+**Feedback notifications:**
+
+Choose which client feedback appears in the notification bell: **New comments**, **Replies** and **Reopened feedback**. Each switch saves right away for your account on the connected server. The **Settings** button in the bell's Feedback section opens this page.
 ### Storage
 
 The storage location is the main folder 45Flow uses across the server, not an individual project folder. Each project folder is selected separately and must be inside this location.

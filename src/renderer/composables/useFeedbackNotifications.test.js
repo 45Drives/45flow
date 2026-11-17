@@ -16,13 +16,13 @@ const response = (id = 1) => ({
     cursor: id, unreadCount: 1, events: { comments: true, replies: true, reopened: true },
 })
 async function flush() { for (let i = 0; i < 12; i++) await nextTick() }
-function mount() {
+function mount(options) {
     host = document.createElement('div')
     document.body.appendChild(host)
-    app = createApp({ setup() { inbox = useFeedbackNotifications(ref(false)); return () => h('div') } })
+    app = createApp({ setup() { inbox = useFeedbackNotifications(ref(false), options); return () => h('div') } })
     app.mount(host)
 }
-afterEach(() => { app?.unmount(); host?.remove(); mocks.apiFetch.mockReset(); mocks.active.value = null })
+afterEach(() => { app?.unmount(); host?.remove(); mocks.apiFetch.mockReset(); mocks.active.value = null; vi.useRealTimers() })
 
 it('polls passively and preserves loaded event choices when saving fails', async () => {
     mocks.active.value = connection('server-a')
@@ -49,4 +49,15 @@ it('discards late inbox responses after changing server or staff identity', asyn
     await flush()
     expect(inbox.items.value.map(item => item.id)).toEqual([2])
     expect(inbox.reviewUrl(inbox.items.value[0])).toBe('https://server-b.test/link/share')
+})
+
+it('loads once without polling when only the preferences are shown', async () => {
+    vi.useFakeTimers()
+    mocks.active.value = connection('server-a')
+    mocks.apiFetch.mockResolvedValue(response())
+    mount({ poll: false })
+    await flush()
+    expect(mocks.apiFetch).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(90_000)
+    expect(mocks.apiFetch).toHaveBeenCalledTimes(1)
 })
