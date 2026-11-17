@@ -28,7 +28,8 @@ For C2, the approver's **Approve this version / Request changes** actions, comme
   not the desktop token. An existing staff browser session also works. **Staff
   sign out** revokes that browser session (also signing out the web app in that
   browser); desktop sessions are unaffected.
-  The player header offers **Staff sign in** below the recipient's **Log out**.
+  The player header offers a **Staff sign in** text link below the recipient's
+  **Log out**, which stays aligned with the theme control.
   While a staff browser session is active, **Staff sign out** replaces both.
   Staff sign-in clears this browser's client-link and display-identity cookies.
   Staff access takes precedence over leftover client credentials on the server:
