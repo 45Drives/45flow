@@ -134,6 +134,7 @@ configuration, upgrades and rollback.
     - [Shared Files](#shared-files)
     - [Access Activity Log](#access-activity-log)
     - [File Versions](#file-versions)
+    - [Forks and Comparing Versions](#forks-and-comparing-versions)
     - [Comments Review & Export](#comments-review--export)
 15. [Editing a Link](#15-editing-a-link)
 16. [Accessing a Shared Link](#16-accessing-a-shared-link)
@@ -1573,6 +1574,43 @@ If files on the link have saved versions, choose a file to see them:
 | **Delete** | Remove this version. The only version can't be deleted. |
 
 Tick **Show extra files** to see and copy the paths of each version's proxy files, HLS folder and snapshot, delete them, or (with client-side transcoding on) remake them with this computer's hardware.
+
+### Forks and Comparing Versions
+
+A **fork** is a separate copy of one exact version of a file. Use it when a file goes in two directions, for example a social cut made from v2 of a master. The fork has its own versions from then on, and it remembers which version it came from. Editing either file never changes the other.
+
+**Make a fork**
+
+1. In **Link Details → Versions**, choose the file.
+2. Click **Fork from this version** on the version you want to copy. The button is greyed out while that version is still being saved.
+3. Fill in the dialog:
+   - **File name** starts as the original name followed by "- fork". Change it if you like.
+   - **Folder** starts as the original's folder.
+   - **Label** (optional) is a short name for this branch, such as *Social Cut*. It is shown next to the file name when you compare.
+   - **Add to this link** is off by default. Leave it off and the fork stays private: people who open the link can't see it. Tick it to share the fork on this link.
+4. Click **Fork** and wait for **Fork created.** Large files take a while; the dialog shows the copy progress.
+
+To share a fork later, add it to the link with **Edit → Files**.
+
+**The source version is kept.** Once a fork exists, the version it came from can't be deleted. In the Versions table that version shows *Kept: … was forked from this version* in place of the **Delete** button, and the extra-file delete buttons for its snapshot are off. Removing a link or a project doesn't delete it either.
+
+**Compare two versions**
+
+1. In **Link Details → Versions**, click **Compare with…** on one version. It becomes side **A**.
+2. Choose the other version, side **B**. The list holds the other versions of this file, plus every version of a fork or source file that is on this link, for example *Social Cut · v1*. **Compare with…** is greyed out when there is nothing else on the link to compare with.
+3. Click **Open comparison**. The share page opens in a new browser tab, already set to compare the two versions.
+
+The comparison is on the share page itself, so people you share the link with can compare too, using the **Compare versions** button. They can only compare files that are on the link. Two versions can be compared only when they are the same kind of file (both video, both images, both PDFs or both text) and belong to the same family: one file plus the forks made from it.
+
+**Using the comparison**
+
+- **Video.** Both videos sit side by side and share one timeline: one play button, one position bar. Both start at 0:00; there is no offset. If one video is shorter, its side says *No video at this point* after it ends. Under **Audio**, choose which side you hear.
+- **Pictures, PDFs and text.** The two versions sit side by side. PDFs show one page of each at a time, with **Previous page** and **Next page**.
+- **Pick other versions.** Each side has a version menu if you want to change what is being compared.
+- **Comments.** Under **Comment on**, choose **A** or **B** before you write. The comment is saved against that exact version, and at the current time for video. Approvals are not given in a comparison; go back to the normal view (**Exit compare**) to approve.
+- **Phones.** The two videos stack, A above B, with one timeline. For pictures, PDFs and text there is an **A | B** toggle that shows one side at a time. The comments open from a **Comments** button.
+
+Showing two videos at once uses about twice the data of one. Choose **Data Saver** under the video's playback mode before you click **Compare versions** if the viewer is on a limited connection.
 
 ### Comments Review & Export
 
