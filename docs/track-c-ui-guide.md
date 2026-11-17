@@ -27,9 +27,14 @@ For C2, the approver's **Approve this version / Request changes** actions, comme
   server account over HTTPS; the browser receives an httpOnly session cookie,
   not the desktop token. An existing staff browser session also works. **Staff
   sign out** revokes that browser session (also signing out the web app in that
-  browser); desktop sessions and invited-recipient credentials stay separate.
-  The player header offers **Staff sign in** beside the recipient's **Log out**.
+  browser); desktop sessions are unaffected.
+  The player header offers **Staff sign in** below the recipient's **Log out**.
   While a staff browser session is active, **Staff sign out** replaces both.
+  Staff sign-in clears this browser's client-link and display-identity cookies.
+  Staff access takes precedence over leftover client credentials on the server:
+  it cannot borrow a client's identity or approval authority. Sign out of staff
+  access before signing in as a client. Staff sign-out also clears legacy
+  client-link cookies so they cannot silently restore a previous login.
   The Comments panel does not duplicate staff sign-in or sign-out.
   Sign-out failures remain visible and do not clear local identity state.
   Staff can view a valid review without impersonating an invited recipient;
@@ -46,6 +51,14 @@ For C2, the approver's **Approve this version / Request changes** actions, comme
   Free/Pro availability and `{ok, comment, event}` shape. Staff browser writes
   send the CSRF token from `GET /api/session?passive=1`; guest reopening uses
   the original comment session. No schema migration or new route is needed.
+- Link authentication, password changes and logout reject foreign origins.
+  Cookie-authorized link writes require a matching origin (scheme, host and
+  port) when supplied; same-site sibling origins are not sufficient. Staff
+  browser writes also require their CSRF token. Native clients without an
+  Origin header and verified desktop Bearer requests retain their existing
+  transport support. Client access is still checked separately for each link.
+  Identity-bearing metadata is not shared through the token cache, and
+  browser metadata responses use `Cache-Control: private, no-store`.
 - Resolution emails and feedback subscriptions are described below.
 
 ### Requesting changes (2026-11-16)
