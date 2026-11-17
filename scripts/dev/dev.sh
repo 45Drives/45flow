@@ -173,6 +173,9 @@ start_backend() {
     export SETUP_JSON="$STATE/etc/setup.json" SERVER_INFO_JSON="$STATE/etc/server_info.json"
     export OPSLOG_DIR="$STATE/logs" UPLOAD_BASE="$STATE/uploads" QUARANTINE_BASE="$STATE/quarantine"
     export ROOT_DIR REQUIRE_MALWARE_SCAN WEB_APP_LICENSE_GATE
+    # The backend only starts the file-sharing side when 45flow is a registered app.
+    export APP_CONFIG="$STATE/etc/houston-apps.json"
+    [[ -s "$APP_CONFIG" ]] || printf '{"apps":["45flow"],"registered_at":{}}\n' > "$APP_CONFIG"
     export PUBLIC_DIR="$PLAYER_DIR/dist"
     export AUTH_USER="$login_user" AUTH_PASS="$login_pass"
     setsid nohup node --enable-source-maps dist/server.js >> "$STATE/logs/server.log" 2>&1 < /dev/null &
