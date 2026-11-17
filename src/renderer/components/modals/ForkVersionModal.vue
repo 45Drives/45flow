@@ -45,7 +45,10 @@
 
       <div v-if="jobId && state !== 'failed'" class="flex flex-col gap-1" data-testid="fork-progress">
         <div class="text-sm" role="status">
-          <template v-if="state === 'done'">Fork created.</template>
+          <template v-if="state === 'done'">
+            Fork created. Saved as <span class="font-mono break-all" data-testid="fork-path">{{ forkPath }}</span>.
+            {{ attach ? 'It was added to this link.' : (linkId ? 'It is not on this link.' : '') }}
+          </template>
           <template v-else>Copying… {{ progress }}%</template>
         </div>
         <progress class="w-full" :value="progress" max="100" aria-label="Copy progress" />
@@ -90,7 +93,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'forked', payload: { fileId: number | null; attachedToLink: boolean }): void
+  (e: 'forked', payload: { fileId: number | null; attachedToLink: boolean; path: string }): void
 }>()
 
 const POLL_MS = 1000
@@ -107,6 +110,10 @@ let idempotencyKey = ''
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let pollToken = 0
 
+const forkPath = computed(() => {
+  const dir = destRelDir.value.trim().replace(/^\/+|\/+$/g, '')
+  return dir ? `${dir}/${filename.value.trim()}` : filename.value.trim()
+})
 const sourceLabel = computed(() => props.source ? `${props.source.fileName} · v${props.source.versionNumber}` : '')
 const working = computed(() => submitting.value || state.value === 'queued' || state.value === 'copying')
 const locked = computed(() => working.value || state.value === 'done' || state.value === 'failed')
@@ -165,7 +172,7 @@ async function poll(token: number) {
     state.value = job?.state ?? 'copying'
     progress.value = Math.max(0, Math.min(100, Number(job?.progress) || 0))
     if (state.value === 'done') {
-      emit('forked', { fileId: job?.fileId ?? null, attachedToLink: attach.value })
+      emit('forked', { fileId: job?.fileId ?? null, attachedToLink: attach.value, path: forkPath.value })
       return
     }
     if (state.value === 'failed') {

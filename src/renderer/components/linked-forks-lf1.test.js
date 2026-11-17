@@ -230,6 +230,8 @@ describe('LF1 fork dialog', () => {
     await vi.advanceTimersByTimeAsync(1000)
     await flush()
     expect(field('fork-progress').textContent).toContain('Fork created')
+    expect(field('fork-path').textContent).toMatch(/ - fork/)
+    expect(field('fork-progress').textContent).toContain('It is not on this link.')
     expect(field('fork-retry')).toBeNull()
   })
 })

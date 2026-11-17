@@ -318,16 +318,18 @@
                           </FlowChip>
                           <span v-else class="text-muted">—</span>
                         </td>
-                        <td class="text-right whitespace-nowrap">
+                        <td class="text-right">
+                          <div class="flex flex-wrap items-center justify-end gap-1.5 min-w-[12rem]">
                           <button type="button" class="btn btn-secondary btn-xs" :disabled="!v.snapshot_rel"
                             :title="v.snapshot_rel ? undefined : 'This version is still being saved'" @click="openFork(v)">Fork from this version</button>
-                          <button type="button" class="btn btn-secondary btn-xs ml-1.5" data-testid="compare-with"
+                          <button type="button" class="btn btn-secondary btn-xs" data-testid="compare-with"
                             :disabled="!primaryUrl || compareOptions(v).length === 0"
                             :title="compareDisabledReason(v) || undefined" @click="openCompare(v)">Compare with…</button>
-                          <button type="button" class="btn btn-secondary btn-xs ml-1.5" @click="restoreVersion(v)">Restore</button>
-                          <span v-if="forkSourceNote(v.asset_version_id)" class="text-xs text-muted ml-1.5" data-testid="fork-kept">{{ forkSourceNote(v.asset_version_id) }}</span>
-                          <button v-else type="button" class="btn btn-danger btn-xs ml-1.5" :disabled="versions.length <= 1"
+                          <button type="button" class="btn btn-secondary btn-xs" @click="restoreVersion(v)">Restore</button>
+                          <span v-if="forkSourceNote(v.asset_version_id)" class="basis-full text-xs text-muted" data-testid="fork-kept">{{ forkSourceNote(v.asset_version_id) }}</span>
+                          <button v-else type="button" class="btn btn-danger btn-xs" :disabled="versions.length <= 1"
                             :title="versions.length <= 1 ? 'The only version can\'t be deleted' : undefined" @click="deleteVersion(v)">Delete</button>
+                          </div>
                         </td>
                       </tr>
                       <tr v-if="compareFrom && Number(compareFrom.asset_version_id) === Number(v.asset_version_id)" class="ld-extra-row" data-testid="compare-picker">
@@ -3763,8 +3765,9 @@ function openFork(v: any) {
 
 watch(selectedVersionFileId, () => { compareFrom.value = null; lineageFamily.value = [] })
 
-async function onForked(payload: { fileId: number | null; attachedToLink: boolean }) {
-  pushNotification(new Notification('Fork Created', 'The copy is ready.', 'success', 6000))
+async function onForked(payload: { fileId: number | null; attachedToLink: boolean; path: string }) {
+  const where = payload.attachedToLink ? 'It was added to this link.' : 'It is not on this link.'
+  pushNotification(new Notification('Fork Created', `Saved as ${payload.path}. ${where}`, 'success', 8000))
   if (payload.attachedToLink) await fetchDetailsFor()
   else if (selectedVersionFileId.value) await loadForkSources(selectedVersionFileId.value)
 }
