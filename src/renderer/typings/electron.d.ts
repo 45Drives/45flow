@@ -296,9 +296,14 @@ export interface ElectronApi {
   getPathForFile: (file: File) => string
 }
 
+// Houston owns Window.electron; extend its bridge instead of redeclaring it.
+type FlowElectronApi = ElectronApi
+declare module '@45drives/houston-common-lib' {
+  interface ElectronApi extends FlowElectronApi {}
+}
+
 declare global {
   interface Window {
-    electron: ElectronApi
     electronAPI: ElectronApi
 
     /** New structured logging bridge → handled by main on 'log:info|warn|error' */

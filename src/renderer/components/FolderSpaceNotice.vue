@@ -19,7 +19,7 @@
       </FlowNotice>
 
       <FlowNotice v-if="lowSpace" tone="danger" size="sm">
-        Low space: only {{ formatBytes(info.availBytes) }} left ({{ Math.round(info.usedPercent) }}% used). Pick a folder with more room for proxies and client uploads.
+        Low space: only {{ formatBytes(info.availBytes) }} left<template v-if="typeof info.usedPercent === 'number'"> ({{ Math.round(info.usedPercent) }}% used)</template>. Pick a folder with more room for proxies and client uploads.
       </FlowNotice>
 
       <FlowNotice v-if="!info.exists" tone="info" size="sm" plain class="!text-current opacity-80">

@@ -384,7 +384,7 @@
 						<li>You can re-enable the project at any time</li>
 					</ul>
 				</FlowNotice>
-				<p class="text-sm text-default mb-4">Disable <strong>{{ cardActionProject.name }}</strong>?</p>
+				<p class="text-sm text-default mb-4">Disable <strong>{{ cardActionProject?.name }}</strong>?</p>
 				<template #footer>
 					<button class="btn btn-dismiss px-4 py-2" @click="clearCardAction()">Cancel</button>
 					<button class="btn btn-danger px-4 py-2" @click="disableProject">Disable</button>
@@ -402,7 +402,7 @@
 						<li>You can unarchive the project at any time to restore it</li>
 					</ul>
 				</FlowNotice>
-				<p class="text-sm text-default mb-4">Archive <strong>{{ cardActionProject.name }}</strong>?</p>
+				<p class="text-sm text-default mb-4">Archive <strong>{{ cardActionProject?.name }}</strong>?</p>
 				<template #footer>
 					<button class="btn btn-dismiss px-4 py-2" @click="clearCardAction()">Cancel</button>
 					<button class="btn btn-warning px-4 py-2" @click="archiveProject">Archive</button>
@@ -419,7 +419,7 @@
 						<li>Expired links will remain expired</li>
 					</ul>
 				</FlowNotice>
-				<p class="text-sm text-default mb-4">Unarchive <strong>{{ cardActionProject.name }}</strong>?</p>
+				<p class="text-sm text-default mb-4">Unarchive <strong>{{ cardActionProject?.name }}</strong>?</p>
 				<template #footer>
 					<button class="btn btn-dismiss px-4 py-2" @click="clearCardAction()">Cancel</button>
 					<button class="btn btn-success px-4 py-2" @click="unarchiveProject">Unarchive</button>
@@ -437,7 +437,7 @@
 				</FlowNotice>
 
 				<p class="text-sm text-default mb-3">
-					Deleting <strong>{{ cardActionProject.name }}</strong>
+					Deleting <strong>{{ cardActionProject?.name }}</strong>
 				</p>
 
 				<div class="border border-default rounded-lg p-3 mb-4 space-y-3">

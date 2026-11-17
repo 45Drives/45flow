@@ -13,7 +13,7 @@
                         <div class="connect-section-title">Login</div>
                         <FlowField label="Username">
                             <template #default="{ id }">
-                            <input :id="id" v-model="username" type="text" autocomplete="username" placeholder="root" :disabled="anyBusy"
+                            <input :id="id" v-model="username" type="text" autocomplete="username" :disabled="anyBusy"
                                 class="connect-control h-[2.75rem] text-default input-textlike px-4 rounded-lg text-base w-full border" />
                             </template>
                         </FlowField>
@@ -23,7 +23,7 @@
                                 <input v-model="password" :type="showPassword ? 'text' : 'password'" :id="id"
                                     autocomplete="current-password" :disabled="anyBusy"
                                     class="connect-control h-[2.75rem] text-default input-textlike pl-4 pr-11 rounded-lg text-base w-full border"
-                                    placeholder="••••••••" />
+                                     />
                                 <button type="button" @click="togglePassword" :disabled="anyBusy"
                                     :aria-label="showPassword ? 'Hide password' : 'Show password'"
                                     class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted">
@@ -1052,7 +1052,7 @@ async function connectToServer() {
             ssh: isWeb ? undefined : {
                 server: ip,
                 username: username.value.trim(),
-                port: sshPortToUse,
+                port: sshPortToUse ?? 22,
                 keyPath: verifiedKeyPath,
             },
             serverInfo: effectiveServer?.serverInfo,

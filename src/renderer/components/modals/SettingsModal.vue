@@ -1584,6 +1584,7 @@ const emit = defineEmits<{
         defaultRestrictAccess: boolean;
         defaultAllowComments: boolean;
         defaultUseProxyFiles: boolean;
+        defaultExpirySeconds: number;
         projectRoot: string | null;
         forceProjectRoot: boolean;
     }): void;
@@ -2909,7 +2910,7 @@ async function loadPublicSharingStatus() {
         const data = await apiFetch('/api/settings/public-sharing/status', { timeoutMs: 15000 });
         publicSharingStatus.value = data;
     } catch (e: any) {
-        appLog('Failed to load public sharing status', e);
+        appLog.warn('settings.public_sharing.status_failed', { error: e?.message });
     }
 }
 

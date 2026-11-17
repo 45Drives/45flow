@@ -13,7 +13,7 @@
       "lib": ["esnext", "dom"],
       "types": ["vite/client"]
     },
-    "include": ["./**/*.ts", "./**/*.d.ts", "./**/*.tsx", "./**/*.vue"],
+    "include": ["../../env.d.ts", "./**/*.ts", "./**/*.d.ts", "./**/*.tsx", "./**/*.vue"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],

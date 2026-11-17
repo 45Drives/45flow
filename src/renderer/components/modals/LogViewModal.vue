@@ -777,7 +777,8 @@ const displayRows = computed<DisplayRow[]>(() => {
 
 const { hour12 } = useTimeFormat()
 
-function formatTs(ts: string) {
+function formatTs(ts: string | null | undefined) {
+  if (!ts) return '—';
   const d = new Date(ts);
   if (Number.isNaN(d.getTime())) return ts;
   return d.toLocaleString(undefined, { hour12: hour12.value });

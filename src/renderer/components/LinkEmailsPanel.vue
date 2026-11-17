@@ -59,7 +59,7 @@ import { parseServerTime } from '../utils/reviewStatus'
 
 type EmailRow = {
   id: number
-  kind: 'invitation' | 'download' | 'review'
+  kind: 'invitation' | 'download' | 'review' | 'feedback'
   recipientEmail: string
   status: EmailStatus
   attemptCount: number
@@ -79,6 +79,7 @@ const KIND_LABELS: Record<string, string> = {
   invitation: 'Invitation',
   download: 'Download alert',
   review: 'Review decision',
+  feedback: 'Feedback update',
 }
 const PREVIEW = 5
 

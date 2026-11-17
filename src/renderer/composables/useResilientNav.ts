@@ -1,12 +1,12 @@
 // src/renderer/composables/useResilientNav.ts
-import { useRouter, isNavigationFailure } from 'vue-router'
+import { useRouter, isNavigationFailure, type LocationQueryRaw } from 'vue-router'
 
 export function useResilientNav() {
     const router = useRouter()
 
-    async function to(name: string, params?: Record<string, any>) {
+    async function to(name: string, params?: Record<string, any>, query?: LocationQueryRaw) {
         try {
-            const r = await router.push({ name, params })
+            const r = await router.push({ name, params, query })
             if (isNavigationFailure(r) || router.currentRoute.value.name !== name) {
                 if (!window.electron?.isWeb) {
                     window.electron?.ipcRenderer?.send('action', 'show_dashboard')

@@ -15,6 +15,173 @@ Track C touches two front ends. Both have the same pieces with the same names an
 
 For C2, the approver's **Approve this version / Request changes** actions, comment resolve/reopen and PDF annotations are on the share page (player). Your team reads decisions, history and reports in the app (Link Details, Comments Review, exports). For C3, the email-sharing dialogs and notification settings go in the app. Email bodies are not Vue screens, but use the same status words listed below.
 
+### Comment resolution (2026-11-16)
+
+- Staff can resolve or reopen feedback from Comments Review or the share-page
+  Comments panel. Authors may reopen their own feedback, but cannot resolve it.
+  Being the designated approver does not grant resolution authority.
+- Both interfaces show **Resolved at {timestamp}**, using the server timestamp
+  in the viewer's local timezone. Reopening removes that label. Resolution
+  never approves or rejects a version.
+- The player offers **Staff sign in**, including on protected links. Use a
+  server account over HTTPS; the browser receives an httpOnly session cookie,
+  not the desktop token. An existing staff browser session also works. **Staff
+  sign out** revokes that browser session (also signing out the web app in that
+  browser); desktop sessions and invited-recipient credentials stay separate.
+  Staff can view a valid review without impersonating an invited recipient;
+  that access does not grant recipient comment/upload/download or approval
+  authority. Link expiry and disablement still apply to viewing.
+- Both resolution endpoints use the same persisted history and publish
+  `comment.updated`. Repeating the current state preserves its timestamp and
+  does not add another history entry or live update. The app applies the
+  returned comment instead of inventing a local timestamp.
+- Compatibility: `PATCH /api/links/:linkId/comments/:commentId` retains its
+  authenticated Pro gate and response shape `{ok, comment}`; `resolved` must
+  be a boolean. Optional `tags` are preserved when omitted.
+  `PATCH /api/token/:token/comments/:id/resolution` retains its existing
+  Free/Pro availability and `{ok, comment, event}` shape. Staff browser writes
+  send the CSRF token from `GET /api/session?passive=1`; guest reopening uses
+  the original comment session. No schema migration or new route is needed.
+- Resolution emails and feedback subscriptions are described below.
+
+### Requesting changes (2026-11-16)
+
+- Only the verified, designated invited approver may decide. Approval and
+  rejection do not require a comment and remain independent of resolution.
+- **Request changes** requires at least one unresolved top-level comment
+  on the **same link, file and current version**. Deleted comments, other
+  links/versions, unversioned legacy comments, and replies on resolved threads
+  do not satisfy that requirement.
+- The confirmation checks current feedback when opened. If unresolved
+  feedback exists, another comment is optional. Otherwise, **What needs to
+  change?** is required. Feedback entered here becomes a real unresolved
+  comment authored by the verified approver, not merely a decision note.
+  It is also retained in decision history and existing decision emails.
+- The comment and decision commit together. A stale decision/version or a
+  failed save leaves neither an orphan comment nor a partial decision.
+  The player sends `expected_latest_decision_id`, so concurrent submissions
+  or retries against the same prior state cannot duplicate popup feedback.
+  A committed comment publishes the usual `comment.created` live update.
+- API: `GET /api/token/:token/review-decisions?asset_version_id=...` adds
+  `unresolvedCommentCount`. The existing `POST` keeps `{ok, decision}` and
+  accepts the existing nullable text `note`; for `changes_requested`, a
+  nonblank note is also saved as a comment. A missing prerequisite returns
+  **409 `feedback_required`** without saving. The popup stays open and asks
+  for feedback if staff resolved the final comment while it was open.
+  Posting popup feedback requires the recipient's existing comment
+  permission (**403 `no_comment_access`**). Other auth/conflict rules and
+  Free/Pro availability are unchanged. No route or schema migration is added.
+- Older players sending a change-request note automatically create a
+  comment on updated servers. Updated players connected to an older server
+  retain its required-note behavior; atomic comment creation and server
+  enforcement require the updated server. Callers omitting the optional
+  optimistic-concurrency field retain the existing append-per-decision
+  contract rather than gaining retry deduplication.
+
+### Feedback notifications and resolution emails (2026-11-16)
+
+- **Settings → Email (SMTP) → Staff alerts** keeps the server-wide recipient
+  list and adds individual switches for new comments, replies, reopened
+  feedback, review decisions and first downloads. New feedback email switches
+  start off; existing decision/download subscriptions are preserved.
+- The notification bell adds persistent feedback for the selected server:
+  comments, replies and reopened feedback, with a link back to the review.
+  Read/clear state and event preferences are separate for each staff account.
+  These three in-app event types start enabled. The latest 50 matching events
+  are shown alongside the existing transient app notification history.
+- **Link Details → Review → Resolution emails** lets staff explicitly opt
+  invited clients in per link. Only the resolved comment's author is emailed,
+  and only while they retain viewing access and an active account with an email
+  address. Expired or disabled links do not send client resolution emails.
+  Other reviewers do not receive that author's resolution email.
+  Group-derived invitations are supported. Guest signup is described below.
+  This opt-in never grants approval authority.
+- Resolution emails include the comment, file/version, recorded timestamp and
+  review link. Resolving an already-resolved comment does not email again.
+  Enabling a subscription does not mail earlier events. There is no historical
+  feedback backfill when upgrading.
+- Both comment entry points, replies, changes-requested popup comments and both
+  resolution entry points write durable source events inside their existing
+  database writes. Rolled-back comments do not produce notifications. The
+  worker runs at startup and every 30 seconds; the app polls every 30 seconds
+  with `X-Background-Request: 1` so polling does not extend idle sessions.
+- Emails reuse the existing SMTP settings, outbound-mail switch and durable
+  outbox. Stable event/recipient keys prevent duplicate queueing on replay.
+  Source-processing errors are logged and deferred five minutes rather than
+  blocking newer feedback. Failed or uncertain SMTP outcomes are not retried
+  automatically; inspect and explicitly retry them in **Link Details →
+  Activity**. Mail queued while SMTP is unavailable also needs that explicit
+  retry. "Sent" means accepted by SMTP, not delivered to an inbox.
+- These new staff-only controls are available on Free and Pro servers; they
+  do not change existing comment, approval or license permissions. Browser
+  writes retain staff-session CSRF protection. Older servers show an update
+  notice for the new controls; legacy staff-address saves preserve event choices
+  on updated servers.
+- Persistence is additive: `feedback_events` and source triggers,
+  `feedback_inbox_state`, and `feedback_resolution_subscriptions`. The existing
+  `mail.staff_alert_emails` setting remains a string array; event choices and
+  enablement cursors live separately in `mail.staff_alert_email_events`, saved
+  atomically with the addresses.
+
+New API contracts (all require verified server staff; existing standard error
+responses apply):
+
+| Route | Request / response |
+|---|---|
+| `GET /api/feedback/notifications` | `{ok, items, unreadCount, cursor, events}`; items include link/file/version, comment text, actor, timestamp and read state |
+| `PATCH /api/feedback/notifications` | Either `{action:"read"\|"clear",cursor}` or `{events:{comments,replies,reopened}}` with booleans; returns the refreshed inbox. Cursors cannot exceed committed event history; malformed requests return 400 |
+| `GET /api/links/:id/feedback-notifications` | `{ok,items:[{id,name,user_email,enabled}]}` for currently eligible invited clients; 404 for missing/open links |
+| `PUT /api/links/:id/feedback-notifications` | `{userId,enabled:boolean}`; returns saved recipient choices; 400 for invalid/ineligible recipients |
+
+`GET/PUT /api/admin/mail/staff-alerts` add `subscriptions`, an array of
+`{email,events:{comments,replies,reopened,decisions,downloads}}`, while preserving
+`emails` and `max`. Every event choice must be boolean and each configured address
+must appear once; invalid choices return 400.
+
+### Guest email signup (2026-11-16)
+
+- On open, comments-enabled review links, **Set name / Change name** includes
+  an optional email address and **Email me when my feedback is resolved**.
+  New signups are unchecked by default. Existing pending/confirmed choices
+  are loaded for that guest comment session; unchecking stops updates.
+- Guests must open the confirmation email and explicitly press **Confirm
+  email** before receiving resolution updates. Confirmation expires after
+  24 hours and cannot be replayed after use, cancellation or unsubscribe.
+  Opening the email link alone does not change a subscription.
+- Updates apply only to comments authored by that guest's browser-tab comment
+  session on that link, not everyone sharing the same display name. Confirmation
+  can happen on a different device but does not transfer comment ownership.
+  Closing the original tab ends that comment session; a new tab has a different
+  identity. No recipient account, viewing access or approval authority is created.
+- Confirmation emails and resolution updates include cancel/unsubscribe links.
+  Those open a confirmation dialog and require a button press. Unsubscribe still
+  works on disabled or expired links. Queued guest email retries are blocked once
+  cancelled, replaced or no longer eligible; already in-flight email cannot be recalled.
+- Confirmation capability keys are signed, scoped to one subscription and action,
+  and carried in URL fragments, not HTTP paths/query strings. Email addresses are
+  never added to public comments or the staff feedback inbox.
+- Signup is rate-limited to five requests per IP per 15 minutes, plus a five-minute
+  cooldown per link/session or link/address. An SMTP failure is shown explicitly
+  and does not pretend the address is confirmed; commenting without email remains
+  available. Existing SMTP settings, egress controls and manual email retry apply.
+- Additive persistence: `feedback_guest_subscriptions` stores link/session-hash,
+  email, capability nonce, consent state and event watermark. No earlier feedback
+  is mailed when confirmation is enabled.
+
+Guest API (Free and Pro, publicly routed under the existing token API):
+
+| Route | Request / behavior |
+|---|---|
+| `GET /api/token/:token/feedback-email` | `x-comment-session` header; returns `{ok,state:"off"\|"pending"\|"confirmed",email}` only for that session; no-store |
+| `POST /api/token/:token/feedback-email` | `{enabled:true,session_id,email}`; queues confirmation and attempts SMTP, 202 on acceptance, 503 if unsent, 400 invalid input, 429 cooldown/limit |
+| `DELETE /api/token/:token/feedback-email` | `{session_id}`; disables and invalidates pending confirmation |
+| `POST /api/token/:token/feedback-email/confirm` | `{key}`; signed email capability, 400 invalid/wrong-link, 410 expired/used/cancelled or unavailable review |
+| `POST /api/token/:token/feedback-email/unsubscribe` | `{key}`; signed opt-out capability; independent of link password/expiry/disablement, grants no access |
+
+Reading/changing preferences requires existing comment access on a valid open
+link, including its password when protected. Confirm/unsubscribe capabilities
+authorize only the named email action, never file or comment access.
+
 ## Screens that exist
 
 Build on these instead of starting new ones.
@@ -29,7 +196,9 @@ Build on these instead of starting new ones.
 | Invite by email (lists earlier invitations for the link, with the reason a send failed) | App: Link Details → Overview | `src/renderer/components/EmailInvitationPanel.vue` |
 | "Email this link" (optional) after a link is made | App: Create link result, QuickShare last step | `EmailInvitationPanel.vue` with `compact` |
 | Email (SMTP) settings, required From address, Send test email | App: Settings → Email (SMTP) | `src/renderer/components/AdminSmtpPanel.vue` |
-| Staff alert addresses (copies of every review decision and first download) | App: Settings → Email (SMTP), under the server settings | `src/renderer/components/AdminStaffAlertsPanel.vue` |
+| Staff alert addresses and per-address feedback/decision/download choices | App: Settings → Email (SMTP), under the server settings | `src/renderer/components/AdminStaffAlertsPanel.vue` |
+| Invited-client resolution email opt-in | App: Link Details → Review | `src/renderer/components/LinkFeedbackNotificationsPanel.vue` |
+| Persistent selected-server feedback history and preferences | App: Notification bell | `src/renderer/components/NotificationBell.vue` |
 | Review chip per link, sort, "Needs attention" filter | App: Links table and a project's links (Review column) | `src/renderer/views/ManageLinks.vue`, `utils/reviewStatus.ts` (`reviewSummaryView`) |
 | PDF markup on its page and version | App: Comments Review → View drawing | `modals/AnnotationViewerModal.vue`, `utils/pdfPage.ts` |
 | Internet links Ready / Not ready | App: Settings → Internet sharing | `modals/SettingsModal.vue` |

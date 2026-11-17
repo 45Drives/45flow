@@ -326,7 +326,7 @@ function unsubscribe(
 /**
  * Get WebSocket connection status
  */
-function getStatus(connectionId: string): 'disconnected' | 'connecting' | 'open' | 'error' {
+function getStatus(connectionId: string): 'disconnected' | WebSocketConnection['status'] {
   const wsConn = wsConnections.get(connectionId)
   return wsConn?.status || 'disconnected'
 }

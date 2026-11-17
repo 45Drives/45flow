@@ -7,10 +7,10 @@
     >
       <BellIcon class="w-5 h-5 text-default" />
       <span
-        v-if="unreadCount > 0"
+        v-if="totalUnread > 0"
         class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-flow-danger text-white text-[10px] font-bold px-1 leading-none"
       >
-        {{ unreadCount > 9 ? '9+' : unreadCount }}
+        {{ totalUnread > 9 ? '9+' : totalUnread }}
       </span>
     </button>
 
@@ -30,15 +30,45 @@
         <div class="flex items-center justify-between px-4 py-2.5 border-b border-default">
           <span class="text-sm font-semibold text-default">Notifications</span>
           <button
-            v-if="history.length > 0"
+            v-if="history.length > 0 || feedback.items.value.length > 0"
             class="text-xs text-blue-400 hover:underline"
-            @click="clearHistory"
+            @click="clearAll"
           >
             Clear all
           </button>
         </div>
 
-        <div v-if="history.length === 0" class="px-4 py-8 text-center text-sm text-muted">
+        <section v-if="feedback.serverName.value" class="px-4 py-3 border-b border-default" aria-label="Feedback notifications">
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="text-sm font-semibold">Feedback · {{ feedback.serverName.value }}</h3>
+            <FlowButton v-if="feedback.unreadCount.value" size="xs" :disabled="feedback.saving.value" @click="feedback.markRead">Mark read</FlowButton>
+          </div>
+          <FlowNotice v-if="feedback.unsupported.value" tone="info" size="sm" class="mt-2">Update this server to use the feedback inbox.</FlowNotice>
+          <FlowNotice v-if="feedback.error.value" tone="danger" size="sm" class="mt-2" live>
+            {{ feedback.error.value }}
+            <template #actions><FlowButton size="xs" :disabled="feedback.saving.value" @click="feedback.refresh">Reload</FlowButton></template>
+          </FlowNotice>
+          <p v-if="feedback.loading.value && !feedback.items.value.length" class="text-sm text-muted mt-2" role="status">Loading feedback...</p>
+          <details v-if="!feedback.unsupported.value" class="mt-2 text-sm">
+            <summary class="cursor-pointer">In-app feedback preferences</summary>
+            <div class="mt-2 flex flex-col gap-2">
+              <label v-for="option in feedbackOptions" :key="option.key" class="inline-flex items-center gap-2">
+                <input type="checkbox" :checked="feedback.events.value[option.key]" :disabled="feedback.saving.value"
+                  @change="changeFeedbackEvent(option.key, $event)" />
+                {{ option.label }}
+              </label>
+            </div>
+          </details>
+          <ul class="mt-3 flex flex-col gap-3">
+            <li v-for="item in feedback.items.value" :key="item.id" class="text-sm">
+              <p class="font-medium">{{ feedbackLabels[item.kind] }} · {{ item.link_title || 'Shared link' }}</p>
+              <p class="text-xs text-muted">{{ item.filename }}{{ item.version_index ? ` · v${item.version_index}` : '' }} · {{ item.actor }}</p>
+              <p class="whitespace-pre-wrap break-words line-clamp-3 mt-1">{{ item.body }}</p>
+              <a :href="feedback.reviewUrl(item)" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-xs mt-1">View link</a>
+            </li>
+          </ul>
+        </section>
+        <div v-if="history.length === 0 && !feedback.items.value.length && !feedback.loading.value" class="px-4 py-8 text-center text-sm text-muted">
           No notifications yet
         </div>
 
@@ -67,11 +97,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { BellIcon } from '@heroicons/vue/24/outline'
 import { useNotificationCenter } from '../composables/useNotificationCenter'
+import { useFeedbackNotifications } from '../composables/useFeedbackNotifications'
+import FlowButton from '../ui/FlowButton.vue'
+import FlowNotice from '../ui/FlowNotice.vue'
 
 const { history, unreadCount, bellOpen, toggleBell, clearHistory } = useNotificationCenter()
+const feedback = useFeedbackNotifications(bellOpen)
+const totalUnread = computed(() => unreadCount.value + feedback.unreadCount.value)
+const feedbackOptions = [
+  { key: 'comments', label: 'New comments' }, { key: 'replies', label: 'Replies' }, { key: 'reopened', label: 'Reopened feedback' },
+] as const
+const feedbackLabels = { comments: 'New comment', replies: 'New reply', reopened: 'Feedback reopened' }
+function clearAll() {
+  clearHistory()
+  void feedback.clear()
+}
+function changeFeedbackEvent(key: 'comments' | 'replies' | 'reopened', event: Event) {
+  if (!(event.target instanceof HTMLInputElement)) return
+  const enabled = event.target.checked
+  event.target.checked = feedback.events.value[key]
+  void feedback.setEvents({ ...feedback.events.value, [key]: enabled })
+}
 const bellRef = ref<HTMLElement | null>(null)
 const expandedId = ref<symbol | null>(null)
 

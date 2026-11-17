@@ -415,8 +415,7 @@ import type { Commenter } from '../typings/electron'
 import FlowModal from '../ui/FlowModal.vue'
 import FlowNotice from '../ui/FlowNotice.vue'
 
-// Cast to avoid TS plugin resolution issues with global Window augmentation
-const electron = window.electron as any
+const electron = window.electron
 
 // Client-side transcode status (reactive, for inline hint in template)
 const { enabled: _clientTranscodeOn, hwAccel: _clientHwAccelOn } = useClientTranscode()

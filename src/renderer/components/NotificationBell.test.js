@@ -19,6 +19,14 @@ vi.mock('../composables/useNotificationCenter', async () => {
   }
   return { useNotificationCenter: () => center.state }
 })
+vi.mock('../composables/useFeedbackNotifications', async () => {
+  const { ref } = await import('vue')
+  return { useFeedbackNotifications: () => ({
+    serverName: ref(''), items: ref([]), unreadCount: ref(0), events: ref({}),
+    error: ref(''), unsupported: ref(false), loading: ref(false), saving: ref(false),
+    clear: vi.fn(), refresh: vi.fn(), markRead: vi.fn(), setEvents: vi.fn(),
+  }) }
+})
 
 let app
 let host

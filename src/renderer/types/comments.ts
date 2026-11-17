@@ -26,6 +26,7 @@ export type CommentExport = {
   deleted_at: string | null
   draw_data: string | null
   annotation_type: string | null
+  page?: number | null
   link_id: number | null
   depth: number | null
   

@@ -16,6 +16,7 @@ export interface Server {
   };
   manuallyAdded?: boolean;
   fallbackAdded?: boolean;
+  registryDiscovered?: boolean;
 }
 
 export type DivisionType = 'default' | 'enterprise' | 'homelab' | 'professional' | 'studio';

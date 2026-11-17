@@ -59,7 +59,8 @@ const descId = `${useId()}-desc`
 
 // FlowModal already emitted update:modelValue(false) for Close, Escape and the backdrop.
 function onDismissed() {
-  emit(closeIsCancel.value ? 'cancel' : 'close')
+  if (closeIsCancel.value) emit('cancel')
+  else emit('close')
 }
 function onCancel() {
   if (props.busy) return

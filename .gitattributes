@@ -4,3 +4,5 @@ electron-builder.json merge=ours
 
 # Preserve version field in package.json while allowing other changes to merge
 package.json merge=preserve-version
+
+.yarn/patches/*.patch -whitespace

@@ -191,7 +191,7 @@
             <LinkTranscodeStatus v-if="link && link.type !== 'upload'" class="mt-6"
               :link-id="link.id" :api-fetch="props.apiFetch" :reload-signal="transcodeStatusReload" />
             <LinkRecipientCopies v-if="isPremiumActive && link?.id && link.type !== 'upload' && link.access_mode === 'restricted'"
-              :key="`recipient-copies-${link.id}`" class="mt-6" :link-id="link.id" :link-title="link.title || ''"
+              :key="`recipient-copies-${link.id}`" class="mt-6" :link-id="Number(link.id)" :link-title="link.title || ''"
               :api-fetch="props.apiFetch" />
           </div>
 
@@ -201,11 +201,13 @@
               :error="linkReview.error.value" :link-access-mode="currentAccessMode" :users="access" :hour12="hour12"
               :exporting="reviewExporting"
               @edit="beginEdit('access')" @change-approver="editApprover" @export="exportReview" />
+            <LinkFeedbackNotificationsPanel v-if="link?.id && currentAccessMode === 'restricted'"
+              :key="`feedback-${link.id}`" :link-id="link.id" :api-fetch="props.apiFetch" />
           </div>
 
           <!-- Activity -->
           <div v-else-if="activeTab === 'activity'">
-            <LinkEmailsPanel v-if="link?.id" :key="`emails-${link.id}`" :link-id="link.id" :api-fetch="props.apiFetch" :hour12="hour12" />
+            <LinkEmailsPanel v-if="link?.id" :key="`emails-${link.id}`" :link-id="Number(link.id)" :api-fetch="props.apiFetch" :hour12="hour12" />
             <div class="flex flex-wrap items-center gap-2 mb-3">
               <select v-model="activityTypeFilter" aria-label="Filter by action" class="input-textlike px-2 py-1.5 text-sm">
                 <option value="all">All actions</option>
@@ -810,6 +812,7 @@ import LinkTranscodeStatus from '../LinkTranscodeStatus.vue'
 import LinkRecipientCopies from '../LinkRecipientCopies.vue'
 import EmailInvitationPanel from '../EmailInvitationPanel.vue'
 import LinkReviewPanel from '../LinkReviewPanel.vue'
+import LinkFeedbackNotificationsPanel from '../LinkFeedbackNotificationsPanel.vue'
 import LinkEmailsPanel from '../LinkEmailsPanel.vue'
 import { useEgressSwitches } from '../../composables/useEgressSwitches'
 import { useLinkReview } from '../../composables/useLinkReview'
@@ -975,7 +978,7 @@ const accessLoading = ref(false)
 const accessModalOpen = ref(false)
 const commentsModalOpen = ref(false)
 const categoryManagementOpen = ref(false)
-const linkCategories = ref<Array<{ id: number; name: string; color: string | null }>>([])
+const linkCategories = ref<Array<{ id?: number; name: string; color: string | null }>>([])
 
 const { getCategoriesForLink } = useCommentCategories()
 const versionsLoading = ref(false)
@@ -2027,7 +2030,7 @@ const viewTabs = computed(() => [
 ])
 
 // ── Review (C2) ─────────────────────────────────────────────────────────
-const linkReview = useLinkReview(computed(() => props.link?.id), (url, opts) => props.apiFetch(url, opts))
+const linkReview = useLinkReview(computed(() => props.link ? Number(props.link.id) : undefined), (url, opts) => props.apiFetch(url, opts))
 // Files whose current version still needs a decision, shown on the tab.
 const reviewAttentionCount = computed(() => {
   const st = linkReview.state.value
@@ -3782,7 +3785,7 @@ async function loadCategories() {
   }
 }
 
-function onCategoriesUpdated(categories: Array<{ id: number; name: string; color: string | null }>) {
+function onCategoriesUpdated(categories: Array<{ id?: number; name: string; color: string | null }>) {
   linkCategories.value = categories
 }
 

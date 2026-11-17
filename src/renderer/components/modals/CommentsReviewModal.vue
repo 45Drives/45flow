@@ -200,9 +200,8 @@
                         </p>
                       </div>
                       <div class="flex items-center gap-2 shrink-0" @click.stop>
-                        <FlowChip :tone="comment.resolved ? 'muted' : 'neutral'" size="sm"
-                          :title="comment.resolved && comment.resolved_at ? `Resolved ${formatDate(comment.resolved_at)}` : undefined">
-                          {{ comment.resolved ? '✓ Resolved' : 'Open' }}
+                        <FlowChip :tone="comment.resolved ? 'muted' : 'neutral'" size="sm">
+                          {{ comment.resolved ? (comment.resolved_at ? `Resolved at ${formatDate(comment.resolved_at)}` : 'Resolved') : 'Open' }}
                         </FlowChip>
                         <button type="button" class="btn btn-secondary btn-xs" :disabled="resolvingIds.has(comment.id)" @click="toggleResolved(comment)">
                           {{ comment.resolved ? 'Reopen' : 'Resolve' }}
@@ -901,25 +900,29 @@ function onCategoriesUpdated(categories: Array<{ id?: number; name: string; colo
   linkCategories.value = categories.filter((c): c is { id: number; name: string; color: string | null } => c.id != null)
 }
 
-function applyResolvedLocally(ids: number[], resolved: boolean) {
-  const now = new Date().toISOString()
+function applyResolvedLocally(updated: Pick<CommentExport, 'id' | 'resolved' | 'resolved_at' | 'resolved_by'>) {
   for (const c of comments.value) {
-    if (!ids.includes(c.id) || c.resolved === resolved) continue
-    c.resolved = resolved
-    c.resolved_at = resolved ? now : null
+    if (c.id !== updated.id) continue
+    const changed = !!c.resolved !== !!updated.resolved
+    c.resolved = !!updated.resolved
+    c.resolved_at = updated.resolved_at
+    c.resolved_by = updated.resolved_by
     // The server's open/resolved counts only include top-level comments
-    if (stats.value && !c.parent_id) {
-      stats.value.resolved += resolved ? 1 : -1
-      stats.value.unresolved += resolved ? -1 : 1
+    if (changed && stats.value && !c.parent_id) {
+      stats.value.resolved += c.resolved ? 1 : -1
+      stats.value.unresolved += c.resolved ? -1 : 1
     }
   }
 }
 
-function patchResolved(commentId: number, resolved: boolean) {
-  return apiFetch(`/api/links/${props.link!.id}/comments/${commentId}`, {
+async function patchResolved(commentId: number, resolved: boolean) {
+  const response = await apiFetch(`/api/links/${props.link!.id}/comments/${commentId}`, {
     method: 'PATCH',
     body: JSON.stringify({ resolved }),
   })
+  if (!response?.ok || !response.comment) throw new Error(response?.error || 'Failed to update comment')
+  applyResolvedLocally(response.comment)
+  return response
 }
 
 async function bulkResolve(resolved: boolean) {
@@ -928,7 +931,6 @@ async function bulkResolve(resolved: boolean) {
   bulkBusy.value = true
   try {
     const { ok, failed, firstError } = await runForEach(ids, id => patchResolved(id, resolved))
-    applyResolvedLocally(ok, resolved)
     selectedCommentIds.value = new Set(ids.filter(id => !ok.includes(id)))
     if (failed) {
       pushNotification(new Notification('Some Comments Not Updated',
@@ -1031,7 +1033,6 @@ async function toggleResolved(comment: CommentExport) {
   try {
     const response = await patchResolved(comment.id, newResolved)
     if (!response?.ok) throw new Error(response?.error || 'Failed to update comment')
-    applyResolvedLocally([comment.id], newResolved)
   } catch (err: any) {
     console.error('[CommentsReview] Toggle resolved error:', err)
     pushNotification(new Notification('Update Failed', err?.message || 'Could not update comment status', 'error', 4000))

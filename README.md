@@ -154,6 +154,28 @@ yarn dev
 yarn build
 ```
 
+The renderer extends Houston's exported `ElectronApi` instead of redeclaring
+`Window.electron`. After changing that shared bridge type, rebuild its declarations:
+
+```bash
+yarn --cwd houston-common/houston-common-lib build:lib
+```
+
+Renderer build constants are declared in `env.d.ts`, which must remain included
+by the renderer TypeScript configuration.
+
+Check the renderer, including dependency declarations, with the root toolchain:
+
+```bash
+yarn build:common
+yarn type-check
+```
+
+Yarn applies declaration-only Electron and Monet compatibility patches from
+`.yarn/patches`; their runtime code is unchanged. Keep those patches with
+`package.json` and `yarn.lock`, and refresh them when updating the patched versions.
+The shared UI workspace's older checker is for that library, not the renderer.
+
 ### Local server for the web app
 
 To run the web app against a real backend on your machine, clone
