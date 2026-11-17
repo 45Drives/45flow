@@ -366,6 +366,20 @@
       </div>
       </template>
   </FlowModal>
+
+  <!-- Dropped files already on the server with proxy files / streams (same choice as Create Link) -->
+  <ConfirmDeleteModal
+    v-model="showExistingFilesModal"
+    title="Proxy Files Already Exist"
+    :message="existingFilesMessage"
+    confirmText="Overwrite"
+    cancelText="Keep Existing"
+    :danger="false"
+    :closeIsCancel="false"
+    @confirm="resolveExistingFiles('overwrite')"
+    @cancel="resolveExistingFiles('keep')"
+    @close="resolveExistingFiles('cancel')"
+  />
 </template>
 
 <script setup lang="ts">
@@ -382,6 +396,7 @@ import { connectionMetaInjectionKey, currentServerInjectionKey } from '../keys/i
 import { useApi } from '../composables/useApi'
 import { useExternalAddressReadiness, describeExternalAddressNotReady, describeExternalLinkCreateError, resolveCopyUrl } from '../composables/useExternalAddressReadiness'
 import { validateUploadBatch } from '../utils/uploadPreflight'
+import { findExistingUploads, checkExistingOutputs } from '../utils/existingUploads'
 import { useConnections } from '../composables/useConnections'
 import { useActiveProject } from '../composables/useActiveProject'
 import { useTransferProgress } from '../composables/useTransferProgress'
@@ -397,6 +412,7 @@ import CheckPortForwarding from './CheckPortForwarding.vue'
 import AddUsersModal from './modals/AddUsersModal.vue'
 import PortForwardingModal from './modals/PortForwardingModal.vue'
 import CategoryManagementModal from './modals/CategoryManagementModal.vue'
+import ConfirmDeleteModal from './modals/ConfirmDeleteModal.vue'
 import LinkAccessMode from './LinkAccessMode.vue'
 import EmailInvitationPanel, { type InvitePerson } from './EmailInvitationPanel.vue'
 import LinkEmailComposer from './LinkEmailComposer.vue'
@@ -1310,6 +1326,42 @@ function parseEtaToSeconds(eta: string): number | null {
   return secs > 0 ? secs : null
 }
 
+// ── Dropped files that are already in the destination folder ──
+type ExistingFilesAction = 'overwrite' | 'keep' | 'cancel'
+const showExistingFilesModal = ref(false)
+const existingFileNames = ref<string[]>([])
+let existingFilesResolver: ((action: ExistingFilesAction) => void) | null = null
+
+const existingFilesMessage = computed(() => {
+  const names = existingFileNames.value
+  const which = names.length === 1
+    ? `"${names[0]}" is`
+    : `${names.length} of these files are (${names.slice(0, 3).join(', ')}${names.length > 3 ? ', …' : ''})`
+  return `${which} already on the server, with streams or proxy files. ` +
+    'Overwrite to make them again, or Keep Existing to share them as they are. ' +
+    'Either way the file is not uploaded again.'
+})
+
+function showExistingFilesPrompt(names: string[]): Promise<ExistingFilesAction> {
+  existingFileNames.value = names
+  showExistingFilesModal.value = true
+  return new Promise(resolve => { existingFilesResolver = resolve })
+}
+
+function resolveExistingFiles(action: ExistingFilesAction) {
+  if (existingFilesResolver) {
+    existingFilesResolver(action)
+    existingFilesResolver = null
+  }
+  showExistingFilesModal.value = false
+}
+
+// Files the link makes proxy files, streams or watermarked copies for.
+function wantsReviewOutputs(name: string) {
+  const ext = String(name || '').toLowerCase().split('.').pop() || ''
+  return videoExts.has(ext) || (watermarkEnabled.value && imageExts.has(ext))
+}
+
 // ── Upload & Share ──
 async function startUploadAndShare() {
   if (busy.value || !canProceed.value) return
@@ -1325,6 +1377,49 @@ async function startUploadAndShare() {
 
   try {
     await validateUploadBatch(apiFetch, droppedFiles.value, destDir)
+
+    // Check the destination BEFORE any register / local transcode / upload work.
+    // A file already there with the same name and size is shared in place, never uploaded
+    // again: a second copy would be saved as "name (1)" and need all-new transcodes.
+    const existingMatches = droppedFiles.value.some(f => wantsReviewOutputs(f.name))
+      ? await findExistingUploads(apiFetch, droppedFiles.value, destDir)
+      : droppedFiles.value.map(() => null)
+    const identicalIdx = droppedFiles.value
+      .map((f, i) => (wantsReviewOutputs(f.name) && existingMatches[i]?.identical ? i : -1))
+      .filter(i => i >= 0)
+    const serverPathOf = (i: number) => joinPath(destDir, existingMatches[i]?.serverName || droppedFiles.value[i].name)
+    /** Index → the server's current version of that file, for files shared in place. */
+    const reused = new Map<number, { assetVersionId: number | null; hasOutputs: boolean }>()
+    if (identicalIdx.length) {
+      const checked = await checkExistingOutputs(apiFetch, identicalIdx.map(serverPathOf), {
+        proxyQualities: proxyQualities.value.length > 0 ? proxyQualities.value.slice() : ['original'],
+        hls: hasVideo.value,
+        watermark: watermarkEnabled.value,
+      })
+      // Older servers can't answer: keep the previous behaviour (upload a copy).
+      if (checked) identicalIdx.forEach((i, k) => {
+        const item = checked[k]
+        // Unregistered files (no version yet) take the normal upload path.
+        if (item?.exists && item.assetVersionId) reused.set(i, { assetVersionId: item.assetVersionId, hasOutputs: item.outputs.length > 0 })
+      })
+    }
+    let keepExistingOutputs = false
+    const withOutputs = [...reused].filter(([, r]) => r.hasOutputs).map(([i]) => droppedFiles.value[i].name)
+    if (withOutputs.length) {
+      const action = await showExistingFilesPrompt(withOutputs)
+      if (action === 'cancel') {
+        qsView.value = 'setup'
+        minimized.value = false
+        uploadPhase.value = 'idle'
+        perFileProgress.value = {}
+        perFileStatus.value = {}
+        perFileDetail.value = {}
+        busy.value = false
+        return
+      }
+      keepExistingOutputs = action === 'keep'
+    }
+
     uploadPhase.value = 'uploading'
 
     // Suppress transfer dock auto-open for quick share uploads
@@ -1335,12 +1430,18 @@ async function startUploadAndShare() {
     let anyClientTranscoded = false
     let clientAppliedWatermark = false
     const { enabled: clientTranscodeEnabled, preset: transcodePreset, hwAccel: hwAccelSetting } = useClientTranscode()
+    // A file shared in place is transcoded again only if it has nothing yet, or the user chose Overwrite.
+    const retranscode = (i: number) => {
+      const r = reused.get(i)
+      return !r || !r.hasOutputs || !keepExistingOutputs
+    }
     
     // Resolve watermark image path for client-side transcoding
     let localWatermarkPath: string | null = null
     // Link-level text is baked in by the desktop transcode; personal copies are rendered by the server.
     const clientTextLayer = usePersonalCopies.value ? null : activeTextLayer.value
-    if (imageWatermarkActive.value && clientTranscodeEnabled.value) {
+    if (imageWatermarkActive.value && clientTranscodeEnabled.value &&
+      droppedFiles.value.some((f, i) => retranscode(i) && videoExts.has(String(f.name || '').toLowerCase().split('.').pop() || ''))) {
       if (watermarkFile.value?.path) {
         localWatermarkPath = watermarkFile.value.path
       } else if (selectedExistingWatermark.value) {
@@ -1360,6 +1461,18 @@ async function startUploadAndShare() {
     for (let i = 0; i < droppedFiles.value.length; i++) {
       if (shareCancelled) break
       const f = droppedFiles.value[i]
+
+      const reuse = reused.get(i)
+      const fileExtEarly = String(f.name || '').toLowerCase().split('.').pop() || ''
+      // Shared in place with nothing to make locally: no register, transcode, upload or transfer task.
+      if (reuse && !(videoExts.has(fileExtEarly) && clientTranscodeEnabled.value && retranscode(i) && reuse.assetVersionId)) {
+        perFileProgress.value[f.path] = 100
+        perFileStatus.value[f.path] = 'done'
+        perFileDetail.value[f.path] = 'Already on the server'
+        serverPaths.push(serverPathOf(i))
+        continue
+      }
+
       let uploadedFileName = f.name
       const fileDestAbs = joinPath(destDir, f.name)
 
@@ -1398,21 +1511,27 @@ async function startUploadAndShare() {
         transfer.updateUpload(taskId, { status: 'transcoding' as any, detail: 'Registering…' })
 
         try {
-          // 1. Register file metadata to get assetVersionId
-          const registerRes = await apiFetch('/api/local-upload/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              filename: f.name,
-              fileSize: f.size,
-              dest: destDir,
-              mimeType: `video/${fileExt === 'mov' ? 'quicktime' : fileExt}`,
-            }),
-          })
-          if (!registerRes?.ok) {
-            throw new Error(registerRes?.error || 'Failed to register file metadata')
+          // 1. The version to transcode: the file's current one when it is already on the
+          //    server (no new version), else register the upload to get one.
+          let assetVersionId: number
+          if (reuse?.assetVersionId) {
+            assetVersionId = reuse.assetVersionId
+          } else {
+            const registerRes = await apiFetch('/api/local-upload/register', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                filename: f.name,
+                fileSize: f.size,
+                dest: destDir,
+                mimeType: `video/${fileExt === 'mov' ? 'quicktime' : fileExt}`,
+              }),
+            })
+            if (!registerRes?.ok) {
+              throw new Error(registerRes?.error || 'Failed to register file metadata')
+            }
+            assetVersionId = registerRes.assetVersionId
           }
-          const { assetVersionId } = registerRes
 
           // 2. Client transcode locally
           perFileDetail.value[f.path] = 'Transcoding locally…'
@@ -1464,6 +1583,16 @@ async function startUploadAndShare() {
           clientTranscoded = true
           anyClientTranscoded = true
           if (localWatermarkPath || clientTextLayer) clientAppliedWatermark = true
+
+          if (reuse) {
+            // The source is already on the server; only its outputs were made again.
+            transfer.finishUpload(taskId, true)
+            perFileProgress.value[f.path] = 100
+            perFileStatus.value[f.path] = 'done'
+            perFileDetail.value[f.path] = 'Already on the server'
+            serverPaths.push(serverPathOf(i))
+            continue
+          }
 
           // 3. Upload raw file (server won't queue transcodes — clientTranscode:true)
           perFileProgress.value[f.path] = 0
@@ -1671,8 +1800,14 @@ async function startUploadAndShare() {
       body.clientTranscode = true
     }
 
-    // QuickShare always uploads fresh files — overwrite existing outputs
-    body.overwrite = true
+    // Fresh uploads overwrite any stale outputs; files shared in place follow the user's
+    // Keep Existing / Overwrite choice.
+    if (keepExistingOutputs) {
+      body.keepExistingOutputs = true
+      body.overwrite = false
+    } else {
+      body.overwrite = true
+    }
 
     const data = await apiFetch('/api/magic-link', {
       method: 'POST',
@@ -1839,6 +1974,8 @@ async function startUploadAndShare() {
 
         const localFile = droppedFiles.value[fi]
         if (!localFile) continue
+        // Kept as it is on the server: nothing to transcode.
+        if (reused.has(fi) && !retranscode(fi)) continue
 
         const ext = String(localFile.name || '').toLowerCase().split('.').pop() || ''
         if (!videoExtsSet.has(ext)) continue

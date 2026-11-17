@@ -186,22 +186,61 @@ function onDocumentClick(e: MouseEvent) {
     setOpen(false)
 }
 
-function updateScrollbarWidth() {
-    scrollbarWidth.value = Math.max(0, window.innerWidth - document.documentElement.clientWidth)
+// The app shell never scrolls; views scroll inside their own containers, so the
+// scrollbar the tab must clear belongs to whatever scroller sits under it.
+function rightEdgeScrollbarWidth(): number {
+    const pageBar = window.innerWidth - document.documentElement.clientWidth
+    if (pageBar > 0) return pageBar
+    const tab = wrapperRef.value?.querySelector('.drawer-tab') as HTMLElement | null
+    const rect = tab?.getBoundingClientRect()
+    const y = rect && rect.height > 0 ? rect.top + rect.height / 2 : window.innerHeight / 2
+    const x = window.innerWidth - 2
+    const hit = document.elementsFromPoint?.(x, y).find(el => !wrapperRef.value?.contains(el))
+    for (let node = hit as HTMLElement | null; node && node !== document.documentElement; node = node.parentElement) {
+        if (node.scrollHeight <= node.clientHeight) continue
+        const style = getComputedStyle(node)
+        if (!/(auto|scroll)/.test(style.overflowY)) continue
+        const bar = node.offsetWidth - node.clientWidth
+            - (parseFloat(style.borderLeftWidth) || 0) - (parseFloat(style.borderRightWidth) || 0)
+        if (bar <= 0) continue
+        return window.innerWidth - node.getBoundingClientRect().right < 2 ? bar : 0
+    }
+    return 0
 }
+
+function updateScrollbarWidth() {
+    const next = Math.max(0, Math.round(rightEdgeScrollbarWidth()))
+    if (next !== scrollbarWidth.value) scrollbarWidth.value = next
+}
+
+let scrollbarFrame = 0
+function scheduleScrollbarUpdate() {
+    if (scrollbarFrame) return
+    scrollbarFrame = requestAnimationFrame(() => {
+        scrollbarFrame = 0
+        updateScrollbarWidth()
+    })
+}
+// Content growing past its container adds a scrollbar without any event, so re-check periodically too.
+let scrollbarPoll: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
     document.addEventListener('mousedown', onDocumentClick, true)
-    window.addEventListener('resize', updateScrollbarWidth)
+    window.addEventListener('resize', scheduleScrollbarUpdate)
+    document.addEventListener('scroll', scheduleScrollbarUpdate, { capture: true, passive: true })
     updateScrollbarWidth()
+    scrollbarPoll = setInterval(updateScrollbarWidth, 1000)
     if (typeof ResizeObserver !== 'undefined') {
-        rootResizeObserver = new ResizeObserver(updateScrollbarWidth)
+        rootResizeObserver = new ResizeObserver(scheduleScrollbarUpdate)
         rootResizeObserver.observe(document.documentElement)
     }
 })
 onBeforeUnmount(() => {
     document.removeEventListener('mousedown', onDocumentClick, true)
-    window.removeEventListener('resize', updateScrollbarWidth)
+    window.removeEventListener('resize', scheduleScrollbarUpdate)
+    document.removeEventListener('scroll', scheduleScrollbarUpdate, { capture: true })
+    if (scrollbarPoll) clearInterval(scrollbarPoll)
+    if (scrollbarFrame) cancelAnimationFrame(scrollbarFrame)
     rootResizeObserver?.disconnect()
 })
 
@@ -726,6 +765,15 @@ function dismissGroup(groupKey: string) {
     background: linear-gradient(to right, var(--ui-panel-bg) calc(100% - 1rem), transparent calc(100% - 1rem));
     border-left: 1px solid var(--ui-panel-border);
     box-shadow: -4px 0 16px rgba(0, 0, 0, 0.12);
+    /* Closed, the wrapper stops short of the view's scrollbar so the tab clears it; hide the
+       slid-away panel after the slide so its edge and shadow don't paint over that scrollbar. */
+    visibility: hidden;
+    transition: visibility 0s linear 0.35s;
+}
+
+.drawer-wrapper--open .drawer-panel {
+    visibility: visible;
+    transition-delay: 0s;
 }
 
 .drawer-inner {
