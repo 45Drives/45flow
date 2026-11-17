@@ -101,6 +101,7 @@ function serve(overrides = {}) {
     }
     if (url === '/api/files/7/versions') return { ok: true, versions: versionRows }
     if (url === '/api/files/7/lineage') return server.lineage
+    if (url === '/api/files/8/location') return { ok: true, fileId: 8, relPath: 'P/Original - social.mov' }
     if (url === '/api/files/7/forks' && init.method === 'POST') return server.postFork(JSON.parse(init.body))
     if (/^\/api\/fork-jobs\/\d+$/.test(url)) return server.job()
     if (/^\/api\/fork-jobs\/\d+\/retry$/.test(url) && init.method === 'POST') return server.retry()
@@ -108,12 +109,12 @@ function serve(overrides = {}) {
   })
 }
 
-async function mountVersionsTab() {
+async function mountVersionsTab(linkProps = link) {
   host = document.createElement('div')
   document.body.appendChild(host)
   // The modal loads its files when it opens, so mount it closed and then open it.
   const open = ref(false)
-  app = createApp({ render: () => h(LinkDetailsModal, { modelValue: open.value, link, apiFetch: mocks.apiFetch }) })
+  app = createApp({ render: () => h(LinkDetailsModal, { modelValue: open.value, link: linkProps, apiFetch: mocks.apiFetch }) })
   app.mount(host)
   await flush()
   open.value = true
@@ -247,5 +248,42 @@ describe('LF1 versions tab', () => {
     expect(v2.textContent).not.toContain('Kept:')
     expect(buttonIn(v2, 'Delete')).toBeDefined()
     expect(buttonIn(v2, 'Delete').disabled).toBe(false)
+  })
+})
+
+describe('fork visibility', () => {
+  it('offers to add a fork that is not on the link, through Edit', async () => {
+    serve({ lineage: lineageWithFork })
+    await mountVersionsTab()
+    const add = buttonIn(rowFor(1), 'Add Social Cut to link…')
+    expect(add).toBeDefined()
+    add.click()
+    await flush()
+    expect(mocks.apiFetch).toHaveBeenCalledWith('/api/files/8/location')
+    expect(mocks.notify).toHaveBeenCalledWith(expect.objectContaining({ title: 'Fork Added to Files' }))
+  })
+
+  it('says where a fork came from and keeps the earlier history on the source', async () => {
+    serve({ lineage: {
+      ok: true,
+      origin: { fileId: 3, filename: 'Root.mov', assetVersionId: 50, versionNumber: 2, available: true },
+      family: [
+        { fileId: 3, filename: 'Root.mov', label: null, forkedFrom: null, versions: [1, 2, 3].map(n => ({ assetVersionId: 48 + n, versionNumber: n })) },
+        { fileId: 7, filename: 'Original.mov', label: null, forkedFrom: { fileId: 3, assetVersionId: 50, versionNumber: 2 }, versions: [] },
+      ],
+    } })
+    await mountVersionsTab()
+    const notice = modal.querySelector('[data-testid="fork-origin"]')
+    expect(notice.textContent).toContain('Forked from Root.mov · v2')
+    expect(notice.textContent).toContain('(v1, v2) stays on the source')
+    expect(notice.textContent).toContain("The source isn't on this link.")
+  })
+
+  it('turns Compare with… off on an expired link', async () => {
+    serve({ lineage: lineageWithFork })
+    await mountVersionsTab({ ...link, expiresAt: Date.now() - 60_000 })
+    const btn = rowFor(2).querySelector('[data-testid="compare-with"]')
+    expect(btn.disabled).toBe(true)
+    expect(btn.title).toContain('expired')
   })
 })

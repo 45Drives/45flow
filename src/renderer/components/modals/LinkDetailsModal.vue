@@ -283,6 +283,14 @@
               </div>
 
               <FlowNotice v-if="versionsError" tone="danger" size="sm" class="mb-3">{{ versionsError }}</FlowNotice>
+              <FlowNotice v-if="lineageOrigin" tone="info" size="sm" class="mb-3" data-testid="fork-origin">
+                Forked from <strong>{{ lineageOrigin.filename || 'another file' }} · v{{ lineageOrigin.versionNumber }}</strong><template v-if="!lineageOrigin.available"> (no longer available)</template>.
+                <template v-if="originHistory.length > 1"> The history before the fork ({{ originHistory.map(n => `v${n}`).join(', ') }}) stays on the source.</template>
+                <template v-if="!originOnLink"> The source isn't on this link.</template>
+                <template v-if="originOnLink" #actions>
+                  <button type="button" class="btn btn-secondary btn-xs" data-testid="fork-origin-show" @click="selectedVersionFileId = Number(lineageOrigin.fileId)">Show the source</button>
+                </template>
+              </FlowNotice>
 
               <div class="flow-table-wrap">
                 <table class="flow-table">
@@ -307,7 +315,7 @@
                       <tr>
                         <td class="font-semibold">v{{ v.version_index }}</td>
                         <td class="whitespace-nowrap">{{ v.created_at ? formatDate(v.created_at) : '—' }}</td>
-                        <td class="text-muted max-w-[16rem]"><span class="block truncate" :title="v.snapshot_rel || undefined">{{ snapshotName(v.snapshot_rel) }}</span></td>
+                        <td class="text-muted max-w-[12rem]"><span class="block truncate" :title="v.snapshot_rel || undefined">{{ snapshotName(v.snapshot_rel) }}</span></td>
                         <td class="flow-table__num">{{ fmtBytes(v.snapshot_size_bytes) }}</td>
                         <td v-if="showReviewColumn" class="whitespace-nowrap">
                           <FlowChip v-if="versionReviewState(v.asset_version_id)" size="sm"
@@ -319,16 +327,23 @@
                           <span v-else class="text-muted">—</span>
                         </td>
                         <td class="text-right">
-                          <div class="flex flex-wrap items-center justify-end gap-1.5 min-w-[12rem]">
+                          <div class="inline-grid grid-cols-[auto_auto] gap-1.5 text-left whitespace-nowrap">
                           <button type="button" class="btn btn-secondary btn-xs" :disabled="!v.snapshot_rel"
                             :title="v.snapshot_rel ? undefined : 'This version is still being saved'" @click="openFork(v)">Fork from this version</button>
                           <button type="button" class="btn btn-secondary btn-xs" data-testid="compare-with"
-                            :disabled="!primaryUrl || compareOptions(v).length === 0"
+                            :disabled="!!compareDisabledReason(v)"
                             :title="compareDisabledReason(v) || undefined" @click="openCompare(v)">Compare with…</button>
                           <button type="button" class="btn btn-secondary btn-xs" @click="restoreVersion(v)">Restore</button>
-                          <span v-if="forkSourceNote(v.asset_version_id)" class="basis-full text-xs text-muted" data-testid="fork-kept">{{ forkSourceNote(v.asset_version_id) }}</span>
+                          <span v-if="forkSourceNote(v.asset_version_id)" class="col-span-2 max-w-[18rem] whitespace-normal text-xs text-muted text-right justify-self-end" data-testid="fork-kept">{{ forkSourceNote(v.asset_version_id) }}</span>
                           <button v-else type="button" class="btn btn-danger btn-xs" :disabled="versions.length <= 1"
                             :title="versions.length <= 1 ? 'The only version can\'t be deleted' : undefined" @click="deleteVersion(v)">Delete</button>
+                          <div v-for="f in forksOfVersion(v.asset_version_id)" :key="`fork-${f.fileId}`" class="col-span-2 flex justify-end" data-testid="fork-entry">
+                            <button v-if="versionFileById.has(f.fileId)" type="button" class="btn btn-secondary btn-xs max-w-[18rem] truncate"
+                              :title="`Show the versions of ${f.label || f.filename}`" @click="selectedVersionFileId = f.fileId">Show {{ f.label || f.filename }}</button>
+                            <button v-else-if="link?.share_enabled" type="button" class="btn btn-secondary btn-xs max-w-[18rem] truncate"
+                              :disabled="addingForkId === f.fileId"
+                              :title="`${f.label || f.filename} isn't on this link. Adds it to the link's files; you then save.`" @click="addForkToLink(f)">Add {{ f.label || f.filename }} to link…</button>
+                          </div>
                           </div>
                         </td>
                       </tr>
@@ -1015,6 +1030,9 @@ const selectedVersionFileId = ref<number | null>(null)
 const forkSourcesByVersionId = ref<Map<number, Array<{ fileId: number; filename: string; label: string | null }>>>(new Map())
 // Every file in the selected file's fork family (LF1 lineage), for Compare with… (LF5).
 const lineageFamily = ref<any[]>([])
+// Where the selected file was forked from (LF1 lineage origin), or null.
+const lineageOrigin = ref<any | null>(null)
+const addingForkId = ref<number | null>(null)
 const compareFrom = ref<any | null>(null)
 const compareTargetId = ref<number | null>(null)
 const forkOpen = ref(false)
@@ -3687,10 +3705,48 @@ async function loadForkSources(fileId: number) {
     }
     forkSourcesByVersionId.value = map
     lineageFamily.value = Array.isArray(resp?.family) ? resp.family : []
+    lineageOrigin.value = resp?.origin ?? null
   } catch {
     // An older server has no lineage; the tab then behaves as before.
     forkSourcesByVersionId.value = new Map()
     lineageFamily.value = []
+    lineageOrigin.value = null
+  }
+}
+
+// The source's versions up to the one this fork was made from (read-only history).
+const originHistory = computed<number[]>(() => {
+  const o = lineageOrigin.value
+  if (!o?.fileId) return []
+  const member = lineageFamily.value.find((m: any) => Number(m?.fileId) === Number(o.fileId))
+  return (member?.versions || [])
+    .map((x: any) => Number(x?.versionNumber))
+    .filter((n: number) => Number.isFinite(n) && n <= Number(o.versionNumber))
+    .sort((a: number, b: number) => a - b)
+})
+const originOnLink = computed(() => !!lineageOrigin.value?.fileId && versionFileById.value.has(Number(lineageOrigin.value.fileId)))
+
+function forksOfVersion(assetVersionId: number) {
+  return forkSourcesByVersionId.value.get(Number(assetVersionId)) ?? []
+}
+
+// Puts an existing fork into the link's file list in Edit mode; the person saves
+// as for any other file change, so web-copy and watermark settings apply as usual.
+async function addForkToLink(fork: { fileId: number; filename: string; label: string | null }) {
+  addingForkId.value = fork.fileId
+  try {
+    const resp = await props.apiFetch(`/api/files/${fork.fileId}/location`)
+    const rel = typeof resp?.relPath === 'string' ? resp.relPath : ''
+    if (!rel) throw new Error('The fork could not be found on the server.')
+    if (!editMode.value) beginEdit('files')
+    else editTab.value = 'files'
+    const abs = normalizeAbs(rel)
+    if (!draftFilePaths.value.includes(abs)) draftFilePaths.value = [...draftFilePaths.value, abs]
+    pushNotification(new Notification('Fork Added to Files', `${fork.label || fork.filename} is in the link's file list. Save to put it on the link.`, 'info', 8000))
+  } catch (e: any) {
+    pushNotification(new Notification('Could Not Add Fork', e?.message || 'The fork could not be added.', 'error', 8000))
+  } finally {
+    addingForkId.value = null
   }
 }
 
@@ -3717,6 +3773,7 @@ function compareOptions(v: any): Array<{ assetVersionId: number; label: string }
 
 function compareDisabledReason(v: any): string {
   if (!primaryUrl.value) return 'This link has no share page to compare on'
+  if (props.link && statusOf(props.link) !== 'active') return `This link is ${statusLabel.value.toLowerCase()}, so its share page won't open. Extend or re-enable it to compare.`
   if (compareOptions(v).length === 0) return 'Nothing else on this link to compare with. Another version, or a fork added to this link, is needed.'
   return ''
 }
@@ -3763,7 +3820,7 @@ function openFork(v: any) {
   forkOpen.value = true
 }
 
-watch(selectedVersionFileId, () => { compareFrom.value = null; lineageFamily.value = [] })
+watch(selectedVersionFileId, () => { compareFrom.value = null; lineageFamily.value = []; lineageOrigin.value = null })
 
 async function onForked(payload: { fileId: number | null; attachedToLink: boolean; path: string }) {
   const where = payload.attachedToLink ? 'It was added to this link.' : 'It is not on this link.'
