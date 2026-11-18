@@ -30,8 +30,11 @@
                 <div v-if="call.optional" class="flex items-center gap-2 shrink-0 pt-0.5">
                     <span class="text-xs text-muted">{{ call.enabled ? 'On' : 'Off' }}</span>
                     <FlowSwitch :model-value="call.enabled" :label="`${call.name}: ${call.enabled ? 'on' : 'off'}`"
-                        :disabled="saving === call.id" @update:model-value="(v: boolean) => toggle(call, v)" />
+                        :disabled="saving === call.id || needsLicense(call)" @update:model-value="(v: boolean) => toggle(call, v)" />
                 </div>
+                <p v-if="needsLicense(call)" class="text-xs mt-0.5 text-muted basis-full" role="note">
+                    Needs a 45Flow Premium license. Activate one under License to turn this on.
+                </p>
             </li>
         </ul>
     </section>
@@ -57,6 +60,7 @@ type EgressCall = {
     scope: 'internet' | 'lan'
     inProcess: boolean
     notActive?: boolean
+    licensed?: boolean
     lastCall: { ts: string; ok: boolean; status: number | null } | null
     recent: { calls: number; failures: number; lastAt: string | null }
 }
@@ -78,6 +82,9 @@ function badge(call: EgressCall): { text: string; tone: ChipTone } {
     if (call.optional) return { text: 'Optional', tone: call.enabled ? 'neutral' : 'warning' }
     return { text: call.inProcess ? 'Required' : 'Outside the app', tone: 'muted' }
 }
+
+// Only P2P needs a licence today: the server sends `licensed` for such calls.
+const needsLicense = (call: EgressCall) => call.licensed === false && !call.enabled
 
 function activity(call: EgressCall) {
     if (!call.inProcess || call.notActive || call.scope === 'lan') return ''
