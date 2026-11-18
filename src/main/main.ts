@@ -391,6 +391,7 @@ import { initAutoUpdates } from './updates';
 import { registerSecureTokenHandlers } from './secureTokens';
 import { openApiDocsWindow } from './apiDocsWindow';
 import { registerSshTrust, verifyWithSshTrust } from './serverTrust';
+import { startP2p, stopAllP2p } from './p2p';
 import { chromiumChain, hasBlockedKey, installNodeTlsBlocklist } from './blockedCertificates';
 
 installNodeTlsBlocklist();
@@ -2031,6 +2032,8 @@ function createWindow() {
     }
   });
 
+  app.on('will-quit', () => { void stopAllP2p(); });
+
   app.on('window-all-closed', function () {
     ipcMain.removeAllListeners('message');
     clearInterval(clearInactiveServerInterval);
@@ -2285,6 +2288,13 @@ app.whenReady().then(() => {
     const registered = registerSshTrust(trust);
     jl('info', 'server-trust.registered', { host: registered.host, httpsPort: registered.httpsPort, sshPort: registered.sshPort });
     return true;
+  });
+
+  ipcMain.handle('p2p:start', async (event, input) => {
+    if (!fromMainRenderer(event)) throw new Error('P2P request denied');
+    const result = await startP2p(input, (name, data) => jl('info', name, data));
+    jl('info', 'p2p.started', { mode: result.mode });
+    return result;
   });
 
   ipcMain.handle('api-docs:open', async (event, opts: { baseUrl?: unknown; token?: unknown } = {}) => {

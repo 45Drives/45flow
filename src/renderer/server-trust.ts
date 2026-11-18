@@ -54,6 +54,7 @@ export async function fetchOverHttps(url: string, init: RequestInit, httpsPort: 
 }
 
 type UpgradableConnection = {
+  p2pAddress?: string
   serverIp: string
   baseUrl: string
   httpsPort?: number
@@ -63,7 +64,7 @@ type UpgradableConnection = {
 
 /** Saved desktop connections from before B2 used http://<server>:9095; move them to HTTPS. */
 export function upgradedBaseUrl(conn: UpgradableConnection): string | null {
-  if (!isDesktop()) return null
+  if (!isDesktop() || conn.p2pAddress) return null
   try {
     if (new URL(conn.baseUrl).protocol !== 'http:') return null
   } catch {
@@ -72,7 +73,9 @@ export function upgradedBaseUrl(conn: UpgradableConnection): string | null {
   return httpsBaseFor(conn.serverIp, conn.httpsPort ?? 443)
 }
 
+// A P2P connection has no SSH session to verify a certificate with; the P2P channel is its trust.
 export function trustFor(conn: UpgradableConnection): ServerTrust | null {
+  if (conn.p2pAddress) return null
   if (!conn.ssh?.username && !conn.username) return null
   return {
     host: conn.ssh?.server || conn.serverIp,

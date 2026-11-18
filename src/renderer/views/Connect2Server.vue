@@ -54,7 +54,13 @@
                         </FlowField>
                         <FlowField label="Or enter the server address">
                             <template #default="{ id }">
-                            <input :id="id" v-model="manualIp" type="text" placeholder="192.168.1.123" :disabled="anyBusy"
+                            <input :id="id" v-model="manualIp" type="text" placeholder="192.168.1.123 or https://<server-id>.<domain>" :disabled="anyBusy"
+                                class="connect-control h-[2.75rem] text-default input-textlike border px-4 rounded-lg text-base w-full" />
+                            </template>
+                        </FlowField>
+                        <FlowField v-if="p2pAddress" label="Direct address" optional help="Used only if this computer cannot connect peer to peer.">
+                            <template #default="{ id }">
+                            <input :id="id" v-model="directAddress" type="text" placeholder="https://192.168.1.123" :disabled="anyBusy"
                                 class="connect-control h-[2.75rem] text-default input-textlike border px-4 rounded-lg text-base w-full" />
                             </template>
                         </FlowField>
@@ -150,6 +156,7 @@ import { loadLastSession, clearLastSession, saveManualServer, saveRegistryLicens
 import { useConnections } from '../composables/useConnections'
 import type { Connection } from '../composables/useConnections'
 import { httpsBaseFor, registerServerTrust, verifyServerCertificate, fetchOverHttps, upgradedBaseUrl, trustFor } from '../server-trust'
+import { parseP2pAddress, startP2pProxy } from '../p2p'
 import { useTourManager, type TourStep } from '../composables/useTourManager'
 import { useOnboarding } from '../composables/useOnboarding'
 useHeader('Welcome to 45Flow!');
@@ -161,6 +168,8 @@ const { to } = useResilientNav()
 const { addConnection, setActive, removeConnection, connections } = useConnections()
 const discoveryState = inject<DiscoveryState>(discoveryStateInjectionKey)!;
 const manualIp = ref('');
+const directAddress = ref('');
+const p2pAddress = computed(() => parseP2pAddress(manualIp.value))
 const username = ref('');
 const password = ref('');
 const rememberPassword = ref(false);
@@ -714,6 +723,65 @@ async function openBrowserConnection(session: WebSessionInfo) {
     to('dashboard');
 }
 
+/** Connect to a P2P address: the main-process proxy carries every request, so baseUrl is the proxy. */
+async function connectViaP2p(address: string) {
+    isBusy.value = true;
+    statusLine.value = 'Connecting…';
+    try {
+        const direct = directAddress.value.trim() || undefined;
+        const { baseUrl, mode } = await startP2pProxy(address, direct);
+        const res = await fetch(`${baseUrl}/api/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: username.value,
+                password: password.value,
+                clientBuildDate: typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : undefined,
+            }),
+        });
+        if (!res.ok) {
+            const raw = await res.text().catch(() => '');
+            let errorData: any = null;
+            try { errorData = raw ? JSON.parse(raw) : null; } catch {}
+            throw new Error(errorData?.message || errorData?.error || `HTTP ${res.status}`);
+        }
+        const { token } = await res.json();
+        const license = await checkLicenseStatus(baseUrl, token);
+        const host = new URL(address).host;
+        const id = addConnection({
+            connectionId: crypto.randomUUID(),
+            name: host,
+            serverIp: host,
+            baseUrl,
+            p2pAddress: address,
+            directUrl: direct,
+            username: username.value.trim(),
+            token,
+            tokenIssuedAt: Date.now(),
+            savedPassword: rememberPassword.value ? password.value : undefined,
+            apiPort: Number(new URL(baseUrl).port),
+            httpsPort: 443,
+            licensed: license.licensed,
+            licenseFallback: license.licenseFallback,
+            licenseReason: license.licenseReason,
+            licenseCheckedAt: Date.now(),
+            licenseInfo: license.licenseInfo,
+            status: 'connected',
+            lastConnectedAt: Date.now(),
+            isActive: true,
+        });
+        setActive(id);
+        window.appLog?.info('login.success', { host, mode, connectionId: id });
+        to('dashboard');
+    } catch (e: any) {
+        window.appLog?.error('login.error', { error: e?.message });
+        pushNotification(new Notification('Error', e?.message || 'Login failed', 'error', 12000));
+    } finally {
+        statusLine.value = '';
+        isBusy.value = false;
+    }
+}
+
 async function connectToServer() {
     if (!isWeb && !selectedServer.value && !manualIp.value) {
         pushNotification(new Notification('Error', `Please select or enter a server before connecting.`, 'error', 8000));
@@ -729,6 +797,7 @@ async function connectToServer() {
     }
 
     if (isWeb) return signInBrowser();
+    if (p2pAddress.value) return connectViaP2p(p2pAddress.value);
 
     // Re-run port constraints on submit to be extra safe
     ensurePortConstraints('ssh');

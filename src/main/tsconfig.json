@@ -11,5 +11,5 @@
     "allowJs": true,
     "noImplicitAny": false,
   },
-  "exclude": ["static", "**/*.test.js"]
+  "exclude": ["static", "**/*.test.js", "**/*.test.ts", "p2p/fixtures"]
 }

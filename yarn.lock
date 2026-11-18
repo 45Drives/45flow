@@ -38,6 +38,7 @@ __metadata:
     eventsource: "npm:^2"
     jsdom: "npm:^26.0.0"
     multicast-dns: "npm:^7.2.5"
+    node-datachannel: "npm:0.33.6"
     node-localstorage: "npm:^3.0.5"
     node-ssh: "npm:^13.2.1"
     pdfjs-dist: "npm:^6.5.438"
@@ -56,6 +57,7 @@ __metadata:
     vue-router: "npm:^4.5.1"
     winston: "npm:^3.17.0"
     winston-daily-rotate-file: "npm:^5.0.0"
+    ws: "npm:^8.18.0"
   dependenciesMeta:
     dmg-license:
       optional: true
@@ -1542,6 +1544,69 @@ __metadata:
   version: 1.8.0
   resolution: "@noble/hashes@npm:1.8.0"
   checksum: 10c0/06a0b52c81a6fa7f04d67762e08b2c476a00285858150caeaaff4037356dd5e119f45b2a530f638b77a5eeca013168ec1b655db41bae3236cb2e9d511484fc77
+  languageName: node
+  linkType: hard
+
+"@node-datachannel/android-arm64@npm:0.33.6":
+  version: 0.33.6
+  resolution: "@node-datachannel/android-arm64@npm:0.33.6"
+  conditions: os=android & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@node-datachannel/darwin-arm64@npm:0.33.6":
+  version: 0.33.6
+  resolution: "@node-datachannel/darwin-arm64@npm:0.33.6"
+  conditions: os=darwin & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@node-datachannel/darwin-x64@npm:0.33.6":
+  version: 0.33.6
+  resolution: "@node-datachannel/darwin-x64@npm:0.33.6"
+  conditions: os=darwin & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@node-datachannel/linux-arm64-gnu@npm:0.33.6":
+  version: 0.33.6
+  resolution: "@node-datachannel/linux-arm64-gnu@npm:0.33.6"
+  conditions: os=linux & cpu=arm64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@node-datachannel/linux-arm64-musl@npm:0.33.6":
+  version: 0.33.6
+  resolution: "@node-datachannel/linux-arm64-musl@npm:0.33.6"
+  conditions: os=linux & cpu=arm64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@node-datachannel/linux-x64-gnu@npm:0.33.6":
+  version: 0.33.6
+  resolution: "@node-datachannel/linux-x64-gnu@npm:0.33.6"
+  conditions: os=linux & cpu=x64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@node-datachannel/linux-x64-musl@npm:0.33.6":
+  version: 0.33.6
+  resolution: "@node-datachannel/linux-x64-musl@npm:0.33.6"
+  conditions: os=linux & cpu=x64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@node-datachannel/win32-arm64-msvc@npm:0.33.6":
+  version: 0.33.6
+  resolution: "@node-datachannel/win32-arm64-msvc@npm:0.33.6"
+  conditions: os=win32 & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@node-datachannel/win32-x64-msvc@npm:0.33.6":
+  version: 0.33.6
+  resolution: "@node-datachannel/win32-x64-msvc@npm:0.33.6"
+  conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
 
@@ -4271,7 +4336,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"detect-libc@npm:^2.0.3":
+"detect-libc@npm:^2.0.3, detect-libc@npm:^2.0.4":
   version: 2.1.2
   resolution: "detect-libc@npm:2.1.2"
   checksum: 10c0/acc675c29a5649fa1fb6e255f993b8ee829e510b6b56b0910666949c80c364738833417d0edb5f90e4e46be17228b0f2b66a010513984e18b15deeeac49369c4
@@ -7001,6 +7066,43 @@ __metadata:
   dependencies:
     semver: "npm:^7.3.5"
   checksum: 10c0/3fe6c273e4f9dd184bb8b959ba3d8afae7eade663611d82c8538c79ac3a7b8f1d136632ceb4bf8cdc46a851fc169407746996cf7d1096de9a186e0e70fca95fa
+  languageName: node
+  linkType: hard
+
+"node-datachannel@npm:0.33.6":
+  version: 0.33.6
+  resolution: "node-datachannel@npm:0.33.6"
+  dependencies:
+    "@node-datachannel/android-arm64": "npm:0.33.6"
+    "@node-datachannel/darwin-arm64": "npm:0.33.6"
+    "@node-datachannel/darwin-x64": "npm:0.33.6"
+    "@node-datachannel/linux-arm64-gnu": "npm:0.33.6"
+    "@node-datachannel/linux-arm64-musl": "npm:0.33.6"
+    "@node-datachannel/linux-x64-gnu": "npm:0.33.6"
+    "@node-datachannel/linux-x64-musl": "npm:0.33.6"
+    "@node-datachannel/win32-arm64-msvc": "npm:0.33.6"
+    "@node-datachannel/win32-x64-msvc": "npm:0.33.6"
+    detect-libc: "npm:^2.0.4"
+  dependenciesMeta:
+    "@node-datachannel/android-arm64":
+      optional: true
+    "@node-datachannel/darwin-arm64":
+      optional: true
+    "@node-datachannel/darwin-x64":
+      optional: true
+    "@node-datachannel/linux-arm64-gnu":
+      optional: true
+    "@node-datachannel/linux-arm64-musl":
+      optional: true
+    "@node-datachannel/linux-x64-gnu":
+      optional: true
+    "@node-datachannel/linux-x64-musl":
+      optional: true
+    "@node-datachannel/win32-arm64-msvc":
+      optional: true
+    "@node-datachannel/win32-x64-msvc":
+      optional: true
+  checksum: 10c0/6e0b5a2818761e4ddd7ab60d23c373712137a55f0ce078667990c7d80641a9c5a119fbbbeae836561481f8c1083f60c9ccae6620cc782823fb5694ead8329670
   languageName: node
   linkType: hard
 

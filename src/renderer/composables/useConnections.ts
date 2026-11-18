@@ -5,6 +5,7 @@
 import { reactive, computed, readonly, watch, ref } from 'vue'
 import type { ConnectionCredentials } from '../../shared/secureTokens'
 import { registerServerTrust, trustFor, upgradedBaseUrl } from '../server-trust'
+import { startP2pProxy } from '../p2p'
 
 const randomUUID = () => window.crypto.randomUUID()
 
@@ -16,7 +17,9 @@ export interface Connection {
   // ── Server Info ──
   serverIp: string                  // IP or hostname
   serverName?: string               // Advertised server name (from discovery or .well-known)
-  baseUrl: string                   // Full API base (e.g., "https://box-a.protocase.local")
+  baseUrl: string                   // Full API base (e.g., "https://box-a.protocase.local"); for a P2P connection, the local proxy
+  p2pAddress?: string               // P2P address (https://<server-id>.<domain>); baseUrl is the proxy while this is set
+  directUrl?: string                // Server's direct address, used only when P2P cannot connect
   
   // ── Auth ──
   username: string                  // Logged-in user
@@ -288,6 +291,20 @@ function upgradeDesktopBaseUrls() {
   }
 }
 
+/** A saved P2P connection points at a local proxy that only exists while the app runs: start it again. */
+async function restartP2pProxies() {
+  if (window.electron?.isWeb) return
+  for (const connection of _state.connections) {
+    if (!connection.p2pAddress) continue
+    try {
+      connection.baseUrl = (await startP2pProxy(connection.p2pAddress, connection.directUrl)).baseUrl
+    } catch {
+      // Offline: the connection stays listed and its requests fail until the next launch or sign-in.
+      console.error('[connections] could not start the P2P proxy')
+    }
+  }
+}
+
 /** Let the main process verify each server's certificate over SSH before the first request. */
 async function registerDesktopTrust() {
   for (const connection of _state.connections) {
@@ -310,6 +327,7 @@ export function initializeConnections(): Promise<void> {
     // Scrub both legacy storage surfaces before any asynchronous keyring operation.
     persist()
     await registerDesktopTrust()
+    await restartP2pProxies()
     const api = window.electron?.secureToken
     if (!api) {
       memoryOnlyNotice()
