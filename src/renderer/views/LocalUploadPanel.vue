@@ -297,8 +297,8 @@ import { useResilientNav } from '../composables/useResilientNav'
 import { onBeforeRouteLeave } from 'vue-router';
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { useTransferProgress } from '../composables/useTransferProgress'
-import { useTourManager, type TourStep } from '../composables/useTourManager'
-import { useOnboarding } from '../composables/useOnboarding'
+import { useContextTour } from '../composables/useContextTour'
+import type { TourStep } from '../composables/useTourManager'
 import { useClientTranscode } from '../composables/useClientTranscode'
 import { useUploadTranscode } from '../composables/useUploadTranscode'
 const { to } = useResilientNav()
@@ -310,29 +310,22 @@ const { activeProject: rawActiveProject } = useActiveProject()
 const { enabled: _clientTranscodeOn, hwAccel: _clientHwAccelOn } = useClientTranscode()
 const _isWebView = window.electron?.isWeb === true
 const activeProject = computed(() => rawActiveProject.value)
-const { requestTour } = useTourManager()
-const { onboarding, markDone } = useOnboarding()
-
-const localUploadTourSteps = computed<TourStep[]>(() => [
+const localUploadTourSteps: TourStep[] = [
 	{
 		target: '[data-tour="upload-files"]',
-		message: 'Add Files copies files from this computer to the server, all from this one screen.\n\nDrag files anywhere onto this screen, or click "Choose Files" (you can pick several) or "Choose Folder" to add everything in a folder. The list shows what will be uploaded.',
+		message: 'Drop files here, or use Choose Files or Choose Folder to build the upload list.',
 	},
 	{
 		target: '[data-tour="upload-destination"]',
-		message: 'Files go into the project folder unless you change it.\n\nType a path, or click "Browse…" to pick a subfolder or create a new one.',
+		message: 'Check the destination before uploading. The current project’s folder is the default when you start inside a project. Use Browse to choose another folder.',
 	},
 	{
 		target: '[data-tour="upload-action-bar"]',
-		message: (isPremiumActive.value
-			? 'Add videos or images and their options show up above this bar: proxy file qualities for video, and watermarks with full control of position, size, opacity and tiling (Pro).'
-			: 'Add videos or images and their options show up above this bar: proxy file qualities for video, and a basic bottom-right watermark. Pro adds full watermark customization.')
-			+ '\n\nClick "Upload" to start. Progress shows in the list and in the Transfer Dock, so you can leave this screen while it runs.',
+		message: 'Click Upload to start copying files to the server. Check progress here or in Transfers if you leave this screen.',
 		placement: 'top',
 	},
-])
-
-const skipUploadTour = () => markDone('localUploadTourDone')
+]
+useContextTour('local-upload', 'localUploadTourDone', () => phase.value === 'select', () => localUploadTourSteps)
 
 onMounted(async () => {
 	if (activeProject.value?.root_dir && !destFolderRel.value) {
@@ -344,11 +337,6 @@ onMounted(async () => {
 	await loadExistingWatermarkFiles()
 	await loadDefaultWatermarkSettings()
 
-	if (!onboarding.value.localUploadTourDone) {
-		setTimeout(() => {
-			requestTour('local-upload', localUploadTourSteps.value, () => markDone('localUploadTourDone'), skipUploadTour)
-		}, 300)
-	}
 })
 
 type LocalFile = { path: string; name: string; size: number; dataUrl?: string | null }

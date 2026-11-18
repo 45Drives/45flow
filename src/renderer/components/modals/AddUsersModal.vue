@@ -390,8 +390,8 @@ import ConfirmDeleteModal from './ConfirmDeleteModal.vue'
 import ResetPasswordModal from './ResetPasswordModal.vue';
 import RolesModal from './RolesModal.vue'
 import GroupsModal from './GroupsModal.vue'
-import { useTourManager, type TourStep } from '../../composables/useTourManager'
-import { useOnboarding } from '../../composables/useOnboarding'
+import { useContextTour } from '../../composables/useContextTour'
+import type { TourStep } from '../../composables/useTourManager'
 import FlowModal from '../../ui/FlowModal.vue'
 import FlowField from '../../ui/FlowField.vue'
 import FlowEmpty from '../../ui/FlowEmpty.vue'
@@ -399,29 +399,28 @@ import TeamsPanel from '../access/TeamsPanel.vue'
 import RolesPanel from '../access/RolesPanel.vue'
 import { avatarStyle, initials, normalizeHex, pickLinkRoleId, randomPastel, usernameFromName } from '../access/accessUi'
 
-const { requestTour } = useTourManager()
-const { onboarding, markDone } = useOnboarding()
-
-const usersTourSteps: TourStep[] = [
+const usersTourSteps = (inviting: boolean): TourStep[] => [
 	{
 		target: '[data-tour="users-modal-header"]',
-		message: 'This is Client Access.\n\nFrom the dashboard you manage clients, teams and roles in the tabs here. When opened from a link, you choose which clients and teams can open that link.',
+		message: inviting
+			? 'Choose who can open this invite-only link, and assign each person or team a role.'
+			: 'Use Client Access to manage client accounts, group clients into teams, and set what each role can do.',
 	},
 	{
 		target: '[data-tour="users-modal-list"]',
-		message: 'Your clients appear here.\n\nSearch by name, username, email, company, or tags. When inviting to a link, tick each client who should get access and pick their role.',
+		message: inviting
+			? 'Find the clients you want to invite, select them, and choose their roles. Select any teams below.'
+			: 'Find client accounts by name, username, email, company, or tag.',
 	},
 	{
 		target: '[data-tour="users-modal-create"]',
-		message: 'Add client accounts here.\n\nGive them a name, username, and a temporary password ("Generate a password" makes a random one). Email, company, tags, and comment colour are optional.\n\nWhen inviting to a link, new clients are ticked for the link automatically.',
+		message: 'Use Add client to create an account with a temporary password. Share the password securely.',
 	},
-	{
+	...(inviting ? [{
 		target: '[data-tour="users-modal-actions"]',
-		message: 'When inviting to a link, click "Add selected to link" to give the ticked clients and teams access.\n\nThe Roles tab (or "Manage roles") controls what each role can do.',
-	},
+		message: 'Use Add selected to link to apply the selected clients, teams, and roles to this link.',
+	}] : []),
 ]
-
-let _usersTourTriggered = false
 
 const props = defineProps<{
   modelValue: boolean
@@ -437,15 +436,9 @@ const emit = defineEmits<{
   (e: 'apply', users: ExistingUser[], groups: { id: number; name: string; member_count?: number; display_color?: string | null; role_id: number | null; role_name: string | null }[]): void
 }>()
 
-// Tour: trigger on first open
-watch(() => props.modelValue, (open) => {
-	if (open && !_usersTourTriggered && !onboarding.value.manageUsersTourDone) {
-		_usersTourTriggered = true
-		setTimeout(() => {
-			requestTour('manage-users', linkMode.value ? usersTourSteps : usersTourSteps.filter(s => !s.target.includes('users-modal-actions')), () => markDone('manageUsersTourDone'))
-		}, 400)
-	}
-})
+useContextTour('manage-users', 'manageUsersTourDone',
+	() => props.modelValue && (linkMode.value || activeTab.value === 'clients'),
+	() => usersTourSteps(linkMode.value))
 
 // UI state
 type AccessTab = 'clients' | 'teams' | 'roles'

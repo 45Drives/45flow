@@ -92,7 +92,9 @@
     <SessionIdlePrompt v-if="isWeb" />
     <UpdateBanner v-if="!isWeb" />
     <TransferProgressDock v-if="!hideTransfers && !setupBlocked && setupProjectsConfigured !== false" />
-    <GuidedTour v-if="ENABLE_TOUR && activeTour && !setupBlocked" :steps="activeTour.steps" :active="true" @done="finishTour" @skip="skipTour" />
+    <GuidedTour v-if="activeTour && (!setupBlocked || (route.name === 'server-selection' && activeTour.id === 'connect'))"
+      :key="activeTour.id" :steps="activeTour.steps" :active="true"
+      @done="finishTour" @skip="skipTour" @unavailable="cancelTour(activeTour.id)" />
   </div>
 </template>
 
@@ -135,7 +137,6 @@ import { useTourManager } from '../renderer/composables/useTourManager'
 import flowLogo from '../../assets/logos/45Flow-w.png'
 
 /** Flip to true to re-enable the guided tour */
-const ENABLE_TOUR = true
 
 const { activeTour, finishTour, skipTour, cancelTour } = useTourManager()
 
@@ -194,13 +195,6 @@ watch(activeConnection, (conn) => {
     currentServer.value = null
   }
 }, { immediate: true })
-
-// Cancel any active tour when the route changes (user navigated away)
-watch(() => route.path, () => {
-  if (activeTour.value) {
-    cancelTour(activeTour.value.id)
-  }
-})
 
 const hideHeader = computed(() => route.meta.hideHeader === true)
 const { headerTitle } = useHeaderTitle()

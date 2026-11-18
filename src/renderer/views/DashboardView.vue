@@ -530,8 +530,8 @@ import { useTransferProgress } from '../composables/useTransferProgress'
 import { clearLastSession } from '../composables/useSessionPersistence'
 import { useConnections } from '../composables/useConnections'
 import { useServerFilter } from '../composables/useServerFilter'
-import { useTourManager, type TourStep } from '../composables/useTourManager'
-import { useOnboarding } from '../composables/useOnboarding'
+import { useContextTour } from '../composables/useContextTour'
+import type { TourStep } from '../composables/useTourManager'
 import { useActiveProject } from '../composables/useActiveProject'
 import { startEmailProblemAlerts } from '../composables/useEmailProblemAlerts'
 import { useLicenseStatus } from '../composables/useLicenseStatus'
@@ -547,8 +547,6 @@ const transfer = useTransferProgress()
 const { activeConnection, updateConnection, setActive } = useConnections()
 const isRootUser = computed(() => activeConnection.value?.username === 'root')
 const { selectedFilter, filteredConnections, setFilter } = useServerFilter()
-const { requestTour } = useTourManager()
-const { onboarding, markDone } = useOnboarding()
 const { activeProject: globalActiveProject, setActiveProject: setGlobalActiveProject } = useActiveProject()
 const { isPremiumActive, startBackgroundCheck, stopBackgroundCheck, checkLicenseInBackground } = useLicenseStatus()
 const { setCustomThemeEnabled, setCustomThemeColors } = useThemeFromAlias()
@@ -588,9 +586,9 @@ watch(isPremiumActive, (nowLicensed, wasLicensed) => {
 interface Project {
 	id: number
 	name: string
-	show_flow_folder?: boolean | null
 	root_dir: string
 	description: string | null
+	show_flow_folder?: boolean | null
 	archived: number
 	is_disabled: number
 	link_count: number
@@ -636,9 +634,9 @@ const projectPageEnd = computed(() => Math.min(projectPage.value * projectPageSi
 const showEditProjectModal = ref(false)
 const editProjectName = ref('')
 const editProjectRoot = ref('')
-const editShowFlowFolder = ref<boolean | null>(null)
 const editProjectPickerBase = ref('')
 const editProjectDescription = ref('')
+const editShowFlowFolder = ref<boolean | null>(null)
 const savingProject = ref(false)
 const editKey = ref(0)
 
@@ -746,9 +744,9 @@ function startEditProject() {
 	if (!activeProject.value) return
 	editProjectName.value = activeProject.value.name
 	editProjectRoot.value = activeProject.value.root_dir
-	editShowFlowFolder.value = activeProject.value.show_flow_folder ?? null
 	editProjectPickerBase.value = activeProject.value.root_dir
 	editProjectDescription.value = activeProject.value.description || ''
+	editShowFlowFolder.value = activeProject.value.show_flow_folder ?? null
 	editKey.value++
 	editModalConfirm.value = null
 	showEditProjectModal.value = true
@@ -763,19 +761,19 @@ async function saveProject() {
 			method: 'PATCH',
 			body: JSON.stringify({
 				name: editProjectName.value.trim(),
-				...(editShowFlowFolder.value !== (target.show_flow_folder ?? null)
-					? { showFlowFolder: editShowFlowFolder.value } : {}),
 				rootDir: editProjectRoot.value.trim(),
 				description: editProjectDescription.value.trim() || null,
+				...(editShowFlowFolder.value !== (target.show_flow_folder ?? null)
+					? { showFlowFolder: editShowFlowFolder.value } : {}),
 			}),
 		})
 		if (activeProject.value && activeProject.value.id === target.id) {
 			activeProject.value = {
 				...activeProject.value,
 				name: editProjectName.value.trim(),
-				show_flow_folder: data?.project?.show_flow_folder,
 				root_dir: editProjectRoot.value.trim(),
 				description: editProjectDescription.value.trim() || null,
+				show_flow_folder: data?.project?.show_flow_folder,
 			}
 		}
 		closeEditModal()
@@ -852,18 +850,18 @@ async function confirmCardEnable(project: Project) {
 	} catch (e: any) {
 		pushNotification(new Notification('Failed to enable project', e?.message || '', 'error', 8000))
 	}
+}
+function openEditProjectFromCard(project: Project) {
 	if (project._connectionId && project._connectionId !== activeConnection.value?.connectionId) {
 		setFilter(project._connectionId)
 		setActive(project._connectionId)
 	}
-}
-function openEditProjectFromCard(project: Project) {
 	cardActionProject.value = project
 	editProjectName.value = project.name
 	editProjectRoot.value = project.root_dir
-	editShowFlowFolder.value = project.show_flow_folder ?? null
 	editProjectPickerBase.value = project.root_dir
 	editProjectDescription.value = project.description || ''
+	editShowFlowFolder.value = project.show_flow_folder ?? null
 	editKey.value++
 	editModalConfirm.value = null
 	showEditProjectModal.value = true
@@ -989,27 +987,41 @@ async function deleteProject() {
 
 // ── Tour ──
 const tourShowDemoLinks = ref(false)
+const dashboardTourReady = ref(false)
 
-const dashboardTourSteps = computed<TourStep[]>(() => [
+useContextTour('dashboard', 'dashboardTourDone', () => dashboardTourReady.value, (): TourStep[] => activeProject.value ? [
+	{
+		target: '[data-tour="action-cards"]',
+		message: 'Choose Create Link to share files already on the server or collect client uploads. Choose Add Files to copy files from this computer into the project.',
+	},
+	...(!isWeb ? [{
+		target: '[data-tour="quick-share-hint"]',
+		message: 'To upload and share in one step, drop files from your computer onto this window to open Quick Share.',
+	}] : []),
+	{
+		target: '[data-tour="manage-links"]',
+		message: 'Find links for this project here. Open a link to copy it, check activity, or change its settings.',
+	},
+	{
+		target: '[data-tour="manage-users"]',
+		message: 'Use Client Access to manage the people, teams, and roles you can invite to links.',
+	},
+] : [
 	{
 		target: '[data-tour="flow-logo"]',
-		message: 'Welcome to 45Flow!\n\nTip: You can drag and drop files anywhere onto the app to open Quick Share — the fastest way to upload and share files.\n\nLet\'s explore the dashboard.',
-		beforeShow: () => { transfer.setOpen(false) },
+		message: 'Start in Projects. Each project points to a folder on your server and keeps its share links together.',
 	},
-	...(isPremiumActive.value ? [{
+	...(isPremiumActive.value && !isWeb && window.matchMedia('(min-width: 768px)').matches ? [{
 		target: '[data-tour="connection-switcher"]',
-		message: 'This is your Active Server selector.\n\n45Flow Pro can connect to multiple servers at once. The server shown here is where your actions will take effect. Use the dropdown to switch between connected servers.',
-	}] : [{
-		target: '[data-tour="connection-switcher"]',
-		message: 'This shows your connected server.\n\nThe server displayed here is where all your actions take effect.',
-	}]),
+		message: 'Switch the active server here before opening or creating a project on another connected server.',
+	}] : []),
 	{
 		target: '[data-tour="project-list"]',
-		message: 'Your projects live here. Each project is a folder on your server for one job or production.\n\nOpen a project to create links for clients, add files, and manage who has access.',
+		message: 'Open a project to add files, create review or upload links, and manage client access.',
 	},
 	{
 		target: '[data-tour="new-project"]',
-		message: 'Start something new with + New Project.\n\nYou\'ll pick (or create) the folder on the server that holds the project\'s media.',
+		message: 'Choose New Project to pick or create the server folder for a new job.',
 	},
 ])
 
@@ -1027,11 +1039,7 @@ onMounted(async () => {
 		if (match) activeProject.value = match
 	}
 
-	if (!onboarding.value.dashboardTourDone) {
-		setTimeout(() => {
-			requestTour('dashboard', dashboardTourSteps.value, () => markDone('dashboardTourDone'))
-		}, 500)
-	}
+	dashboardTourReady.value = true
 })
 
 watch(() => activeConnection.value?.connectionId, () => {

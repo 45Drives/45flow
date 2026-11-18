@@ -59,7 +59,7 @@
                             </template>
                         </FlowField>
 
-                        <details ref="portsDetailsRef" data-tour="connect-ports" class="connect-advanced group" :open="Boolean(portError || portWarning) || tourPortsOpen">
+                        <details ref="portsDetailsRef" data-tour="connect-ports" class="connect-advanced group" :open="Boolean(portError || portWarning)">
                             <summary class="list-none flex w-full items-center justify-between text-left cursor-pointer select-none">
                                 <span class="text-sm font-semibold">Advanced: custom ports</span>
                                 <svg class="h-5 w-5 opacity-70 transition-transform duration-200 group-open:rotate-180"
@@ -150,8 +150,8 @@ import { loadLastSession, clearLastSession, saveManualServer, saveRegistryLicens
 import { useConnections } from '../composables/useConnections'
 import type { Connection } from '../composables/useConnections'
 import { httpsBaseFor, registerServerTrust, verifyServerCertificate, fetchOverHttps, upgradedBaseUrl, trustFor } from '../server-trust'
-import { useTourManager, type TourStep } from '../composables/useTourManager'
-import { useOnboarding } from '../composables/useOnboarding'
+import { useContextTour } from '../composables/useContextTour'
+import type { TourStep } from '../composables/useTourManager'
 useHeader('Welcome to 45Flow!');
 
 const route = useRoute()
@@ -182,43 +182,32 @@ const broadcasterPort = ref<number | null>(null);  // internal API, default 9095
 const httpsPort = ref<number | null>(null);        // external HTTPS, default 443
 
 // ================== Guided tour ==================
-const { requestTour } = useTourManager()
-const { onboarding, markDone } = useOnboarding()
-const tourPortsOpen = ref(false)
 const portsDetailsRef = ref<HTMLDetailsElement | null>(null)
+let portsWereOpen = false
 
 const connectTourSteps: TourStep[] = [
 	{
-		target: '[data-tour="connect-hero"]',
-		message: 'Welcome to 45Flow!\n\nSign in here to reach your media server. Once you\'re in, you\'ll land on your Projects, where you can share files with clients and collect uploads from them.',
-	},
-	{
 		target: '[data-tour="connect-auth"]',
-		message: 'Enter your server login.\n\nUse the same username and password you use to log in to the server itself.',
+		message: 'Sign in with your media server account. If the server still needs first-time setup, use an account with sudo or root access.',
 	},
 	{
 		target: '[data-tour="connect-server-selection"]',
-		message: 'Pick your server.\n\nServers on your network appear in the list automatically. If yours isn\'t there, type its address in the box below instead.',
+		message: 'Choose a discovered server or enter its address if it isn’t listed.',
 	},
 	{
 		target: '[data-tour="connect-ports"]',
-		message: 'Only open this if your server uses non-standard ports.\n\n• SSH (default 22): server setup and file operations.\n• Setup API (default 9095): used to find and set up the server.\n• HTTPS (default 443): the encrypted connection the app and share links use.\n\nLeave them blank to use the defaults.',
+		message: 'Leave custom ports blank unless your server uses non-default SSH, Setup API, or HTTPS ports.',
 		beforeShow: () => {
-			tourPortsOpen.value = true
+			portsWereOpen = portsDetailsRef.value?.open ?? false
 			if (portsDetailsRef.value) portsDetailsRef.value.open = true
 		},
 		cleanup: () => {
-			tourPortsOpen.value = false
-			if (portsDetailsRef.value) portsDetailsRef.value.open = false
+			if (portsDetailsRef.value) portsDetailsRef.value.open = portsWereOpen || Boolean(portError.value || portWarning.value)
 		},
 	},
 	{
 		target: '[data-tour="connect-submit"]',
-		message: 'Click Sign In when you\'re ready.\n\nThe first time, 45Flow checks the server and sets up anything it needs. You\'ll be taken to your Projects when it\'s done.',
-	},
-	{
-		target: '[data-tour="connect-port-forwarding"]',
-		message: 'Planning to share with clients outside your office network? Your router needs to forward HTTPS (port 443 by default) to the server.\n\nThis link walks you through it. You don\'t need it for sharing on your local network.',
+		message: 'Click Sign In to open your projects or continue server setup if anything is still required.',
 	},
 ]
 
@@ -1094,14 +1083,9 @@ async function connectToServer() {
 }
 
 // ─── Auto-login from saved session on mount ─────────────────────
-onMounted(async () => {
-    // The setup tour describes SSH and desktop bootstrap flows unavailable in browser mode.
-    if (!isWeb && !onboarding.value.connectTourDone) {
-        setTimeout(() => {
-            requestTour('connect', connectTourSteps, () => markDone('connectTourDone'))
-        }, 500)
-    }
+useContextTour('connect', 'connectTourDone', () => !isWeb && !anyBusy.value && !showPortFwdModal.value, () => connectTourSteps)
 
+onMounted(async () => {
     // Browser mode: the cookie outlives a reload, so resume instead of asking again.
     if (isWeb) {
         isBusy.value = true;

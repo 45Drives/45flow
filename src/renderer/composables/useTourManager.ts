@@ -9,7 +9,7 @@ export interface TourStep {
   /** Preferred popup placement relative to target */
   placement?: 'top' | 'bottom'
   /** Called before the step is shown — use to spoof visibility of hidden elements */
-  beforeShow?: () => void | Promise<void>
+  beforeShow?: () => void
   /** Called when leaving this step — use to undo spoofed state */
   cleanup?: () => void
 }
@@ -36,11 +36,8 @@ export function useTourManager() {
     if (_activeTour.value?.id === id || _queue.some(t => t.id === id)) return false
 
     const registration: TourRegistration = { id, steps, onDone, onSkip }
-    if (!_activeTour.value && !_setupPending.value) {
-      _activeTour.value = registration
-    } else {
-      _queue.push(registration)
-    }
+    _queue.push(registration)
+    advanceQueue()
     return true
   }
 
@@ -53,23 +50,24 @@ export function useTourManager() {
     }
   }
 
-  async function finishTour() {
-    if (_activeTour.value) {
-      await _activeTour.value.onDone()
-      _activeTour.value = null
+  async function settleTour(skipped: boolean) {
+    const tour = _activeTour.value
+    if (!tour) return
+    // Release this registration before invoking its callback. A slow or failing
+    // callback must not clear the next tour or keep the queue blocked.
+    _activeTour.value = null
+    try {
+      return (skipped ? tour.onSkip ?? tour.onDone : tour.onDone)()
+    } finally {
+      advanceQueue()
     }
-    advanceQueue()
-  }
-
-  async function skipTour() {
-    if (_activeTour.value) {
-      await (_activeTour.value.onSkip ?? _activeTour.value.onDone)()
-      _activeTour.value = null
-    }
-    advanceQueue()
   }
 
   function advanceQueue() {
+    if (toursDisabled.value) {
+      _queue.length = 0
+      return
+    }
     if (_queue.length > 0 && !_activeTour.value && !_setupPending.value) {
       _activeTour.value = _queue.shift()!
     }
@@ -86,7 +84,7 @@ export function useTourManager() {
     activeTour: readonly(_activeTour) as Readonly<Ref<TourRegistration | null>>,
     requestTour,
     cancelTour,
-    finishTour,
-    skipTour,
+    finishTour: () => settleTour(false),
+    skipTour: () => settleTour(true),
   }
 }
