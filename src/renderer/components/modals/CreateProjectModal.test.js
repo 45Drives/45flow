@@ -41,9 +41,10 @@ function mount(storageRoot = '/tank') {
 }
 
 describe('project folder typed paths', () => {
-  it.each(['Enter', 'blur'])('submits the typed folder after %s even without autocomplete results', async method => {
-    mocks.apiFetch.mockImplementation(async (_url, init) => init?.method === 'POST'
-      ? { project: { id: 1 } } : { entries: [] })
+  it.each([['Enter', null], ['blur', false]])('submits the typed folder after %s even without autocomplete results', async (method, override) => {
+    mocks.apiFetch.mockImplementation(async (url, init) => init?.method === 'POST'
+      ? { project: { id: 1 } }
+      : url === '/api/projects' ? { showFlowFolderDefault: true } : { entries: [] })
     mount()
     await flush()
     const name = host.querySelector('#new-project-name')
@@ -56,10 +57,18 @@ describe('project folder typed paths', () => {
     if (method === 'Enter') input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
     else input.blur()
     await flush()
+    const label = [...host.querySelectorAll('label')].find(item => item.textContent.trim() === '.45flow folder visibility')
+    const visibility = document.getElementById(label.htmlFor)
+    expect(visibility.selectedOptions[0].textContent).toBe('Use server default (shown)')
+    if (override === false) {
+      visibility.selectedIndex = 2
+      visibility.dispatchEvent(new Event('change', { bubbles: true }))
+    }
     host.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     await flush()
     const [, init] = mocks.apiFetch.mock.calls.find(([url, init]) => url === '/api/projects' && init?.method === 'POST')
     expect('/' + JSON.parse(init.body).rootDir.replace(/^\/+/, '')).toBe('/tank/typed-project')
+    expect(JSON.parse(init.body).showFlowFolder).toBe(override)
   })
 })
 

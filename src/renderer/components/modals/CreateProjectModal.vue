@@ -39,6 +39,7 @@
 				/>
 				<FolderSpaceNotice :path="finalRootDir" :apiFetch="apiFetch" />
 			</FlowField>
+			<ProjectFlowFolderField v-if="modelValue" v-model="showFlowFolder" />
 			<FlowField label="Notes" id="new-project-description" optional>
 				<template #default="{ id }">
 					<textarea
@@ -71,6 +72,7 @@ import { useConnections } from '../../composables/useConnections'
 import { pushNotification } from '../../composables/useNotificationQueue'
 import FolderPicker from '../FolderPicker.vue'
 import FolderSpaceNotice from '../FolderSpaceNotice.vue'
+import ProjectFlowFolderField from '../ProjectFlowFolderField.vue'
 import FlowModal from '../../ui/FlowModal.vue'
 import FlowField from '../../ui/FlowField.vue'
 
@@ -88,6 +90,7 @@ const name = ref('')
 const rootDir = ref('')
 const pickerBase = ref('')
 const description = ref('')
+const showFlowFolder = ref<boolean | null>(null)
 const creating = ref(false)
 
 const finalRootDir = computed(() => rootDir.value.trim())
@@ -110,6 +113,7 @@ function reset() {
 	rootDir.value = ''
 	pickerBase.value = ''
 	description.value = ''
+	showFlowFolder.value = null
 }
 
 watch(() => props.modelValue, (open) => { if (!open) reset() })
@@ -128,6 +132,7 @@ async function submit() {
 				name: name.value.trim(),
 				rootDir: finalRootDir.value,
 				description: description.value.trim() || null,
+				showFlowFolder: showFlowFolder.value,
 			}),
 		})
 		const project = data?.project

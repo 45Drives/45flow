@@ -228,6 +228,7 @@
 							/>
 							<FolderSpaceNotice class="mt-2" :path="editProjectRoot" :apiFetch="apiFetch" :showDataNote="false" />
 						</FlowField>
+						<ProjectFlowFolderField v-if="showEditProjectModal" v-model="editShowFlowFolder" />
 						<FlowField label="Notes" optional>
 							<template #default="{ id }">
 							<textarea
@@ -520,6 +521,7 @@ import ManageLinks from './ManageLinks.vue'
 import SettingsModal from '../components/modals/SettingsModal.vue'
 import AddUsersModal from '../components/modals/AddUsersModal.vue'
 import CreateProjectModal from '../components/modals/CreateProjectModal.vue'
+import ProjectFlowFolderField from '../components/ProjectFlowFolderField.vue'
 import FolderPicker from '../components/FolderPicker.vue'
 import FolderSpaceNotice from '../components/FolderSpaceNotice.vue'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
@@ -586,6 +588,7 @@ watch(isPremiumActive, (nowLicensed, wasLicensed) => {
 interface Project {
 	id: number
 	name: string
+	show_flow_folder?: boolean | null
 	root_dir: string
 	description: string | null
 	archived: number
@@ -633,6 +636,7 @@ const projectPageEnd = computed(() => Math.min(projectPage.value * projectPageSi
 const showEditProjectModal = ref(false)
 const editProjectName = ref('')
 const editProjectRoot = ref('')
+const editShowFlowFolder = ref<boolean | null>(null)
 const editProjectPickerBase = ref('')
 const editProjectDescription = ref('')
 const savingProject = ref(false)
@@ -742,6 +746,7 @@ function startEditProject() {
 	if (!activeProject.value) return
 	editProjectName.value = activeProject.value.name
 	editProjectRoot.value = activeProject.value.root_dir
+	editShowFlowFolder.value = activeProject.value.show_flow_folder ?? null
 	editProjectPickerBase.value = activeProject.value.root_dir
 	editProjectDescription.value = activeProject.value.description || ''
 	editKey.value++
@@ -754,10 +759,12 @@ async function saveProject() {
 	if (!target || !editProjectName.value.trim() || !editProjectRoot.value.trim()) return
 	savingProject.value = true
 	try {
-		await apiFetch(`/api/projects/${target.id}`, {
+		const data = await apiFetch(`/api/projects/${target.id}`, {
 			method: 'PATCH',
 			body: JSON.stringify({
 				name: editProjectName.value.trim(),
+				...(editShowFlowFolder.value !== (target.show_flow_folder ?? null)
+					? { showFlowFolder: editShowFlowFolder.value } : {}),
 				rootDir: editProjectRoot.value.trim(),
 				description: editProjectDescription.value.trim() || null,
 			}),
@@ -766,6 +773,7 @@ async function saveProject() {
 			activeProject.value = {
 				...activeProject.value,
 				name: editProjectName.value.trim(),
+				show_flow_folder: data?.project?.show_flow_folder,
 				root_dir: editProjectRoot.value.trim(),
 				description: editProjectDescription.value.trim() || null,
 			}
@@ -844,11 +852,16 @@ async function confirmCardEnable(project: Project) {
 	} catch (e: any) {
 		pushNotification(new Notification('Failed to enable project', e?.message || '', 'error', 8000))
 	}
+	if (project._connectionId && project._connectionId !== activeConnection.value?.connectionId) {
+		setFilter(project._connectionId)
+		setActive(project._connectionId)
+	}
 }
 function openEditProjectFromCard(project: Project) {
 	cardActionProject.value = project
 	editProjectName.value = project.name
 	editProjectRoot.value = project.root_dir
+	editShowFlowFolder.value = project.show_flow_folder ?? null
 	editProjectPickerBase.value = project.root_dir
 	editProjectDescription.value = project.description || ''
 	editKey.value++

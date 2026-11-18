@@ -53,7 +53,7 @@
                             @changed="egress.load" />
 
                         <!-- Loading state: shown until settings arrive from the server -->
-                        <div v-if="!settingsLoaded && (activeSection === 'sharing' || activeSection === 'linkOptions')" class="flex flex-col items-center justify-center gap-3 py-12">
+                        <div v-if="!settingsLoaded && (activeSection === 'sharing' || activeSection === 'linkOptions' || activeSection === 'fileBrowsing')" class="flex flex-col items-center justify-center gap-3 py-12">
                             <template v-if="loadError">
                                 <FlowNotice tone="danger" title="Couldn't load settings">{{ loadError }}</FlowNotice>
                                 <button class="btn btn-secondary" type="button" :disabled="busy" @click="reload">Try again</button>
@@ -68,6 +68,16 @@
                         </div>
 
                         <!-- ═══ Link Sharing ══════════════════════════════════ -->
+                        <template v-if="activeSection === 'fileBrowsing' && settingsLoaded">
+                            <div v-if="showFlowFolderDefault !== null" class="settings-group">
+                                <SettingRow label="Show .45flow by default"
+                                    description="Applies to projects using the server default. Override it when creating or editing a project. Other hidden files and folders stay hidden.">
+                                    <FlowSwitch v-model="showFlowFolderDefault" :disabled="busy" label="Show .45flow by default" />
+                                </SettingRow>
+                            </div>
+                            <FlowNotice v-else tone="info">Update the server to change .45flow visibility.</FlowNotice>
+                        </template>
+
                         <template v-if="activeSection === 'sharing' && settingsLoaded">
                             <PublicAddressSetup v-if="activeConnection" :key="`public-address-${activeConnection.connectionId}`"
                                 :connection-id="activeConnection.connectionId" :external-base="externalBase" :external-auto="externalAuto"
@@ -1561,7 +1571,7 @@ import FlowChip from '../../ui/FlowChip.vue';
 import { useExternalAddressReadiness, describeExternalAddressNotReady, type ExternalAddressReadiness } from '../../composables/useExternalAddressReadiness';
 import type { Component } from 'vue';
 import {
-    AdjustmentsHorizontalIcon, BugAntIcon, EnvelopeIcon, FilmIcon, GlobeAltIcon, LinkIcon, LockClosedIcon, MagnifyingGlassIcon,
+    AdjustmentsHorizontalIcon, BugAntIcon, EnvelopeIcon, FilmIcon, FolderIcon, GlobeAltIcon, LinkIcon, LockClosedIcon, MagnifyingGlassIcon,
     QuestionMarkCircleIcon, ServerIcon, ShieldCheckIcon, SignalIcon, SparklesIcon, SwatchIcon, WrenchScrewdriverIcon,
 } from '@heroicons/vue/24/outline';
 
@@ -1664,7 +1674,7 @@ const settingsTourSteps = computed<TourStep[]>(() => [
 ])
 
 // ── Section navigation ──────────────────────────────────────────────────
-type Section = SetupSection | 'sharing' | 'publicSharing' | 'app' | 'performance' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade' | 'adminNetworks' | 'adminMail' | 'adminSecurity';
+type Section = SetupSection | 'sharing' | 'publicSharing' | 'app' | 'performance' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade' | 'adminNetworks' | 'adminMail' | 'adminSecurity' | 'fileBrowsing';
 
 type SectionMeta = {
     label: string
@@ -1686,6 +1696,11 @@ const SECTION_META: Record<Section, SectionMeta> = {
         label: 'New link defaults', icon: LinkIcon, savable: true,
         description: 'Starting values for every new link. You can still change them on each link.',
         keywords: 'network internet local invite only restrict access comments expiry expire never proxy watermark',
+    fileBrowsing: {
+        label: 'File browsing', icon: FolderIcon, savable: true,
+        description: 'Set the default visibility of the .45flow folder on this server.',
+        keywords: 'folder .45flow project show hidden visibility default',
+    },
         saveHint: 'Applies to links you create after saving.',
     },
     sharing: {
@@ -1794,7 +1809,7 @@ const navGroups = computed(() => {
             items: [
                 item('health'),
                 item('maintenance'),
-                ...(adminSession.value ? [...setupSections.map(section => item(section.key)), item('adminNetworks'), item('adminMail'), item('adminSecurity')] : []),
+                ...(adminSession.value ? [...setupSections.map(section => item(section.key)), item('fileBrowsing'), item('adminNetworks'), item('adminMail'), item('adminSecurity')] : []),
             ],
         },
         {
@@ -2011,6 +2026,8 @@ const savedHttpsPort = ref<number>(443);
 const savedExternalAuto = ref(false);
 const savedExternalBase = ref("");
 
+const showFlowFolderDefault = ref<boolean | null>(null);
+const savedShowFlowFolderDefault = ref<boolean | null>(null);
 const defaultRestrictAccess = ref(true);
 const defaultAllowComments = ref(true);
 const defaultUseProxyFiles = ref(false);
@@ -3177,6 +3194,7 @@ function runSetupAgain() {
 // Snapshots of what the server last returned; the Save bar compares against them.
 function coreSnapshot() {
     return JSON.stringify([
+        showFlowFolderDefault.value,
         defaultLinkAccess.value, externalHttpsPort.value, externalAuto.value, externalBase.value.trim(),
         internalAuto.value, internalBase.value.trim(), defaultRestrictAccess.value, defaultAllowComments.value,
         defaultUseProxyFiles.value, defaultProxyQualities.value, transcodeSpeedProfile.value, defaultExpiryNever.value,
@@ -3342,6 +3360,8 @@ async function reload() {
     saveError.value = null;
     saveOk.value = false;
 
+        showFlowFolderDefault.value = typeof data.showFlowFolderDefault === "boolean" ? data.showFlowFolderDefault : null;
+        savedShowFlowFolderDefault.value = showFlowFolderDefault.value;
     try {
         const data = await apiFetch("/api/settings");
 
@@ -3478,6 +3498,8 @@ async function save() {
             externalBaseCustom: externalAuto.value ? null : (externalBase.value || "").trim(),
 
             internalBase: internalAuto.value ? "auto" : (internalBase.value || "").trim(),
+            ...(showFlowFolderDefault.value !== null && showFlowFolderDefault.value !== savedShowFlowFolderDefault.value
+                ? { showFlowFolderDefault: showFlowFolderDefault.value } : {}),
             defaultRestrictAccess: !!defaultRestrictAccess.value,
             defaultAllowComments: !!defaultAllowComments.value,
             defaultUseProxyFiles: !!defaultUseProxyFiles.value,

@@ -527,8 +527,9 @@ From the Projects screen, click **"+ New Project"** to create a new project:
 
 1. Enter a **Project name** — A descriptive name (e.g., "Acme Corp Review", "Spring Campaign Edit").
 2. Pick the **Project folder** — The folder on the server that holds this project's media, inside the configured storage root. Browse to it, or type its full path and press **Enter** or leave the path field to apply it. To use a fresh folder, click **"New Folder"** in the folder browser, then select it. Storage can use ZFS or another supported mounted filesystem.
-3. *(Optional)* Add **Notes** about the project — client, deliverables, anything your team should know.
-4. Click **"Create Project"**.
+3. For **.45flow folder visibility**, leave **Use server default** selected, or choose **Show .45flow** or **Hide .45flow** for this project.
+4. *(Optional)* Add **Notes** about the project — client, deliverables, anything your team should know.
+5. Click **"Create Project"**.
 
 ![Create project modal](images/project-create-modal-v3.png)
 
@@ -541,7 +542,7 @@ While you pick a folder, 45Flow checks it and shows what it finds:
 - **Low space** — A red warning appears when less than 50 GB is free or the disk is 90% or more used. Pick a folder with more room for proxy files and client uploads.
 - **New folder** — If the folder doesn't exist yet, 45Flow notes that it will create it.
 
-> **Note:** 45Flow keeps each project's proxy files and streams in a hidden `.45flow` folder inside the project folder. Links that are not in a project use the `.45flow` folder in the storage root (see [Storage](#storage)).
+> **Note:** 45Flow keeps each project's proxy files and streams in a `.45flow` folder inside the project folder. It is hidden in the file browser by default. Links that are not in a project use the `.45flow` folder in the storage root (see [Storage](#storage)).
 
 Once created, the new project opens immediately so you can start creating links or adding files.
 
@@ -576,7 +577,7 @@ Each project card has action buttons in the top-right corner (click without open
 
 **Editing a Project:**
 
-Click **"Edit"** on a project card, or open the project and click **"Edit Project"** above its links list. The Edit Project dialog lets you update the **Project Name**, **Project Folder** (with the same folder check as when creating a project), and **Notes (optional)**. It also provides Archive/Unarchive and Delete Project buttons.
+Click **"Edit"** on a project card, or open the project and click **"Edit Project"** above its links list. The Edit Project dialog lets you update the **Project Name**, **Project Folder** (with the same folder check as when creating a project), **.45flow folder visibility**, and **Notes (optional)**. Choose **Use server default** to clear a project override. The dialog also provides Archive/Unarchive and Delete Project buttons.
 
 **Archiving a Project:**
 
@@ -677,10 +678,16 @@ The Settings panel is organized into sections via the left-hand navigation sideb
 - **Link Sharing** — URLs & Access, Public Sharing, Certificate, Link Options
 - **Branding** — White Label (see [Custom Branding](#8-custom-branding-white-label--pro-feature))
 - **This app** — Preferences and Video processing
-- **Server** — Server health and Maintenance; administrators also have Storage, Staff server accounts, Uploads, Watermarks, Admin networks, Email, and Scanning & privacy
+- **Server** — Server health and Maintenance; administrators also have Storage, Staff server accounts, Uploads, Watermarks, File browsing, Admin networks, Email, and Scanning & privacy
 - **Help** — Guides
 
 ![Settings modal](images/settings-v3.png)
+
+### File Browsing
+
+Under **Server → File browsing**, turn on **Show .45flow by default** and click **Save changes**. The default is off. Changes apply to existing and new projects set to **Use server default** and to folders outside any project. Explicit project choices take precedence. If project folders overlap, the closest project folder governs; if projects use the same folder and disagree, **Hide .45flow** wins.
+
+This setting only affects server file browsers. Other dotfiles and hidden folders stay hidden, and the setting does not change file permissions or existing share links. It is available on free and Pro servers; only server administrators can change the global default.
 
 ### URLs & Access
 
