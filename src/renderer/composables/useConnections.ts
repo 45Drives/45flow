@@ -291,17 +291,27 @@ function upgradeDesktopBaseUrls() {
   }
 }
 
-/** A saved P2P connection points at a local proxy that only exists while the app runs: start it again. */
-async function restartP2pProxies() {
+/**
+ * A saved P2P connection points at a local proxy that only exists while the app runs (its address carries a
+ * per-launch secret): start each one again, in parallel and in the background so an offline server never
+ * delays start-up. One that cannot start is marked unavailable instead of keeping an address nothing serves.
+ */
+function restartP2pProxies() {
   if (window.electron?.isWeb) return
   for (const connection of _state.connections) {
     if (!connection.p2pAddress) continue
-    try {
-      connection.baseUrl = (await startP2pProxy(connection.p2pAddress, connection.directUrl)).baseUrl
-    } catch {
-      // Offline: the connection stays listed and its requests fail until the next launch or sign-in.
-      console.error('[connections] could not start the P2P proxy')
-    }
+    startP2pProxy(connection.p2pAddress, connection.directUrl).then(
+      ({ baseUrl }) => {
+        connection.baseUrl = baseUrl
+        if (connection.status === 'error') connection.status = 'disconnected'
+      },
+      (e: any) => {
+        connection.baseUrl = ''
+        connection.status = 'error'
+        connection.lastError = String(e?.message || e)
+        console.error('[connections] could not start the P2P proxy')
+      },
+    )
   }
 }
 
@@ -327,7 +337,7 @@ export function initializeConnections(): Promise<void> {
     // Scrub both legacy storage surfaces before any asynchronous keyring operation.
     persist()
     await registerDesktopTrust()
-    await restartP2pProxies()
+    restartP2pProxies()
     const api = window.electron?.secureToken
     if (!api) {
       memoryOnlyNotice()

@@ -7,6 +7,8 @@ import crypto from 'node:crypto'
 import { createRequire } from 'node:module'
 import type { AddressInfo } from 'node:net'
 import { createP2pProxy, CANT_CONNECT_MESSAGE, type P2pProxy } from './proxy'
+import { createClient } from './protocol'
+import { startP2p, stopAllP2p } from './index'
 
 const require = createRequire(import.meta.url)
 const ndc = require('node-datachannel')
@@ -100,7 +102,7 @@ function call(base: string, path: string, opts: http.RequestOptions & { body?: B
 it('P8 HTTP and uploads pass through the proxy', async () => {
   const started = await proxy!.start()
   expect(started.mode).toBe('p2p')
-  expect(started.baseUrl).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/)
+  expect(started.baseUrl).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/p2p-[0-9a-f]{48}$/)
 
   const got = await call(started.baseUrl, '/api/hello', { headers: { authorization: 'Bearer t0k' } })
   expect(got.status).toBe(200)
@@ -115,8 +117,7 @@ it('P8 HTTP and uploads pass through the proxy', async () => {
   expect(up.body).toBe('stored')
   expect(uploads).toEqual([{ sha: sha.digest('hex'), n: 6 * 300 * 1024, auth: 'Bearer t0k' }])
 
-  // A page on the web may not ride the proxy, and a rebinding Host is refused.
-  expect((await call(started.baseUrl, '/api/hello', { headers: { origin: 'https://evil.example' } })).status).toBe(403)
+  // A rebinding Host is refused.
   expect((await call(started.baseUrl, '/api/hello', { headers: { host: 'evil.example' } })).status).toBe(403)
 }, 60000)
 
@@ -152,3 +153,135 @@ it('P8 falls back to the direct address when P2P cannot connect', async () => {
   const unreachable = createP2pProxy({ ...dead, directUrl: 'http://127.0.0.1:1' })
   await expect(unreachable.start()).rejects.toThrow(CANT_CONNECT_MESSAGE)
 }, 60000)
+
+
+const origin = (baseUrl: string) => new URL(baseUrl).origin
+
+it('P8 a request without the launch secret is refused (HTTP and WebSocket)', async () => {
+  const { baseUrl } = await proxy!.start()
+  const root = origin(baseUrl)
+  const before = hits.length
+  for (const bad of ['/api/hello', '/p2p-wrong/api/hello', '/p2p-/api/hello', baseUrl.slice(root.length) + 'x/api/hello']) {
+    expect((await call(root, bad)).status).toBe(403)
+    // No Origin, a null Origin and a localhost Origin get no more access than any other caller.
+    expect((await call(root, bad, { headers: { origin: 'null' } })).status).toBe(403)
+    expect((await call(root, bad, { headers: { origin: 'http://localhost:5173' } })).status).toBe(403)
+  }
+  expect(hits.length).toBe(before)
+
+  for (const path of ['/ws', '/p2p-wrong/ws']) {
+    const ws = new WebSocket(root.replace('http', 'ws') + path)
+    const status = await new Promise<string>((resolve) => {
+      ws.on('unexpected-response', (_req: any, res: http.IncomingMessage) => resolve(String(res.statusCode)))
+      ws.on('error', (e: Error) => resolve(e.message))
+      ws.on('open', () => resolve('open'))
+    })
+    expect(status).toMatch(/403/)
+  }
+}, 30000)
+
+it('P8 answers CORS for the null origin of the app page, including a preflighted sign-in', async () => {
+  const { baseUrl } = await proxy!.start()
+  const root = origin(baseUrl)
+  const prefix = baseUrl.slice(root.length)
+  const pre = await new Promise<http.IncomingMessage>((resolve, reject) => {
+    http.request(root + prefix + '/api/hello', {
+      method: 'OPTIONS',
+      headers: { origin: 'null', 'access-control-request-method': 'POST', 'access-control-request-headers': 'authorization,content-type' },
+    }, resolve).on('error', reject).end()
+  })
+  pre.resume()
+  expect(pre.statusCode).toBe(204)
+  expect(pre.headers['access-control-allow-origin']).toBe('null')
+  expect(pre.headers['access-control-allow-credentials']).toBe('true')
+  expect(pre.headers['access-control-allow-headers']).toBe('authorization,content-type')
+  expect(pre.headers['access-control-allow-methods']).toMatch(/POST/)
+
+  const res = await new Promise<{ status: number; headers: http.IncomingHttpHeaders; body: string }>((resolve, reject) => {
+    const r = http.request(baseUrl + '/api/hello', {
+      method: 'POST',
+      headers: { origin: 'null', authorization: 'Bearer t0k', 'content-type': 'application/json' },
+    }, (m) => {
+      let body = ''
+      m.on('data', (c) => { body += c })
+      m.on('end', () => resolve({ status: m.statusCode || 0, headers: m.headers, body }))
+    })
+    r.on('error', reject)
+    r.end(JSON.stringify({ username: 'a' }))
+  })
+  expect(res.status).toBe(200)
+  expect(res.headers['access-control-allow-origin']).toBe('null')
+  expect(res.headers['access-control-allow-credentials']).toBe('true')
+  expect(JSON.parse(res.body).auth).toBe('Bearer t0k')
+}, 30000)
+
+it('P8 hostile frames from the host do not throw or crash the proxy', async () => {
+  // A peer that answers every request and socket with malformed frames.
+  let deliver: (m: string | Buffer) => void = () => {}
+  const dc = {
+    sendMessage: (m: string) => {
+      const f = JSON.parse(m)
+      setImmediate(() => reply(f))
+      return true
+    },
+    sendMessageBinary: () => true,
+    bufferedAmount: () => 0,
+    onMessage: (cb: any) => { deliver = cb },
+    onClosed: () => {},
+  }
+  function reply(f: any) {
+    if (f.t === 'req' && f.url === '/api/status') deliver(JSON.stringify({ t: 'head', id: f.id, status: 'x', headers: [] }))
+    if (f.t === 'req' && f.url === '/api/headers') {
+      deliver(JSON.stringify({ t: 'head', id: f.id, status: 200, headers: { a: 1 } }))
+      deliver(JSON.stringify({ t: 'end', id: f.id }))
+    }
+    if (f.t === 'ws-open') {
+      deliver(JSON.stringify({ t: 'ws-opened', id: f.id, protocol: '' }))
+      setTimeout(() => deliver(JSON.stringify({ t: 'ws-close', id: f.id, code: { a: 1 }, reason: 'r'.repeat(100000) })), 200)
+    }
+  }
+  const client = createClient(dc as any)
+  const hostile = createP2pProxy({
+    address: ADDRESS,
+    connect: async () => ({ client, close: () => {}, onClosed: () => {} }),
+  })
+  try {
+    const { baseUrl } = await hostile.start()
+    const root = origin(baseUrl)
+    expect((await call(root, baseUrl.slice(root.length) + '/api/status')).status).toBe(502)
+    expect((await call(root, baseUrl.slice(root.length) + '/api/headers')).status).toBe(200)
+
+    const ws = new WebSocket(baseUrl.replace('http', 'ws') + '/ws')
+    const closed = await new Promise<number>((resolve, reject) => {
+      ws.on('error', reject)
+      ws.on('close', (code: number) => resolve(code))
+    })
+    expect(closed).toBe(1000)
+    // Frames that are not even objects are dropped.
+    expect(() => deliver('null')).not.toThrow()
+    expect(() => deliver('{"t":"head"}')).not.toThrow()
+    expect(() => deliver(Buffer.from([1]))).not.toThrow()
+  } finally {
+    await hostile.close()
+  }
+}, 30000)
+
+it('P8 concurrent starts for one address return one proxy', async () => {
+  const input = { address: ADDRESS, directUrl: fixtureUrl }
+  // Nothing listens at the default signaling host, so P2P fails fast and the direct address answers.
+  const [a, b, c] = await Promise.all([startP2p(input), startP2p(input), startP2p({ ...input })])
+  try {
+    expect(b.baseUrl).toBe(a.baseUrl)
+    expect(c.baseUrl).toBe(a.baseUrl)
+    expect(a.mode).toBe('direct')
+    expect((await startP2p(input)).baseUrl).toBe(a.baseUrl)
+  } finally {
+    await stopAllP2p()
+  }
+}, 120000)
+
+it('P8 refuses a plain http direct address on another host', async () => {
+  const dead = { address: ADDRESS, signalUrl: 'ws://127.0.0.1:1/__p2p/signal', iceServers: [], connectTimeoutMs: 2000 }
+  const remote = createP2pProxy({ ...dead, directUrl: 'http://192.0.2.1' })
+  await expect(remote.start()).rejects.toThrow(/https:\/\//)
+}, 30000)

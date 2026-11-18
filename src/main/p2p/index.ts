@@ -19,19 +19,37 @@ function preferredPortFor(serverId: string): number {
   return 41000 + (h % 20000)
 }
 
-export async function startP2p(input: { address?: unknown; directUrl?: unknown }, log?: Log): Promise<P2pStartResult> {
+// One start at a time per address, so concurrent calls end with one proxy and one peer connection.
+const starting = new Map<string, Promise<P2pStartResult>>()
+
+export function startP2p(input: { address?: unknown; directUrl?: unknown }, log?: Log): Promise<P2pStartResult> {
   const address = typeof input?.address === 'string' ? parseP2pAddress(input.address) : null
-  if (!address) throw new Error('Enter the server address as https://<server-id>.<domain>.')
+  if (!address) return Promise.reject(new Error('Enter the server address as https://<server-id>.<domain>.'))
   const directUrl = typeof input.directUrl === 'string' && input.directUrl.trim() ? input.directUrl.trim() : undefined
+  const key = address.url
+  const pending = starting.get(key)
+  // Queue behind the in-flight start: it is reused when it matches, and replaced when the direct address differs.
+  const run = (pending ? pending.catch(() => {}).then(() => doStart(address, directUrl, log)) : doStart(address, directUrl, log))
+    .finally(() => { if (starting.get(key) === run) starting.delete(key) })
+  starting.set(key, run)
+  return run
+}
+
+async function doStart(address: { url: string; serverId: string }, directUrl: string | undefined, log?: Log): Promise<P2pStartResult> {
   const existing = proxies.get(address.url)
   if (existing && existing.directUrl === directUrl && existing.proxy.baseUrl && existing.proxy.mode) {
     return { baseUrl: existing.proxy.baseUrl, mode: existing.proxy.mode }
   }
-  if (existing) await existing.proxy.close()
+  if (existing) { proxies.delete(address.url); await existing.proxy.close() }
   const proxy = createP2pProxy({ address: address.url, directUrl, preferredPort: preferredPortFor(address.serverId), log })
-  const result = await proxy.start()
-  proxies.set(address.url, { proxy, directUrl })
-  return result
+  try {
+    const result = await proxy.start()
+    proxies.set(address.url, { proxy, directUrl })
+    return result
+  } catch (e) {
+    await proxy.close()
+    throw e
+  }
 }
 
 export async function stopAllP2p(): Promise<void> {

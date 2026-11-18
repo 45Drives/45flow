@@ -65,6 +65,16 @@ export function decodeData(msg: Buffer | ArrayBuffer): { id: number; payload: Bu
   return { id: buf.readUInt32BE(0), payload: buf.subarray(4) }
 }
 
+/** Header pairs from a remote head frame, keeping only well-formed string pairs. */
+function cleanHeaders(raw: unknown): HeaderPairs {
+  if (!Array.isArray(raw)) return []
+  const out: HeaderPairs = []
+  for (const pair of raw) {
+    if (Array.isArray(pair) && typeof pair[0] === 'string' && typeof pair[1] === 'string') out.push([pair[0], pair[1]])
+  }
+  return out
+}
+
 function decodeFrame(text: string): any | null {
   try {
     const f = JSON.parse(text)
@@ -116,7 +126,8 @@ export function createClient(dc: Channel): P2pClient {
     for (const h of w) h.close?.(1006, message)
   }
 
-  dc.onMessage((msg) => {
+  // Frames come from a remote peer: a malformed one must never throw out of the native callback.
+  const handleMessage = (msg: string | Buffer | ArrayBuffer) => {
     if (typeof msg === 'string') {
       const f = decodeFrame(msg)
       if (!f) return
@@ -125,20 +136,23 @@ export function createClient(dc: Channel): P2pClient {
       const w = wss.get(f.id)
       if (f.t === 'ack') { if (r && Number.isFinite(f.n)) { r.acked += f.n; r.wake?.() } return }
       if (r) {
-        if (f.t === 'head') r.h.head?.(f)
+        if (f.t === 'head') r.h.head?.({ status: f.status, statusText: typeof f.statusText === 'string' ? f.statusText : undefined, headers: cleanHeaders(f.headers) })
         else if (f.t === 'end') { reqs.delete(f.id); r.wake?.(); r.h.end?.() }
         else if (f.t === 'err') { reqs.delete(f.id); r.wake?.(); r.h.err?.(String(f.message)) }
       } else if (w) {
         if (f.t === 'ws-opened') w.opened?.(f)
         else if (f.t === 'ws-text') { if (typeof f.data === 'string') w.text?.(f.data) }
         else if (f.t === 'ws-bin') { if (typeof f.data === 'string') w.binary?.(Buffer.from(f.data, 'base64')) }
-        else if (f.t === 'ws-close') { wss.delete(f.id); w.close?.(f.code, f.reason) }
+        else if (f.t === 'ws-close') { wss.delete(f.id); w.close?.(typeof f.code === 'number' ? f.code : 1006, typeof f.reason === 'string' ? f.reason.slice(0, 123) : '') }
         else if (f.t === 'err') { wss.delete(f.id); w.err?.(String(f.message)) }
       }
       return
     }
     const d = decodeData(msg)
     if (d) reqs.get(d.id)?.h.data?.(Buffer.from(d.payload))
+  }
+  dc.onMessage((msg) => {
+    try { handleMessage(msg) } catch { /* drop the frame; the request or socket it names times out or is aborted by the caller */ }
   })
   dc.onClosed(() => closeAll('channel closed'))
 

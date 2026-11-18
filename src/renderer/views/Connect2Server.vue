@@ -771,6 +771,14 @@ async function connectViaP2p(address: string) {
             isActive: true,
         });
         setActive(id);
+        if (mode === 'direct') {
+            pushNotification(new Notification(
+                'Connected directly',
+                "Peer-to-peer could not connect from this network, so this connection uses the server's direct address.",
+                'warning',
+                12000,
+            ));
+        }
         window.appLog?.info('login.success', { host, mode, connectionId: id });
         to('dashboard');
     } catch (e: any) {

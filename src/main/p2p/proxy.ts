@@ -1,6 +1,7 @@
 // Local proxy for P2P connections. The app's HTTP and WebSocket traffic (renderer fetch, main-process
 // uploads, live updates) goes to http://127.0.0.1:<port>; the proxy carries it over the P2P data
 // channel, or straight to the server's direct address when P2P cannot connect.
+import crypto from 'crypto'
 import http from 'http'
 import https from 'https'
 import type { AddressInfo } from 'net'
@@ -52,6 +53,18 @@ function validWsCode(code: unknown): number {
   return typeof code === 'number' && code >= 1000 && code < 5000 && code !== 1005 && code !== 1006 && code !== 1004 && code !== 1015 ? code : 1000
 }
 
+/** A WebSocket close reason must be a string of at most 123 bytes. */
+function validWsReason(reason: unknown): string {
+  return typeof reason === 'string' ? Buffer.from(reason).subarray(0, 123).toString().replace(/\uFFFD/g, '') : ''
+}
+
+const CORS_ALLOW_HEADERS = 'authorization, content-type, x-requested-with'
+function validStatus(status: unknown): number {
+  return typeof status === 'number' && Number.isInteger(status) && status >= 200 && status <= 599 ? status : 502
+}
+
+const CORS_SKIP = /^access-control-/i
+
 export function createP2pProxy(options: P2pProxyOptions): P2pProxy {
   const address = parseP2pAddress(options.address)
   const direct = options.directUrl ? safeUrl(options.directUrl) : null
@@ -61,6 +74,9 @@ export function createP2pProxy(options: P2pProxyOptions): P2pProxy {
 
   let mode: ProxyMode | null = null
   let baseUrl: string | null = null
+  // Random per launch: only the app knows it, so no web page or local process can use the proxy.
+  const secret = crypto.randomBytes(24).toString('hex')
+  const prefix = `/p2p-${secret}`
   let server: http.Server | null = null
   let conn: P2pConnection | null = null
   let connecting: Promise<P2pConnection> | null = null
@@ -87,13 +103,30 @@ export function createP2pProxy(options: P2pProxyOptions): P2pProxy {
     return connecting
   }
 
-  // Only the app itself may use the proxy: reject other Host names (DNS rebinding) and pages
-  // whose Origin is a web site. The app's own pages send no Origin, file://, null or a loopback dev server.
-  function allowed(req: http.IncomingMessage): boolean {
+  // Only the app itself may use the proxy: its address carries a per-launch secret path prefix, and
+  // other Host names (DNS rebinding) are refused. Returns the path without the prefix, or null.
+  function authorize(req: http.IncomingMessage): string | null {
     const host = (req.headers.host || '').replace(/:\d+$/, '')
-    if (!LOOPBACK.has(host)) return false
+    if (!LOOPBACK.has(host)) return null
+    const url = req.url || ''
+    const given = Buffer.from(url.slice(0, prefix.length))
+    if (given.length !== prefix.length || !crypto.timingSafeEqual(given, Buffer.from(prefix))) return null
+    const rest = url.slice(prefix.length)
+    if (rest === '' || rest[0] === '?') return '/' + rest
+    return rest[0] === '/' ? rest : null
+  }
+
+  // The renderer is a file:// page (Origin "null") calling this local address, so the proxy answers CORS
+  // itself, for the app's own origin only after the secret check, in place of the server's CORS policy.
+  function corsHeaders(req: http.IncomingMessage): Record<string, string> {
     const origin = req.headers.origin
-    return !origin || /^(file:\/\/|null$|https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$)/.test(String(origin))
+    if (typeof origin !== 'string') return {}
+    return {
+      'access-control-allow-origin': origin,
+      'access-control-allow-credentials': 'true',
+      'access-control-expose-headers': '*',
+      vary: 'Origin',
+    }
   }
 
   function sendError(res: http.ServerResponse, status: number, message: string) {
@@ -114,7 +147,8 @@ export function createP2pProxy(options: P2pProxyOptions): P2pProxy {
       {
         head: (f) => {
           const flat: string[] = []
-          for (const [k, v] of f.headers) flat.push(k, v)
+          for (const [k, v] of f.headers) if (!CORS_SKIP.test(String(k))) flat.push(String(k), String(v))
+          if (validStatus(f.status) !== f.status) { ctl.abort(); sendError(res, 502, 'bad response from server'); return }
           try { res.writeHead(f.status, f.statusText || undefined, flat) } catch { ctl.abort() }
         },
         data: (chunk) => { res.write(chunk, () => ctl.ack(chunk.length)) },
@@ -139,21 +173,20 @@ export function createP2pProxy(options: P2pProxyOptions): P2pProxy {
     const ctl = c.client.openWebSocket(
       { url: req.url!, protocols, headers: headerPairs(req.rawHeaders, WS_SKIP) },
       {
-        opened: (f) => {
+        opened: () => {
           wss.handleUpgrade(req, socket, head, (ws) => {
             client = ws
             ws.on('message', (data, isBinary) => {
               if (isBinary) ctl.sendBinary(Buffer.from(data as Buffer))
               else ctl.sendText(data.toString())
             })
-            ws.on('close', (code, reason) => ctl.close(code, reason.toString()))
+            ws.on('close', (code, reason) => ctl.close(validWsCode(code), validWsReason(reason.toString())))
             ws.on('error', () => ctl.close(1011, 'proxy error'))
           })
-          void f
         },
         text: (data) => { if (client?.readyState === WebSocket.OPEN) client.send(data) },
         binary: (data) => { if (client?.readyState === WebSocket.OPEN) client.send(data, { binary: true }) },
-        close: (code, reason) => { client ? client.close(validWsCode(code), reason) : refuse(socket, 502) },
+        close: (code, reason) => { client ? client.close(validWsCode(code), validWsReason(reason)) : refuse(socket, 502) },
         err: () => { client ? client.close(1011, 'upstream error') : refuse(socket, 502) },
       },
     )
@@ -174,7 +207,7 @@ export function createP2pProxy(options: P2pProxyOptions): P2pProxy {
       for (let i = 0; i < r.rawHeaders.length; i += 2) {
         if (r.rawHeaders[i].toLowerCase() === 'location' && r.rawHeaders[i + 1].startsWith(direct!.origin)) {
           flat.push(r.rawHeaders[i], r.rawHeaders[i + 1].slice(direct!.origin.length) || '/')
-        } else if (r.rawHeaders[i].toLowerCase() !== 'connection') flat.push(r.rawHeaders[i], r.rawHeaders[i + 1])
+        } else if (r.rawHeaders[i].toLowerCase() !== 'connection' && !CORS_SKIP.test(r.rawHeaders[i])) flat.push(r.rawHeaders[i], r.rawHeaders[i + 1])
       }
       res.writeHead(r.statusCode || 502, r.statusMessage, flat)
       r.pipe(res)
@@ -213,15 +246,28 @@ export function createP2pProxy(options: P2pProxyOptions): P2pProxy {
   // ---- server ----
 
   function onRequest(req: http.IncomingMessage, res: http.ServerResponse) {
-    if (!allowed(req)) return sendError(res, 403, 'forbidden')
-    if (!isForwardablePath(req.url)) return sendError(res, 400, 'bad path')
+    const path = authorize(req)
+    if (path === null) return sendError(res, 403, 'forbidden')
+    for (const [k, v] of Object.entries(corsHeaders(req))) res.setHeader(k, v)
+    if (req.method === 'OPTIONS' && req.headers['access-control-request-method']) {
+      res.writeHead(204, {
+        'access-control-allow-methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+        'access-control-allow-headers': String(req.headers['access-control-request-headers'] || CORS_ALLOW_HEADERS),
+        'access-control-max-age': '600',
+      })
+      return res.end()
+    }
+    if (!isForwardablePath(path)) return sendError(res, 400, 'bad path')
+    req.url = path
     if (mode === 'direct') directHttp(req, res)
     else void p2pHttp(req, res)
   }
 
   function onUpgrade(req: http.IncomingMessage, socket: Duplex, head: Buffer) {
-    if (!allowed(req)) return refuse(socket, 403)
-    if (!isForwardablePath(req.url)) return refuse(socket, 502)
+    const path = authorize(req)
+    if (path === null) return refuse(socket, 403)
+    if (!isForwardablePath(path)) return refuse(socket, 502)
+    req.url = path
     if (mode === 'direct') directWebSocket(req, socket, head)
     else void p2pWebSocket(req, socket, head)
   }
@@ -258,6 +304,9 @@ export function createP2pProxy(options: P2pProxyOptions): P2pProxy {
       }
     }
     if (!mode) {
+      if (direct && direct.protocol === 'http:' && !LOOPBACK.has(direct.hostname)) {
+        throw new Error('The direct address must start with https:// unless the server is on this computer.')
+      }
       if (direct && await reachable(direct)) {
         mode = 'direct'
         log('p2p.fallback.direct', { host: direct.host })
@@ -268,7 +317,7 @@ export function createP2pProxy(options: P2pProxyOptions): P2pProxy {
     if (!server) {
       try { await listen(options.preferredPort ?? 0) } catch { await listen(0) }
     }
-    baseUrl = `http://127.0.0.1:${(server!.address() as AddressInfo).port}`
+    baseUrl = `http://127.0.0.1:${(server!.address() as AddressInfo).port}${prefix}`
     return { baseUrl, mode }
   }
 

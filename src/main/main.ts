@@ -2032,8 +2032,6 @@ function createWindow() {
     }
   });
 
-  app.on('will-quit', () => { void stopAllP2p(); });
-
   app.on('window-all-closed', function () {
     ipcMain.removeAllListeners('message');
     clearInterval(clearInactiveServerInterval);
@@ -2072,6 +2070,8 @@ function createWindow() {
 
   return mainWindow
 }
+
+app.on('will-quit', () => { void stopAllP2p(); });
 
 app.on('web-contents-created', (_event, contents) => {
   // 45Flow never embeds <webview>; refuse any attempt so injected content cannot get a preload.
