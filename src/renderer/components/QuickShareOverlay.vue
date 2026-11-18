@@ -3,7 +3,7 @@
   <Transition name="qs-fade">
     <div v-if="dragging" data-flow-overlay class="fixed inset-0 z-overlay flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none">
       <div class="flex flex-col items-center gap-3 text-white text-xl font-semibold select-none">
-        <ArrowUpTrayIcon class="w-16 h-16 text-white/80 animate-bounce" />
+        <ArrowUpTrayIcon class="w-16 h-16 text-white/80" />
         <span>Drop files to quick-share</span>
       </div>
     </div>
@@ -403,9 +403,9 @@ import { useTransferProgress } from '../composables/useTransferProgress'
 import { useClientTranscode } from '../composables/useClientTranscode'
 import { useUploadTranscode } from '../composables/useUploadTranscode'
 import { signalLinkCreated } from '../composables/useLinkRefresh'
-import { tourQuickShareOpen, tourQuickShareStep, tourQuickShareShowDone, quickShareOverlayOpen } from '../composables/useQuickShareTour'
-import { useTourManager, type TourStep } from '../composables/useTourManager'
-import { useOnboarding } from '../composables/useOnboarding'
+import { quickShareOverlayOpen } from '../composables/useQuickShareTour'
+import { useContextTour } from '../composables/useContextTour'
+import type { TourStep } from '../composables/useTourManager'
 import FolderPicker from './FolderPicker.vue'
 import PathInput from './PathInput.vue'
 import CheckPortForwarding from './CheckPortForwarding.vue'
@@ -437,9 +437,6 @@ const electron = window.electron
 // Client-side transcode status (reactive, for inline hint in template)
 const { enabled: _clientTranscodeOn, hwAccel: _clientHwAccelOn } = useClientTranscode()
 const _isWebView = window.electron?.isWeb === true
-const clientTranscodeTourTip = _isWebView
-  ? ''
-  : '\n\nWith client-side transcoding enabled (Settings → Performance), video processing happens on your machine before upload — using your local CPU or GPU.'
 
 type DroppedFile = { path: string; name: string; size: number }
 
@@ -487,113 +484,59 @@ const { isPremiumActive } = useLicenseStatus()
 const { getDefaultCategories } = useCommentCategories()
 
 // ── Tour ──
-const { requestTour, cancelTour } = useTourManager()
-const { onboarding, markDone } = useOnboarding()
-
-/** Cleanup helper — reset all Quick Share tour state */
-function cleanupQuickShareTour() {
-  tourQuickShareShowDone.value = false
-  tourQuickShareStep.value = 'setup'
-  tourQuickShareOpen.value = false
-}
-
 const quickShareTourSteps = computed<TourStep[]>(() => [
-  // ── Overview ──
   {
     target: '[data-tour="qs-modal"]',
-    message: 'This is Quick Share.\n\nWhen you drop files onto 45Flow from most screens, this opens automatically. Everything is on one screen: name the link, pick where the files go, set up the link, then click Upload & Share.\n\nThe list near the top shows what you dropped. Here we\'re using a sample file for the tour.',
-    beforeShow: () => {
-      tourQuickShareStep.value = 'setup'
-      tourQuickShareShowDone.value = false
-      tourQuickShareOpen.value = true
-    },
+    message: 'This is Quick Share. When you drop files onto 45Flow from most screens, this opens automatically. Name the link, choose where the files go, set up the link, then click Upload & Share.',
   },
-  // ── Link name ──
   {
     target: '[data-tour="qs-link-title"]',
     message: 'Give your link an optional descriptive name. It helps you identify the link later in the dashboard.',
-    beforeShow: () => {
-      tourQuickShareOpen.value = true
-      tourQuickShareStep.value = 'setup'
-    },
   },
-  // ── Destination ──
+  {
+    target: '[data-tour="qs-files"]',
+    message: 'These are the files you dropped. Quick Share uploads them and creates a link in one step.',
+  },
   {
     target: '[data-tour="qs-step-destination"]',
-    message: 'Files go into the project folder unless you change it.\n\nIf you are not inside a project, choose the project first. To use a subfolder, type a path or click Browse… to pick or create one.',
-    beforeShow: () => {
-      tourQuickShareOpen.value = true
-      tourQuickShareStep.value = 'setup'
-    },
+    message: 'Files go into the project folder unless you change it. If you are not inside a project, choose the project first. To use a subfolder, type a path or click Browse… to pick or create one.',
   },
-  // ── Expiry ──
   {
     target: '[data-tour="qs-expiry"]',
-    message: 'Set how long the link stays active.\n\nType a custom value or use the quick presets — 1 hour, 1 day, 1 week, or Never for a permanent link.',
-    beforeShow: () => {
-      tourQuickShareOpen.value = true
-      tourQuickShareStep.value = 'setup'
-    },
+    message: 'Set how long the link stays active. Type a custom value or use the quick presets — 1 hour, 1 day, 1 week, or Never for a permanent link.',
   },
-  // ── Network ──
   {
     target: '[data-tour="qs-network"]',
-    message: 'Choose the network for your share link.\n\nLocal Network generates an internal URL that only works on the same network as the server. External (Internet) uses your public domain or IP so anyone outside your network can access it (this requires port forwarding to be set up to your server).\n\nClick "Learn how to set up port forwarding" to see detailed setup instructions. With External selected, click "Check port" to test it: the light turns green when the server is reachable from the internet and red when it isn\'t.',
-    beforeShow: () => {
-      tourQuickShareOpen.value = true
-      tourQuickShareStep.value = 'setup'
-    },
+    message: 'Choose the network for your share link. Local Network generates an internal URL; External (Internet) lets recipients outside your network access it when internet sharing is configured.',
   },
-  // ── Access mode ──
   {
     target: '[data-tour="qs-access-mode"]',
     message: isPremiumActive.value
-      ? 'Control who can access your shared files.\n\n• Invited clients & teams (default) — only specific client accounts and teams can open it.\n• Anyone with the link — no sign-in needed.\n• Password protected — recipients enter a shared password.\n\nComments can be toggled for open and password-protected links.\n\nWhen comments are enabled, you can stage Comment Categories so review notes are organized from the start.'
-      : 'Control who can access your shared files.\n\n• Invited clients & teams (default) — only specific client accounts and teams can open it.\n• Anyone with the link — no sign-in needed.\n• Password protected — recipients enter a shared password.',
-    beforeShow: () => {
-      tourQuickShareOpen.value = true
-      tourQuickShareStep.value = 'setup'
-    },
+      ? 'Control who can access your shared files: invited clients and teams, anyone with the link, or password protected. Comments can be enabled for open and password-protected links, with Pro Comment Categories available to organize review notes.'
+      : 'Control who can access your shared files: invited clients and teams, anyone with the link, or password protected.',
   },
-  // ── Advanced Options: media ──
+  {
+    target: '[data-tour="qs-advanced-btn"]',
+    message: 'Open Advanced Options to configure the available media options.',
+  },
   {
     target: '[data-tour="qs-video-options"]',
     message: isPremiumActive.value
-      ? 'When sharing video or image files, media processing options appear here.\n\nFor video:\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Proxy files (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nFor images and video:\n• Watermarks can be overlaid with full customization — position, size, opacity, and tiling (Pro).' + clientTranscodeTourTip
-      : 'When sharing video or image files, media processing options appear here.\n\nFor video:\n• A browser stream is created so recipients can watch immediately — no download needed.\n• Proxy files (720p, 1080p, or full-res MP4s) are generated for offline download and editing.\n\nFor images and video:\n• A basic watermark can be applied (bottom-right). Upgrade to Pro for full customization of position, size, and opacity.' + clientTranscodeTourTip,
+      ? 'For video, create a browser stream for immediate playback and proxy files for offline download and editing. For images and video, Pro watermarks support custom position, size, opacity, and tiling.'
+      : 'For video, create a browser stream for immediate playback and proxy files for offline download and editing. Images and video can use a basic bottom-right watermark; upgrade to Pro for full customization.',
     beforeShow: async () => {
-      tourQuickShareOpen.value = true
-      tourQuickShareStep.value = 'setup'
       await new Promise(r => setTimeout(r, 100))
       const btn = document.querySelector<HTMLElement>('[data-tour="qs-advanced-btn"]')
       const panel = document.querySelector('[data-tour="qs-advanced-panel"]')
       if (btn && !panel) btn.click()
     },
   },
-  // ── Footer ──
   {
     target: '[data-tour="qs-footer"]',
-    message: 'When everything is set, click Upload & Share.\n\nIf the button is greyed out, the line beside it says what is still missing — for example, inviting a client to an invite-only link.',
+    message: 'Use Upload & Share when ready. If the button is disabled, check the message beside it. Once the upload finishes, you can copy or open the link.',
     placement: 'top',
-    beforeShow: () => {
-      tourQuickShareOpen.value = true
-      tourQuickShareStep.value = 'setup'
-    },
-  },
-  // ── Upload & Share (done state) ──
-  {
-    target: '[data-tour="qs-step-upload"]',
-    message: 'After you click Upload & Share, this screen shows per-file progress while files transfer, then your share link with Copy and Open buttons. You can minimize it and keep working.',
-    beforeShow: () => {
-      tourQuickShareOpen.value = true
-      tourQuickShareStep.value = 'progress'
-      tourQuickShareShowDone.value = true
-    },
   },
 ])
-
-/** Pending real files to open after the tour finishes */
-let pendingDropFiles: DroppedFile[] = []
 
 // ── Drag state ──
 const dragging = ref(false)
@@ -668,30 +611,6 @@ function onDocDrop(e: DragEvent) {
 
   if (!files.length) return
 
-  if (!onboarding.value.quickShareTourDone) {
-    // First drop — run the Quick Share tour first, then open the real modal
-    // But only if tours are enabled; otherwise skip straight to modal
-    pendingDropFiles = files
-    const tourShown = requestTour('quickShare', quickShareTourSteps.value, () => {
-      markDone('quickShareTourDone')
-      const realFiles = pendingDropFiles
-      pendingDropFiles = []
-      tourQuickShareShowDone.value = false
-      tourQuickShareStep.value = 'setup'
-      tourQuickShareOpen.value = false
-      droppedFiles.value = realFiles
-      // Same reset as a normal drop: clears the tour's sample state and loads
-      // the server's link defaults (otherwise access stays invite-only with nobody invited).
-      resetWizard()
-      showModal.value = realFiles.length > 0
-    })
-    // If requestTour actually started the tour, wait for it to finish
-    if (tourShown !== false) return
-    // Tours disabled — mark done and fall through
-    markDone('quickShareTourDone')
-    pendingDropFiles = []
-  }
-
   droppedFiles.value = files
   resetWizard()
   showModal.value = true
@@ -711,9 +630,6 @@ onBeforeUnmount(() => {
   document.removeEventListener('dragover', onDocDragOver)
   document.removeEventListener('dragleave', onDocDragLeave)
   document.removeEventListener('drop', onDocDrop)
-  pendingDropFiles = []
-  cancelTour('quickShare')
-  cleanupQuickShareTour()
   quickShareOverlayOpen.value = false
 })
 
@@ -725,44 +641,9 @@ const droppedFiles = ref<DroppedFile[]>([])
 const qsView = ref<'setup' | 'progress'>('setup')
 const busy = ref(false)
 
-// ── Tour / demo mode ──
-// When the guided tour opens the Quick Share overlay it sets tourQuickShareOpen.
-// We show mock data and drive the view from the tour composable.
-const MOCK_FILES: DroppedFile[] = [
-  { path: '/home/user/FinalEdit_v3.mp4', name: 'FinalEdit_v3.mp4', size: 1_200_000_000 },
-]
-
-const isTourMode = computed(() => tourQuickShareOpen.value)
-
-watch(tourQuickShareOpen, (open) => {
-  if (open) {
-    droppedFiles.value = MOCK_FILES
-    qsView.value = tourQuickShareStep.value
-    showModal.value = true
-  } else if (!droppedFiles.value.length) {
-    // Only reset if no real files were loaded (i.e. tour was cancelled, not completed)
-    showModal.value = false
-    qsView.value = 'setup'
-    uploadPhase.value = 'idle'
-  }
-})
-
-watch(tourQuickShareStep, (step) => {
-  if (!tourQuickShareOpen.value) return
-  qsView.value = step
-  if (step === 'progress' && tourQuickShareShowDone.value) {
-    uploadPhase.value = 'done'
-    viewUrl.value = 'https://example.com/s/demo-link-abc123'
-  }
-})
-
-watch(tourQuickShareShowDone, (done) => {
-  if (!tourQuickShareOpen.value || qsView.value !== 'progress') return
-  if (done) {
-    uploadPhase.value = 'done'
-    viewUrl.value = 'https://example.com/s/demo-link-abc123'
-  }
-})
+useContextTour('quickShare', 'quickShareTourDone',
+  () => showModal.value && !minimized.value && qsView.value === 'setup' && isConnected(),
+  () => quickShareTourSteps.value)
 
 // Destination: defaults to the project folder; Browse… opens the folder picker for a subfolder.
 const destFolder = ref('')
@@ -1032,7 +913,6 @@ function resetWizard() {
 }
 
 function cancel() {
-  if (isTourMode.value) return // don't close during guided tour
   if (busy.value && (uploadPhase.value === 'validating' || uploadPhase.value === 'uploading')) return
   showModal.value = false
   minimized.value = false

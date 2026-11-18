@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col gap-3 min-h-0">
     <div class="flex flex-wrap items-start justify-between gap-3">
-      <p class="text-xs text-muted max-w-xl">
+      <p class="text-xs text-muted max-w-xl" data-tour="roles-modal-intro">
         A role decides what someone can do on an invite-only link. You pick a role for each client or team when you invite them.
       </p>
       <button class="btn btn-primary shrink-0" data-tour="roles-modal-create" @click="openCreate()">New role</button>
@@ -89,8 +89,8 @@ import FlowModal from '../../ui/FlowModal.vue'
 import FlowField from '../../ui/FlowField.vue'
 import FlowEmpty from '../../ui/FlowEmpty.vue'
 import { ROLE_PERMISSIONS } from './accessUi'
-import { useTourManager, type TourStep } from '../../composables/useTourManager'
-import { useOnboarding } from '../../composables/useOnboarding'
+import { useContextTour } from '../../composables/useContextTour'
+import type { TourStep } from '../../composables/useTourManager'
 
 const props = defineProps<{
   apiFetch: (url: string, opts?: any) => Promise<any>
@@ -98,17 +98,18 @@ const props = defineProps<{
 
 const emit = defineEmits<{ (e: 'updated'): void }>()
 
-const { requestTour } = useTourManager()
-const { onboarding, markDone } = useOnboarding()
-
 const rolesTourSteps: TourStep[] = [
   {
-    target: '[data-tour="roles-modal-create"]',
-    message: 'Create custom roles here.\n\nEach role has a name and four permissions: View, Comment, Download, and Upload. They control what clients with this role can do on a shared link.',
+    target: '[data-tour="roles-modal-intro"]',
+    message: 'Assign a role when inviting a client or team. It controls what they can do on that link.',
   },
   {
     target: '[data-tour="roles-modal-list"]',
-    message: 'Your roles are listed here with a tick for each permission.\n\nBuilt-in roles can be edited but not deleted. Click "Edit" to change a role\'s permissions.',
+    message: 'Compare the permissions before choosing a role. Built-in roles can be edited but not deleted.',
+  },
+  {
+    target: '[data-tour="roles-modal-create"]',
+    message: 'Use New role when you need a custom combination of View, Comment, Download, and Upload.',
   },
 ]
 
@@ -220,14 +221,8 @@ async function performDelete() {
   }
 }
 
-let tourRequested = false
-onMounted(() => {
-  fetchRoles()
-  if (!tourRequested && !onboarding.value.manageRolesTourDone) {
-    tourRequested = true
-    setTimeout(() => requestTour('manage-roles', rolesTourSteps, () => markDone('manageRolesTourDone')), 400)
-  }
-})
+onMounted(fetchRoles)
+useContextTour('manage-roles', 'manageRolesTourDone', () => !loading.value && roles.value.length > 0 && !formOpen.value && !deleteOpen.value, () => rolesTourSteps)
 
 defineExpose({ refresh: fetchRoles, openCreate })
 </script>

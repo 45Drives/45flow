@@ -16,6 +16,7 @@
                             <p class="settings-nav-group-label">{{ group.label }}</p>
                             <button v-for="item in group.items" :key="item.key" type="button"
                                 class="settings-nav-btn" :class="{ 'settings-nav-btn-active': activeSection === item.key }"
+                                :data-tour="item.key === 'fileBrowsing' ? 'settings-file-browsing' : undefined"
                                 :aria-current="activeSection === item.key ? 'page' : undefined"
                                 @click="activeSection = item.key">
                                 <component :is="item.icon" class="settings-nav-icon" aria-hidden="true" />
@@ -26,8 +27,8 @@
                     </nav>
 
                     <!-- Content -->
-                    <div ref="contentRef" class="settings-content flex-1 overflow-y-auto px-6 py-5 text-left" data-tour="settings-modal-urls">
-                        <header class="settings-page-head">
+                    <div ref="contentRef" class="settings-content flex-1 overflow-y-auto px-6 py-5 text-left">
+                        <header class="settings-page-head" data-tour="settings-modal-page">
                             <h3 class="settings-page-title">{{ currentMeta.label }}</h3>
                             <p class="settings-page-desc">{{ currentMeta.description }}</p>
                         </header>
@@ -53,7 +54,7 @@
                             @changed="egress.load" />
 
                         <!-- Loading state: shown until settings arrive from the server -->
-                        <div v-if="!settingsLoaded && (activeSection === 'sharing' || activeSection === 'linkOptions')" class="flex flex-col items-center justify-center gap-3 py-12">
+                        <div v-if="!settingsLoaded && (activeSection === 'sharing' || activeSection === 'linkOptions' || activeSection === 'fileBrowsing')" class="flex flex-col items-center justify-center gap-3 py-12">
                             <template v-if="loadError">
                                 <FlowNotice tone="danger" title="Couldn't load settings">{{ loadError }}</FlowNotice>
                                 <button class="btn btn-secondary" type="button" :disabled="busy" @click="reload">Try again</button>
@@ -66,6 +67,16 @@
                                 <span class="text-sm text-muted">Loading settings…</span>
                             </template>
                         </div>
+
+                        <template v-if="activeSection === 'fileBrowsing' && settingsLoaded">
+                            <div v-if="showFlowFolderDefault !== null" class="settings-group">
+                                <SettingRow label="Show .45flow by default"
+                                    description="Applies to projects using the server default. Override it when creating or editing a project. Other hidden files and folders stay hidden.">
+                                    <FlowSwitch v-model="showFlowFolderDefault" :disabled="busy" label="Show .45flow by default" />
+                                </SettingRow>
+                            </div>
+                            <FlowNotice v-else tone="info">Update the server to change .45flow visibility.</FlowNotice>
+                        </template>
 
                         <!-- ═══ Link Sharing ══════════════════════════════════ -->
                         <template v-if="activeSection === 'sharing' && settingsLoaded">
@@ -1565,7 +1576,8 @@ import { loadProjectWatermarks } from '../../composables/projectWatermarks';
 import { useTimeFormat } from "../../composables/useTimeFormat";
 import { useClientTranscode, type TranscodePreset } from "../../composables/useClientTranscode";
 import { useLinkListDefault } from "../../composables/useLinkListDefault";
-import { useTourManager, type TourStep } from "../../composables/useTourManager";
+import { useContextTour } from "../../composables/useContextTour";
+import type { TourStep } from "../../composables/useTourManager";
 import { useTourPreferences } from "../../composables/useTourPreferences";
 import { appLog } from "../../composables/useLog";
 import { useThemeFromAlias } from "../../composables/useThemeFromAlias";
@@ -1583,7 +1595,7 @@ import FlowChip from '../../ui/FlowChip.vue';
 import { useExternalAddressReadiness, describeExternalAddressNotReady, type ExternalAddressReadiness } from '../../composables/useExternalAddressReadiness';
 import type { Component } from 'vue';
 import {
-    AdjustmentsHorizontalIcon, BugAntIcon, EnvelopeIcon, FilmIcon, GlobeAltIcon, LinkIcon, LockClosedIcon, MagnifyingGlassIcon,
+    AdjustmentsHorizontalIcon, BugAntIcon, EnvelopeIcon, FilmIcon, FolderIcon, GlobeAltIcon, LinkIcon, LockClosedIcon, MagnifyingGlassIcon,
     QuestionMarkCircleIcon, ServerIcon, ShieldCheckIcon, SignalIcon, SparklesIcon, SwatchIcon, WrenchScrewdriverIcon,
 } from '@heroicons/vue/24/outline';
 
@@ -1619,7 +1631,6 @@ const { onboarding, resetAll: resetOnboarding, markDone } = useOnboarding();
 const { hour12 } = useTimeFormat();
 const { enabled: _tcEnabled, preset: _tcPreset, hwAccel: _tcHwAccel, setEnabled: commitTranscodeEnabled, setPreset: commitTranscodePreset, setHwAccel: commitHwAccel } = useClientTranscode();
 const { linkListDefault } = useLinkListDefault();
-const { requestTour } = useTourManager();
 const { setCustomThemeColors, setCustomThemeEnabled } = useThemeFromAlias();
 const { toursDisabled } = useTourPreferences();
 const notifyPermission = ref(notificationPermission());
@@ -1682,21 +1693,24 @@ onMounted(async () => {
 const settingsTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="settings-modal-header"]',
-		message: 'Welcome to 45Flow Settings.\n\nThis is where you set defaults for new links, your share addresses, and how the app and server behave.',
+		message: 'Set defaults for new links and manage sharing addresses, app preferences, and server settings.',
 	},
 	{
 		target: '[data-tour="settings-modal-nav"]',
-        message: 'Use the sidebar to move between pages, or type in "Find a setting".\n\n• Sharing — new link defaults, share addresses, internet sharing, HTTPS certificate' + (isPremiumActive.value ? ', and branding (Pro).' : '.') + '\n• This app — preferences and video processing on this computer.\n• Server — server health, maintenance' + (adminSession.value ? ', and admin networks.' : '.') + '\n• Help — the user guide, API docs, and guided tours.',
+        message: 'Use Find a setting or choose a page from the sidebar. Under Sharing, New link defaults applies to future links. Help & tours is where you can reset or turn off tours.',
 	},
+    ...(adminSession.value ? [{
+        target: '[data-tour="settings-file-browsing"]',
+        message: 'On supported servers, File browsing sets whether .45flow is shown by default. Override that default when creating or editing a project.',
+    }] : []),
 	{
-		target: '[data-tour="settings-modal-urls"]',
-		message: 'Each page shows its settings here.\n\nRight now you\'re on New link defaults — who can open new links, when they expire, and video options.\n\nWhen you change something, a "Save changes" button appears at the bottom.',
-		beforeShow: () => { activeSection.value = 'linkOptions' },
+		target: '[data-tour="settings-modal-page"]',
+		message: 'Changes that need saving bring up a Save changes button at the bottom.',
 	},
 ])
 
 // ── Section navigation ──────────────────────────────────────────────────
-type Section = SetupSection | 'sharing' | 'publicSharing' | 'app' | 'performance' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade' | 'adminNetworks' | 'adminMail' | 'adminSecurity';
+type Section = SetupSection | 'sharing' | 'publicSharing' | 'app' | 'performance' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade' | 'adminNetworks' | 'adminMail' | 'adminSecurity' | 'fileBrowsing';
 
 type SectionMeta = {
     label: string
@@ -1714,6 +1728,11 @@ const SECTION_META: Record<Section, SectionMeta> = {
     staff: { label: 'Staff users', icon: ShieldCheckIcon, description: 'Choose which existing server users can administer 45Flow.', keywords: 'group membership local users staff access' },
     uploads: { label: 'Upload security', icon: BugAntIcon, description: 'Install a malware scanner and choose the upload scanning policy.', keywords: 'uploads clamav scanner install malware virus require skip' },
     watermarks: { label: 'Watermarks', icon: SwatchIcon, description: 'Optional global watermark images shared across projects.', keywords: 'global folder image watermark enable' },
+    fileBrowsing: {
+        label: 'File browsing', icon: FolderIcon, savable: true,
+        description: 'Set the default visibility of the .45flow folder on this server.',
+        keywords: 'folder .45flow project show hidden visibility default',
+    },
     linkOptions: {
         label: 'New link defaults', icon: LinkIcon, savable: true,
         description: 'Starting values for every new link. You can still change them on each link.',
@@ -1826,7 +1845,7 @@ const navGroups = computed(() => {
             items: [
                 item('health'),
                 item('maintenance'),
-                ...(adminSession.value ? [...setupSections.map(section => item(section.key)), item('adminNetworks'), item('adminMail'), item('adminSecurity')] : []),
+                ...(adminSession.value ? [...setupSections.map(section => item(section.key)), item('fileBrowsing'), item('adminNetworks'), item('adminMail'), item('adminSecurity')] : []),
             ],
         },
         {
@@ -1854,14 +1873,7 @@ const filteredNavGroups = computed(() => {
         .filter(g => g.items.length);
 });
 
-onMounted(() => {
-    if (props.deferTour) return
-	if (!onboarding.value.settingsTourDone) {
-		setTimeout(() => {
-			requestTour('settings', settingsTourSteps.value, () => markDone('settingsTourDone'))
-		}, 400)
-	}
-})
+useContextTour('settings', 'settingsTourDone', () => !props.deferTour, () => settingsTourSteps.value)
 
 const anyOnboardingDone = computed(() =>
     Object.values(onboarding.value).some(v => v === true)
@@ -2046,6 +2058,8 @@ const savedExternalBase = ref("");
 const defaultRestrictAccess = ref(true);
 const defaultAllowComments = ref(true);
 const defaultUseProxyFiles = ref(false);
+const showFlowFolderDefault = ref<boolean | null>(null);
+const savedShowFlowFolderDefault = ref<boolean | null>(null);
 // Server-wide proxy sizes for uploads (null = never set; the server then makes 720p).
 const PROXY_QUALITY_CHOICES = ['720p', '1080p', 'original'] as const;
 const proxyQualitiesSupported = ref(false);
@@ -3212,6 +3226,7 @@ function coreSnapshot() {
         defaultLinkAccess.value, externalHttpsPort.value, externalAuto.value, externalBase.value.trim(),
         internalAuto.value, internalBase.value.trim(), defaultRestrictAccess.value, defaultAllowComments.value,
         defaultUseProxyFiles.value, defaultProxyQualities.value, transcodeSpeedProfile.value, defaultExpiryNever.value,
+        showFlowFolderDefault.value,
         defaultExpiryNever.value ? null : [defaultExpiryValue.value, defaultExpiryUnit.value],
         defaultWatermarkEnabled.value,
         defaultWatermarkEnabled.value ? (selectedExistingWatermark.value || defaultWatermarkId.value) : null,
@@ -3377,6 +3392,8 @@ async function reload() {
     try {
         const data = await apiFetch("/api/settings");
 
+        showFlowFolderDefault.value = typeof data.showFlowFolderDefault === "boolean" ? data.showFlowFolderDefault : null;
+        savedShowFlowFolderDefault.value = showFlowFolderDefault.value;
         externalHttpsPort.value = Number(data.externalHttpsPort ?? 443);
         savedHttpsPort.value = externalHttpsPort.value;
 
@@ -3513,6 +3530,8 @@ async function save() {
             defaultRestrictAccess: !!defaultRestrictAccess.value,
             defaultAllowComments: !!defaultAllowComments.value,
             defaultUseProxyFiles: !!defaultUseProxyFiles.value,
+            ...(showFlowFolderDefault.value !== null && showFlowFolderDefault.value !== savedShowFlowFolderDefault.value
+                ? { showFlowFolderDefault: showFlowFolderDefault.value } : {}),
             ...(proxyQualitiesSupported.value && defaultProxyQualities.value ? { defaultProxyQualities: defaultProxyQualities.value } : {}),
             ...(speedProfileSupported.value ? { transcodeSpeedProfile: transcodeSpeedProfile.value } : {}),
             defaultExpirySeconds: defaultExpiryNever.value ? 0 : computeDefaultExpirySec(),

@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   state: { suppressAutoOpen: false, tasks: [] },
   onboarding: { quickShareTourDone: true },
   requestTour: vi.fn(),
+  cancelTour: vi.fn(),
 }))
 vi.mock('vue-router', () => ({ useRoute: () => ({ path: '/' }) }))
 vi.mock('@45drives/houston-common-ui', () => ({
@@ -34,7 +35,7 @@ vi.mock('../composables/useTransferProgress', () => ({
   }),
 }))
 vi.mock('../composables/useLinkRefresh', () => ({ signalLinkCreated: vi.fn() }))
-vi.mock('../composables/useTourManager', () => ({ useTourManager: () => ({ requestTour: mocks.requestTour, cancelTour: vi.fn() }) }))
+vi.mock('../composables/useTourManager', () => ({ useTourManager: () => ({ requestTour: mocks.requestTour, cancelTour: mocks.cancelTour }) }))
 vi.mock('../composables/useOnboarding', () => ({
   useOnboarding: () => ({ onboarding: { value: mocks.onboarding }, markDone: vi.fn() }),
 }))
@@ -145,10 +146,9 @@ describe('Quick Share defaults', () => {
     expect(state.activeProject).toEqual({ id: 4, name: 'Beta', root_dir: '/tank/beta' })
   })
 
-  it('loads the server link defaults when the first drop opens the wizard after the tour', async () => {
-    let finishTour
+  it('opens the first drop with real files and server defaults even while the tour is queued', async () => {
     mocks.onboarding.quickShareTourDone = false
-    mocks.requestTour.mockImplementation((_name, _steps, onDone) => { finishTour = onDone; return true })
+    mocks.requestTour.mockReturnValue(true)
     mocks.apiFetch.mockImplementation(async (url) => (
       url === '/api/settings' ? { defaultRestrictAccess: false } : { projects: [] }
     ))
@@ -160,12 +160,16 @@ describe('Quick Share defaults', () => {
       preventDefault() {},
       dataTransfer: { files: [{ name: 'clip.mp4', size: 10, path: '/local/clip.mp4' }], items: [] },
     })
-    expect(state.showModal).toBe(false)
-    finishTour()
-    await vi.waitFor(() => expect(state.accessMode).toBe('open'))
-
     expect(state.showModal).toBe(true)
     expect(state.droppedFiles).toEqual([{ path: '/local/clip.mp4', name: 'clip.mp4', size: 10 }])
+    await vi.waitFor(() => expect(state.accessMode).toBe('open'))
+    expect(mocks.requestTour).toHaveBeenCalledWith('quickShare', expect.arrayContaining([
+      expect.objectContaining({ target: '[data-tour="qs-files"]' }),
+    ]), expect.any(Function))
     expect(mocks.apiFetch).toHaveBeenCalledWith('/api/settings', expect.anything())
+
+    state.cancel()
+    await nextTick()
+    expect(mocks.cancelTour).toHaveBeenCalledWith('quickShare')
   })
 })

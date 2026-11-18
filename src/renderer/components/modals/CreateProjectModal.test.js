@@ -86,12 +86,15 @@ describe('project folder typed paths', () => {
     const saved = vi.fn()
     const created = vi.fn()
     mocks.apiFetch.mockImplementation(async (url, init) => init?.method === 'PATCH'
-      ? { project: { id: 8, name: 'Renamed project', root_dir: '/tank/second', description: 'Updated notes' } }
+      ? { project: { id: 8, name: 'Renamed project', root_dir: '/tank/second', description: 'Updated notes', show_flow_folder: false } }
+      : url === '/api/projects' ? { showFlowFolderDefault: true }
       : { entries: [] })
-    mount('/tank', { project: { id: 8, name: 'Original project', root_dir: '/tank/first', description: 'Notes' }, onSaved: saved, onCreated: created })
+    mount('/tank', { project: { id: 8, name: 'Original project', root_dir: '/tank/first', description: 'Notes', show_flow_folder: false }, onSaved: saved, onCreated: created })
     await flush()
     expect(host.querySelector('#new-project-name').value).toBe('Original project')
     expect(host.querySelector('#new-project-description').value).toBe('Notes')
+    const visibilityLabel = [...host.querySelectorAll('label')].find(item => item.textContent.trim() === '.45flow folder visibility')
+    expect(document.getElementById(visibilityLabel.htmlFor).value).toBe('false')
     expect(host.querySelector('[data-path-input-root] input').value).toBe('/tank/first/')
     const name = host.querySelector('#new-project-name')
     name.value = 'Renamed project'
@@ -108,9 +111,9 @@ describe('project folder typed paths', () => {
     host.querySelector('#create-project-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     await flush()
     expect(mocks.apiFetch).toHaveBeenCalledWith('/api/projects/8', expect.objectContaining({
-      method: 'PATCH', body: JSON.stringify({ name: 'Renamed project', rootDir: 'tank/second', description: 'Updated notes' }),
+      method: 'PATCH', body: JSON.stringify({ name: 'Renamed project', rootDir: 'tank/second', description: 'Updated notes', showFlowFolder: false }),
     }))
-    expect(saved).toHaveBeenCalledWith({ id: 8, name: 'Renamed project', root_dir: '/tank/second', description: 'Updated notes' })
+    expect(saved).toHaveBeenCalledWith({ id: 8, name: 'Renamed project', root_dir: '/tank/second', description: 'Updated notes', show_flow_folder: false })
     expect(created).not.toHaveBeenCalled()
   })
   it('does not create a project when navigating up after entering a valid name and folder', async () => {
@@ -130,7 +133,7 @@ describe('project folder typed paths', () => {
     expect(up.disabled).toBe(false)
     up.click()
     await flush()
-    expect(mocks.apiFetch.mock.calls.some(([url]) => url === '/api/projects')).toBe(false)
+    expect(mocks.apiFetch.mock.calls.some(([url, init]) => url === '/api/projects' && init?.method === 'POST')).toBe(false)
     expect(input.value).toBe('/tank/')
   })
   it('creates a folder without submitting the project form', async () => {
@@ -150,11 +153,12 @@ describe('project folder typed paths', () => {
     await flush()
     expect(mocks.apiFetch).toHaveBeenCalledWith('/api/mkdir', expect.objectContaining({ body: JSON.stringify({ path: '/tank/new-choice' }) }))
     expect(host.querySelector('[data-path-input-root] input').value).toBe('/tank/new-choice/')
-    expect(mocks.apiFetch.mock.calls.some(([url]) => url === '/api/projects')).toBe(false)
+    expect(mocks.apiFetch.mock.calls.some(([url, init]) => url === '/api/projects' && init?.method === 'POST')).toBe(false)
   })
-  it.each(['Enter', 'blur'])('submits the typed folder after %s even without autocomplete results', async method => {
-    mocks.apiFetch.mockImplementation(async (_url, init) => init?.method === 'POST'
-      ? { project: { id: 1 } } : { entries: [] })
+  it.each([['Enter', null], ['blur', false]])('submits the typed folder after %s even without autocomplete results', async (method, override) => {
+    mocks.apiFetch.mockImplementation(async (url, init) => init?.method === 'POST'
+      ? { project: { id: 1 } }
+      : url === '/api/projects' ? { showFlowFolderDefault: true } : { entries: [] })
     mount()
     await flush()
     const name = host.querySelector('#new-project-name')
@@ -167,10 +171,18 @@ describe('project folder typed paths', () => {
     if (method === 'Enter') input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
     else input.blur()
     await flush()
+    const label = [...host.querySelectorAll('label')].find(item => item.textContent.trim() === '.45flow folder visibility')
+    const visibility = document.getElementById(label.htmlFor)
+    expect(visibility.selectedOptions[0].textContent).toBe('Use server default (shown)')
+    if (override === false) {
+      visibility.selectedIndex = 2
+      visibility.dispatchEvent(new Event('change', { bubbles: true }))
+    }
     host.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     await flush()
     const [, init] = mocks.apiFetch.mock.calls.find(([url, init]) => url === '/api/projects' && init?.method === 'POST')
     expect('/' + JSON.parse(init.body).rootDir.replace(/^\/+/, '')).toBe('/tank/typed-project')
+    expect(JSON.parse(init.body).showFlowFolder).toBe(override)
   })
 })
 

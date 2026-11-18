@@ -144,8 +144,8 @@
 import { computed, watch, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useTransferProgress } from '../composables/useTransferProgress'
 import { useConnections } from '../composables/useConnections'
-import { useTourManager, type TourStep } from '../composables/useTourManager'
-import { useOnboarding } from '../composables/useOnboarding'
+import { useContextTour } from '../composables/useContextTour'
+import type { TourStep } from '../composables/useTourManager'
 import { quickShareOverlayOpen } from '../composables/useQuickShareTour'
 
 const { connections } = useConnections()
@@ -161,9 +161,6 @@ const {
     cancelTranscode,
     retryTranscode,
 } = useTransferProgress()
-
-const { requestTour } = useTourManager()
-const { onboarding, markDone } = useOnboarding()
 
 // ── Highlight tab when active count changes ──
 const tabHighlight = ref(false)
@@ -183,6 +180,7 @@ function onDocumentClick(e: MouseEvent) {
     if (!state.open) return
     if (!wrapperRef.value) return
     if (wrapperRef.value.contains(e.target as Node)) return
+    if (e.target instanceof Element && e.target.closest('[data-flow-tour]')) return
     setOpen(false)
 }
 
@@ -247,46 +245,23 @@ onBeforeUnmount(() => {
 const transferDockTourSteps: TourStep[] = [
 	{
 		target: '[data-tour="transfer-dock-tab"]',
-		message: 'This is the Transfers panel.\n\nClick this tab anytime to open or close the panel. The badge shows how many transfers are currently active.',
+		message: 'Open Transfers to check background work without leaving the current screen. The badge counts active transfers.',
 		placement: 'bottom',
 	},
 	{
 		target: '[data-tour="transfer-dock-header"]',
-		message: 'The header shows overall status — active count and idle/in-progress indicator.\n\nUse "Clear finished" to remove completed transfers, or "Close" to collapse the panel.',
+		message: 'Use Clear finished to remove completed items, or Close to collapse the panel without stopping transfers.',
 		placement: 'bottom',
 	},
 	{
 		target: '[data-tour="transfer-dock-body"]',
-		message: 'Each file shows its upload progress with speed, ETA, and a progress bar.\n\nFiles are grouped by destination. You can cancel individual uploads or dismiss entire groups when finished.',
+		message: 'Check the progress of uploads and media processing here. Expand a group to see its files and available actions.',
 		placement: 'bottom',
 	},
 ]
 
-// Trigger dock tour the first time the panel opens
-let _dockTourTriggered = false
-
-function triggerDockTour() {
-	setTimeout(() => {
-		requestTour('transfer-dock', transferDockTourSteps, () => markDone('transferDockTourDone'))
-	}, 600)
-}
-
-watch(() => state.open, (open) => {
-	if (open && !_dockTourTriggered && !onboarding.value.transferDockTourDone) {
-		_dockTourTriggered = true
-		if (quickShareOverlayOpen.value) {
-			// Defer tour until the Quick Share overlay closes
-			const stop = watch(quickShareOverlayOpen, (overlayOpen) => {
-				if (!overlayOpen) {
-					stop()
-					triggerDockTour()
-				}
-			})
-		} else {
-			triggerDockTour()
-		}
-	}
-})
+useContextTour('transfer-dock', 'transferDockTourDone',
+	() => state.open && !quickShareOverlayOpen.value, () => transferDockTourSteps)
 
 function basename(p?: string) {
     if (!p) return ''

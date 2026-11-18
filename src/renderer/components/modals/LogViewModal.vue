@@ -11,9 +11,9 @@
                 </button>
           </template>
 
-          <div class="text-left min-h-0" data-tour="logs-modal-body">
+          <div class="text-left min-h-0">
             <!-- Source selector tabs -->
-            <div class="flex items-center gap-1 mb-4 border-b border-default">
+            <div class="flex items-center gap-1 mb-4 border-b border-default" data-tour="logs-modal-body">
               <button
                 type="button"
                 class="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
@@ -199,7 +199,7 @@
               </div>
             </div>
 
-            <div class="flex flex-wrap items-center gap-2 mb-4">
+            <div class="flex flex-wrap items-center gap-2 mb-4" data-tour="logs-modal-filters">
               <input
                 v-model.trim="search"
                 type="search"
@@ -365,14 +365,12 @@
 import FlowModal from "../../ui/FlowModal.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { useTimeFormat } from "../../composables/useTimeFormat";
-import { useTourManager, type TourStep } from "../../composables/useTourManager";
-import { useOnboarding } from "../../composables/useOnboarding";
+import { useContextTour } from "../../composables/useContextTour";
+import type { TourStep } from "../../composables/useTourManager";
 import { useApi } from "../../composables/useApi";
 import { useConnections } from "../../composables/useConnections";
 import { isAdminSession } from "../../composables/adminSession";
 
-const { requestTour } = useTourManager();
-const { onboarding, markDone } = useOnboarding();
 const { connections, activeConnection } = useConnections();
 
 const connectedServers = computed(() => connections.filter(c => c.status === 'connected'));
@@ -414,11 +412,15 @@ function getServerApiFetch() {
 const logsTourSteps: TourStep[] = [
 	{
 		target: '[data-tour="logs-modal-header"]',
-		message: 'The Log Viewer shows parsed entries from the local app log file or the connected server audit log.\n\nUse the tabs to switch between Client and Server logs.',
+		message: 'Open Log Viewer to investigate an issue. Use Refresh to pull in recent events.',
 	},
 	{
 		target: '[data-tour="logs-modal-body"]',
-		message: 'The log body shows stats (error/warning/info/debug counts), a search bar, and level filters.\n\nThe table below lists each log entry with timestamp, level, event, and summary. Click any row to expand details.',
+		message: 'Switch between events from this app and the server audit log. If more than one server is listed, select the one you want to inspect.',
+	},
+	{
+		target: '[data-tour="logs-modal-filters"]',
+		message: 'Search or filter by level to narrow the results. Open a row below to see the event details.',
 	},
 ]
 
@@ -886,12 +888,6 @@ function close() {
   emit("close");
 }
 
-onMounted(() => {
-  refresh();
-  if (!onboarding.value.viewLogsTourDone) {
-    setTimeout(() => {
-      requestTour('view-logs', logsTourSteps, () => markDone('viewLogsTourDone'))
-    }, 400)
-  }
-});
+onMounted(refresh);
+useContextTour('view-logs', 'viewLogsTourDone', () => true, () => logsTourSteps);
 </script>

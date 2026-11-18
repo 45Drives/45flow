@@ -43,6 +43,29 @@ describe('revisiting skipped setup from Settings', () => {
     expect(useSetupReplay(() => serverSetupKey(mocks.connection.value)).requested.value).toBe(true)
     expect(mocks.apiFetch).toHaveBeenCalledTimes(callsBefore)
   })
+
+  it('saves the server-wide .45flow default without a Pro license', async () => {
+    vi.useFakeTimers()
+    const token = `header.${btoa(JSON.stringify({ amr: ['pam'], exp: Date.now() / 1000 + 600 }))}.signature`
+    mocks.connection = ref({ connectionId: 'server-one', token })
+    mocks.apiFetch.mockReset().mockResolvedValue({ showFlowFolderDefault: false })
+    window.electron = { isWeb: true }
+    host = document.createElement('div')
+    document.body.appendChild(host)
+    app = createApp(SettingsModal, { initialSection: 'fileBrowsing' })
+    app.mount(host)
+    for (let i = 0; i < 12; i++) { await Promise.resolve(); await nextTick() }
+    const toggle = [...host.querySelectorAll('[role="switch"]')].find(item => item.textContent.trim() === 'Show .45flow by default')
+    expect(toggle.getAttribute('aria-checked')).toBe('false')
+    toggle.click()
+    await nextTick()
+    const save = [...host.querySelectorAll('button')].find(item => item.textContent.trim() === 'Save changes')
+    expect(save.disabled).toBe(false)
+    save.click()
+    await nextTick()
+    const [, init] = mocks.apiFetch.mock.calls.find(([url, opts]) => url === '/api/settings' && opts?.method === 'POST')
+    expect(JSON.parse(init.body).showFlowFolderDefault).toBe(true)
+  })
   it('opens every shared panel from the existing Settings section rail and removes old folder editing', async () => {
     vi.useFakeTimers()
     const token = `header.${btoa(JSON.stringify({ amr: ['pam'], exp: Date.now() / 1000 + 600 }))}.signature`

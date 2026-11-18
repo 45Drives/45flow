@@ -603,8 +603,8 @@ import { loadProjectWatermarks, canonicalWatermarkSelection } from '../composabl
 import { uploadErrorMessage } from '../utils/uploadErrorMessage'
 import WatermarkPreview from '../components/WatermarkPreview.vue'
 import { useLicenseStatus } from '../composables/useLicenseStatus'
-import { useTourManager, type TourStep } from '../composables/useTourManager'
-import { useOnboarding } from '../composables/useOnboarding'
+import { useContextTour } from '../composables/useContextTour'
+import type { TourStep } from '../composables/useTourManager'
 import ConfirmDeleteModal from '../components/modals/ConfirmDeleteModal.vue'
 import AddUsersModal from '../components/modals/AddUsersModal.vue'
 import CategoryManagementModal from '../components/modals/CategoryManagementModal.vue'
@@ -1569,37 +1569,30 @@ function goBack() {
 }
 
 // ── Guided Tour ──
-const { requestTour } = useTourManager()
-const { onboarding, markDone } = useOnboarding()
-
-const createLinkTourSteps = computed<TourStep[]>(() => [
+const createLinkTourSteps: TourStep[] = [
 	{
 		target: '[data-tour="create-link-capabilities"]',
-		message: 'Welcome to Create Link!\n\nOne link can let your client review files, upload files to you, or both. The link is saved in the project shown at the top right.',
+		message: 'Use one link for review, client uploads, or both. Check the Project picker if the link belongs to a different project.',
 	},
 	{
 		target: '[data-tour="create-link-share-files"]',
-		message: 'Pick the files your client should review or download. Check a folder to include everything in it.\n\nLeave this empty if you only want the client to send you files; the link becomes upload-only.',
+		message: 'Select files for your client to review or download. Check a folder to include its contents.',
 	},
 	{
 		target: '[data-tour="create-link-upload-dest"]',
-		message: 'Want files back from the client? Check "Let client upload to" and choose the folder their uploads should land in. Type a path or click Browse.',
+		message: 'To receive files, turn on “Let client upload to” and choose a destination. Leave Files to share empty for an upload-only link.',
 	},
 	{
 		target: '[data-tour="create-link-options"]',
-		message: 'Set when the link expires, whether it works over the internet or only on your network, and who can open it: anyone with the link, anyone with a password, or only invited clients and teams.\n\nWith comments on, you can also set comment categories to organize feedback.',
-	},
-	{
-		target: '[data-tour="create-link-media-options"]',
-		message: isPremiumActive.value
-			? 'Sharing video or images? Media options appear here.\n\nFor video, choose proxy file sizes (720p, 1080p, full res) your client can download. A stream is also made so it plays smoothly in the browser.\n\nWatermarks support PNG, JPG and SVG with full control over position, size, opacity and tiling (Pro).'
-			: 'Sharing video or images? Media options appear here.\n\nFor video, choose proxy file sizes (720p, 1080p, full res) your client can download. A stream is also made so it plays smoothly in the browser.\n\nA basic watermark goes in the bottom-right corner. Upgrade to Pro to control position, size and opacity.',
+		message: 'Set when the link expires, where it works (local network or internet), and who can open it. For invited access, add the clients or teams before generating.',
 	},
 	{
 		target: '[data-tour="create-link-generate-btn"]',
-		message: 'Click here to create the link, then copy it and send it to your client.',
+		message: 'Generate the link when it’s ready. Copy it to share yourself, or add email recipients above to send it from 45Flow.',
+		placement: 'top',
 	},
-])
+]
+useContextTour('create-link', 'createLinkTourDone', () => !initializing.value, () => createLinkTourSteps)
 
 onMounted(async () => {
 	try {
@@ -1628,11 +1621,5 @@ onMounted(async () => {
 		initializing.value = false
 	}
 
-	// Guided tour
-	if (!onboarding.value.createLinkTourDone) {
-		setTimeout(() => {
-			requestTour('create-link', createLinkTourSteps.value, () => markDone('createLinkTourDone'))
-		}, 500)
-	}
 })
 </script>

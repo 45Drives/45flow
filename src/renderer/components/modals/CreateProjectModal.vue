@@ -40,6 +40,7 @@
 				/>
 				<FolderSpaceNotice :path="finalRootDir" :apiFetch="apiFetch" />
 			</FlowField>
+			<ProjectFlowFolderField v-if="modelValue" v-model="showFlowFolder" />
 			<FlowField label="Notes" id="new-project-description" optional>
 				<template #default="{ id }">
 					<textarea
@@ -72,10 +73,17 @@ import { useConnections } from '../../composables/useConnections'
 import { pushNotification } from '../../composables/useNotificationQueue'
 import FolderPicker from '../FolderPicker.vue'
 import FolderSpaceNotice from '../FolderSpaceNotice.vue'
+import ProjectFlowFolderField from '../ProjectFlowFolderField.vue'
 import FlowModal from '../../ui/FlowModal.vue'
 import FlowField from '../../ui/FlowField.vue'
 
-export type ProjectDetails = { id: number; name: string; root_dir: string; description: string | null }
+export type ProjectDetails = {
+	id: number
+	name: string
+	root_dir: string
+	description: string | null
+	show_flow_folder?: boolean | null
+}
 const props = defineProps<{ modelValue: boolean; storageRoot?: string; project?: ProjectDetails; connectionId?: string }>()
 const emit = defineEmits<{
 	(e: 'update:modelValue', v: boolean): void
@@ -91,6 +99,7 @@ const name = ref('')
 const rootDir = ref('')
 const pickerBase = ref('')
 const description = ref('')
+const showFlowFolder = ref<boolean | null>(null)
 const creating = ref(false)
 
 const finalRootDir = computed(() => rootDir.value.trim())
@@ -113,6 +122,7 @@ function reset(open = false) {
 	rootDir.value = open ? props.project?.root_dir || '' : ''
 	pickerBase.value = ''
 	description.value = open ? props.project?.description || '' : ''
+	showFlowFolder.value = open ? props.project?.show_flow_folder ?? null : null
 }
 
 watch(() => props.modelValue, open => reset(open), { immediate: true })
@@ -132,6 +142,7 @@ async function submit() {
 				name: name.value.trim(),
 				rootDir: finalRootDir.value,
 				description: description.value.trim() || null,
+				showFlowFolder: showFlowFolder.value,
 			}),
 		})
 		const project = data?.project

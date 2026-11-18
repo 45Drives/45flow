@@ -441,7 +441,7 @@
           </button>
         </div>
 
-        <div class="flex-1 min-h-0 overflow-y-auto px-6 py-5" data-tour="link-details-config">
+        <div class="flex-1 min-h-0 overflow-y-auto px-6 py-5">
           <div>
             <div v-show="editTab === 'details'" id="ld-edit-panel-details" role="tabpanel" aria-labelledby="ld-edit-tab-details">
               <p class="flow-subhead flow-subhead--first">Details</p>
@@ -875,8 +875,8 @@ import { useRemoteTranscode } from '../../composables/useRemoteTranscode'
 import { useClientTranscode } from '../../composables/useClientTranscode'
 import { useCommentCategories } from '../../composables/useCommentCategories'
 import { connectionMetaInjectionKey } from '../../keys/injection-keys'
-import { useTourManager, type TourStep } from '../../composables/useTourManager'
-import { useOnboarding } from '../../composables/useOnboarding'
+import { useContextTour } from '../../composables/useContextTour'
+import type { TourStep } from '../../composables/useTourManager'
 import FlowModal from '../../ui/FlowModal.vue'
 import FlowChip from '../../ui/FlowChip.vue'
 import FlowEmpty from '../../ui/FlowEmpty.vue'
@@ -884,8 +884,6 @@ import FlowNotice from '../../ui/FlowNotice.vue'
 import FlowSwitch from '../../ui/FlowSwitch.vue'
 import LinkAccessList from '../access/LinkAccessList.vue'
 
-const { requestTour } = useTourManager()
-const { onboarding, markDone } = useOnboarding()
 const { isPremiumActive } = useLicenseStatus()
 const { runRemoteTranscode, isRemoteTranscoding: isRemoteTranscodingCheck } = useRemoteTranscode()
 const { enabled: clientTranscodeEnabled } = useClientTranscode()
@@ -894,44 +892,42 @@ const linkDetailsTourSteps = computed<TourStep[]>(() => [
 	{
 		target: '[data-tour="link-details-header"]',
 		message: isPremiumActive.value
-			? 'This is Link Details.\n\nClick "Edit" to change the link, "Comments" to review, categorize and export feedback (Pro), or "Close" when done.'
-			: 'This is Link Details.\n\nClick "Edit" to change the link, or "Close" when done.',
+			? 'Use Edit to change the live link, or Comments to find, organize, and export feedback.'
+			: 'Use Edit to change the live link without creating a new one.',
 	},
 	{
 		target: '[data-tour="link-details-meta"]',
-		message: 'The top of the window shows whether the link is active, its address, who can open it, and when it was created and expires.\n\nClick "Copy link" to copy the address.',
+		message: 'Check the link’s status, access, and expiry before using Copy link to share its address.',
 	},
 	{
-		target: '[data-tour="link-details-config"]',
-		message: 'Overview sums up the link: who can open it (and who is invited), its shared files, where uploads are saved, its proxy files and watermark, and your notes.\n\nYou can also delete the link from the bottom of this tab.',
+		target: '#ld-tab-overview',
+		message: 'Use Overview to check invitations, upload settings, and notes for this link.',
 	},
 	{
 		target: '[data-tour="link-details-files"]',
-		message: 'Files lists every file on the link and the progress of any proxy files being made.\n\nFor review links these are the files people can open. For upload links these are the files people have sent you.',
+		message: 'Use Files to see what’s shared or uploaded, and whether media processing is still in progress.',
 	},
 	{
 		target: '[data-tour="link-details-activity"]',
-		message: isPremiumActive.value
-			? 'Activity is a log of everything that happened on this link: views, downloads, uploads, comments and changes.\n\nFilter by action or search to find something.'
-			: 'Activity is a log of everything that happened on this link: views, downloads, uploads and changes.\n\nFilter by action or search to find something.',
+		message: 'Use Activity to check what happened on this link. Search or filter to find a specific event.',
 	},
 ])
 
-const linkDetailsEditTourSteps = computed<TourStep[]>(() => [
+const linkDetailsEditTourSteps: TourStep[] = [
 	{
-		target: '[data-tour="link-details-config"]',
-		message: isPremiumActive.value
-			? 'You are editing the link. Use the tabs to move between its settings.\n\nDetails: title, project, notes and whether it is for review, upload or both. Access: who can open it. Files and Uploads: what it shares and where uploads go, with file requirements for uploads. Playback: proxy files and watermark, with full position, size and opacity controls.\n\nA red dot marks a tab that needs attention before you can save.'
-			: 'You are editing the link. Use the tabs to move between its settings.\n\nDetails: title, project, notes and whether it is for review, upload or both. Access: who can open it. Files and Uploads: what it shares and where uploads go. Playback: proxy files and watermark.\n\nA red dot marks a tab that needs attention before you can save.',
+		target: '#ld-edit-tab-details',
+		message: 'In Details, choose whether the link supports review, uploads, or both. That determines which file and upload tabs are available.',
+	},
+	{
+		target: '#ld-edit-tab-access',
+		message: 'Use Access to change who can open the link. A red dot on any tab means something needs attention before you can save.',
 	},
 	{
 		target: '[data-tour="link-details-save"]',
-		message: 'Click "Save & close" when you are done, or "Cancel" to go back without saving.\n\nChanges apply to the live link as soon as you save. Anything blocking the save is shown on the left.',
+		message: 'Save & close applies changes to the live link. Use Cancel to leave it unchanged.',
+		placement: 'top',
 	},
-])
-
-let _detailsTourTriggered = false
-let _editTourTriggered = false
+]
 
 const props = defineProps<{
   modelValue: boolean
@@ -945,15 +941,10 @@ const emit = defineEmits<{
   (e: 'requestDelete', link: LinkItem): void
 }>()
 
-// Tour: trigger on first open
-watch(() => props.modelValue, (open) => {
-	if (open && !_detailsTourTriggered && !onboarding.value.linkDetailsTourDone) {
-		_detailsTourTriggered = true
-		setTimeout(() => {
-			requestTour('link-details', linkDetailsTourSteps.value, () => markDone('linkDetailsTourDone'))
-		}, 400)
-	}
-})
+useContextTour('link-details', 'linkDetailsTourDone',
+	() => props.modelValue && !!props.link && !editMode.value && !commentsModalOpen.value, () => linkDetailsTourSteps.value)
+useContextTour('link-details-edit', 'linkDetailsEditTourDone',
+	() => props.modelValue && !!props.link && editMode.value && !accessModalOpen.value, () => linkDetailsEditTourSteps)
 
 const transfer = useTransferProgress()
 const { checkExternalAddressReady } = useExternalAddressReadiness()
@@ -4114,14 +4105,6 @@ function beginEdit(tab: EditTab = 'details') {
   editMode.value = true
   editTab.value = tab
   void loadUploadSpec()
-
-  // Tour: show edit-mode tour the first time
-  if (!_editTourTriggered && !onboarding.value.linkDetailsEditTourDone) {
-    _editTourTriggered = true
-    setTimeout(() => {
-      requestTour('link-details-edit', linkDetailsEditTourSteps.value, () => markDone('linkDetailsEditTourDone'))
-    }, 300)
-  }
 
   draftTitle.value = props.link.title || ''
   draftNotes.value = (props.link as any).notes || ''
