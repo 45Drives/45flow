@@ -144,7 +144,9 @@ const _state = reactive<ConnectionsState>({
 function persist() {
   try {
     const data = {
-      connections: _state.connections.map(({ token, savedPassword, ...metadata }) => metadata),
+      // A P2P connection's baseUrl is this launch's proxy (it carries a per-launch secret), never saved.
+      connections: _state.connections.map(({ token, savedPassword, ...metadata }) =>
+        metadata.p2pAddress ? { ...metadata, baseUrl: '' } : metadata),
       activeConnectionId: _state.activeConnectionId,
       _migrated: _state._migrated
     }
@@ -174,6 +176,7 @@ function load() {
         token: !window.electron?.isWeb && typeof c.token === 'string' ? c.token : '',
         savedPassword: !window.electron?.isWeb && typeof c.savedPassword === 'string' ? c.savedPassword : undefined,
         status: 'disconnected',
+        baseUrl: c.p2pAddress ? '' : c.baseUrl,
         licensed: typeof c.licensed === 'boolean' ? c.licensed : false,
         licenseFallback: typeof c.licenseFallback === 'boolean' ? c.licenseFallback : false,
       }))
@@ -293,14 +296,17 @@ function upgradeDesktopBaseUrls() {
 
 /**
  * A saved P2P connection points at a local proxy that only exists while the app runs (its address carries a
- * per-launch secret): start each one again, in parallel and in the background so an offline server never
- * delays start-up. One that cannot start is marked unavailable instead of keeping an address nothing serves.
+ * per-launch secret, so it is never saved): start each one again, in parallel. Only the active connection is
+ * waited for, so its baseUrl is live before the first dashboard fetch; the rest finish in the background so an
+ * offline server never delays start-up beyond the one signaling timeout. One that cannot start is marked
+ * unavailable instead of keeping an address nothing serves.
  */
-function restartP2pProxies() {
+async function restartP2pProxies() {
   if (window.electron?.isWeb) return
+  const starts: Promise<void>[] = []
   for (const connection of _state.connections) {
     if (!connection.p2pAddress) continue
-    startP2pProxy(connection.p2pAddress, connection.directUrl).then(
+    const started = startP2pProxy(connection.p2pAddress, connection.directUrl).then(
       ({ baseUrl }) => {
         connection.baseUrl = baseUrl
         if (connection.status === 'error') connection.status = 'disconnected'
@@ -312,7 +318,9 @@ function restartP2pProxies() {
         console.error('[connections] could not start the P2P proxy')
       },
     )
+    if (connection.connectionId === _state.activeConnectionId) starts.push(started)
   }
+  await Promise.all(starts)
 }
 
 /** Let the main process verify each server's certificate over SSH before the first request. */
@@ -337,7 +345,7 @@ export function initializeConnections(): Promise<void> {
     // Scrub both legacy storage surfaces before any asynchronous keyring operation.
     persist()
     await registerDesktopTrust()
-    restartP2pProxies()
+    await restartP2pProxies()
     const api = window.electron?.secureToken
     if (!api) {
       memoryOnlyNotice()

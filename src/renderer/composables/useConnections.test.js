@@ -178,3 +178,42 @@ describe('connection credential migration and persistence', () => {
     expectNoBrowserCredentials()
   })
 })
+
+describe('P8 P2P connections', () => {
+  const p2p = () => ({ ...connection(), p2pAddress: 'https://aaaaaaaaaaaaaaaa.example.org', baseUrl: 'http://127.0.0.1:1/p2p-oldsecret' })
+
+  it('P8 never saves or reloads a proxy base URL and has the active one ready before init resolves', async () => {
+    seed([p2p(), { ...connection(), connectionId: 'connection-two', p2pAddress: 'https://bbbbbbbbbbbbbbbb.example.org', baseUrl: 'http://127.0.0.1:1/p2p-old2' }])
+    let releaseOther
+    const invoke = vi.fn(async (channel, args) => {
+      if (channel !== 'p2p:start') return undefined
+      if (args.address.startsWith('https://bbbb')) return new Promise(resolve => { releaseOther = () => resolve({ baseUrl: 'http://127.0.0.1:9/p2p-new2', mode: 'p2p' }) })
+      return { baseUrl: 'http://127.0.0.1:9/p2p-newsecret', mode: 'p2p' }
+    })
+    vi.stubGlobal('electron', { secureToken: api, ipcRenderer: { invoke } })
+    const module = await import('./useConnections')
+    await module.initializeConnections()
+    const { getConnection } = module.useConnections()
+    const active = getConnection('connection-one'), other = getConnection('connection-two')
+    expect(active.baseUrl).toBe('http://127.0.0.1:9/p2p-newsecret')
+    expect(other.baseUrl).toBe('')
+    releaseOther()
+    await vi.waitFor(() => expect(other.baseUrl).toBe('http://127.0.0.1:9/p2p-new2'))
+    await nextTick()
+    const stored = localStorage.getItem(STORAGE_KEY)
+    expect(stored).not.toContain('p2p-')
+    expect(stored).not.toContain('oldsecret')
+  })
+
+  it('P8 shows the error state for an active P2P connection that cannot start, without a stale address', async () => {
+    seed([p2p()])
+    const invoke = vi.fn(async () => { throw new Error("Can't connect to this server right now.") })
+    vi.stubGlobal('electron', { secureToken: api, ipcRenderer: { invoke } })
+    const module = await import('./useConnections')
+    await module.initializeConnections()
+    expect(module.useConnections().activeConnection.value).toMatchObject({
+      baseUrl: '', status: 'error', lastError: "Can't connect to this server right now.",
+    })
+  })
+})
+

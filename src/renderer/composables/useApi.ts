@@ -171,7 +171,8 @@ function createApiClient(
     const baseUrl = computed(() => {
         const conn = connection.value
         if (!conn?.baseUrl) return ''
-        if (options.transport !== 'nginx-https') return conn.baseUrl
+        // A P2P connection's baseUrl is the local proxy, which already reaches the server's nginx.
+        if (options.transport !== 'nginx-https' || conn.p2pAddress) return conn.baseUrl
 
         const url = new URL(conn.baseUrl)
         if (url.protocol !== 'http:' && url.protocol !== 'https:') {
@@ -191,7 +192,7 @@ function createApiClient(
     let certificatePreparation: { key: string; promise: Promise<void> } | undefined
 
     async function prepareCertificate(conn: Connection, requestBaseUrl: string) {
-        if (options.transport !== 'nginx-https' || !window.electron || window.electron.isWeb) return
+        if (options.transport !== 'nginx-https' || conn.p2pAddress || !window.electron || window.electron.isWeb) return
         const ssh = conn.ssh
         if (!ssh) throw new Error('Reconnect to this server to establish SSH access before opening Admin Networks.')
         const details = {

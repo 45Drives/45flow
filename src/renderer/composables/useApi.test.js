@@ -391,3 +391,18 @@ describe('admin API error propagation without changing existing defaults', () =>
         expect(fetch.mock.calls[0][1].headers.get('Content-Type')).toBe('application/json')
     })
 })
+
+describe('P8 P2P connections and the nginx-https transport', () => {
+    it('P8 leaves the proxy base URL untouched and skips SSH certificate setup for a P2P connection', async () => {
+        Object.assign(mocks.connections[0], { baseUrl: 'http://127.0.0.1:5555/p2p-abc', p2pAddress: 'https://aaaaaaaaaaaaaaaa.example.org' })
+        const invoke = vi.fn()
+        vi.stubGlobal('electron', { ipcRenderer: { invoke } })
+        const fetch = vi.fn(async () => new Response('{}'))
+        vi.stubGlobal('fetch', fetch)
+        const { apiFetch, baseUrl } = useApi('test-connection', { transport: 'nginx-https' })
+        expect(baseUrl.value).toBe('http://127.0.0.1:5555/p2p-abc')
+        await apiFetch('/api/admin/nginx-admin-cidrs')
+        expect(invoke).not.toHaveBeenCalled()
+        expect(fetch.mock.calls[0][0]).toBe('http://127.0.0.1:5555/p2p-abc/api/admin/nginx-admin-cidrs')
+    })
+})

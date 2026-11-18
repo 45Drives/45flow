@@ -498,7 +498,7 @@
                                         Open User Guide
                                     </button>
                                 </SettingRow>
-                                <SettingRow label="API Documentation" description="Open the interactive Swagger API docs for your connected server.">
+                                <SettingRow v-if="!activeConnection?.p2pAddress" label="API Documentation" description="Open the interactive Swagger API docs for your connected server.">
                                     <button
                                         class="btn btn-secondary text-sm px-3 py-1"
                                         type="button"
