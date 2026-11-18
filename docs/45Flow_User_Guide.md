@@ -526,7 +526,7 @@ To switch to a different project, return to the project list and open another on
 From the Projects screen, click **"+ New Project"** to create a new project:
 
 1. Enter a **Project name** — A descriptive name (e.g., "Acme Corp Review", "Spring Campaign Edit").
-2. Pick the **Project folder** — The folder on the server that holds this project's media, inside the configured storage root. Browse to it, or type its full path and press **Enter** or leave the path field to apply it. To use a fresh folder, click **"New Folder"** in the folder browser, then select it. Storage can use ZFS or another supported mounted filesystem.
+2. Pick the **Project folder** — The folder on the server that holds this project's media, inside the configured storage root. Click a folder to select it and browse its contents, or type its full path and press **Enter** or leave the path field to apply it. To use a fresh folder, click **"New Folder"** in the folder browser, then select it. Storage can use ZFS or another supported mounted filesystem.
 3. For **.45flow folder visibility**, leave **Use server default** selected, or choose **Show .45flow** or **Hide .45flow** for this project.
 4. *(Optional)* Add **Notes** about the project — client, deliverables, anything your team should know.
 5. Click **"Create Project"**.

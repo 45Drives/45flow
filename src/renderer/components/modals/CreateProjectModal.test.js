@@ -39,6 +39,37 @@ function mount(storageRoot = '/tank', extra = {}) {
 }
 
 describe('project folder typed paths', () => {
+  it('opens nested folders in list view without creating the project until submitted', async () => {
+    mocks.apiFetch.mockImplementation(async (url, init) => {
+      if (init?.method === 'POST' && url === '/api/projects') return { project: { id: 1 } }
+      if (url.startsWith('/api/files?')) {
+        const dir = new URL(url, 'http://localhost').searchParams.get('dir')
+        const entries = dir === 'tank' ? [{ name: 'parent', isDir: true }]
+          : dir === 'tank/parent' ? [{ name: 'child', isDir: true }] : []
+        return { dir, entries }
+      }
+      return { entries: [] }
+    })
+    mount()
+    await flush()
+    const name = host.querySelector('#new-project-name')
+    name.value = 'Nested project'
+    name.dispatchEvent(new Event('input', { bubbles: true }))
+    host.querySelector('[aria-label="List view"]').click()
+    await flush()
+    host.querySelector('[title="tank/parent/"]').click()
+    await flush()
+    expect(host.querySelector('[title="tank/parent/child/"]')).not.toBeNull()
+    host.querySelector('[title="tank/parent/child/"]').click()
+    await flush()
+    expect(host.querySelector('[data-path-input-root] input').value).toBe('/tank/parent/child/')
+    expect(mocks.apiFetch.mock.calls.some(([url, init]) => url === '/api/projects' && init?.method === 'POST')).toBe(false)
+    host.querySelector('#create-project-form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    await flush()
+    const [, init] = mocks.apiFetch.mock.calls.find(([url, opts]) => url === '/api/projects' && opts?.method === 'POST')
+    expect(JSON.parse(init.body).rootDir).toBe('tank/parent/child')
+  })
+
   it.each(['grid', 'list'])('uses the server path once when selecting a folder in %s view', async view => {
     mocks.apiFetch.mockImplementation(async (url, init) => {
       if (init?.method === 'POST' && url === '/api/projects') return { project: { id: 1 } }

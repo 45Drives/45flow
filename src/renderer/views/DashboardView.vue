@@ -178,11 +178,8 @@
 		<!-- ═══════════ Project Detail View (Links) ═══════════ -->
 		<div v-else class="dashboard-content-wrap" data-tour="manage-links">
 			<div class="flex items-center justify-between gap-2 mb-2 px-1">
-				<h3 class="text-base font-semibold">Links</h3>
-				<div class="button-group-row text-xs">
-					<button class="btn btn-secondary" @click="startEditProject">Edit Project</button>
-					<button class="btn btn-dismiss" @click="backToProjects">Back to Projects</button>
-				</div>
+				<button class="btn btn-dismiss" @click="backToProjects">Back to Projects</button>
+				<button class="btn btn-secondary" @click="startEditProject">Edit Project</button>
 			</div>
 
 			<ManageLinks :projectId="activeProject.id" :key="activeProject.id" :tourActive="tourShowDemoLinks"/>

@@ -6,9 +6,9 @@
             isActiveFolder ? 'active-folder-row' : 'ss-explorer-hover',
             { 'tree-node-row--folders': hideMetadata }
         ]"
-            @click="modeIsUpload ? selectFolder() : onRowClick()"
-            @keydown.enter.prevent="modeIsUpload ? selectFolder() : onRowClick()"
-            @keydown.space.prevent="modeIsUpload ? selectFolder() : onRowClick()" role="button" tabindex="0"
+            @click="modeIsUpload ? selectAndExpandFolder() : onRowClick()"
+            @keydown.enter.prevent="modeIsUpload ? selectAndExpandFolder() : onRowClick()"
+            @keydown.space.prevent="modeIsUpload ? selectAndExpandFolder() : onRowClick()" role="button" tabindex="0"
             :aria-expanded="open">
             <!-- checkbox col -->
             <div class="px-2 py-1 flex justify-center">
@@ -51,7 +51,7 @@
 
                     <!-- label (also stops bubbling; the row already handles click) -->
                     <button type="button" class="underline truncate font-semibold min-w-0" :title="(relPath || label) + '/'"
-                        @click.stop="modeIsUpload ? emit('select-folder', props.relPath || '') : onFolderExpandToggle()">
+                        @click.stop="modeIsUpload ? selectAndExpandFolder() : onFolderExpandToggle()">
                         {{ label }}/
                     </button>
                 </div>
@@ -348,6 +348,11 @@ function onFileToggle(path: string, event?: MouseEvent) {
 
 function selectFolder() {
   emit('select-folder', props.relPath || '')
+}
+
+function selectAndExpandFolder() {
+  selectFolder()
+  if (!open.value) toggleOpen()
 }
 </script>
 
