@@ -59,3 +59,38 @@ describe('P5 Settings P2P toggle', () => {
         }))
     })
 })
+
+describe('P13 Settings P2P activation', () => {
+    const NAME = 'abcdefghijklmnop.45flow.45d.io'
+    const state = (p2p, enabled = true) => list(p2pCall({ enabled, p2p }))
+    const copyButton = () => [...host.querySelectorAll('button')].find((b) => b.textContent.includes('Copy address'))
+
+    it('P13 shows the waiting-for-activation request while P2P is on and pending', async () => {
+        const writeText = vi.fn().mockResolvedValue()
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+        mocks.apiFetch.mockResolvedValueOnce(state({ address: NAME, state: 'pending', checkedAt: null }))
+        await mount()
+        expect(host.textContent).toContain(`Waiting for 45Drives to activate ${NAME}`)
+        expect(host.textContent).toContain('support@45drives.com')
+        expect(copyButton()).toBeTruthy()
+        copyButton().click()
+        await flush()
+        expect(writeText).toHaveBeenCalledWith(NAME)
+    })
+
+    it('P13 shows the address as active once activated', async () => {
+        mocks.apiFetch.mockResolvedValueOnce(state({ address: NAME, state: 'active', checkedAt: '2026-11-19T12:00:00Z' }))
+        await mount()
+        expect(host.textContent).toContain('Your P2P address is active')
+        expect(host.textContent).toContain(NAME)
+        expect(host.textContent).not.toContain('Waiting for 45Drives')
+        expect(copyButton()).toBeFalsy()
+    })
+
+    it('P13 shows nothing about activation while P2P is off', async () => {
+        mocks.apiFetch.mockResolvedValueOnce(state({ address: NAME, state: 'off', checkedAt: null }, false))
+        await mount()
+        expect(host.textContent).not.toContain('Waiting for 45Drives')
+        expect(host.textContent).not.toContain('Your P2P address is active')
+    })
+})

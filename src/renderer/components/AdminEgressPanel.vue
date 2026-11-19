@@ -35,6 +35,22 @@
                 <p v-if="needsLicense(call)" class="text-xs mt-0.5 text-muted basis-full" role="note">
                     Needs a 45Flow Premium license. Activate one under License to turn this on.
                 </p>
+                <div v-if="showActivation(call)" class="basis-full mt-1" data-test="p2p-activation">
+                    <FlowNotice v-if="call.p2p?.state === 'active'" tone="success" size="sm" live>
+                        Your P2P address is active: <span class="font-mono break-all">{{ call.p2p.address }}</span>
+                        <span class="block text-xs mt-0.5">New share links use it.</span>
+                    </FlowNotice>
+                    <FlowNotice v-else tone="info" size="sm" live>
+                        <span class="block">Waiting for 45Drives to activate <span class="font-mono break-all">{{ call.p2p?.address }}</span></span>
+                        <span class="block text-xs mt-0.5">
+                            New share links use your direct address until it is active, then switch automatically.
+                            Ask 45Drives support to activate it: {{ SUPPORT_CONTACT }}.
+                        </span>
+                        <template #actions>
+                            <FlowButton size="xs" @click="copyAddress(call.p2p?.address)">{{ copied ? 'Copied' : 'Copy address' }}</FlowButton>
+                        </template>
+                    </FlowNotice>
+                </div>
             </li>
         </ul>
     </section>
@@ -47,6 +63,7 @@ import FlowNotice from '../ui/FlowNotice.vue'
 import FlowButton from '../ui/FlowButton.vue'
 import FlowChip from '../ui/FlowChip.vue'
 import FlowSwitch from '../ui/FlowSwitch.vue'
+import { writeClipboard } from '../clipboard'
 
 type EgressCall = {
     id: string
@@ -61,6 +78,8 @@ type EgressCall = {
     inProcess: boolean
     notActive?: boolean
     licensed?: boolean
+    /** P2P only: the address and whether 45Drives has activated it ('off' | 'pending' | 'active'). */
+    p2p?: { address: string | null; state: 'off' | 'pending' | 'active'; checkedAt: string | null }
     lastCall: { ts: string; ok: boolean; status: number | null } | null
     recent: { calls: number; failures: number; lastAt: string | null }
 }
@@ -75,6 +94,24 @@ const statsDays = ref(30)
 const loading = ref(false)
 const saving = ref<string | null>(null)
 const error = ref('')
+const copied = ref(false)
+
+const SUPPORT_CONTACT = 'support@45drives.com'
+
+// Only while P2P is on and an address exists: waiting for activation, or active.
+const showActivation = (call: EgressCall) =>
+    call.id === 'p2p-handshake' && call.enabled && !!call.p2p?.address && call.p2p.state !== 'off'
+
+async function copyAddress(address?: string | null) {
+    if (!address) return
+    try {
+        await writeClipboard(address)
+        copied.value = true
+        setTimeout(() => { copied.value = false }, 3000)
+    } catch (e: unknown) {
+        error.value = e instanceof Error ? e.message : 'Couldn\'t copy the address.'
+    }
+}
 
 function badge(call: EgressCall): { text: string; tone: ChipTone } {
     if (call.notActive) return { text: 'Not active', tone: 'muted' }
