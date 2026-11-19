@@ -71,7 +71,7 @@ describe('P13 Settings P2P activation', () => {
         mocks.apiFetch.mockResolvedValueOnce(state({ address: NAME, state: 'pending', checkedAt: null }))
         await mount()
         expect(host.textContent).toContain(`Waiting for 45Drives to activate ${NAME}`)
-        expect(host.textContent).toContain('support@45drives.com')
+        expect(host.textContent).toContain('info@45drives.com')
         expect(copyButton()).toBeTruthy()
         copyButton().click()
         await flush()

@@ -96,7 +96,7 @@ const saving = ref<string | null>(null)
 const error = ref('')
 const copied = ref(false)
 
-const SUPPORT_CONTACT = 'support@45drives.com'
+const SUPPORT_CONTACT = 'info@45drives.com'
 
 // Only while P2P is on and an address exists: waiting for activation, or active.
 const showActivation = (call: EgressCall) =>
