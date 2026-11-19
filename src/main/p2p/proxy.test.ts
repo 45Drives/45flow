@@ -155,6 +155,36 @@ it('P8 falls back to the direct address when P2P cannot connect', async () => {
 }, 60000)
 
 
+it('P8 falls back to the address the server registered', async () => {
+  // A handshake service whose welcome carries the server's registered address, then never answers.
+  const welcoming = new WebSocketServer({ port: 0, host: '127.0.0.1', path: '/__p2p/signal' })
+  welcoming.on('connection', (ws: any) => {
+    ws.on('message', (raw: Buffer) => {
+      if (JSON.parse(raw.toString()).t === 'viewer') {
+        ws.send(JSON.stringify({ v: 1, t: 'welcome', id: 'abcdefghijklmnop', hostOnline: true, directAddress: fixtureUrl }))
+      }
+    })
+  })
+  await new Promise<void>((r) => welcoming.on('listening', () => r()))
+  try {
+    const base = { address: ADDRESS, signalUrl: `ws://127.0.0.1:${(welcoming.address() as AddressInfo).port}/__p2p/signal`, iceServers: [], connectTimeoutMs: 2000 }
+    const registered = createP2pProxy(base)
+    const started = await registered.start()
+    expect(started.mode).toBe('direct')
+    const before = hits.length
+    expect(JSON.parse((await call(started.baseUrl, '/api/hello')).body).hello).toBe('world')
+    expect(hits.length).toBe(before + 1)
+    await registered.close()
+
+    // An address the user entered still wins over the registered one.
+    const entered = createP2pProxy({ ...base, directUrl: 'http://127.0.0.1:1' })
+    await expect(entered.start()).rejects.toThrow(CANT_CONNECT_MESSAGE)
+  } finally {
+    await new Promise<void>((r) => welcoming.close(() => r()))
+  }
+}, 60000)
+
+
 const origin = (baseUrl: string) => new URL(baseUrl).origin
 
 it('P8 a request without the launch secret is refused (HTTP and WebSocket)', async () => {

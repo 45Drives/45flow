@@ -80,12 +80,15 @@ export function connectP2p(opts: ConnectOptions): Promise<P2pConnection> {
       try { pc?.close() } catch { /* already closed */ }
       for (const cb of closedCbs) { try { cb() } catch { /* listener failed */ } }
     }
+    // The address the server registered with the handshake service (welcome message), kept so the
+    // proxy can fall back to it when no direct connection opens.
+    let registeredDirect: string | undefined
     const fail = (message: string) => {
       if (settled) return
       settled = true
       clearTimeout(timer)
       teardown()
-      reject(new Error(message))
+      reject(Object.assign(new Error(message), { directAddress: registeredDirect }))
     }
     const timer = setTimeout(() => fail('timed out reaching the server'), timeoutMs)
 
@@ -140,6 +143,7 @@ export function connectP2p(opts: ConnectOptions): Promise<P2pConnection> {
       try { m = JSON.parse(raw.toString('utf8')) } catch { return }
       if (!m || typeof m !== 'object') return
       if (m.t === 'welcome') {
+        if (typeof m.directAddress === 'string') registeredDirect = m.directAddress
         if (m.hostOnline === false) return fail(ERROR_TEXT.unknown_server)
         startPeer()
       } else if (m.t === 'signal' && pc && m.data && typeof m.data === 'object') {

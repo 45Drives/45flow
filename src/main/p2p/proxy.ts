@@ -67,7 +67,8 @@ const CORS_SKIP = /^access-control-/i
 
 export function createP2pProxy(options: P2pProxyOptions): P2pProxy {
   const address = parseP2pAddress(options.address)
-  const direct = options.directUrl ? safeUrl(options.directUrl) : null
+  // A direct address the user entered wins; otherwise the one the server registered, learned when P2P fails.
+  let direct = options.directUrl ? safeUrl(options.directUrl) : null
   const log = options.log ?? (() => {})
   const connect = options.connect ?? connectP2p
   const timeoutMs = options.connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS
@@ -301,6 +302,10 @@ export function createP2pProxy(options: P2pProxyOptions): P2pProxy {
         mode = 'p2p'
       } catch (e: any) {
         log('p2p.connect.failed', { reason: e?.message })
+        if (!direct && typeof e?.directAddress === 'string') {
+          const registered = safeUrl(e.directAddress)
+          if (registered) direct = registered
+        }
       }
     }
     if (!mode) {
