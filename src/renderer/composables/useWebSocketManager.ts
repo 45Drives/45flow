@@ -8,9 +8,31 @@ import type { Connection } from './useConnections'
 import { WEB_SESSION_TOKEN } from '../web-session'
 import { handleUnauthorized } from './useApi'
 
+// Under the P2P loader the page is framed by the loader, which holds the data
+// channel and exposes window.parent.p2pTunnel (same origin only). Service workers
+// cannot carry WebSockets, so the socket goes through that tunnel instead.
+type TunnelSocket = Pick<WebSocket, 'send' | 'close' | 'onopen' | 'onmessage' | 'onerror' | 'onclose'>
+
+function getLoaderTunnel(): { openWebSocket(path: string): TunnelSocket } | null {
+  try {
+    if (typeof window === 'undefined' || window.parent === window) return null
+    const tunnel = (window.parent as any).p2pTunnel
+    return typeof tunnel?.openWebSocket === 'function' ? tunnel : null
+  } catch {
+    return null // cross-origin parent
+  }
+}
+
+function openSocket(wsUrl: string): TunnelSocket {
+  const tunnel = getLoaderTunnel()
+  if (!tunnel) return new WebSocket(wsUrl)
+  const u = new URL(wsUrl)
+  return tunnel.openWebSocket(u.pathname + u.search)
+}
+
 interface WebSocketConnection {
   connectionId: string
-  ws: WebSocket
+  ws: TunnelSocket
   status: 'connecting' | 'open' | 'closed' | 'error'
   subscriptions: Set<string> // Set of "channel:id"
   reconnectTimeout?: number
@@ -107,7 +129,7 @@ function connect(connection: Connection) {
   const wsUrl = baseUrl.replace(/^http/, 'ws') + '/api/ws'
   
   try {
-    const ws = new WebSocket(wsUrl)
+    const ws = openSocket(wsUrl)
     
     const wsConn: WebSocketConnection = {
       connectionId,
