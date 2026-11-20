@@ -2170,13 +2170,13 @@ A: The `houston-broadcaster` service must be running on the server. Try connecti
 **Q: External share links aren't working. What should I check?**  
 A: Ensure port 443 (or your custom HTTPS port) is forwarded on your router. Use the **"Check Port"** button when creating a link to verify. Also confirm your external URL is correctly configured in **Settings**.
 
-**Q: A viewer sees "Your VPN is blocking a direct connection" (or "Can't connect from this network") on a P2P link. What can they do?**  
-A: With remote access over P2P, the video goes straight from your server to the viewer; nothing is relayed through 45Drives. Most VPNs, and iCloud Private Relay, change their connection port for every server they talk to, and a direct connection can't be made through that. The viewer can:
-- Turn the VPN off while watching, then reload the link.
-- Exclude their browser from the VPN (most VPN apps call this **split tunnelling**), then reload.
+**Q: A viewer sees "This network blocks direct connections" (or "Can't connect from this network") on a P2P link. What can they do?**  
+A: With remote access over P2P, the video goes straight from your server to the viewer; nothing is relayed through 45Drives. Some networks change their connection port for every server they talk to, and a direct connection can't be made through them: most VPNs, iCloud Private Relay, and some mobile networks. The viewer can:
+- Turn the VPN off while watching, or exclude their browser from it (most VPN apps call this **split tunnelling**), then reload the link.
 - On ProtonVPN, turn on **Moderate NAT** in the VPN settings instead.
 - Turn off iCloud Private Relay for the page (Safari).
-Home Wi-Fi, most office networks and most mobile data connect without any of this.
+- On a phone, switch from mobile data to Wi-Fi, or try another network.
+Home Wi-Fi and most office networks connect without any of this; mobile data depends on the carrier.
 
 **Q: What file types are supported for upload?**  
 A: 45Flow supports a wide range of media file types including:
