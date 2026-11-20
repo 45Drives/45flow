@@ -27,6 +27,16 @@ export interface ExternalAddressReadiness {
 	 * possibly-stale hostname fetched at an earlier list/mount/render.
 	 */
 	base?: string | null
+	/** The server's active P2P address origin, or null when P2P isn't active. */
+	p2pBase?: string | null
+}
+
+function sameOrigin(a: string, b: string): boolean {
+	try {
+		return new URL(a).origin === new URL(b).origin
+	} catch {
+		return false
+	}
 }
 
 const READINESS_MESSAGES: Record<string, string> = {
@@ -91,10 +101,18 @@ export function describeExternalLinkCreateError(e: any): string | null {
 export function useExternalAddressReadiness() {
 	const { apiFetch } = useApi()
 
-	async function checkExternalAddressReady(): Promise<ExternalAddressReadiness> {
+	/**
+	 * With `url`: a link already on the server's active P2P address is ready
+	 * (it needs no public address or port forwarding) and keeps its origin.
+	 */
+	async function checkExternalAddressReady(url?: string | null): Promise<ExternalAddressReadiness> {
 		try {
 			const res = await apiFetch('/api/links/external-address-readiness', { method: 'GET' })
-			return { ready: !!res?.ready, reason: res?.reason, base: res?.base ?? null }
+			const p2pBase: string | null = res?.p2pBase ?? null
+			if (url && p2pBase && sameOrigin(url, p2pBase)) {
+				return { ready: true, reason: 'p2p', base: p2pBase, p2pBase }
+			}
+			return { ready: !!res?.ready, reason: res?.reason, base: res?.base ?? null, p2pBase }
 		} catch {
 			// Fail closed: if we can't confirm readiness, treat the address as not ready
 			// rather than silently allowing a copy of a possibly-stale external URL.

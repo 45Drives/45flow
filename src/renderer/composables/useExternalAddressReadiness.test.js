@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('./useApi', () => ({ useApi: () => ({ apiFetch: vi.fn() }) }))
+const apiFetch = vi.fn()
+vi.mock('./useApi', () => ({ useApi: () => ({ apiFetch }) }))
 
-import { describeExternalLinkCreateError } from './useExternalAddressReadiness'
+import { describeExternalLinkCreateError, useExternalAddressReadiness } from './useExternalAddressReadiness'
 
 describe('describeExternalLinkCreateError', () => {
   it('turns a missing-hostname refusal into plain guidance with a Local Network hint', () => {
@@ -29,5 +30,27 @@ describe('describeExternalLinkCreateError', () => {
   it('returns null for unrelated errors', () => {
     expect(describeExternalLinkCreateError(new Error('outputs_exist'))).toBeNull()
     expect(describeExternalLinkCreateError(null)).toBeNull()
+  })
+})
+
+describe('checkExternalAddressReady with P2P', () => {
+  const notReady = { ready: false, reason: 'certificate_not_trusted', base: null, p2pBase: 'https://abc.45flow.45d.io' }
+
+  it('treats a link on the active P2P address as ready and keeps its origin', async () => {
+    apiFetch.mockResolvedValueOnce(notReady)
+    const r = await useExternalAddressReadiness().checkExternalAddressReady('https://abc.45flow.45d.io/link/tok')
+    expect(r).toMatchObject({ ready: true, base: 'https://abc.45flow.45d.io' })
+  })
+
+  it('still blocks a direct-address link when the public address is not ready', async () => {
+    apiFetch.mockResolvedValueOnce(notReady)
+    const r = await useExternalAddressReadiness().checkExternalAddressReady('https://share.example.com/link/tok')
+    expect(r).toMatchObject({ ready: false, reason: 'certificate_not_trusted' })
+  })
+
+  it('without a url reports only the public address', async () => {
+    apiFetch.mockResolvedValueOnce(notReady)
+    const r = await useExternalAddressReadiness().checkExternalAddressReady()
+    expect(r.ready).toBe(false)
   })
 })

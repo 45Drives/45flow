@@ -1935,7 +1935,7 @@ async function copyLink() {
   if (!viewUrl.value) return
   let url = viewUrl.value
   if (usePublicBase.value) {
-    const { ready, reason, base } = await checkExternalAddressReady()
+    const { ready, reason, base } = await checkExternalAddressReady(url)
     if (!ready) {
       pushNotification(new Notification('External Address Not Ready', describeExternalAddressNotReady(reason), 'error', 8000))
       return

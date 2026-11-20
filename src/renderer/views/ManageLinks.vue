@@ -1483,7 +1483,7 @@ function expiresClass(it: LinkItem) {
 async function copy(txt?: string | null, it?: LinkItem) {
 	if (!txt) return
 	if (it?.externalLink) {
-		const { ready, reason, base } = await checkExternalAddressReady()
+		const { ready, reason, base } = await checkExternalAddressReady(txt)
 		if (!ready) {
 			pushNotification(new Notification('External Address Not Ready', describeExternalAddressNotReady(reason), 'error', 8000))
 			return
