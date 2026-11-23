@@ -379,7 +379,7 @@ After connecting to your server, 45Flow automatically checks the server's licens
 
 #### Community vs Pro Mode
 
-- **Unlicensed server** — The app runs in Community mode. Pro features (custom branding, advanced watermarks, client-side comment review/export workflows, annotations) are hidden or disabled. The window title shows "45Flow (Community Edition)".
+- **Unlicensed server** — The app runs in Community mode. Pro features (custom branding, advanced watermarks, client-side comment review/export workflows, annotations, side-by-side version comparison) are hidden or disabled. The window title shows "45Flow (Community Edition)".
 
 ![Dashboard header in Community mode](images/dashboard-community-mode-header-v3.png)
 
@@ -1625,7 +1625,9 @@ To share a fork later, add it to the link with **Edit → Files**.
 
 **The source version is kept.** Once a fork exists, the version it came from can't be deleted. In the Versions table that version shows *Kept: … was forked from this version* in place of the **Delete** button, and the extra-file delete buttons for its snapshot are off. Removing a link or a project doesn't delete it either.
 
-**Compare two versions**
+**Compare two versions (Pro)**
+
+Side-by-side comparison requires a Pro-licensed server. Forking and viewing individual versions remain available in Community mode. Link recipients can use comparison without their own license when the server has Pro.
 
 1. In **Link Details → Versions**, click **Compare with…** on one version. It becomes side **A**.
 2. Choose the other version, side **B**. The list holds the other versions of this file, plus every version of a fork or source file that is on this link, for example *Social Cut · v1*. **Compare with…** is greyed out when there is nothing else on the link to compare with.
@@ -2173,7 +2175,7 @@ Restart the service after changing a setting: `sudo systemctl restart houston-br
 ## 24. Frequently Asked Questions
 
 **Q: What's the difference between Community and Pro editions?**  
-A: There is only ONE 45Flow app. It works as Community Edition (free) by default, and automatically upgrades to Pro when connected to a licensed server. You don't download separate apps — Pro features simply unlock when the server has a valid license. Community includes all core file sharing, watermarking (video and image), uploads, review features, and commenting. Pro adds custom branding, advanced watermark customization (position, scale, opacity, rotation, presets), client-side comment review/export workflows, annotations, and priority support.
+A: There is only ONE 45Flow app. It works as Community Edition (free) by default, and automatically upgrades to Pro when connected to a licensed server. You don't download separate apps — Pro features simply unlock when the server has a valid license. Community includes all core file sharing, watermarking (video and image), uploads, review features, and commenting. Pro adds custom branding, advanced watermark customization (position, scale, opacity, rotation, presets), client-side comment review/export workflows, annotations, side-by-side version comparison, and priority support.
 
 **Q: How do I upgrade from Community to Pro?**  
 A: Activate a license on your server. Go to **Settings → Go Pro**, enter your license key, and click **"Activate License"**. Once activated, all users connecting to that server immediately gain Pro features. You can also start a free 30-day trial from the same section.

@@ -7,6 +7,8 @@ import { createApp, h, nextTick, ref } from 'vue'
 import LinkDetailsModal from './modals/LinkDetailsModal.vue'
 
 const mocks = vi.hoisted(() => ({ apiFetch: vi.fn(), notify: vi.fn() }))
+const premium = ref(false)
+const connection = ref(null)
 
 vi.mock('@45drives/houston-common-ui', () => ({
   pushNotification: mocks.notify,
@@ -28,10 +30,10 @@ vi.mock('../composables/useExternalAddressReadiness', () => ({
   resolveCopyUrl: (url) => url,
 }))
 vi.mock('../composables/useConnections', () => ({
-  useConnections: () => ({ activeConnection: { value: null }, connections: [] }),
+  useConnections: () => ({ activeConnection: connection, connections: [] }),
 }))
 vi.mock('../composables/useLicenseStatus', () => ({
-  useLicenseStatus: () => ({ isPremiumActive: { value: false } }),
+  useLicenseStatus: () => ({ isPremiumActive: premium }),
 }))
 vi.mock('../composables/useRemoteTranscode', () => ({
   useRemoteTranscode: () => ({ runRemoteTranscode: vi.fn(), isRemoteTranscoding: () => false }),
@@ -146,6 +148,8 @@ afterEach(() => {
   document.body.innerHTML = ''
   mocks.apiFetch.mockReset()
   mocks.notify.mockReset()
+  premium.value = false
+  connection.value = null
 })
 
 describe('LF1 fork dialog', () => {
@@ -280,10 +284,55 @@ describe('fork visibility', () => {
   })
 
   it('turns Compare with… off on an expired link', async () => {
+    premium.value = true
     serve({ lineage: lineageWithFork })
     await mountVersionsTab({ ...link, expiresAt: Date.now() - 60_000 })
     const btn = rowFor(2).querySelector('[data-testid="compare-with"]')
     expect(btn.disabled).toBe(true)
     expect(btn.title).toContain('expired')
+  })
+
+  it('keeps forks available but disables comparison on a free server', async () => {
+    serve()
+    await mountVersionsTab()
+    const btn = rowFor(2).querySelector('[data-testid="compare-with"]')
+    expect(btn.disabled).toBe(true)
+    expect(btn.title).toContain('45Flow Pro')
+    expect(buttonIn(rowFor(2), 'Fork from this version').disabled).toBe(false)
+  })
+
+  it('opens the comparison picker on a Pro server', async () => {
+    premium.value = true
+    serve({ lineage: { ok: true, origin: null, family: [{
+      fileId: 7, filename: 'Original.mov', label: null, forkedFrom: null,
+      versions: versionRows.map(v => ({ assetVersionId: v.asset_version_id, versionNumber: v.version_index })),
+    }] } })
+    await mountVersionsTab()
+    const btn = rowFor(2).querySelector('[data-testid="compare-with"]')
+    expect(btn.disabled).toBe(false)
+    btn.click()
+    await flush()
+    expect(modal.querySelector('[data-testid="compare-picker"]')).toBeTruthy()
+  })
+
+  it('disables comparison after a trial ends even if the client reports fallback', async () => {
+    premium.value = true
+    connection.value = { licensed: false, licenseReason: 'trial_expired', licenseInfo: { notes: 'trial' } }
+    serve()
+    await mountVersionsTab()
+    const btn = rowFor(2).querySelector('[data-testid="compare-with"]')
+    expect(btn.disabled).toBe(true)
+    expect(btn.title).toContain('45Flow Pro')
+  })
+
+  it('allows paid fallback even when old trial metadata remains', async () => {
+    premium.value = true
+    connection.value = { licensed: false, licenseFallback: true, licenseInfo: { notes: 'trial' } }
+    serve({ lineage: { ok: true, origin: null, family: [{
+      fileId: 7, filename: 'Original.mov', label: null, forkedFrom: null,
+      versions: versionRows.map(v => ({ assetVersionId: v.asset_version_id, versionNumber: v.version_index })),
+    }] } })
+    await mountVersionsTab()
+    expect(rowFor(2).querySelector('[data-testid="compare-with"]').disabled).toBe(false)
   })
 })

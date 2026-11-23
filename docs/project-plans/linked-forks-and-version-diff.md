@@ -6,7 +6,7 @@ Decisions: [linked-forks-and-version-diff-decisions.md](linked-forks-and-version
 
 ## Summary
 
-Staff can **fork** any version of a file into a new, independent file that permanently records the exact version it came from. Staff and share recipients can **compare** two versions side by side on the share page: two versions of one file, a fork against its source, or two sibling forks.
+Staff can **fork** any version of a file into a new, independent file that permanently records the exact version it came from. On Pro-licensed servers, staff and share recipients can **compare** two versions side by side on the share page: two versions of one file, a fork against its source, or two sibling forks. Forking and individual version viewing remain free.
 
 This phase is manual comparison only. There is no automatic change detection, no text diff and no explicit version publishing (see Out of scope).
 
@@ -19,7 +19,7 @@ This phase is manual comparison only. There is no automatic change detection, no
 5. **Comments, not approvals, in compare mode.** Comments go to side A or B with exact version and anchor; approvals stay in Preview (decision 10).
 6. **Fork sources are never deleted** by any path (decision 12).
 7. **Phones.** Media stacks A over B with one timeline; documents use an A | B toggle (decision 13).
-8. **Free and Pro alike.** No new license restriction (decision 11).
+8. **Pro comparison.** Forks and individual versions are available on Free; the comparison workspace requires Pro (decision 11).
 
 ## Out of scope
 
@@ -72,12 +72,12 @@ These are fixed by this plan so threads can start in parallel. A change to a con
 
 ### C-COMPARE (owner LF3)
 
-- `GET /api/token/:token/compare?a=<assetVersionId>&b=<assetVersionId>` → `200 { ok, kind: 'video'|'image'|'pdf'|'text', sides: { a: Side, b: Side } }`.
+- `GET /api/token/:token/compare?a=<assetVersionId>&b=<assetVersionId>` → `200 { ok, kind: 'video'|'image'|'pdf'|'text', sides: { a: Side, b: Side } }` for Pro; `403 { error: 'premium_required' }` otherwise.
   `Side = { fileId, assetVersionId, versionNumber, filename, label, forkedFrom: {...} | null, media: <resolveVersionMedia result>, review: { state } }`.
 - `400 { code: 'kind_mismatch' }` for different kinds; `400 { code: 'not_related' }` for different families; `404` (same body as unknown ID) when either file isn't attached to the link.
 - `GET /api/token/:token/files/:fileId/lineage` → same shape as the staff route, filtered to attached files only. `forkedFrom` is `null` when the origin file isn't attached.
 - Share-page deep link: `?compare=<a>,<b>` (asset version IDs). Unrelated query parameters are kept.
-- Capability flag: share metadata gains `capabilities.compare = true`; older players ignore it, newer players hide Compare when it's absent.
+- Capability flag: share metadata sets `capabilities.compare` according to server entitlement; older players ignore it, newer players hide Compare when false or absent.
 
 ## Threads
 

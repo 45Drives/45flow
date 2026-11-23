@@ -349,7 +349,7 @@
                           </div>
                         </td>
                       </tr>
-                      <tr v-if="compareFrom && Number(compareFrom.asset_version_id) === Number(v.asset_version_id)" class="ld-extra-row" data-testid="compare-picker">
+                      <tr v-if="compareEntitled && compareFrom && Number(compareFrom.asset_version_id) === Number(v.asset_version_id)" class="ld-extra-row" data-testid="compare-picker">
                         <td :colspan="showReviewColumn ? 6 : 5">
                           <div class="flex flex-wrap items-end gap-2">
                             <label class="flex flex-col gap-1 flex-1 min-w-[16rem]">
@@ -949,6 +949,8 @@ useContextTour('link-details-edit', 'linkDetailsEditTourDone',
 const transfer = useTransferProgress()
 const { checkExternalAddressReady } = useExternalAddressReadiness()
 const { activeConnection, connections } = useConnections()
+// Older license-status responses can report an expired trial as fallback.
+const compareEntitled = computed(() => isPremiumActive.value && activeConnection.value?.licenseReason !== 'trial_expired')
 const connectionMeta = inject(connectionMetaInjectionKey, null)
 
 
@@ -3766,6 +3768,7 @@ function compareOptions(v: any): Array<{ assetVersionId: number; label: string }
 }
 
 function compareDisabledReason(v: any): string {
+  if (!compareEntitled.value) return 'Comparing versions requires 45Flow Pro.'
   if (!primaryUrl.value) return 'This link has no share page to compare on'
   if (props.link && statusOf(props.link) !== 'active') return `This link is ${statusLabel.value.toLowerCase()}, so its share page won't open. Extend or re-enable it to compare.`
   if (compareOptions(v).length === 0) return 'Nothing else on this link to compare with. Another version, or a fork added to this link, is needed.'
@@ -3773,6 +3776,7 @@ function compareDisabledReason(v: any): string {
 }
 
 function openCompare(v: any) {
+  if (compareDisabledReason(v)) return
   compareFrom.value = v
   compareTargetId.value = compareOptions(v)[0]?.assetVersionId ?? null
 }
@@ -3786,7 +3790,7 @@ function compareUrl(base: string, a: number, b: number): string {
 }
 
 function startCompare(v: any) {
-  if (!compareTargetId.value || !primaryUrl.value) return
+  if (!compareEntitled.value || !compareTargetId.value || !primaryUrl.value) return
   window.open(compareUrl(primaryUrl.value, Number(v.asset_version_id), compareTargetId.value), '_blank', 'noopener,noreferrer')
   compareFrom.value = null
 }
