@@ -53,9 +53,18 @@ HELP
 
 bump_version() {
   local bump_type="$1"
+  local -a version_files=(
+    package.json manifest.json
+    packaging/ubuntu-focal/changelog packaging/ubuntu-jammy/changelog
+    packaging/debian-bookworm/changelog packaging/debian-trixie/changelog
+  )
   
   if ! command -v node &>/dev/null; then
     echo "Error: node not found. Cannot bump version." >&2
+    exit 1
+  fi
+  if [[ -n "$(git status --porcelain -- "${version_files[@]}")" ]]; then
+    echo "Error: Commit or stash changes to package.json and web package metadata before bumping the version." >&2
     exit 1
   fi
   
@@ -96,12 +105,13 @@ bump_version() {
     pkg.version = '$new_version';
     fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
   "
-  
+  sh "$ROOT_DIR/scripts/web/ci-prepare.sh" "$(git rev-parse HEAD)" "$new_version"
   echo "✓ Version bumped to $new_version"
   
   # Commit and push so remote build machines can pull the new version
-  git add package.json
-  git commit -m "Bump version to $new_version"
+  git add -- "${version_files[@]}"
+  git commit --only -m "Bump version to $new_version" \
+    -m "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>" -- "${version_files[@]}"
   git push
   echo "✓ Committed and pushed v$new_version"
 }

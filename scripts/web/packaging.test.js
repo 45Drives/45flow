@@ -62,23 +62,80 @@ describe('repository packaging', () => {
     fs.mkdirSync(path.join(work, 'scripts/web'), { recursive: true })
     fs.copyFileSync(path.join(root, 'scripts/web/ci-prepare.sh'), path.join(work, 'scripts/web/ci-prepare.sh'))
     fs.writeFileSync(path.join(work, 'package.json'), '{\n  "name": "45flow",\n  "version": "2.0.0-beta.1"\n}\n')
-    fs.writeFileSync(path.join(work, 'manifest.json'), read('manifest.json').replaceAll('"build_number": "1"', '"build_number": "3"'))
+    fs.writeFileSync(path.join(work, 'manifest.json'), read('manifest.json').replace('"build_number": "1"', '"build_number": "3"'))
     const debBuilds = manifest.builds.filter((b) => b.group !== 'rocky')
     for (const build of debBuilds) {
       fs.mkdirSync(path.join(work, 'packaging', build.os_name), { recursive: true })
-      fs.writeFileSync(path.join(work, 'packaging', build.os_name, 'changelog'), 'stale\n')
+      fs.writeFileSync(path.join(work, 'packaging', build.os_name, 'changelog'), 'previous release\n')
     }
     const git = (...args) => execFileSync('git', args, { cwd: work, encoding: 'utf8', stdio: 'pipe' }).trim()
     git('init', '-q')
     git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'release')
     execFileSync('sh', ['scripts/web/ci-prepare.sh', git('rev-parse', 'HEAD'), '2.0.0-beta.1'], { cwd: work, stdio: 'pipe' })
+    const preparedManifest = JSON.parse(fs.readFileSync(path.join(work, 'manifest.json'), 'utf8'))
+    expect(preparedManifest.changelog.build_number).toBe('3')
 
     for (const build of debBuilds) {
       const codename = build.os_name.split('-')[1]
       const changelog = fs.readFileSync(path.join(work, 'packaging', build.os_name, 'changelog'), 'utf8')
       expect(changelog.split('\n')[0]).toBe(`45flow-web (2.0.0~beta.1-3${codename}) ${codename}; urgency=medium`)
       expect(changelog).toMatch(/^ -- 45Drives <info@45drives\.com>  \w{3}, \d{2} \w{3} \d{4} \d{2}:\d{2}:\d{2} [+-]\d{4}$/m)
+      expect(changelog).toContain('previous release\n')
     }
+    const first = fs.readFileSync(path.join(work, 'packaging', debBuilds[0].os_name, 'changelog'), 'utf8')
+    execFileSync('sh', ['scripts/web/ci-prepare.sh', git('rev-parse', 'HEAD'), '2.0.0-beta.1'], { cwd: work, stdio: 'pipe' })
+    expect(fs.readFileSync(path.join(work, 'packaging', debBuilds[0].os_name, 'changelog'), 'utf8')).toBe(first)
+  })
+
+  it('commits synchronized web metadata with a desktop version bump', () => {
+    work = fs.mkdtempSync(path.join(os.tmpdir(), '45flow-release-bump-'))
+    for (const dir of ['scripts/web', 'scripts/release', 'bin']) fs.mkdirSync(path.join(work, dir), { recursive: true })
+    for (const file of ['scripts/web/ci-prepare.sh', 'scripts/release/release.sh', 'package.json', 'manifest.json']) {
+      fs.copyFileSync(path.join(root, file), path.join(work, file))
+    }
+    for (const build of manifest.builds.filter((b) => b.group !== 'rocky')) {
+      fs.mkdirSync(path.join(work, 'packaging', build.os_name), { recursive: true })
+      fs.copyFileSync(path.join(root, 'packaging', build.os_name, 'changelog'), path.join(work, 'packaging', build.os_name, 'changelog'))
+    }
+    fs.writeFileSync(path.join(work, 'unrelated.txt'), 'original\n')
+    const git = (...args) => execFileSync('git', args, { cwd: work, encoding: 'utf8', stdio: 'pipe' }).trim()
+    git('init', '-q')
+    git('config', 'user.name', 'Test')
+    git('config', 'user.email', 'test@example.com')
+    git('add', '.')
+    git('commit', '-qm', 'initial')
+    fs.writeFileSync(path.join(work, 'unrelated.txt'), 'staged work\n')
+    git('add', 'unrelated.txt')
+    fs.writeFileSync(path.join(work, 'bin/git'), '#!/bin/sh\nif [ "$1" = push ]; then exit 0; fi\nexec /usr/bin/git "$@"\n', { mode: 0o755 })
+    expect(() => execFileSync('bash', ['scripts/release/release.sh', '--bump', 'patch', '--os', 'linux'], {
+      cwd: work, env: { ...process.env, PATH: `${path.join(work, 'bin')}:${process.env.PATH}` }, stdio: 'pipe',
+    })).toThrow(/Command failed/)
+    const version = JSON.parse(fs.readFileSync(path.join(work, 'package.json'), 'utf8')).version
+    const updatedManifest = JSON.parse(fs.readFileSync(path.join(work, 'manifest.json'), 'utf8'))
+    expect(updatedManifest.version).toBe(version)
+    expect(updatedManifest.changelog.version).toBe(version)
+    const committed = git('show', '--format=', '--name-only', 'HEAD').split('\n')
+    expect(committed).toContain('manifest.json')
+    expect(committed).not.toContain('unrelated.txt')
+    expect(git('diff', '--cached', '--name-only')).toBe('unrelated.txt')
+    for (const build of manifest.builds.filter((b) => b.group !== 'rocky')) {
+      const file = `packaging/${build.os_name}/changelog`
+      const codename = build.os_name.split('-')[1]
+      expect(committed).toContain(file)
+      expect(fs.readFileSync(path.join(work, file), 'utf8').split('\n')[0])
+        .toBe(`45flow-web (${version}-${manifest.build_number}${codename}) ${codename}; urgency=medium`)
+    }
+
+    fs.appendFileSync(path.join(work, 'manifest.json'), ' ')
+    try {
+      execFileSync('bash', ['scripts/release/release.sh', '--bump', 'patch'], {
+        cwd: work, env: { ...process.env, PATH: `${path.join(work, 'bin')}:${process.env.PATH}` }, stdio: 'pipe',
+      })
+      throw new Error('Expected dirty metadata to block the bump')
+    } catch (error) {
+      expect(error.stderr.toString()).toContain('Commit or stash changes')
+    }
+    expect(JSON.parse(fs.readFileSync(path.join(work, 'package.json'), 'utf8')).version).toBe(version)
   })
 
   it('stages only the built web tree with readable, non-writable permissions', () => {
