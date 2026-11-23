@@ -55,6 +55,41 @@ describe('browser file upload', () => {
     await expect(done).resolves.toEqual({ ok: false, error: 'Destination not allowed' })
   })
 
+  it('reports scanning while completion is pending and only reports success after confirmation', async () => {
+    const path = api.getPathForFile(new File(['abcd'], 'clip.mp4', { type: 'video/mp4' }))
+    let finish
+    const pending = new Promise(resolve => { finish = resolve })
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(json({ ok: true, sessionId: 'scan', chunkSize: 4, totalChunks: 1, malwareScan: true }))
+      .mockResolvedValueOnce(json({ ok: true }))
+      .mockReturnValueOnce(pending))
+    const progress = vi.fn()
+    const { done } = await api.httpUploadStart(opts(path), progress)
+
+    await vi.waitFor(() => expect(progress.mock.calls.at(-1)?.[0]).toMatchObject({
+      phase: 'scanning', percent: 100, bytesTransferred: 4,
+    }))
+    expect(progress.mock.calls.some(([item]) => item.phase === 'complete')).toBe(false)
+    finish(json({ ok: true, fileId: 7, assetVersionId: 9, filename: 'clip.mp4',
+      security: { scanner: 'clamscan', scannerSkipped: false } }))
+    await expect(done).resolves.toMatchObject({ ok: true, file: { id: 7, assetVersionId: 9 } })
+    expect(progress.mock.calls.at(-1)[0]).toMatchObject({ phase: 'complete', message: 'Malware scan passed' })
+  })
+
+  it('reports malware rejection without a successful scan or ingest event', async () => {
+    const path = api.getPathForFile(new File(['abcd'], 'clip.mp4'))
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(json({ ok: true, sessionId: 'infected', chunkSize: 4, totalChunks: 1, malwareScan: true }))
+      .mockResolvedValueOnce(json({ ok: true }))
+      .mockResolvedValueOnce(json({ ok: false, error: 'File failed malware scan', code: 'malware_detected' }, 415)))
+    const progress = vi.fn()
+    const { id, done } = await api.httpUploadStart(opts(path), progress)
+
+    await expect(done).resolves.toEqual({ ok: false, error: 'File failed malware scan' })
+    expect(progress.mock.calls.some(([item]) => item.phase === 'complete')).toBe(false)
+    expect(emit).not.toHaveBeenCalledWith(`upload:ingest:${id}`, expect.anything())
+  })
+
   it('cancels the server session when the user cancels mid-upload', async () => {
     const path = api.getPathForFile(new File(['abcd'], 'a.bin'))
     let id

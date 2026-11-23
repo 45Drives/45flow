@@ -34,6 +34,7 @@ docs/*Test-Plan*
 docs/*Test_Plan*
 
 docs/45Flow-test-plan-*.xlsx
+docs/45flow-rocky-local-setup.md
 .claude/CLAUDE.md
 docs/project-plans/*
 !docs/project-plans/45Flow_Decision_Log_TrackA_B_2026-11-09.md

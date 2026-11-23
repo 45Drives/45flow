@@ -66,6 +66,20 @@ describe('browser Electron compatibility shim', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
+  it('reports desktop-only operations with actionable guidance rather than claiming success', async () => {
+    const fetch = vi.fn()
+    vi.stubGlobal('fetch', fetch)
+    await import('./ipc-web-shim')
+
+    for (const channel of ['run-remote-bootstrap', 'transcode:start', 'update:install', 'dialog:openFolder']) {
+      await expect(window.electron.ipcRenderer.invoke(channel))
+        .rejects.toThrow('not available in the browser. Open 45Flow Desktop')
+    }
+    await expect(window.electron.transcodeStart()).rejects.toThrow('Open 45Flow Desktop')
+    await expect(window.electron.ensureSshReady()).rejects.toThrow('Open 45Flow Desktop')
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it('opens the API docs on this server in a new tab, signed in by the page cookie, never with a token', async () => {
     const open = vi.spyOn(window, 'open').mockImplementation(() => null)
     await import('./ipc-web-shim')
