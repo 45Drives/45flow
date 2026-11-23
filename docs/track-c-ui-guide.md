@@ -17,6 +17,8 @@ For C2, the approver's **Approve this version / Request changes** actions, comme
 
 ### Comment resolution (2026-11-16)
 
+- Comment resolution and its history require a licensed server (including
+  previously licensed fallback). Comments and replies remain available on Free.
 - Staff can resolve or reopen feedback from Comments Review or the share-page
   Comments panel. Authors may reopen their own feedback, but cannot resolve it.
   Being the designated approver does not grant resolution authority.
@@ -48,8 +50,10 @@ For C2, the approver's **Approve this version / Request changes** actions, comme
 - Compatibility: `PATCH /api/links/:linkId/comments/:commentId` retains its
   authenticated Pro gate and response shape `{ok, comment}`; `resolved` must
   be a boolean. Optional `tags` are preserved when omitted.
-  `PATCH /api/token/:token/comments/:id/resolution` retains its existing
-  Free/Pro availability and `{ok, comment, event}` shape. Staff browser writes
+  `PATCH /api/token/:token/comments/:id/resolution` retains its
+  `{ok, comment, event}` shape but now requires Pro, as does
+  `GET /api/token/:token/comments/:id/resolution-history`; unlicensed servers
+  return `403 {error: "premium_required", ...}`. Staff browser writes
   send the CSRF token from `GET /api/session?passive=1`; guest reopening uses
   the original comment session. No schema migration or new route is needed.
 - Link authentication, password changes and logout reject foreign origins.

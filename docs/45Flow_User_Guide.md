@@ -1784,7 +1784,8 @@ If comments are enabled on the link, a **Comments Panel** appears alongside the 
 - **Replies:** Click on any comment to reply, creating threaded conversations.
 - **Timecode markers:** Visual markers appear on the seek bar indicating where comments exist.
 - **SMPTE timecodes:** Comments display professional SMPTE timecodes (HH:MM:SS:FF, drop-frame where applicable) when the video's frame rate is detected. **"Show SMPTE timecode"** above the comments is on by default; turn it off to show plain HH:MM:SS times.
-- **Previous Version Notes:** If a file has multiple versions and earlier versions have comments, a collapsible **"Previous Version Notes"** section appears below the comments list. This shows all notes from prior versions with their resolved/unresolved status, letting reviewers see what was addressed without switching versions.
+- **Previous Version Notes:** If a file has multiple versions and earlier versions have comments, a collapsible **"Previous Version Notes"** section appears below the comments list. It shows notes from prior versions without switching versions; resolved status is available on licensed servers.
+- **Resolve feedback (Pro):** Staff can resolve or reopen comments on the share page; authors can reopen their own resolved comments. Normal comments and replies are also available on Free servers.
 
 Use categories to quickly triage feedback types during review (for example, filter to only *Audio* notes before a sound pass, then export a category-focused report for that team).
 
