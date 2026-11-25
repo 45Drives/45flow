@@ -370,8 +370,10 @@ import type { TourStep } from "../../composables/useTourManager";
 import { useApi } from "../../composables/useApi";
 import { useConnections } from "../../composables/useConnections";
 import { isAdminSession } from "../../composables/adminSession";
+import { useRouter } from "vue-router";
 
 const { connections, activeConnection } = useConnections();
+const router = useRouter();
 
 const connectedServers = computed(() => connections.filter(c => c.status === 'connected'));
 const allServers = computed(() => connections.filter(c => c.connectionId));
@@ -405,7 +407,7 @@ function onServerSelect() {
 // Create a reactive apiFetch bound to the selected server
 function getServerApiFetch() {
   const connId = selectedServerConnectionId.value;
-  const { apiFetch } = useApi(connId || undefined);
+  const { apiFetch } = useApi(connId || undefined, { router });
   return apiFetch;
 }
 

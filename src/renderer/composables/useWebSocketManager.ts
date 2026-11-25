@@ -2,7 +2,7 @@
 // WebSocket manager for real-time progress updates
 // Manages one WebSocket per server connection
 
-import { ref, watch } from 'vue'
+import { watch } from 'vue'
 import { useConnections } from './useConnections'
 import type { Connection } from './useConnections'
 import { WEB_SESSION_TOKEN } from '../web-session'
@@ -10,6 +10,8 @@ import { handleUnauthorized } from './useApi'
 
 interface WebSocketConnection {
   connectionId: string
+  baseUrl: string
+  token: string
   ws: WebSocket
   status: 'connecting' | 'open' | 'closed' | 'error'
   subscriptions: Set<string> // Set of "channel:id"
@@ -87,9 +89,9 @@ function dispatchUpdate(connectionId: string, channel: string, id: number | stri
 function connect(connection: Connection) {
   const { connectionId, baseUrl, token } = connection
   
-  // Don't reconnect if already connected
   const existing = wsConnections.get(connectionId)
-  if (existing && existing.status === 'open') {
+  const sameCredentials = existing?.token === token && existing?.baseUrl === baseUrl
+  if (sameCredentials && (existing.status === 'open' || existing.status === 'connecting' || existing.reconnectTimeout !== undefined)) {
     return existing
   }
   
@@ -100,8 +102,11 @@ function connect(connection: Connection) {
   
   // Close existing connection if present
   if (existing) {
-    existing.ws.close()
+    if (existing.reconnectTimeout !== undefined) {
+      clearTimeout(existing.reconnectTimeout)
+    }
     wsConnections.delete(connectionId)
+    existing.ws.close()
   }
   
   const wsUrl = baseUrl.replace(/^http/, 'ws') + '/api/ws'
@@ -111,17 +116,20 @@ function connect(connection: Connection) {
     
     const wsConn: WebSocketConnection = {
       connectionId,
+      baseUrl,
+      token,
       ws,
       status: 'connecting',
-      subscriptions: new Set(),
-      reconnectAttempts: 0
+      subscriptions: existing?.subscriptions ?? new Set(),
+      reconnectAttempts: sameCredentials ? existing.reconnectAttempts : 0,
+      everOpened: sameCredentials ? existing.everOpened : false
     }
     
     wsConnections.set(connectionId, wsConn)
     
     ws.onopen = () => {
+      if (wsConnections.get(connectionId) !== wsConn) return
       wsConn.status = 'open'
-      wsConn.reconnectAttempts = 0
       wsConn.everOpened = true  // Mark that connection succeeded at least once
       authFailedConnections.delete(connectionId)  // Clear blacklist - server clearly supports WS
       
@@ -135,10 +143,12 @@ function connect(connection: Connection) {
     }
     
     ws.onmessage = (event) => {
+      if (wsConnections.get(connectionId) !== wsConn) return
       try {
         const msg = JSON.parse(event.data)
         
         if (msg.type === 'auth_ok') {
+          wsConn.reconnectAttempts = 0
           console.log('[ws] authenticated:', msg.username)
           
           // Re-subscribe to all channels after reconnect
@@ -195,13 +205,16 @@ function connect(connection: Connection) {
     }
     
     ws.onerror = (err) => {
+      if (wsConnections.get(connectionId) !== wsConn) return
       console.warn('[ws] error:', connection.name, err)
       wsConn.status = 'error'
     }
     
-    ws.onclose = () => {
+    ws.onclose = (event) => {
+      // Replaced and deliberately disconnected sockets no longer own this entry.
+      if (wsConnections.get(connectionId) !== wsConn) return
       wsConn.status = 'closed'
-      wsConnections.delete(connectionId)
+      console.warn('[ws] closed:', connection.name, event.code, event.reason, 'clean:', event.wasClean)
       
       // Don't reconnect if auth failed (token expired/invalid)
       if (wsConn.authFailed) {
@@ -224,6 +237,8 @@ function connect(connection: Connection) {
         console.log(`[ws] reconnecting to ${connection.name} in ${delay}ms (attempt ${wsConn.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`)
         
         wsConn.reconnectTimeout = window.setTimeout(() => {
+          if (wsConnections.get(connectionId) !== wsConn) return
+          wsConn.reconnectTimeout = undefined
           connect(connection)
         }, delay)
       } else {
@@ -242,16 +257,16 @@ function connect(connection: Connection) {
  * Disconnect from a server's WebSocket
  */
 function disconnect(connectionId: string) {
+  authFailedConnections.delete(connectionId)
   const wsConn = wsConnections.get(connectionId)
   if (!wsConn) return
   
-  if (wsConn.reconnectTimeout) {
+  if (wsConn.reconnectTimeout !== undefined) {
     clearTimeout(wsConn.reconnectTimeout)
   }
   
-  wsConn.ws.close()
   wsConnections.delete(connectionId)
-  authFailedConnections.delete(connectionId)  // Clear auth failure flag on manual disconnect
+  wsConn.ws.close()
   
   console.log('[ws] disconnected:', connectionId)
 }

@@ -36,6 +36,8 @@ Idle handling (`web-idle.ts`, `useSessionIdle.ts`, `SessionIdlePrompt.vue`): whi
 
 The desktop app keeps its Bearer token, now bound to a server-side session. `desktop-session.ts` refreshes it while the user is active, picks up the rotated token the server hands out, defers rotation while a transfer runs, and revokes the session on Log Out.
 
+Progress consumers share one WebSocket per server connection, including while it is connecting. Token rotation replaces the socket; late events from the old socket cannot remove or reconnect the replacement. Unexpected disconnects preserve subscriptions and retry with exponential backoff (up to five consecutive attempts without successful authentication). Explicit disconnects cancel retries. Socket close logs include the close code, reason and clean-close flag.
+
 ## Other browser behavior
 
 - **Servers:** the multi-server switcher is replaced by a static server badge; discovery is a no-op.

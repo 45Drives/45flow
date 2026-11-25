@@ -155,8 +155,11 @@ async function resolveUnauthorized(
  * @param connectionId - Optional connection ID. If not provided, uses active connection.
  * @param options - Opt into nginx HTTPS for APIs that require verified proxy context.
  */
-export function useApi(connectionId?: string, options: { transport?: 'nginx-https' } = {}) {
-    return createApiClient(useRouter(), connectionId, options)
+export function useApi(
+    connectionId?: string,
+    options: { transport?: 'nginx-https'; router?: ReturnType<typeof useRouter> } = {},
+) {
+    return createApiClient(options.router ?? useRouter(), connectionId, options)
 }
 
 function createApiClient(
