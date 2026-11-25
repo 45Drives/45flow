@@ -17,6 +17,27 @@ exist; the latter takes precedence for duplicate keys. Check both before editing
 and keep deliberate overrides consistent. Do not assume a client update changes
 server policy.
 
+On builds with the audit export safeguard, an export is refused if its audit
+record cannot be written. Check the Broadcaster logs and audit database storage,
+resolve the write failure, then retry; no export file is provided on failure.
+
+The audit history includes sign-ins and sessions, access and administrative
+changes (including staff-group changes through 45Flow), review decisions and
+approver changes, and recorded transfer activity. Group changes made directly
+outside 45Flow require separate operating-system audit monitoring.
+For staff-group requests, a requested entry without a changed entry does not
+prove whether membership changed: the host broker may have failed after the
+operating-system change. Check current membership and the host-broker journal.
+Completed share uploads include file and version IDs; ZIP downloads record each
+identified file and whether the archive response completed. An incomplete ZIP
+record does not prove which individual bytes reached the recipient. Denied
+requests and repeated desktop stream requests are rate-limited in the audit
+trail, so individual repeated requests are not all represented as separate rows.
+Retained records survive deletion of the share's own activity history.
+Hash-chain verification detects changes to retained records, but a sufficiently
+privileged server operator can rewrite the whole chain. An independently
+administered collector provides a separate copy for comparison.
+
 On builds with packaged storage setup, root-owned `flow45-state.env` and then
 `storage.env` under `/etc/45drives/houston-broadcaster/` are loaded afterwards.
 They select isolated application state and the approved storage root. Use the
@@ -34,6 +55,39 @@ files does not update the systemd writable-path grant.
 | `HB_CREDENTIAL_SOCKET` (staged) | Isolates the provider master key in the credential broker; configured by packaged setup and unavailable brokers fail closed. |
 | `ENFORCE_ADMIN_NETWORKS` (staged, opt-in) | `1` applies the root-managed nginx staff CIDRs to direct backend staff requests too. Configure and verify the readable allow file first; see the [network guide](deployment-network.md#staff-networks-and-proxies). |
 | Admin Networks | nginx staff-access policy; separate from the backend firewall, account approval, SSH and Cockpit. |
+
+### Security alert emails
+
+In **Settings → Email**, configure **Security alert emails** separately from
+review and download alerts. SMTP must be configured and enabled. Existing
+security alert rules include repeated failed sign-ins, forbidden requests,
+selected administrative changes, malware or scanner failures, and audit-chain
+breaks. Forbidden-request alerts are limited to one every ten minutes; consult
+the audit log for other requests.
+
+The server queues one message per configured recipient and retries unconfirmed
+sends. A timeout or restart can result in a duplicate; SMTP acceptance does not
+prove delivery to the mailbox. Pending messages are shown in settings. Check the
+service logs and SMTP configuration if they remain pending. Removing an address
+removes its queued messages, although a send already in progress may complete.
+Alerts that cannot be recorded because the audit database is unavailable cannot
+be queued there; monitor audit-write failures independently.
+
+### Audit forwarding
+
+Set `AUDIT_SYSLOG_HOST` to a trusted syslog collector to forward audit events.
+`AUDIT_SYSLOG_PROTOCOL` selects `udp` (default) or `tcp`; `AUDIT_SYSLOG_PORT`
+defaults to 514 and `AUDIT_SYSLOG_FACILITY` to local0 (16). TCP uses RFC 6587
+octet-counted frames. Restart Broadcaster after changing its environment, and
+confirm receipt at the collector. The connection is not encrypted; use a trusted
+network or a secure tunnel.
+
+Monitor the service journal or operations log for `audit.forward.failed`.
+TCP connection errors, write errors and a full 1,000-event queue are reported;
+UDP local send errors are reported too. Forwarding is best effort: the queue is
+in memory, events may be lost on overflow, disconnection or restart, and a
+successful local send or connection does not confirm collector receipt.
+`audit.forward.transport_recovered` reports transport recovery, not delivery.
 
 ### Packaged service account and first-run storage setup
 

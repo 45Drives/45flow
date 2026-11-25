@@ -615,7 +615,9 @@ async function exportAudit(format: 'csv' | 'jsonl') {
     URL.revokeObjectURL(url);
     setAuditMessage(`Exported ${format.toUpperCase()} (the export itself is recorded in the audit log).`);
   } catch (e: any) {
-    setAuditMessage(e?.message || 'Export failed', true);
+    setAuditMessage(e?.code === 'audit_write_failed'
+      ? 'Export unavailable because it could not be recorded in the audit log. Check audit storage and try again.'
+      : e?.message || 'Export failed', true);
   } finally {
     exporting.value = false;
   }

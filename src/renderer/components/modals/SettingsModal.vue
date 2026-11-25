@@ -44,6 +44,8 @@
                             :key="activeConnection.connectionId" :connection-id="activeConnection.connectionId" />
                         <AdminStaffAlertsPanel v-if="activeSection === 'adminMail' && adminSession && activeConnection"
                             :key="`staff-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId" />
+                        <AdminSecurityAlertsPanel v-if="activeSection === 'adminMail' && adminSession && activeConnection"
+                            :key="`security-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId" />
                         <EmailProblemsPanel v-if="activeSection === 'adminMail' && adminSession && activeConnection"
                             :key="`problems-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId" />
 
@@ -1281,6 +1283,7 @@ import { useApi } from "../../composables/useApi";
 import AdminNetworksPanel from "../AdminNetworksPanel.vue";
 import AdminSmtpPanel from "../AdminSmtpPanel.vue";
 import AdminStaffAlertsPanel from "../AdminStaffAlertsPanel.vue";
+import AdminSecurityAlertsPanel from "../AdminSecurityAlertsPanel.vue";
 import EmailProblemsPanel from "../EmailProblemsPanel.vue";
 import TranscodeBackfillPanel from "../TranscodeBackfillPanel.vue";
 import PublicAddressSetup from "../PublicAddressSetup.vue";
