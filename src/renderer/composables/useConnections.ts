@@ -70,6 +70,10 @@ export interface Connection {
   isFavorite?: boolean              // Pin to top of list
 }
 
+export function serverAddressKey(serverIp: string): string {
+  return serverIp.trim().toLowerCase()
+}
+
 interface ConnectionsState {
   connections: Connection[]
   activeConnectionId: string | null
@@ -371,6 +375,16 @@ export function useConnections() {
     if (existingById) {
       console.warn('[connections] connection with this ID already exists:', conn.connectionId)
       return existingById.connectionId
+    }
+
+    const activeForServer = _state.connections.find(c =>
+      c.status === 'connected' && c.token && serverAddressKey(c.serverIp) === serverAddressKey(conn.serverIp)
+    )
+    if (activeForServer) {
+      if (activeForServer.token === conn.token && activeForServer.username === conn.username) {
+        return activeForServer.connectionId
+      }
+      throw new Error(`Already connected to ${activeForServer.name} as ${activeForServer.username}. Log out of that connection before signing in again.`)
     }
     
     // Check for existing connection to same server+username (case-insensitive)

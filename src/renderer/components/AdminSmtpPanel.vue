@@ -63,6 +63,10 @@
             </div>
 
             <p class="flow-subhead">Sign-in</p>
+            <FlowNotice :tone="status?.configured ? 'success' : 'warning'" plain size="sm" live class="mb-2">
+                Saved login: {{ status?.configured ? 'Yes' : 'No' }}.
+                {{ status?.configured ? 'It is encrypted and never shown again.' : 'Enter both fields to save a login.' }}
+            </FlowNotice>
             <div class="flow-group">
                 <div class="py-3">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
@@ -88,7 +92,7 @@
                         </FlowField>
                     </div>
                     <p class="flow-field__help mt-2">
-                        Saved encrypted and never shown again.
+                        Login is encrypted and never shown again.
                         <template v-if="status?.configured">Leave both blank to keep the saved login, or enter both to change it.</template>
                     </p>
                 </div>

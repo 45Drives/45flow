@@ -37,6 +37,19 @@ afterEach(() => {
 })
 
 describe('NotificationBell', () => {
+  it('closes the dropdown when unmounted so it stays closed after signing back in', async () => {
+    host = document.createElement('div')
+    document.body.appendChild(host)
+    app = createApp(NotificationBell)
+    app.mount(host)
+    center.state.bellOpen.value = true
+    await nextTick()
+
+    app.unmount()
+    app = null
+    expect(center.state.bellOpen.value).toBe(false)
+  })
+
   it('stays open when the clicked element is re-rendered away before the click reaches document', async () => {
     host = document.createElement('div')
     document.body.appendChild(host)

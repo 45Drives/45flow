@@ -33,6 +33,18 @@
                             </div>
                             </template>
                         </FlowField>
+                        <FlowField v-if="mfaPrompt" label="Authenticator code" id="mfa-code"
+                            help="The 6-digit code from your authenticator app, or one of your recovery codes.">
+                            <template #default="{ id, describedBy }">
+                                <input v-model="mfaCode" :id="id" type="text" inputmode="numeric" autocomplete="one-time-code"
+                                    :aria-describedby="describedBy" :disabled="anyBusy" spellcheck="false"
+                                    class="connect-control h-[2.75rem] text-default input-textlike px-4 rounded-lg text-base w-full border" />
+                            </template>
+                        </FlowField>
+                        <button v-if="mfaSend" type="button" class="connect-link text-sm underline" :disabled="anyBusy"
+                            @click="showEnroll = true">
+                            Set up two-step sign-in
+                        </button>
                         <label v-if="!isWeb" class="connect-check">
                             <input type="checkbox" v-model="rememberPassword" class="proxy-quality-checkbox" :disabled="anyBusy" />
                             <span>Remember my password on this computer</span>
@@ -58,6 +70,14 @@
                                 class="connect-control h-[2.75rem] text-default input-textlike border px-4 rounded-lg text-base w-full" />
                             </template>
                         </FlowField>
+
+                        <FlowNotice v-if="connectedServer" tone="warning" class="mt-3" title="Already connected">
+                            <p>This server is already connected as <strong>{{ connectedServer.username }}</strong>.
+                                To use another account, open this connection and log out first.</p>
+                            <button type="button" class="btn btn-sm btn-secondary mt-2" :disabled="anyBusy" @click="useExistingConnection">
+                                Open existing connection
+                            </button>
+                        </FlowNotice>
 
                         <details ref="portsDetailsRef" data-tour="connect-ports" class="connect-advanced group" :open="Boolean(portError || portWarning)">
                             <summary class="list-none flex w-full items-center justify-between text-left cursor-pointer select-none">
@@ -102,7 +122,7 @@
                     <div data-tour="connect-submit" class="connect-submit">
                         <button type="submit"
                             class="btn btn-success connect-submit-btn flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                            :disabled="anyBusy">
+                            :disabled="anyBusy || !!connectedServer">
                             <svg v-if="isBusy" class="animate-spin h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                                 <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity=".25" />
                                 <path d="M4 12a8 8 0 0 1 8-8" stroke="currentColor" stroke-width="4" fill="none" />
@@ -131,11 +151,13 @@
         </div>
     </form>
     <PortForwardingModal v-if="showPortFwdModal" @close="togglePortFwdModal" />
+    <StaffMfaEnrollModal v-if="mfaSend" v-model="showEnroll" :username="username.trim()" :password="password" :send="mfaSend" />
 </template>
 
 <script setup lang="ts">
 import FlowCard from '../ui/FlowCard.vue'
 import FlowField from '../ui/FlowField.vue'
+import FlowNotice from '../ui/FlowNotice.vue'
 import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHeader } from '../composables/useHeader'
@@ -144,10 +166,13 @@ import { EyeIcon, EyeSlashIcon } from "@heroicons/vue/20/solid";
 import type { DiscoveryState, Server } from '../types'
 import { pushNotification, Notification, useDarkModeState } from '@45drives/houston-common-ui'
 import PortForwardingModal from '../components/modals/PortForwardingModal.vue' 
+import StaffMfaEnrollModal from '../components/modals/StaffMfaEnrollModal.vue'
+import { browserMfaTransport, fetchMfaTransport, mfaChallenge, type MfaTransport } from '../composables/staffMfa'
 import { useResilientNav } from '../composables/useResilientNav';
 import { signInWithSession, restoreSession, WEB_SESSION_TOKEN, type WebSessionInfo } from '../web-session';
 import { loadLastSession, clearLastSession, saveManualServer, saveRegistryLicenseId } from '../composables/useSessionPersistence';
-import { useConnections } from '../composables/useConnections'
+import { serverAddressKey, useConnections } from '../composables/useConnections'
+import { useServerFilter } from '../composables/useServerFilter'
 import type { Connection } from '../composables/useConnections'
 import { httpsBaseFor, registerServerTrust, verifyServerCertificate, fetchOverHttps, upgradedBaseUrl, trustFor } from '../server-trust'
 import { useContextTour } from '../composables/useContextTour'
@@ -159,12 +184,36 @@ const isWeb = window.electron?.isWeb === true
 const browserHost = window.location.host
 const { to } = useResilientNav()
 const { addConnection, setActive, removeConnection, connections } = useConnections()
+const { setFilter } = useServerFilter()
 const discoveryState = inject<DiscoveryState>(discoveryStateInjectionKey)!;
 const manualIp = ref('');
 const username = ref('');
 const password = ref('');
 const rememberPassword = ref(false);
 const showPassword = ref(false);
+// Two-step sign-in: the code field appears once the server asks for one, and setup is offered whenever the
+// server has been reached (on desktop, after its certificate was verified for this sign-in attempt).
+const mfaCode = ref('');
+const mfaPrompt = ref(false);
+const showEnroll = ref(false);
+const mfaSend = ref<MfaTransport | null>(isWeb ? browserMfaTransport() : null);
+/** Server answers that mean "this account needs its second step", with the sentence to show. */
+function noteMfaAnswer(code: unknown, message: string): string | null {
+    const challenge = mfaChallenge(code);
+    if (!challenge) return null;
+    mfaCode.value = '';
+    mfaPrompt.value = challenge !== 'enrollment-required';
+    return message || 'Two-step sign-in is required.';
+}
+function warnEnrollmentDeadline(iso: string) {
+    const day = new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    pushNotification(new Notification(
+        'Two-step sign-in is coming',
+        `Set it up in Settings before ${day}, or you won't be able to sign in.`,
+        'warning',
+        12000,
+    ));
+}
 const togglePassword = () => { showPassword.value = !showPassword.value; };
 const darkMode = useDarkModeState()
 const connectMainCardBackground = 'var(--btn-primary-fill)'
@@ -180,6 +229,21 @@ const selectedServer = computed<Server | undefined>(() =>
 const sshPort = ref<number | null>(null);          // SSH port (null means “unspecified → default/detect”)
 const broadcasterPort = ref<number | null>(null);  // internal API, default 9095
 const httpsPort = ref<number | null>(null);        // external HTTPS, default 443
+const connectedServer = computed(() => {
+    if (isWeb) return undefined;
+    const address = selectedServer.value?.ip || normalizeHost(manualIp.value).host;
+    if (!address) return undefined;
+    const key = serverAddressKey(address);
+    return connections.find(conn => conn.status === 'connected' && !!conn.token && serverAddressKey(conn.serverIp) === key);
+});
+
+function useExistingConnection() {
+    const connection = connectedServer.value;
+    if (!connection) return;
+    setActive(connection.connectionId);
+    setFilter(connection.connectionId);
+    to('dashboard');
+}
 
 // ================== Guided tour ==================
 const portsDetailsRef = ref<HTMLDetailsElement | null>(null)
@@ -658,12 +722,17 @@ async function signInBrowser() {
             username.value.trim(),
             password.value,
             typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : undefined,
+            mfaCode.value.trim() || undefined,
         );
         password.value = '';
+        mfaCode.value = '';
+        mfaPrompt.value = false;
+        if (session.mfa?.enrollmentDeadline) warnEnrollmentDeadline(session.mfa.enrollmentDeadline);
         await openBrowserConnection(session);
     } catch (e: any) {
-        window.appLog?.error('login.error', { error: e?.message });
-        pushNotification(new Notification('Error', e?.message || 'Login failed', 'error', 8000));
+        window.appLog?.error('login.error', { error: e?.message, code: e?.code });
+        const mfaMessage = noteMfaAnswer(e?.code, e?.message);
+        pushNotification(new Notification(mfaMessage ? 'Two-step sign-in' : 'Error', mfaMessage || e?.message || 'Login failed', mfaMessage ? 'warning' : 'error', 8000));
     } finally {
         isBusy.value = false;
     }
@@ -704,6 +773,7 @@ async function openBrowserConnection(session: WebSessionInfo) {
 }
 
 async function connectToServer() {
+    if (connectedServer.value) return;
     if (!isWeb && !selectedServer.value && !manualIp.value) {
         pushNotification(new Notification('Error', `Please select or enter a server before connecting.`, 'error', 8000));
         return;
@@ -924,6 +994,9 @@ async function connectToServer() {
             statusLine.value = '';
         }
 
+        // From here the server's certificate is verified, so account setup can talk to it too.
+        mfaSend.value = fetchMfaTransport((path, init) => fetchOverHttps(`${apiBase}${path}`, init, httpsPortToUse));
+
         const res = await fetchOverHttps(`${apiBase}/api/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -931,6 +1004,7 @@ async function connectToServer() {
                 username: username.value,
                 password: password.value,
                 clientBuildDate: typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : undefined,
+                ...(mfaCode.value.trim() ? { mfaCode: mfaCode.value.trim() } : {}),
             }),
         }, httpsPortToUse);
 
@@ -946,12 +1020,17 @@ async function connectToServer() {
                     'This version of 45Flow was released after your update entitlement expired. Please renew your license or use an earlier version.'
                 );
             }
+            const mfaMessage = noteMfaAnswer(errorData?.error, errorData?.message);
+            if (mfaMessage) throw new Error(mfaMessage);
             const errMsg = errorData?.error || errorData?.message || raw || `HTTP ${res.status}`;
             throw new Error(errMsg);
         }
 
         const loginData = await res.json();
         const token = loginData.token;
+        mfaCode.value = '';
+        mfaPrompt.value = false;
+        if (loginData.mfa?.enrollmentDeadline) warnEnrollmentDeadline(loginData.mfa.enrollmentDeadline);
 
         connectionMeta.value = {
             ...connectionMeta.value,

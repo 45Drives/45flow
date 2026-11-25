@@ -73,7 +73,7 @@ vi.mock('../renderer/components/GlobalMenu.vue', () => ({ default: { template: '
 vi.mock('../renderer/components/ConnectionSwitcher.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../renderer/components/BasicServerBadge.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../renderer/components/GuidedTour.vue', () => ({ default: { template: '<div />' } }))
-vi.mock('../renderer/components/NotificationBell.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('../renderer/components/NotificationBell.vue', () => ({ default: { template: '<div data-notification-bell />' } }))
 vi.mock('../renderer/components/modals/SettingsModal.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../renderer/components/modals/LogViewModal.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../renderer/components/setup/SetupGate.vue', async () => {
@@ -136,6 +136,28 @@ afterEach(() => {
 })
 
 describe('Quick Share session lifetime', () => {
+  it('only shows notifications for an active session outside the connection screen', async () => {
+    const bell = () => host.querySelector('[data-notification-bell]')
+    expect(bell()).not.toBeNull()
+
+    mocks.connection.value.token = ''
+    await nextTick()
+    expect(bell()).toBeNull()
+
+    mocks.connection.value = { ...connected(), status: 'disconnected' }
+    await nextTick()
+    expect(bell()).toBeNull()
+
+    mocks.connection.value = connected()
+    mocks.route.name = 'server-selection'
+    await nextTick()
+    expect(bell()).toBeNull()
+
+    mocks.route.name = 'dashboard'
+    await nextTick()
+    expect(bell()).not.toBeNull()
+  })
+
   it('keeps the transfer dock hidden until a project exists', async () => {
     expect(host.querySelector('[data-transfer-dock]')).toBeNull()
     mocks.projectsConfigured.value = true

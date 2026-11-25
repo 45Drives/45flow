@@ -3,7 +3,7 @@
 // Determines which servers' data to show in aggregated views
 
 import { ref, computed, watch } from 'vue'
-import { useConnections } from './useConnections'
+import { serverAddressKey, useConnections } from './useConnections'
 
 const STORAGE_KEY = '45flow_server_filter_v1'
 
@@ -55,7 +55,16 @@ export function useServerFilter() {
    * Auto-select active server when filter hasn't been explicitly set
    * and there are multiple connected servers
    */
-  const connectedCount = computed(() => connections.filter(c => c.status === 'connected').length)
+  const allConnectedServers = computed(() => {
+    const unique = new Map<string, typeof connections[number]>()
+    for (const conn of connections) {
+      if (conn.status !== 'connected' || !conn.token) continue
+      const key = serverAddressKey(conn.serverIp)
+      if (!unique.has(key) || conn.connectionId === activeConnection.value?.connectionId) unique.set(key, conn)
+    }
+    return [...unique.values()]
+  })
+  const connectedCount = computed(() => allConnectedServers.value.length)
   
   // On first access: if filter is 'all' but wasn't explicitly saved, default to active server
   if (selectedFilter.value === 'all' && !localStorage.getItem(STORAGE_KEY) && activeConnection.value) {
@@ -77,7 +86,7 @@ export function useServerFilter() {
    */
   const filteredConnections = computed(() => {
     if (selectedFilter.value === 'all') {
-      return connections.filter(c => c.status === 'connected')
+      return allConnectedServers.value
     }
     
     const conn = connections.find(c => c.connectionId === selectedFilter.value)
@@ -87,10 +96,6 @@ export function useServerFilter() {
   /**
    * All connected servers (for fetching data from multiple servers)
    */
-  const allConnectedServers = computed(() => {
-    return connections.filter(c => c.status === 'connected')
-  })
-  
   /**
    * Current filter display name
    */

@@ -145,5 +145,8 @@ function onClickOutside(e: MouseEvent) {
 }
 
 onMounted(() => document.addEventListener('click', onClickOutside))
-onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
+onBeforeUnmount(() => {
+  bellOpen.value = false
+  document.removeEventListener('click', onClickOutside)
+})
 </script>

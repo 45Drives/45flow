@@ -105,15 +105,17 @@ async function failure(res: Response): Promise<Error> {
     return Object.assign(new Error(String(message)), { status: res.status, code: body?.error })
 }
 
-export async function signInWithSession(username: string, password: string, clientBuildDate?: string): Promise<WebSessionInfo & { entitlement?: unknown }> {
+export async function signInWithSession(
+    username: string, password: string, clientBuildDate?: string, mfaCode?: string,
+): Promise<WebSessionInfo & { entitlement?: unknown; mfa?: { enrollmentDeadline?: string } }> {
     const res = await fetch('/api/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, clientBuildDate }),
+        body: JSON.stringify({ username, password, clientBuildDate, ...(mfaCode ? { mfaCode } : {}) }),
     })
     if (!res.ok) throw await failure(res)
     const body = await res.json()
-    return { ...remember(body), entitlement: body.entitlement }
+    return { ...remember(body), entitlement: body.entitlement, mfa: body.mfa }
 }
 
 /** The signed-in session after a reload, or null when there is none. */

@@ -42,6 +42,40 @@ function expectNoBrowserCredentials() {
 }
 
 describe('connection credential migration and persistence', () => {
+  it('refuses another active session to the same server under a different user', async () => {
+    const module = await import('./useConnections')
+    await module.initializeConnections()
+    const store = module.useConnections()
+    store.addConnection({ ...connection(), token: 'bossman-token', username: 'bossman' })
+    expect(() => store.addConnection({
+      ...connection(), connectionId: 'connection-two', serverIp: 'SERVER.LOCAL',
+      username: 'root', token: 'root-token', httpsPort: 8443,
+    })).toThrow(/already connected/i)
+    expect(store.connections).toHaveLength(1)
+    expect(store.connections[0]).toMatchObject({ username: 'bossman', token: 'bossman-token' })
+    await store.clearConnectionCredentials('connection-one')
+    store.addConnection({
+      ...connection(), connectionId: 'connection-two', username: 'root', token: 'root-token',
+    })
+    expect(store.connections.find(c => c.connectionId === 'connection-two').token).toBe('root-token')
+  })
+
+  it('only includes the active session for an existing duplicate in All Servers', async () => {
+    seed([connection(), { ...connection(), connectionId: 'connection-two', username: 'root' },
+      { ...connection(), connectionId: 'other', serverIp: 'other.local' }])
+    api.get.mockImplementation(async id => ({ token: `token-${id}` }))
+    const module = await import('./useConnections')
+    await module.initializeConnections()
+    const store = module.useConnections()
+    for (const id of ['connection-one', 'connection-two', 'other']) store.updateConnection(id, { status: 'connected' })
+    store.setActive('connection-two')
+    const { useServerFilter } = await import('./useServerFilter')
+    const filter = useServerFilter()
+    filter.setFilter('all')
+    expect(filter.allConnectedServers.value.map(c => c.connectionId)).toEqual(['connection-two', 'other'])
+    expect(filter.filteredConnections.value.map(c => c.connectionId)).toEqual(['connection-two', 'other'])
+  })
+
   it('scrubs both storage surfaces before waiting for a keyring and preserves free connections', async () => {
     seed()
     localStorage.setItem('hb_last_session_v1', JSON.stringify({ token: credentials.token }))

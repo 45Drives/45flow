@@ -152,3 +152,50 @@ unregister applications or remove live databases to simulate a fresh install.
 - [ ] Confirm no passwords, usable tokens or key material appear in evidence,
   process arguments or shared logs. Report limitations and not-tested items
   explicitly before release.
+
+## 8. Staff two-step sign-in (gate G7)
+
+Use a disposable server and disposable accounts. Record the Broadcaster, client
+and (if tested) Storage Wizard versions. Mocked tests do not replace this
+section. See [Staff two-step sign-in](server-operations.md#staff-two-step-sign-in).
+
+- [ ] Off by default: after upgrading, staff sign in with only a password in
+  the desktop app and the browser, and no deadline is shown anywhere.
+- [ ] As root, issue a code for the first administrator
+  (`dist/mfa-admin.js issue-code <user>`). Complete setup with a real
+  authenticator app on a phone. Confirm a wrong password, a code for another
+  account, an expired code and a second use of the same code are all refused.
+- [ ] Turn it on from Settings. It is refused with a wrong code and works with a
+  correct code, including when legacy backup records lack an owner. Confirm the
+  warning stays visible, unassigned records remain inaccessible to backup-only
+  clients, and an administrator can review, assign or remove records. Note the
+  deadline shown matches 14 days from now.
+- [ ] Enroll a second staff member by the approval route: request, read the code
+  to the administrator, approve. Confirm the administrator cannot approve
+  themselves.
+- [ ] Sign in to the desktop app and the browser with a code. A password alone,
+  a wrong code and a reused code fail; the same code never works twice.
+- [ ] A session open before turning it on (desktop and browser) stops working
+  for an enrolled user. An older 45Flow client is refused with a message that
+  asks to update, and cannot get in with a password alone.
+- [ ] Before the deadline an un-enrolled member still signs in and is told the
+  date. After it (set the clock on the disposable server or shorten the stored
+  deadline) they are refused until they finish setup.
+- [ ] Sign in with a recovery code once; it cannot be used again. Lose the
+  authenticator: request approval again (or have root issue a code) and confirm
+  the old authenticator and old recovery codes stop working.
+- [ ] As enrolled administrator and ordinary staff, use Settings → Two-step sign-in
+  to replace recovery codes. Verify a wrong authenticator code is refused, save
+  the new codes, and confirm old codes fail while each new code works once.
+  Repeat in both desktop and browser clients.
+- [ ] As the only administrator, lose every factor. Confirm the password alone
+  cannot recover access, and a root-issued code can.
+- [ ] Turn it off and on again: each needs the password and a current code, and
+  the original deadline and everyone's setup are kept.
+- [ ] Run an existing scheduled backup for a staff account and for an ordinary
+  account while it is on, with disposable data. It completes without a code and
+  its credential cannot open 45Flow, Settings or the two-step settings.
+- [ ] Storage Wizard administrative actions (register the app, read server logs,
+  privileged audit reports): record what an unchanged Storage Wizard does with
+  two-step on. They are expected to need an updated client that asks for a code.
+- [ ] Check logs and exported evidence for codes, secrets or recovery codes.

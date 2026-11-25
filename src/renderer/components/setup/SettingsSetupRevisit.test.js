@@ -9,6 +9,8 @@ vi.mock('../../composables/useConnections', () => ({ useConnections: () => ({ ac
 vi.mock('../../composables/useThemeFromAlias', () => ({ useThemeFromAlias: () => ({ setCustomThemeColors: vi.fn(), setCustomThemeEnabled: vi.fn() }) }))
 vi.mock('@45drives/houston-common-ui', () => ({ pushNotification: vi.fn(), Notification: class {} }))
 vi.mock('./SetupSettingsPanel.vue', () => ({ default: { props: ['section'], template: '<div :data-settings-panel="section">Shared setup controls</div>' } }))
+vi.mock('../AdminStaffMfaPanel.vue', () => ({ default: { template: '<div data-settings-panel="staff-mfa">Staff sign-in policy</div>' } }))
+vi.mock('../StaffMfaRecovery.vue', () => ({ default: { template: '<div data-settings-panel="recovery-codes">Your recovery codes</div>' } }))
 vi.mock('../../ui/FlowModal.vue', () => ({
   default: { setup(_, { slots }) { return () => h('div', [slots.default?.(), slots.footer?.()]) } },
 }))
@@ -20,6 +22,71 @@ afterEach(() => {
   vi.useRealTimers()
 })
 describe('revisiting skipped setup from Settings', () => {
+  it.each([
+    ['token cleared', connection => { connection.token = '' }],
+    ['connection disconnected', connection => { connection.status = 'disconnected' }],
+  ])('closes Settings on sign-out (%s) and keeps it closed after signing in', async (_label, signOut) => {
+    vi.useFakeTimers()
+    const token = `header.${btoa(JSON.stringify({ amr: ['pam'], exp: Date.now() / 1000 + 600 }))}.signature`
+    mocks.connection = ref({ connectionId: 'server-one', status: 'connected', token })
+    mocks.apiFetch.mockReset().mockResolvedValue({ showFlowFolderDefault: false })
+    window.electron = { isWeb: true }
+    const confirm = vi.spyOn(window, 'confirm')
+    const open = ref(true)
+    const closed = vi.fn(() => { open.value = false })
+    host = document.createElement('div')
+    document.body.appendChild(host)
+    app = createApp({ setup: () => () => open.value ? h(SettingsModal, { initialSection: 'fileBrowsing', onClose: closed }) : null })
+    app.mount(host)
+    for (let i = 0; i < 12; i++) { await Promise.resolve(); await nextTick() }
+
+    const toggle = [...host.querySelectorAll('[role="switch"]')].find(item => item.textContent.trim() === 'Show .45flow by default')
+    toggle.click()
+    await nextTick()
+    expect([...host.querySelectorAll('button')].find(item => item.textContent.trim() === 'Save changes').disabled).toBe(false)
+
+    mocks.connection.value.token = `${token}-refreshed`
+    await nextTick()
+    expect(closed).not.toHaveBeenCalled()
+    signOut(mocks.connection.value)
+    await nextTick()
+    expect(closed).toHaveBeenCalledOnce()
+    expect(confirm).not.toHaveBeenCalled()
+    expect(host.querySelector('.settings-nav')).toBeNull()
+    mocks.connection.value = { connectionId: 'server-one', status: 'connected', token }
+    await nextTick()
+    expect(host.querySelector('.settings-nav')).toBeNull()
+    confirm.mockRestore()
+  })
+
+  it.each([true, false])('keeps two-step sign-in and recovery in a dedicated Settings section (admin=%s)', async admin => {
+    vi.useFakeTimers()
+    const token = `header.${btoa(JSON.stringify({ amr: [admin ? 'pam' : 'open'], exp: Date.now() / 1000 + 600 }))}.signature`
+    mocks.connection = ref({ connectionId: 'server-one', token })
+    mocks.apiFetch.mockReset().mockResolvedValue({})
+    window.electron = { isWeb: true }
+    host = document.createElement('div')
+    document.body.appendChild(host)
+    app = createApp(SettingsModal, { initialSection: 'app' })
+    app.mount(host)
+    for (let i = 0; i < 12; i++) { await Promise.resolve(); await nextTick() }
+    expect(host.querySelector('[data-settings-panel="recovery-codes"]')).toBeNull()
+    const nav = [...host.querySelectorAll('.settings-nav-btn')].find(item => item.textContent.trim() === 'Two-step sign-in')
+    expect(nav).toBeDefined()
+    nav.click()
+    await nextTick()
+    expect(host.querySelector('[data-settings-panel="recovery-codes"]')).not.toBeNull()
+    expect(!!host.querySelector('[data-settings-panel="staff-mfa"]')).toBe(admin)
+    expect(host.querySelector('.settings-page-title').textContent).toBe('Two-step sign-in')
+    if (admin) {
+      const scanning = [...host.querySelectorAll('.settings-nav-btn')].find(item => item.textContent.trim() === 'Scanning & privacy')
+      scanning.click()
+      await nextTick()
+      expect(host.querySelector('[data-settings-panel="staff-mfa"]')).toBeNull()
+      expect(host.querySelector('[data-settings-panel="recovery-codes"]')).toBeNull()
+    }
+  })
+
   it.each([true, false])('offers a non-destructive wizard replay only to admins (admin=%s)', async admin => {
     vi.useFakeTimers()
     const token = `header.${btoa(JSON.stringify({ amr: [admin ? 'pam' : 'open'], exp: Date.now() / 1000 + 600 }))}.signature`

@@ -7,6 +7,7 @@ import { currentServerInjectionKey, connectionMetaInjectionKey } from '../keys/i
 import { pushNotification, Notification } from '@45drives/houston-common-ui'
 import { clearLastSession } from './useSessionPersistence'
 import { useConnections } from './useConnections'
+import { mfaChallenge } from './staffMfa'
 import type { Connection } from './useConnections'
 
 export type ServerResult<T = any> = {
@@ -100,6 +101,7 @@ async function resolveUnauthorized(
     // A late response must not clear a newer login or restore a logged-out session.
     if (!conn || !rejectedToken || conn.token !== rejectedToken) return 'stale'
 
+    let reason = SESSION_EXPIRED_MESSAGE
     if (allowReauth && conn.savedPassword && conn.username) {
         try {
             const loginRes = await fetch(`${loginBaseUrl || conn.baseUrl}/api/login`, {
@@ -118,6 +120,10 @@ async function resolveUnauthorized(
                     })
                     return 'reauthenticated'
                 }
+            } else {
+                // A saved password cannot supply a second factor; say so instead of a generic expiry.
+                const body = await loginRes.json().catch(() => null)
+                if (mfaChallenge(body?.error)) reason = 'Two-step sign-in is required. Sign in again and enter your authenticator code.'
             }
         } catch {
             window.appLog?.warn('auth.reauthentication-failed', { connectionId: conn.connectionId })
@@ -129,11 +135,11 @@ async function resolveUnauthorized(
         token: '',
         savedPassword: undefined,
         status: 'disconnected',
-        lastError: SESSION_EXPIRED_MESSAGE,
+        lastError: reason,
     })
     pushNotification(new Notification(
         'Login token expired',
-        `${conn.name || conn.serverIp}: ${SESSION_EXPIRED_MESSAGE}`,
+        `${conn.name || conn.serverIp}: ${reason}`,
         'warning',
         8000,
     ))

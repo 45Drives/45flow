@@ -41,7 +41,7 @@
         <span v-else-if="isTrialExpired && route.name !== 'server-selection' && activeConnection?.status === 'connected'" class="flow-chip flow-chip--danger whitespace-nowrap">
           Trial Expired
         </span>
-        <NotificationBell @open-settings="openSettingsAt" />
+        <NotificationBell v-if="hasActiveSession && route.name !== 'server-selection'" @open-settings="openSettingsAt" />
         <button
           v-if="hasActiveSession && route.name !== 'server-selection'"
           class="p-1.5 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors"

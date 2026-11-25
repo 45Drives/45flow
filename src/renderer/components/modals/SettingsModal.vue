@@ -52,6 +52,13 @@
                         <AdminEgressPanel v-if="activeSection === 'adminSecurity' && adminSession && activeConnection"
                             :key="`egress-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId" class="mt-6"
                             @changed="egress.load" />
+                        <template v-if="activeSection === 'staffMfa' && activeConnection">
+                            <AdminStaffMfaPanel v-if="adminSession"
+                                :key="`mfa-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId"
+                                :username="activeConnection.username" />
+                            <StaffMfaRecovery :key="`recovery-${activeConnection.connectionId}`"
+                                :connection-id="activeConnection.connectionId" :class="{ 'mt-6': adminSession }" />
+                        </template>
 
                         <!-- Loading state: shown until settings arrive from the server -->
                         <div v-if="!settingsLoaded && (activeSection === 'sharing' || activeSection === 'linkOptions' || activeSection === 'fileBrowsing')" class="flex flex-col items-center justify-center gap-3 py-12">
@@ -1563,6 +1570,8 @@ import TranscodeBackfillPanel from "../TranscodeBackfillPanel.vue";
 import PublicAddressSetup from "../PublicAddressSetup.vue";
 import AdminScannerPanel from "../AdminScannerPanel.vue";
 import AdminEgressPanel from "../AdminEgressPanel.vue";
+import AdminStaffMfaPanel from "../AdminStaffMfaPanel.vue";
+import StaffMfaRecovery from "../StaffMfaRecovery.vue";
 import { EGRESS_OFF_TEXT, useEgressSwitches } from "../../composables/useEgressSwitches";
 import { isAdminSession } from "../../composables/adminSession";
 import { disableNotifications, enableNotifications, notificationPermission, notificationsEnabled } from "../../web-notify";
@@ -1657,6 +1666,11 @@ async function toggleBrowserNotifications() {
     notifyOn.value = notificationsEnabled();
 }
 const { connections, activeConnection, updateConnection } = useConnections();
+watch(
+    () => !!activeConnection.value?.token && activeConnection.value.status === 'connected',
+    (connected, wasConnected) => { if (wasConnected && !connected) emit("close"); },
+    { flush: 'sync' },
+);
 const { request: requestSetupReplay } = useSetupReplay(() => serverSetupKey(activeConnection.value));
 const adminSession = computed(() => isAdminSession(activeConnection.value?.token));
 const isWeb = window.electron?.isWeb === true
@@ -1710,7 +1724,7 @@ const settingsTourSteps = computed<TourStep[]>(() => [
 ])
 
 // ── Section navigation ──────────────────────────────────────────────────
-type Section = SetupSection | 'sharing' | 'publicSharing' | 'app' | 'performance' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade' | 'adminNetworks' | 'adminMail' | 'adminSecurity' | 'fileBrowsing';
+type Section = SetupSection | 'sharing' | 'publicSharing' | 'app' | 'performance' | 'maintenance' | 'help' | 'certificate' | 'linkOptions' | 'branding' | 'health' | 'upgrade' | 'adminNetworks' | 'adminMail' | 'adminSecurity' | 'staffMfa' | 'fileBrowsing';
 
 type SectionMeta = {
     label: string
@@ -1795,8 +1809,13 @@ const SECTION_META: Record<Section, SectionMeta> = {
     },
     adminSecurity: {
         label: 'Scanning & privacy', icon: BugAntIcon,
-        description: 'What the malware scanner does, and everything this server sends over the internet.',
+        description: 'What the malware scanner does and everything this server sends over the internet.',
         keywords: 'clamav malware virus scan freshclam signatures security telemetry egress outbound privacy license heartbeat public ip port check updates',
+    },
+    staffMfa: {
+        label: 'Two-step sign-in', icon: LockClosedIcon,
+        description: 'Set up an authenticator, manage recovery codes, and require two-step sign-in for staff.',
+        keywords: 'account security mfa two-step 2fa authenticator recovery codes sign in login enrollment approval',
     },
     upgrade: {
         label: 'Go Pro', icon: SparklesIcon,
@@ -1843,9 +1862,11 @@ const navGroups = computed(() => {
         {
             label: 'Server',
             items: [
+                item('staffMfa'),
                 item('health'),
                 item('maintenance'),
-                ...(adminSession.value ? [...setupSections.map(section => item(section.key)), item('fileBrowsing'), item('adminNetworks'), item('adminMail'), item('adminSecurity')] : []),
+                ...(adminSession.value ? setupSections.map(section => item(section.key)) : []),
+                ...(adminSession.value ? [item('fileBrowsing'), item('adminNetworks'), item('adminMail'), item('adminSecurity')] : []),
             ],
         },
         {

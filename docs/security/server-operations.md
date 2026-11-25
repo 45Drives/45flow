@@ -239,6 +239,16 @@ staff-only. An approved staff caller can explicitly assign a configuration with
 reports use verified user/client ownership. Do not infer ownership from the
 old `smb_user` field or delete records to make synchronization succeed.
 
+On servers with Storage Wizard registered, administrators can use
+Settings → Two-step sign-in → Review backups to review configurations whose
+user or installation ownership is missing or invalid. Verify each assignment
+independently with the owner; the saved Samba username is only a hint.
+Assignments and server-record removals are logged. Removing a record does not
+delete backup files or stop a schedule. An empty list does not prove earlier
+assignments were verified or that a backup completed. Staff two-step sign-in
+can be enabled with unresolved records, but affected backup clients may not be
+able to manage or report on them until ownership is assigned.
+
 Update Storage Wizard before testing scheduled reporting. Previously generated
 Linux/macOS/Windows scripts omitted the installation ID at login. The updated
 client's existing script-version refresh regenerates these scripts on startup
@@ -249,6 +259,119 @@ remains best-effort and does not prove a backup completed.
 For rollback, restore `REQUIRE_ADMIN_GROUP=0` and restart Broadcaster. That
 deliberately restores legacy account access, so keep the network restrictions
 in place and verify recovery before removing any group or enrollment.
+
+## Staff two-step sign-in
+
+Staff can be required to enter a code from an authenticator app when they sign
+in. It is available on Free and Pro, and **off by default**: until an
+administrator turns it on, staff sign in with a password exactly as before and
+no grace period is running.
+
+**What it covers.** Staff sign-in from the desktop app and the browser, and the
+staff API. It does not cover recipients of share links (recipient MFA is
+separate work) and it is not single sign-on. Passwords and codes still cross
+the network unprotected if submitted to the legacy direct port 9095 over HTTP.
+MFA endpoints and MFA-code login requests reject HTTP, but that rejection cannot
+protect secrets already sent on the wire. Always use a verified HTTPS connection
+for two-step sign-in (see the [network guide](deployment-network.md)).
+
+**Turning it on.**
+
+1. An administrator needs their own authenticator first. On the server, as
+   root, issue a one-time enrollment code for that account:
+
+   ```
+   sudo node /opt/45drives/houston-broadcaster/dist/mfa-admin.js issue-code <username>
+   ```
+
+   The command uses the running Broadcaster service's database. Start the
+   service first. If it is stopped, explicitly set `DB_FILE` to the service's
+   database path:
+
+   ```
+   sudo env DB_FILE=/path/to/database node /opt/45drives/houston-broadcaster/dist/mfa-admin.js issue-code <username>
+   ```
+
+   The code lasts 15 minutes, works once and does not sign anyone in. The
+   person still needs their password, adds the key to an authenticator app, and
+   confirms a code before anything changes. They are then shown ten
+   single-use recovery codes, once.
+2. In Settings → Two-step sign-in, the enrolled
+   administrator enters their password and a current code and turns it on.
+   Review any warning about older Storage Wizard records (see above).
+3. The first time it is turned on starts one 14-day grace period for the whole
+   server. Staff who have set it up need a code immediately. Everyone else can
+   still sign in with a password until the deadline, are told when it is, and
+   after it must finish setup first. Turning it off and on again keeps the
+   original deadline and everyone's setup; it does not restart the clock.
+4. Turning it on ends the turning-on administrator's current sign-in, and each
+   person's earlier password-only sign-ins end when they set up or when the
+   deadline passes. People sign in again with a code.
+
+**Enrolling other staff.** They choose *Set up two-step sign-in* on the sign-in
+screen (or in Settings), enter their password and ask for approval. They are
+shown a short code. They read it to an administrator **you have verified is
+that person, in person or over a channel you already trust**. The
+administrator matches it under Settings → Two-step sign-in → Waiting for approval, enters their own current
+code, and approves. Approval lasts 15 minutes. Administrators cannot approve
+themselves; a sole administrator uses the root command above.
+
+**Lost authenticator or lost phone.**
+
+- A person with recovery codes can sign in with one (each works once). The
+  set can be replaced under Settings → Two-step sign-in → Your recovery codes with a current
+  authenticator code. Save the new codes before closing; old codes stop
+  working immediately. If the connection fails during replacement, the old
+  codes may already have stopped working: try again with a fresh authenticator
+  code or contact an administrator.
+- Otherwise they request approval again, or root issues a code for them. Setting
+  up again replaces the old authenticator and recovery codes and ends their
+  sessions.
+- If every administrator has lost their authenticator, root issues a code for
+  one of them. No path recovers access with a password alone, and none
+  disables the requirement from the sign-in page.
+
+**Turning it off or on again.** Needs the administrator's password and a
+current authenticator code (a recovery code is not accepted). Both are logged
+with the administrator's name.
+
+**Storage Wizard.** While two-step sign-in is on, scheduled backups keep using
+their existing login, with no code, **provided the script sends the
+installation ID** (as updated Storage Wizard scripts do). A staff account used
+for backups then receives a backup-only credential that works for that user's
+backup records and nothing else: not 45Flow, not Settings, not this feature.
+Scripts generated before the installation ID existed log in as an ordinary
+staff sign-in and would be asked for a code, so update Storage Wizard and let
+it regenerate its scripts *before* turning two-step on. Storage Wizard's administrative
+actions (registering the app, reading server logs, privileged audit reports) need
+a staff sign-in that includes a code. Until Storage Wizard is updated to
+prompt for one, those actions fail with a sign-in error while two-step is on;
+backups are unaffected.
+
+**Older 45Flow versions** cannot enter a code. While it is on, an enrolled
+person using one is refused with a message to update, and after the deadline
+so is everyone. Update desktop clients before the deadline.
+
+**Update note.** The credential broker must run the updated build to protect
+authenticator secrets. The packaged installers restart it; after a manual copy
+of files, run `systemctl restart houston-broadcaster-credentials`. Until then,
+setting up or signing in with two-step fails closed with "temporarily
+unavailable" rather than falling back to a password.
+
+**Logs.** Setup requests, approvals, enrollments, recovery-code use, failures,
+and turning it on or off are written to the operations log and audit trail,
+without codes or secrets. Authenticator secrets are encrypted at rest with the
+same root-protected key as other provider secrets. Back up that key (see
+[credentials](credentials.md)) with the database; without it, enrolled staff
+must be enrolled again.
+
+**Limits.** Five wrong codes lock that account's code entry for 15 minutes
+(held in memory; a restart clears it). This also means someone who knows a
+password can keep that person from signing in by entering wrong codes; the
+network allowlist and rate limits are the mitigation. Open WebSocket
+connections are not closed when a sign-in is ended. Anyone who can read the server's
+database as the service account can alter the policy. This feature has not had
+an independent security review.
 
 ## Upgrade and rollback checklist
 

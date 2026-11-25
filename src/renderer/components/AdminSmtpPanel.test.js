@@ -71,6 +71,7 @@ describe('AdminSmtpPanel settings UI/API', () => {
         await mount()
         expect(mocks.apiFetch).toHaveBeenCalledWith('/api/admin/credentials/smtp')
         expect(host.textContent).toContain('Not set up')
+        expect(host.textContent).toContain('Saved login: No')
         expect(host.querySelector('input[type="text"]').value).toBe('')
         expect(host.querySelector('input[type="password"]').value).toBe('')
     })
@@ -79,6 +80,7 @@ describe('AdminSmtpPanel settings UI/API', () => {
         mocks.apiFetch.mockResolvedValueOnce(configured())
         await mount()
         expect(host.textContent).toContain('smtp.example.com:587')
+        expect(host.textContent).toContain('Saved login: Yes')
         expect(host.textContent).toContain('STARTTLS')
         expect(host.textContent).toContain('noreply@example.com')
         // Known non-secret fields ARE preloaded (host/port/tls/from) but
@@ -120,6 +122,7 @@ describe('AdminSmtpPanel settings UI/API', () => {
             retry: 0,
         }))
         expect(host.textContent).toContain('Email settings saved.')
+        expect(host.textContent).toContain('Saved login: Yes')
         expect(host.querySelector('input[type="password"]').value).toBe('')
         const usernameInput = fieldFor('Username')
         expect(usernameInput.value).toBe('')
@@ -198,6 +201,7 @@ describe('AdminSmtpPanel settings UI/API', () => {
         await flush()
         expect(mocks.apiFetch).toHaveBeenLastCalledWith('/api/admin/credentials/smtp', expect.objectContaining({ method: 'DELETE' }))
         expect(host.textContent).toContain('Email settings deleted.')
+        expect(host.textContent).toContain('Saved login: No')
         expect(host.textContent).toContain('Not set up')
     })
 

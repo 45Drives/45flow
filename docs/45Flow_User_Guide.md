@@ -15,7 +15,7 @@ configuration, upgrades and rollback.
 45Flow is available in two modes:
 
 - **Community Edition** — Free unlicensed version. Includes all core file sharing, review, upload, and watermarking features (video and image).
-- **Pro Edition** — Unlocked when your server is licensed. Adds custom branding (white label), advanced watermark customization (position, scale, opacity, rotation, presets), advanced comment workflows (review/export tools, categories), annotations, and priority support.
+- **Pro Edition** — Unlocked when your server is licensed. Adds the browser web app, custom branding (white label), advanced watermark customization (position, scale, opacity, rotation, presets, text watermarks), personal watermarked copies, file requirements for uploads, advanced comment workflows (review panel, resolving, export), annotations, side-by-side version comparison, multi-server management, No-IP hostname setup, automatic app updates, and priority support.
 
 **The app works the same way for everyone** — it starts in Community mode by default, and automatically upgrades to Pro when connected to a licensed server. No separate downloads or builds. When unlicensed, Pro features are simply hidden or disabled in the UI.
 
@@ -32,9 +32,12 @@ configuration, upgrades and rollback.
 | Link expiration, password protection, invite-only access | ✅ | ✅ |
 | Project-based link organization | ✅ | ✅ |
 | Multi-server management | ❌ | ✅ |
+| Web app (use 45Flow in a browser on your LAN/VPN) | ❌ | ✅ |
+| No-IP hostname setup and automatic updates | ❌ | ✅ |
 | **Uploads & Transfers** | | |
 | Local file upload to server | ✅ | ✅ |
 | Remote upload links | ✅ | ✅ |
+| File requirements for uploads (type, codec, resolution, frame rate, length) | ❌ | ✅ |
 | Client-side transcoding (GPU/CPU) | ✅ | ✅ |
 | Transfer Dock with progress tracking | ✅ | ✅ |
 | **Review & Playback** | | |
@@ -46,11 +49,16 @@ configuration, upgrades and rollback.
 | Image watermarking (enable/disable, select image) | ✅ | ✅ |
 | Advanced watermark customization (position, scale, opacity, rotation) | ❌ | ✅ |
 | Watermark presets (save & reuse configurations) | ❌ | ✅ |
+| Text watermarks | ❌ | ✅ |
+| Personal watermarked copies (one per invited recipient) | ❌ | ✅ |
 | **Collaboration** | | |
 | Timecoded comments on videos | ✅  | ✅ |
 | Comment categories (create, assign, filter) | ✅ | ✅ |
+| Version history and forks | ✅ | ✅ |
+| Side-by-side version comparison | ❌ | ✅ |
 | Annotations & drawing tools | ❌ | ✅ |
-| Comment export (JSON, CSV, Markdown, WebVTT, PDF, EDL) | ❌ | ✅ |
+| Resolving and reopening feedback | ❌ | ✅ |
+| Comment review panel and export (JSON, CSV, Markdown, WebVTT, PDF, EDL) | ❌ | ✅ |
 | **Branding & Customization** | | |
 | Custom branding / white label | ❌ | ✅ |
 | Custom themes & colors | ❌ | ✅ |
@@ -61,8 +69,11 @@ configuration, upgrades and rollback.
 | Server health monitoring | ✅ | ✅ |
 | Audit logs (client & server) | ✅ | ✅ |
 | Maintenance & cleanup tools | ✅ | ✅ |
-| Automatic app updates | ✅ | ✅ |
+| Server (Broadcaster) update prompts | ✅ | ✅ |
+| Automatic desktop app updates | ❌ | ✅ |
 | SSL certificate management (Let's Encrypt) | ✅ | ✅ |
+
+> **Note:** In-app desktop updates need an active license. Community users install new versions by downloading them from the [Releases page](https://github.com/45Drives/45flow/releases). See [Automatic Updates](#21-automatic-updates).
 
 ---
 
@@ -113,14 +124,18 @@ configuration, upgrades and rollback.
     - [Step 1: Select a Project or Destination](#step-1-select-a-project-or-destination)
     - [Step 2: Configure Link Settings](#step-2-configure-link-settings)
     - [Link Types — Share, Upload, Combined](#link-types--share-upload-combined)
+    - [File Requirements for Uploads (Pro)](#file-requirements-for-uploads-pro)
     - [Link Access Modes](#link-access-modes)
     - [Video and Media Options](#video-and-media-options)
     - [Watermark Settings — Video and Image Support](#watermark-settings--video-and-image-support)
+    - [Text Watermarks (Pro)](#text-watermarks-pro)
+    - [Personal Watermarked Copies (Pro)](#personal-watermarked-copies-pro)
     - [Generating the Link](#generating-the-link)
 11. [Add Files](#11-add-files)
-    - [Step 1: Pick Files](#step-1-pick-files)
-    - [Step 2: Choose Folder](#step-2-choose-folder)
-    - [Step 3: Upload & Monitor Progress](#step-3-upload--monitor-progress)
+    - [Add Files to the List](#add-files-to-the-list)
+    - [Check Where the Files Go](#check-where-the-files-go)
+    - [Media Options](#media-options)
+    - [Upload & Monitor Progress](#upload--monitor-progress)
 12. [Transfer Dock](#12-transfer-dock)
     - [Transfer Dock Overview](#transfer-dock-overview)
     - [Transfer Entry Details](#transfer-entry-details)
@@ -130,10 +145,10 @@ configuration, upgrades and rollback.
     - [Link Table Columns](#link-table-columns)
     - [Link Actions](#link-actions)
 14. [Link Details](#14-link-details)
-    - [Link Configuration Summary](#link-configuration-summary)
-    - [Shared Files](#shared-files)
-    - [Access Activity Log](#access-activity-log)
-    - [File Versions](#file-versions)
+    - [Overview](#overview)
+    - [Files](#files)
+    - [Activity](#activity)
+    - [Versions](#versions)
     - [Forks and Comparing Versions](#forks-and-comparing-versions)
     - [Comments Review & Export](#comments-review--export)
 15. [Editing a Link](#15-editing-a-link)
@@ -644,7 +659,7 @@ Click the bell to open the notification panel. Each notification shows:
 
 Notifications are displayed in reverse chronological order (newest first). The panel stores up to 50 notifications. Click **"Clear all"** to dismiss the entire history.
 
-![Notification panel expanded with clickable items](images/notification-panel-expanded-v3.png)
+![Notification panel expanded with clickable items](images/notification-bell-expanded-v3.png)
 
 > **Tip:** Click on any notification in the list to expand or collapse its full message text. This is useful for longer messages that are truncated by default.
 
@@ -1206,7 +1221,8 @@ The Create Link screen is a single page, from top to bottom:
 3. **Details** — Whether the client can upload, and to which folder.
 4. **Link options** — Expiry, network, what happens after a client uploads, and who can access the link.
 5. **Video / Image / Media Options** — Proxy files and watermark settings (shown when you have picked video or image files).
-6. **Generate Flow link**.
+6. **File requirements** *(Pro, upload links only)* — Rules that uploaded files are checked against.
+7. **Generate Flow link**.
 
 ![File selection and link configuration](images/share-select-files-v3.png)
 
@@ -1264,6 +1280,26 @@ Client uploads land in this folder. If the folder doesn't exist yet, 45Flow crea
 **Project:**
 - The link is created in the project shown in the **Project** selector in the header.
 
+### File Requirements for Uploads (Pro)
+
+On a Pro server, links that accept uploads can check each uploaded file against your delivery specs. When **"Let client upload to"** is checked, a **File requirements** section appears below the link options.
+
+1. Turn on **Check uploads against file requirements**.
+2. Choose what is allowed. Leave a group empty to allow anything:
+   - **File type** (container)
+   - **Video codec**
+   - **Resolution** — pick common sizes, or type others such as `1998x1080, 4096x1716`
+   - **Frame rate (fps)**
+   - **Shortest** and **Longest** duration (`m:ss`)
+3. Under **When a file doesn't match**, choose:
+   - **Reject it and tell the uploader why**, or
+   - **Accept it, but flag it**.
+4. *(Optional)* Tick **Accept files that aren't video or audio (PDFs, images, documents) without checking them**.
+
+Files are checked after they upload. Your client sees a **"This link checks your files"** box listing the rules on the upload page. A rejected file shows the reason; an accepted-but-flagged file is kept and shows a **Flagged** note explaining what didn't match.
+
+To change the rules on an existing link, open **Link Details → Edit**. If you turn uploads on while editing, save the link first, then set the file requirements.
+
 ### Link Access Modes
 
 Choose who can access the link:
@@ -1308,6 +1344,8 @@ When you pick video or image files to share, a **Video Options**, **Image Option
 | Position control (9 anchor points) | ❌ Bottom-right only | ✅ Full control |
 | Scale, opacity, rotation | ❌ Fixed defaults | ✅ Customizable |
 | Watermark presets (save & reuse) | ❌ No | ✅ Yes |
+| Text watermarks | ❌ No | ✅ Yes |
+| Personal watermarked copies | ❌ No | ✅ Yes |
 
 ![Community mode watermark controls (basic)](images/watermark-community-basic-v3.png)
 
@@ -1329,7 +1367,40 @@ When you pick video or image files to share, a **Video Options**, **Image Option
 
 ![Pro mode watermark controls (advanced)](images/watermark-pro-advanced-v3.png)
 
-> **Note:** In Community mode, watermarks (video and image) are applied at a fixed bottom-right position with default scale/opacity. Upgrade to Pro for full customization (position, scale, opacity, rotation) and reusable presets.
+> **Note:** In Community mode, watermarks (video and image) are applied at a fixed bottom-right position with default scale/opacity. Upgrade to Pro for full customization (position, scale, opacity, rotation), text watermarks, personal copies and reusable presets.
+
+### Text Watermarks (Pro)
+
+On a Pro server, the watermark controls have two cards: **Image watermark** and **Text watermark**. Use one or the other.
+
+1. Tick **Text watermark**.
+2. Type the **Text**. Click a variable button to insert it:
+
+   | Button | Inserts | Filled in with |
+   |--------|---------|----------------|
+   | **Recipient name** | `{recipient}` | The invited person's name |
+   | **Email** | `{email}` | Their email address |
+   | **Company** | `{company}` | Their company |
+   | **Date** | `{date}` | The date |
+   | **Link title** | `{link}` | The link's name |
+
+3. Choose the **Font** (Sans or Sans Bold), **Colour** and **Position**, and adjust size, opacity and rotation. The **Live Preview** shows the result with sample values.
+
+`{recipient}`, `{email}` and `{company}` only have values for invited people. On a link that anyone can open, they are left blank and 45Flow shows a warning.
+
+You can add a text watermark when creating a link or in QuickShare. Editing a link changes its image watermark only; for invite-only links, change the text from **Personal watermarked copies** in **Link Details → Files** (see below).
+
+### Personal Watermarked Copies (Pro)
+
+Give each invited person their own copy, stamped with their own details. If a copy leaks, you can tell whose it was.
+
+1. Set **Who can open it** to **Only invited clients & teams** and invite people or teams.
+2. Add a **text watermark** that uses `{recipient}`, `{email}` or `{company}`, for example `Preview for {recipient} · {company}`.
+3. Generate the link. 45Flow notes that *each invited person gets their own copy with their details filled in, and only ever sees that copy*.
+
+To check progress, open **Link Details → Files**. The **Personal watermarked copies** section lists each person with a status: **Preparing**, **Ready**, **Failed** or **No watermark**, plus a summary such as *"3 of 4 ready."* From there you can turn personal copies on or off and click **Edit the watermark text**.
+
+> **Tip:** Fill in each client's **Email** and **Company** in [Client Access](#18-client-access) so those variables have something to show.
 
 ### Emailing the Link
 
@@ -1565,7 +1636,7 @@ The top of the window shows whether the link is **Active**, **Expired** or **Dis
 |---------|---------------|
 | **Who can open it** | The access option: **Only invited clients & teams**, **Anyone with the link**, or **Anyone with the link + password**. Open links also show whether **Comments** are allowed. Invite-only links list every invited team (with its members and role) and every client invited directly (with their username, email and role). Clients whose login is disabled are marked **Login disabled**. |
 | **Shared files** | How many files are shared (click to jump to the Files tab) and the folder they come from. |
-| **Uploads** | Where uploaded files are saved, whether uploads are added to the shared files and watermarked, and the proxy file qualities made for uploads. |
+| **Uploads** | Where uploaded files are saved, whether uploads are added to the shared files and watermarked, and the proxy file qualities made for uploads. On a Pro server, **File requirements** summarizes the upload checks, if any. |
 | **Playback and watermark** | The **Proxy files** qualities (or Off) and the **Watermark** image (or Off). |
 | **Notes** | Your internal notes. |
 
@@ -1576,6 +1647,8 @@ The top of the window shows whether the link is **Active**, **Expired** or **Dis
 Every file on the link, with its **Name**, **Size** and **Type**. Files uploaded through the link also show who uploaded them, from which IP address, and when.
 
 Below the list, **Processing** shows the progress of any proxy files, HLS streams or image watermarks being made for the link, with **Retry** for any that failed.
+
+On a Pro server, invite-only links also show **Personal watermarked copies** here: each invited person and the state of their copy. See [Personal Watermarked Copies (Pro)](#personal-watermarked-copies-pro).
 
 ### Activity
 
@@ -1702,7 +1775,7 @@ The window becomes a single form, grouped like Settings:
 - **Details** — **Title**, **Project** and internal **Notes**.
 - **What this link does** — Turn **Review** (share files for clients to view) and **Upload** (let clients send you files) on or off. At least one must be on.
 - **Shared files** — How many files are selected. Click **"Manage files…"** to add or remove files, and **Show the file list** to check the paths.
-- **Uploads** — The folder uploads are saved to, and whether uploaded files are added to the shared files, watermarked with the link's watermark, or given proxy files (720p, 1080p, Full Res (MP4)).
+- **Uploads** — The folder uploads are saved to, and whether uploaded files are added to the shared files, watermarked with the link's watermark, or given proxy files (720p, 1080p, Full Res (MP4)). On a Pro server, **File requirements** sets the upload checks (see [File Requirements for Uploads](#file-requirements-for-uploads-pro)).
 - **Who can open it** — Choose **Only invited clients & teams**, **Anyone with the link**, or **Anyone with the link + password**.
   - Invite-only: click **"Invite clients…"** to add clients or teams or change their roles, or **Remove** to take someone off. Changes are marked **New**, **Role changed** or **Will be removed** (with **Undo**) and only apply when you click **"Save & close"**.
   - With a password: enter the password. If the link already has one, leave the box blank to keep it.
@@ -1940,6 +2013,8 @@ Roles define what clients can do on invite-only links. Open them from **Client A
 2. Once connected, use the **Connection Manager** (accessible from the server switcher dropdown in the header) to add additional servers.
 3. Each server maintains its own JWT token, SSH credentials, and license status.
 
+If that server address is already connected, 45Flow shows the signed-in user and offers **Open existing connection**. To sign in as another user, open that connection and log out first. Different addresses for the same server are not automatically recognized as the same server.
+
 ### Switching Active Server
 
 The **active server** is displayed in the header bar. Click the dropdown to switch between connected servers. The active server is where all your actions take effect — creating links, uploading files, managing users, etc.
@@ -1966,7 +2041,9 @@ This is useful for managing links across multiple servers from a single view.
 **Update eligibility** is tied to your license status:
 - **Active Pro license** — Automatic updates are enabled. You receive new versions as they're released.
 - **Pro — Legacy (expired license)** — Updates are disabled. The Pro features you had at the time of expiry continue to work, but you won't receive new app versions or any Pro features released after expiration until the license is renewed.
-- **Community (unlicensed)** — Updates are disabled.
+- **Community (unlicensed)** — In-app updates are disabled. Download the newest installer from the [Releases page](https://github.com/45Drives/45flow/releases) and install it over your current version; your settings and servers are kept.
+
+**Server updates** are separate. When a newer houston-broadcaster version is available, administrators see a **Server Update Available** notification with an **Update** button. This is offered on Community and active Pro servers, and paused on Pro — Legacy servers until the license is renewed.
 
 ![Update banner showing available update](images/update-banner-v3.png)
 
@@ -2193,13 +2270,13 @@ A: The app enters **Pro — Legacy** mode. All the Pro features you had at the t
 A: A project is a folder on your server for one job or production. After you sign in you land on your Projects; open one to see its links, create new links and add files. Each project keeps its own proxy files and streams in a hidden `.45flow` folder inside the project folder.
 
 **Q: How do I create a link that supports both sharing and uploading?**  
-A: When creating a link, enable both **"Enable file sharing"** and **"Enable uploads"** toggles. This creates a Combined link where recipients can view/download your shared files AND upload their own files to the same location. Perfect for collaborative review workflows.
+A: Pick files under **Files to share** and also check **"Let client upload to"** with a destination folder. This creates a Combined link where recipients can view/download your shared files AND upload their own files. The summary line under **"Generate Flow link"** confirms the link type. Perfect for collaborative review workflows.
 
 **Q: Can I watermark images, or just videos?**  
 A: Both! Watermarking for video and image files is available in both Community and Pro editions. In Community mode, watermarks are applied at a fixed bottom-right position with default settings. Pro unlocks full customization — position (9 anchor points), scale, opacity, rotation, and the ability to save/reuse watermark presets.
 
 **Q: My server doesn't appear in the auto-discovery dropdown. What do I do?**  
-A: The `houston-broadcaster` service must be running on the server. Try connecting manually using the server's IP address via the **"Connect manually via IP"** field.
+A: The `houston-broadcaster` service must be running on the server, and you must be on the same subnet. Otherwise, type the server's IP address into the **"Or enter the server address"** box on the sign-in screen.
 
 **Q: External share links aren't working. What should I check?**  
 A: Ensure port 443 (or your custom HTTPS port) is forwarded on your router. Use the **"Check Port"** button when creating a link to verify. Also confirm your external URL is correctly configured in **Settings**.
