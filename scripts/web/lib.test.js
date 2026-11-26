@@ -35,14 +35,13 @@ describe('version.json', () => {
 })
 
 describe('package metadata', () => {
-  it('writes a deb control file for an architecture-independent package that suggests the broadcaster', () => {
+  it('writes a deb control file that depends on the broadcaster', () => {
     const control = debControl({ version: '1.2.0-beta.1', maintainer: 'A B <a@b.c>', installedSizeKb: 5784 })
 
     expect(control).toContain('Package: 45flow-web\n')
     expect(control).toContain('Version: 1.2.0~beta.1\n')
     expect(control).toContain('Architecture: all\n')
-    expect(control).toContain('Recommends: houston-broadcaster\n')
-    expect(control).not.toMatch(/^Depends:/m)
+    expect(control).toContain('Depends: houston-broadcaster\n')
     expect(control.endsWith('\n')).toBe(true)
   })
 
@@ -51,6 +50,7 @@ describe('package metadata', () => {
 
     expect(spec).toContain('Name:           45flow-web')
     expect(spec).toContain('BuildArch:      noarch')
+    expect(spec).toMatch(/^Requires:\s+houston-broadcaster$/m)
     expect(spec).toContain('%defattr(0644,root,root,0755)')
     expect(spec).toContain(`%files\n%defattr(0644,root,root,0755)\n${WEB_ROOT}\n`)
     expect(spec).toContain('* Wed Nov 04 2026 A B <a@b.c> - 1.0.9-1')

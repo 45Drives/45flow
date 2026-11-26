@@ -41,10 +41,10 @@ describe('repository packaging', () => {
         const spec = read(`${base}/main.spec.j2`)
         expect(spec).toContain('BuildArch:      {{ architecture.rocky }}')
         expect(spec).toContain('make web-install DESTDIR=%{buildroot}')
-        expect(spec).not.toContain('Requires:')
+        expect(spec).toMatch(/^Requires:\s+houston-broadcaster$/m)
       } else {
         expect(read(`${base}/control.j2`)).toContain(`Architecture: {{ architecture.${build.group} }}`)
-        expect(read(`${base}/control.j2`)).not.toMatch(/^Depends:/m)
+        expect(read(`${base}/control.j2`)).toMatch(/^Depends: houston-broadcaster$/m)
         expect(read(`${base}/rules`)).toContain('include packaging/debian.rules')
         expect(read(`${base}/source/format`)).toContain('3.0 (native)')
         expect(read(`${base}/copyright.j2`)).toContain('GPL-3.0')

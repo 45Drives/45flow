@@ -44,8 +44,7 @@ export function debControl({ version, maintainer, installedSizeKb }) {
     'Architecture: all',
     `Maintainer: ${maintainer}`,
     `Installed-Size: ${installedSizeKb}`,
-    // The app is only reachable once the Broadcaster's nginx has the /app location.
-    'Recommends: houston-broadcaster',
+    'Depends: houston-broadcaster',
     `Description: ${PACKAGE_SUMMARY}`,
     ` Static files for the 45Flow browser UI, installed to ${WEB_ROOT}.`,
     ' Served by the Houston Broadcaster nginx behind the admin allowlist.',
@@ -69,7 +68,7 @@ Summary:        ${PACKAGE_SUMMARY}
 License:        GPL-3.0-only
 BuildArch:      noarch
 AutoReqProv:    no
-Recommends:     houston-broadcaster
+Requires:       houston-broadcaster
 
 %description
 Static files for the 45Flow browser UI, installed to ${WEB_ROOT}.

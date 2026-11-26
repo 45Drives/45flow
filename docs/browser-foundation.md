@@ -49,7 +49,7 @@ Progress consumers share one WebSocket per server connection, including while it
 
 ## Pro gate (A-04)
 
-`/app/` is served only to licensed servers. nginx asks the Broadcaster (`auth_request` to `/api/license/web-access`) before serving anything under `/app/`; a refusal shows an upgrade page (HTTP 402). "Licensed" means active Pro/trial or paid Pro in legacy mode (`fallback: true`); expired/revoked trials are blocked even when their certificate and web package remain installed. `WEB_APP_LICENSE_GATE=off` is an explicit lab override that opens it to every server without regenerating nginx. Keep the gate enabled on production servers. The allowlist is checked first: a client outside it gets 403, never the upgrade page. This is a product gate, not a security boundary: every API is already authenticated, and the same APIs serve the desktop app on free servers. The static package is installable on any host; license enforcement happens on the hosting Broadcaster, not inside the package.
+`/app/` is served only to licensed servers. nginx asks the Broadcaster (`auth_request` to `/api/license/web-access`) before serving anything under `/app/`; a refusal shows an upgrade page (HTTP 402). "Licensed" means active Pro/trial or paid Pro in legacy mode (`fallback: true`); expired/revoked trials are blocked even when their certificate and web package remain installed. `WEB_APP_LICENSE_GATE=off` is an explicit lab override that opens it to every server without regenerating nginx. Keep the gate enabled on production servers. The allowlist is checked first: a client outside it gets 403, never the upgrade page. This is a product gate, not a security boundary: every API is already authenticated, and the same APIs serve the desktop app on free servers. The static package can be installed with Broadcaster regardless of license; license enforcement happens on the hosting Broadcaster, not inside the package.
 
 ## Packaging and versioning (D-33)
 
@@ -60,7 +60,7 @@ make web-build      # build/web, with version.json (served at /app/version.json)
 make web-package    # build/web-packages: .tar.gz, .deb, .rpm and SHA256SUMS
 ```
 
-Output is reproducible: with `SOURCE_DATE_EPOCH` set, two builds give byte-identical packages. Packages install to `/opt/45drives/45flow-web` and `Recommend` houston-broadcaster. A pre-release version such as `1.2.0-beta.1` becomes `1.2.0~beta.1` so it sorts before the release. `version.json` records the version, git commit (`-dirty` when built from uncommitted changes) and build date.
+Output is reproducible: with `SOURCE_DATE_EPOCH` set, two builds give byte-identical packages. Packages install to `/opt/45drives/45flow-web` and depend on `houston-broadcaster`, so removing Broadcaster with apt or dnf also removes the web package. Broadcaster does not depend on the web package. Existing installations must upgrade to a package with this dependency before removal; older packages will not be removed automatically. The standalone tarball has no package-manager dependency. A pre-release version such as `1.2.0-beta.1` becomes `1.2.0~beta.1` so it sorts before the release. `version.json` records the version, git commit (`-dirty` when built from uncommitted changes) and build date.
 
 Lab deployment without packages: `make install-remote REMOTE_HOST=<server>`; `make web-gate GATE=off REMOTE_HOST=<server>` lets an unlicensed lab server serve `/app/`.
 
