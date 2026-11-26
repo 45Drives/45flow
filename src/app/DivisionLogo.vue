@@ -1,5 +1,5 @@
 <template>
-  <img :src="src" :alt="`${division} logo`" class="w-auto max-h-12">
+  <img :src="src" :alt="`${division} logo`" class="w-auto max-w-full max-h-12">
 </template>
 
 <script setup lang="ts">

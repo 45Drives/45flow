@@ -3,7 +3,7 @@
     class="w-screen h-screen overflow-hidden flex flex-col text-default bg-default app-bg-textured">
     <header
       v-if="!hideHeader"
-      class="grid grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-3 items-center w-full h-16 px-2 sm:px-4 gap-2 bg-accent"
+      class="grid grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_minmax(7rem,1fr)_minmax(0,auto)] xl:grid-cols-[minmax(0,1fr)_minmax(7rem,auto)_minmax(0,1fr)] items-center w-full min-h-16 shrink-0 px-2 sm:px-4 py-1 gap-2 bg-accent"
     >
       <!-- Left (logo) -->
       <div class="justify-self-start">
@@ -16,7 +16,7 @@
 
       <!-- Center (title) -->
       <!-- Phones: the branding logo would collide with the controls, so it shows from sm up. -->
-      <div class="header-division-logo justify-self-center text-center items-center text-2xl font-semibold whitespace-nowrap">
+      <div class="header-division-logo min-w-0 justify-self-center text-center items-center text-2xl font-semibold whitespace-nowrap">
         <!-- {{ headerTitle || (route.meta.title as string) || '45Flow' }} -->
         <!-- <div class="flow-logo-gradient mx-auto my-auto ml-2" role="img" aria-label="45Flow" data-tour="flow-logo" :style="{
           '--flow-logo-src': `url(${flowLogo})`,
@@ -26,7 +26,7 @@
       </div>
 
       <!-- Right (menu) -->
-      <div class="col-start-3 justify-self-end text-right flex items-center gap-1 sm:gap-2 min-w-0">
+      <div class="col-start-2 sm:col-start-3 justify-self-end w-max max-w-full text-right flex flex-wrap justify-end items-center gap-1 sm:gap-2 min-w-0">
         <!-- The server name also shows on the project page; on phones the controls need the room. -->
         <div data-tour="connection-switcher" class="hidden md:block">
           <ConnectionSwitcher v-if="route.name !== 'server-selection' && isPremiumActive && !isWeb" />
