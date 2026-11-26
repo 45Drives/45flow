@@ -1,5 +1,5 @@
 <template>
-	<FlowCard variant="plain" class="dashboard-shell overflow-y-auto h-full min-h-0">
+	<FlowCard variant="plain" class="dashboard-shell overflow-y-auto h-full min-h-0" :header-class="{ '!pb-3': !!activeProject }">
 		<template #header>
 			<div class="dashboard-top" :class="{ 'dashboard-top--project': activeProject }">
 				<div class="dashboard-intro">
@@ -24,17 +24,19 @@
 					</template>
 				</div>
 
-				<div v-if="activeProject" class="dashboard-drop-hint" data-tour="quick-share-hint">
-					<ArrowUpTrayIcon class="dashboard-drop-hint-icon" aria-hidden="true" />
-					<div class="min-w-0">
-						<p class="dashboard-drop-hint-title">Quick Share: drag files onto this window</p>
-						<p class="dashboard-drop-hint-copy">Drop files from your computer anywhere here to upload them into this project and get a share link in one step.</p>
-					</div>
-				</div>
-
 				<div class="dashboard-utility button-group-row">
 					<button v-if="activeProject" @click="goToManageUsers" data-tour="manage-users" class="btn btn-secondary px-5 py-2.5">Client Access</button>
 					<button @click="leaveServer" class="btn btn-dismiss px-5 py-2.5">Log Out</button>
+				</div>
+			</div>
+
+			<div v-if="activeProject" class="dashboard-drop-hint" data-tour="quick-share-hint">
+				<div class="min-w-0">
+					<p class="dashboard-drop-hint-title">
+						<ArrowUpTrayIcon class="dashboard-drop-hint-icon" aria-hidden="true" />
+						<span>Quick Share: drag files onto this window</span>
+					</p>
+					<p class="dashboard-drop-hint-copy">Drop files from your computer anywhere here to upload them into this project and get a share link in one step.</p>
 				</div>
 			</div>
 
@@ -1111,13 +1113,14 @@ const goToCreateLink = () => { to('create-link', undefined, activeProject.value 
 }
 
 .dashboard-drop-hint {
-	flex: 1 1 18rem;
 	display: flex;
 	align-items: center;
+	justify-content: center;
+	text-align: center;
 	gap: 0.75rem;
 	min-width: 0;
-	max-width: 44rem;
 	padding: 0.6rem 0.9rem;
+	margin-bottom: 0.9rem;
 	border: 1px dashed currentColor;
 	border-radius: 0.6rem;
 	opacity: 0.85;
@@ -1130,6 +1133,10 @@ const goToCreateLink = () => { to('create-link', undefined, activeProject.value 
 }
 
 .dashboard-drop-hint-title {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
 	font-size: 0.85rem;
 	font-weight: 600;
 }
@@ -1149,7 +1156,6 @@ const goToCreateLink = () => { to('create-link', undefined, activeProject.value 
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 0.65rem;
-	margin-bottom: 0.95rem;
 }
 
 .dashboard-license-banner {
@@ -1223,12 +1229,7 @@ const goToCreateLink = () => { to('create-link', undefined, activeProject.value 
 @media (min-width: 781px) {
 	.dashboard-top--project {
 		display: grid;
-		grid-template-columns: minmax(15rem, 1fr) minmax(0, 2fr) minmax(15rem, 1fr);
-	}
-
-	.dashboard-top--project .dashboard-drop-hint {
-		width: 100%;
-		justify-self: center;
+		grid-template-columns: minmax(0, 1fr) auto;
 	}
 
 	.dashboard-top--project .dashboard-utility {
@@ -1237,8 +1238,7 @@ const goToCreateLink = () => { to('create-link', undefined, activeProject.value 
 }
 
 @media (max-width: 780px) {
-	.dashboard-intro,
-	.dashboard-drop-hint {
+	.dashboard-intro {
 		flex-basis: 100%;
 	}
 
