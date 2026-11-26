@@ -1,7 +1,7 @@
 <template>
 	<FlowCard variant="plain" class="dashboard-shell overflow-y-auto h-full min-h-0">
 		<template #header>
-			<div class="dashboard-top">
+			<div class="dashboard-top" :class="{ 'dashboard-top--project': activeProject }">
 				<div class="dashboard-intro">
 					<template v-if="activeProject">
 						<nav class="dashboard-crumbs" aria-label="Breadcrumb">
@@ -13,7 +13,7 @@
 							<span v-if="activeProject.archived" class="flow-chip flow-chip--muted text-xs shrink-0">Archived</span>
 							<span v-if="activeProject.is_disabled && !activeProject.archived" class="flow-chip flow-chip--danger text-xs shrink-0">Disabled</span>
 						</div>
-						<p class="dashboard-subtitle truncate" :title="activeProject.root_dir">
+						<p class="dashboard-subtitle truncate" :title="activeProject.root_dir + (activeProject.description ? ' · ' + activeProject.description : '')">
 							Project folder: <span class="font-mono">{{ activeProject.root_dir }}</span>
 							<template v-if="activeProject.description"> · {{ activeProject.description }}</template>
 						</p>
@@ -1094,6 +1094,7 @@ const goToCreateLink = () => { to('create-link', undefined, activeProject.value 
 }
 
 .dashboard-intro {
+	flex: 1 1 18rem;
 	min-width: 0;
 }
 
@@ -1140,8 +1141,8 @@ const goToCreateLink = () => { to('create-link', undefined, activeProject.value 
 
 .dashboard-utility {
 	display: flex;
+	flex: 0 0 auto;
 	gap: 0.5rem;
-	flex-wrap: wrap;
 }
 
 .dashboard-actions {
@@ -1219,7 +1220,28 @@ const goToCreateLink = () => { to('create-link', undefined, activeProject.value 
 	overflow: hidden;
 }
 
+@media (min-width: 781px) {
+	.dashboard-top--project {
+		display: grid;
+		grid-template-columns: minmax(15rem, 1fr) minmax(0, 2fr) minmax(15rem, 1fr);
+	}
+
+	.dashboard-top--project .dashboard-drop-hint {
+		width: 100%;
+		justify-self: center;
+	}
+
+	.dashboard-top--project .dashboard-utility {
+		justify-self: end;
+	}
+}
+
 @media (max-width: 780px) {
+	.dashboard-intro,
+	.dashboard-drop-hint {
+		flex-basis: 100%;
+	}
+
 	.dashboard-actions {
 		grid-template-columns: minmax(0, 1fr);
 	}

@@ -27,11 +27,14 @@ Stage 1 (A2) is built and checked. This is what B and C need to build on it. Det
 | No tokens in URLs or logs | `server/utils/safe-url.js` | `sessions-desktop.test.js` |
 | Older desktop tokens keep working unless `REQUIRE_SESSION_TOKENS=1` | `sessions.js` | `sessions-desktop.test.js` |
 
-Open items B should know about:
+Track B status and remaining decisions:
 
-- **Failed-login lockout and admin unlock** is B3 #3. Today there is only a rate limit (10 per 5 minutes per IP and username).
-- **Logout and access removal everywhere** (B-17, B3 #5): logout and admin revoke work for both clients. Removing a user's access does not yet revoke their sessions, and a request already being served finishes after a revoke.
-- **Two-step login** (B3 #1, #6) is not started. `verifyCredentials()` in `server/api/auth.js` is the one place both sign-in endpoints check credentials, so a second factor belongs there.
+- **Failed-login lockout and admin unlock** (B3 #3) are implemented. Staff accounts lock after five failed passwords within 15 minutes; the lock lasts 15 minutes and an administrator can unlock sooner. Desktop and browser sign-in share the lockout. Host PAM remains responsible for password length and quality. The login response uses the same generic error for unknown users and wrong passwords.
+- **Logout and access removal everywhere** (B-17, B3 #5): logout, admin revoke and staff-group removal revoke server-backed sessions and close active authenticated responses. Legacy login tokens are not invalidated, though the approved-staff group check still blocks removed members where enabled; older source-stream tokens and public share-link tokens retain their documented exceptions.
+- **Staff two-step login and recovery** (B3 #1, #2, #6) are implemented. Enforcement remains administrator-controlled (off by default), per the owner's rollout choice. MFA for invited share-user accounts is deferred pending a friction/usability assessment; it must not be conflated with anonymous links or their separate passwords.
+- **Safer link defaults and approval permissions** (B3 #7, #9): new links default to invited users, and server-side designated-approver checks are implemented. The owner confirmed on 26 Nov that an unset network default should remain Internet/external. External links require valid public HTTPS and port forwarding; verify readiness behavior in acceptance.
+- **Account lifecycle reviews and offboarding** (B3 #8) are implemented: quarterly report-only reviews, a 90-day inactivity flag, durable successful-login timestamps, forward-only stable staff IDs, audited ownership transfer/manual legacy assignment, and removal protection while attributed resources remain. No account is automatically disabled and no legacy owner is inferred. See [account-review-preparation.md](./account-review-preparation.md). Live signed-package and server acceptance remain part of B3 #10.
+- **Desktop/browser acceptance** (B3 #10) remains. Automated server tests do not replace signed-package, real in-place-upgrade, OS credential-store, cross-browser, and live HTTPS/certificate checks.
 - **Idle timeout for older desktop versions**: tokens issued before this change have no session, so they do not idle out until their own 12 hour expiry. Set `REQUIRE_SESSION_TOKENS=1` once clients have updated.
 - The contract doc is the first Broadcaster doc whitelisted in `.gitignore`; `docs/*.md` is otherwise ignored there.
 

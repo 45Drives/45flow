@@ -54,12 +54,17 @@
                         <AdminEgressPanel v-if="activeSection === 'adminSecurity' && adminSession && activeConnection"
                             :key="`egress-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId" class="mt-6"
                             @changed="egress.load" />
+                        <AdminOwnershipInventoryPanel v-if="activeSection === 'adminSecurity' && adminSession && activeConnection"
+                            :key="`ownership-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId" />
                         <template v-if="activeSection === 'staffMfa' && activeConnection">
                             <AdminStaffMfaPanel v-if="adminSession"
                                 :key="`mfa-${activeConnection.connectionId}`" :connection-id="activeConnection.connectionId"
                                 :username="activeConnection.username" />
                             <StaffMfaRecovery :key="`recovery-${activeConnection.connectionId}`"
                                 :connection-id="activeConnection.connectionId" :class="{ 'mt-6': adminSession }" />
+                            <AdminLoginLockoutsPanel v-if="adminSession"
+                                :key="`login-lockouts-${activeConnection.connectionId}`"
+                                :connection-id="activeConnection.connectionId" />
                         </template>
 
                         <!-- Loading state: shown until settings arrive from the server -->
@@ -1290,6 +1295,8 @@ import PublicAddressSetup from "../PublicAddressSetup.vue";
 import AdminScannerPanel from "../AdminScannerPanel.vue";
 import AdminEgressPanel from "../AdminEgressPanel.vue";
 import AdminStaffMfaPanel from "../AdminStaffMfaPanel.vue";
+import AdminLoginLockoutsPanel from "../AdminLoginLockoutsPanel.vue";
+import AdminOwnershipInventoryPanel from "../AdminOwnershipInventoryPanel.vue";
 import StaffMfaRecovery from "../StaffMfaRecovery.vue";
 import { EGRESS_OFF_TEXT, useEgressSwitches } from "../../composables/useEgressSwitches";
 import { isAdminSession } from "../../composables/adminSession";

@@ -2519,16 +2519,19 @@ function formatLocal(ts: unknown, opts: Intl.DateTimeFormatOptions) {
 		padding-top: 0.25rem;
 	}
 
-	.manage-toolbar {
-		align-items: stretch;
+	.manage-search-input {
+		flex: 1 1 10rem;
 	}
 
-	.manage-search-input,
-	.manage-filter-select,
-	.manage-refresh-btn {
-		width: 100%;
-		flex: 1 1 100%;
-		margin-left: 0;
+	.manage-filter-select {
+		min-width: 8rem;
+		flex: 1 1 8rem;
+	}
+}
+
+@media (max-width: 480px) {
+	.manage-search-input {
+		flex-basis: 100%;
 	}
 }
 </style>
