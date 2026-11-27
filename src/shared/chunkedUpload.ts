@@ -82,6 +82,7 @@ export interface ChunkedUploadHooks {
 const DEFAULT_CHUNK_SIZE = 5 * 1024 * 1024 // 5 MB
 const MAX_RETRIES_PER_CHUNK = 3
 const RETRY_DELAY_MS = 1000
+const MAX_FINALIZE_ATTEMPTS = 15 * 60
 
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -230,29 +231,62 @@ export async function runChunkedUpload(
   })
 
   try {
-    const completeRes = await fetch(`${apiBase}/api/local-upload/${sessionId}/complete`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        clientTranscode: opts.clientTranscode,
-        proxy: opts.proxy,
-        proxyQualities: opts.proxyQualities,
-        hls: opts.hls,
-        watermark: opts.watermark,
-        watermarkFile: opts.watermarkFile,
-        watermarkSettings: opts.watermarkSettings,
-      }),
+    const completeUrl = `${apiBase}/api/local-upload/${sessionId}/complete`
+    const completeBody = JSON.stringify({
+      clientTranscode: opts.clientTranscode,
+      proxy: opts.proxy,
+      proxyQualities: opts.proxyQualities,
+      hls: opts.hls,
+      watermark: opts.watermark,
+      watermarkFile: opts.watermarkFile,
+      watermarkSettings: opts.watermarkSettings,
     })
-    const completeBody = await completeRes.json()
-    if (!completeRes.ok || !completeBody.ok) {
-      return { ok: false, error: completeBody.error || `Finalize failed (${completeRes.status})` }
+    let finalized: any = null
+    let lastFinalizeError: unknown = null
+    for (let attempt = 0; attempt < MAX_FINALIZE_ATTEMPTS; attempt++) {
+      if (attempt === 0 || attempt % 5 === 0) {
+        try {
+          const completeRes = await fetch(completeUrl, {
+            method: 'POST',
+            headers,
+            body: completeBody,
+          })
+          if (completeRes.status !== 409) {
+            finalized = await completeRes.json()
+            if (!completeRes.ok || !finalized.ok) {
+              return { ok: false, error: finalized.error || `Finalize failed (${completeRes.status})` }
+            }
+            break
+          }
+        } catch (e) {
+          lastFinalizeError = e
+        }
+      }
+      if (attempt === MAX_FINALIZE_ATTEMPTS - 1) {
+        throw lastFinalizeError || new Error('Upload finalization did not complete')
+      }
+
+      await sleep(RETRY_DELAY_MS)
+      try {
+        const statusRes = await fetch(`${apiBase}/api/local-upload/${sessionId}`, { headers: auth })
+        if (statusRes.ok) {
+          const status = await statusRes.json()
+          if (status.completed && status.result?.ok) {
+            finalized = status.result
+            break
+          }
+        }
+      } catch (e) {
+        lastFinalizeError = e
+      }
     }
+    if (!finalized) throw lastFinalizeError || new Error('Upload finalization did not return a result')
 
     // Check abort AFTER /complete — if cancelled during finalize/scan, cancel any queued transcodes
     if (signal.aborted) {
-      const avId = completeBody.assetVersionId || opts.assetVersionId
-      if (avId && completeBody.transcodes?.queued?.length) {
-        for (const kind of completeBody.transcodes.queued) {
+      const avId = finalized.assetVersionId || opts.assetVersionId
+      if (avId && finalized.transcodes?.queued?.length) {
+        for (const kind of finalized.transcodes.queued) {
           try {
             await fetch(`${apiBase}/api/transcodes/${avId}/${kind}`, { method: 'DELETE', headers: auth })
           } catch { /* best effort */ }
@@ -261,7 +295,7 @@ export async function runChunkedUpload(
       return { ok: false, error: 'canceled' }
     }
 
-    const security = completeBody.security
+    const security = finalized.security
     onProgress({
       phase: 'complete',
       message: security?.scannerSkipped === true
@@ -274,8 +308,8 @@ export async function runChunkedUpload(
       totalChunks,
     })
 
-    const fileId = completeBody.fileId || opts.fileId
-    const assetVersionId = completeBody.assetVersionId || opts.assetVersionId
+    const fileId = finalized.fileId || opts.fileId
+    const assetVersionId = finalized.assetVersionId || opts.assetVersionId
     if (fileId) {
       onIngest({
         fileId,
@@ -283,8 +317,8 @@ export async function runChunkedUpload(
         transcodes: assetVersionId ? [{
           assetVersionId,
           jobs: {
-            queuedKinds: completeBody.transcodes?.queued || [],
-            skippedKinds: completeBody.transcodes?.skipped || [],
+            queuedKinds: finalized.transcodes?.queued || [],
+            skippedKinds: finalized.transcodes?.skipped || [],
           },
         }] : [],
       })
@@ -294,15 +328,15 @@ export async function runChunkedUpload(
       ok: true,
       file: {
         id: fileId,
-        assetId: completeBody.assetId,
+        assetId: finalized.assetId,
         assetVersionId,
-        savedAs: completeBody.filename,
-        name: completeBody.filename,
+        savedAs: finalized.filename,
+        name: finalized.filename,
         size: fileSize,
         mime: source.mime,
         relDir: dest,
       },
-      transcodes: completeBody.transcodes,
+      transcodes: finalized.transcodes,
     }
   } catch (e: any) {
     return { ok: false, error: `Failed to finalize upload: ${e?.message || String(e)}` }

@@ -76,6 +76,47 @@ describe('browser file upload', () => {
     expect(progress.mock.calls.at(-1)[0]).toMatchObject({ phase: 'complete', message: 'Malware scan passed' })
   })
 
+  it('recovers a completed upload after its final response is lost', async () => {
+    const path = api.getPathForFile(new File(['abcd'], 'clip.mp4'))
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(json({ ok: true, sessionId: 'retry-safe', chunkSize: 4, totalChunks: 1 }))
+      .mockResolvedValueOnce(json({ ok: true }))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(json({
+        ok: true,
+        completed: true,
+        result: { ok: true, fileId: 7, assetVersionId: 9, filename: 'clip.mp4' },
+      }))
+    vi.stubGlobal('fetch', fetch)
+
+    const { done } = await api.httpUploadStart(opts(path))
+    await expect(done).resolves.toMatchObject({ ok: true, file: { id: 7, assetVersionId: 9 } })
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/init'))).toHaveLength(1)
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/retry-safe/complete'))).toHaveLength(1)
+    expect(fetch.mock.calls.filter(([url, init]) => url.endsWith('/retry-safe') && init.method === undefined)).toHaveLength(1)
+  })
+
+  it('waits for an in-progress finalization before replaying its result', async () => {
+    const path = api.getPathForFile(new File(['abcd'], 'clip.mp4'))
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(json({ ok: true, sessionId: 'still-finalizing', chunkSize: 4, totalChunks: 1 }))
+      .mockResolvedValueOnce(json({ ok: true }))
+      .mockResolvedValueOnce(json({ ok: false, error: 'Upload is being finalized' }, 409))
+      .mockResolvedValueOnce(json({ ok: true, completed: false, finalizing: true }))
+      .mockResolvedValueOnce(json({
+        ok: true,
+        completed: true,
+        result: { ok: true, fileId: 7, assetVersionId: 9, filename: 'clip.mp4' },
+      }))
+    vi.stubGlobal('fetch', fetch)
+
+    const { done } = await api.httpUploadStart(opts(path))
+    await expect(done).resolves.toMatchObject({ ok: true, file: { id: 7, assetVersionId: 9 } })
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/init'))).toHaveLength(1)
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/still-finalizing/complete'))).toHaveLength(1)
+    expect(fetch.mock.calls.filter(([url, init]) => url.endsWith('/still-finalizing') && init.method === undefined)).toHaveLength(2)
+  })
+
   it('reports malware rejection without a successful scan or ingest event', async () => {
     const path = api.getPathForFile(new File(['abcd'], 'clip.mp4'))
     vi.stubGlobal('fetch', vi.fn()

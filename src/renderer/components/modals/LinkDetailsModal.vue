@@ -1076,7 +1076,8 @@ const hasUnsavedChanges = computed(() => {
   if (mediaSettingsDirty.value) return true
   if (draftShareEnabled.value && filesDirty.value) return true
   if (draftUploadEnabled.value && uploadDirDirty.value) return true
-  const hadPassword = (props.link.auth_mode || '') === 'password' || !!props.link.passwordRequired
+  const hadPassword = draftAccessMode.value === 'open' &&
+    ((props.link.auth_mode || '') === 'password' || !!props.link.passwordRequired)
   if (draftUsePassword.value !== hadPassword) return true
   if (draftUsePassword.value && draftPassword.value.trim().length > 0) return true
   if (accessEditsPending.value) return true

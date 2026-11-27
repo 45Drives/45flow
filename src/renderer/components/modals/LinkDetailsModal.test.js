@@ -177,4 +177,23 @@ describe('LinkDetailsModal edit: Review and Upload switches', () => {
     await flush()
     expect(selectedTab()).toBe('Files')
   })
+
+  it('does not mark an unchanged restricted link as dirty because it has no shared password', async () => {
+    const restricted = {
+      ...sharing,
+      access_mode: 'restricted',
+      auth_mode: 'password',
+      users: [{ user_id: 7, user_name: 'reviewer', role_name: 'feedback' }],
+      target: { ...sharing.target, watermarkText: { template: 'For {recipient}' } },
+    }
+    host = document.createElement('div')
+    document.body.appendChild(host)
+    app = createApp(LinkDetailsModal, { modelValue: true, link: restricted, apiFetch: mocks.apiFetch })
+    app.mount(host)
+    await flush()
+    modal = document.querySelector('.flow-modal__panel')
+    button('Edit').click()
+    await flush()
+    expect(modal.textContent).not.toContain('You have unsaved changes')
+  })
 })

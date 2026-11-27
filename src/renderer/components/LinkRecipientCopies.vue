@@ -22,6 +22,10 @@
               <p v-if="r.email" class="text-xs text-muted truncate">{{ r.email }}</p>
             </div>
             <span class="text-xs" :class="stateClass(r)" :title="failureDetail(r)">{{ stateLabel(r) }}</span>
+            <button v-if="r.status.state === 'failed'" type="button" class="btn btn-secondary btn-xs"
+              :disabled="retryingUserId !== null" @click="retry(r.userId)">
+              {{ retryingUserId === r.userId ? 'Retrying…' : 'Retry' }}
+            </button>
           </li>
         </ul>
         <button type="button" class="text-xs underline text-muted" @click="showEditor = !showEditor">
@@ -32,6 +36,7 @@
       </template>
       <p v-else-if="savedEnabled" class="text-xs text-flow-warning">Saving turns personal copies off and deletes them.</p>
       <FlowNotice v-if="saveError" tone="danger" size="sm">{{ saveError }}</FlowNotice>
+      <FlowNotice v-if="retryError" tone="danger" size="sm">{{ retryError }}</FlowNotice>
       <div v-if="dirty" class="flex justify-end gap-2">
         <button type="button" class="btn btn-dismiss btn-sm" :disabled="saving" @click="applyResponse(lastResponse)">Discard</button>
         <button type="button" class="btn btn-primary btn-sm" :disabled="saving" @click="save">
@@ -68,6 +73,8 @@ const POLL_MS = 5000
 const loaded = ref(false)
 const loadError = ref('')
 const saveError = ref('')
+const retryError = ref('')
+const retryingUserId = ref<number | null>(null)
 const saving = ref(false)
 const lastResponse = ref<RecipientWatermarksResponse | null>(null)
 const rows = ref<RecipientCopyRow[]>([])
@@ -175,6 +182,23 @@ async function save() {
     saveError.value = e?.message || 'Could not save personal copies.'
   } finally {
     saving.value = false
+  }
+}
+
+async function retry(userId: number) {
+  retryingUserId.value = userId
+  retryError.value = ''
+  try {
+    await props.apiFetch(`/api/links/${props.linkId}/recipient-watermarks/${userId}/retry`, {
+      method: 'POST',
+      retry: 0,
+      exposeServerMessage: true,
+    })
+    await load()
+  } catch (e: any) {
+    retryError.value = e?.message || 'Could not retry personal copies.'
+  } finally {
+    retryingUserId.value = null
   }
 }
 
