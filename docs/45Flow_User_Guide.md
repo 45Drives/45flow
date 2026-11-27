@@ -14,64 +14,62 @@ configuration, upgrades and rollback.
 
 45Flow is available in two modes:
 
-- **Community Edition** — Free unlicensed version. Includes all core file sharing, review, upload, and watermarking features (video and image).
-- **Pro Edition** — Unlocked when your server is licensed. Adds the browser web app, custom branding (white label), advanced watermark customization (position, scale, opacity, rotation, presets, text watermarks), personal watermarked copies, file requirements for uploads, advanced comment workflows (review panel, resolving, export), annotations, side-by-side version comparison, multi-server management, No-IP hostname setup, automatic app updates, and priority support.
+- **Community Edition** — Free, on any unlicensed server. Includes everything you need to share and review: review and upload links, projects, clients, teams and roles, video playback with proxy files, timecoded comments and replies, approvals, basic watermarks, PDF markup, malware scanning, email, two-step sign-in for staff, and the full audit log.
+- **Pro Edition** — Unlocked when your server is licensed. Adds the browser web app, custom branding (white label), advanced and text watermarks, personal watermarked copies, file requirements for uploads, drawing on video and image frames, resolving feedback, the comment review panel and exports, side-by-side version comparison, multi-server management, No-IP hostname setup, automatic app updates, and priority support.
 
-**The app works the same way for everyone** — it starts in Community mode by default, and automatically upgrades to Pro when connected to a licensed server. No separate downloads or builds. When unlicensed, Pro features are simply hidden or disabled in the UI.
+**The app works the same way for everyone** — it starts in Community mode and automatically upgrades to Pro when connected to a licensed server. There are no separate downloads. When the server is unlicensed, Pro features are hidden or disabled.
 
-**Licensing is server-side** — your 45Flow license is tied to your houston-broadcaster server, not to individual user accounts. Once a server is licensed, all users connecting to it gain access to Pro features automatically.
+**Licensing is server-side** — your 45Flow license belongs to your server, not to individual users. Once a server is licensed, everyone who signs in to it gets Pro, and so do the clients opening its links.
 
 ### Feature Comparison
 
 | Feature | Community | Pro |
 |---------|:---------:|:---:|
-| **File Sharing & Links** | | |
-| Create share links (single file or collection) | ✅ | ✅ |
-| Create upload links | ✅ | ✅ |
-| Combined links (share + upload) | ✅ | ✅ |
-| Link expiration, password protection, invite-only access | ✅ | ✅ |
-| Project-based link organization | ✅ | ✅ |
-| Multi-server management | ❌ | ✅ |
+| **Links & Projects** | | |
+| Review links (single file or collection) | ✅ | ✅ |
+| Upload links | ✅ | ✅ |
+| Review + Upload links | ✅ | ✅ |
+| Expiry, password protection, invite-only access | ✅ | ✅ |
+| Projects | ✅ | ✅ |
+| Email links and invitations | ✅ | ✅ |
 | Web app (use 45Flow in a browser on your LAN/VPN) | ❌ | ✅ |
-| No-IP hostname setup and automatic updates | ❌ | ✅ |
+| Multi-server management (desktop) | ❌ | ✅ |
+| No-IP hostname setup | ❌ | ✅ |
 | **Uploads & Transfers** | | |
-| Local file upload to server | ✅ | ✅ |
-| Remote upload links | ✅ | ✅ |
-| File requirements for uploads (type, codec, resolution, frame rate, length) | ❌ | ✅ |
-| Client-side transcoding (GPU/CPU) | ✅ | ✅ |
+| Add Files, QuickShare and client upload links | ✅ | ✅ |
+| Malware scanning of uploads | ✅ | ✅ |
+| File requirements for uploads (type, codec, resolution, frame rate, aspect ratio, audio, length) | ❌ | ✅ |
+| Client-side transcoding (GPU/CPU, desktop) | ✅ | ✅ |
 | Transfer Dock with progress tracking | ✅ | ✅ |
 | **Review & Playback** | | |
-| Video player with HLS streaming | ✅ | ✅ |
-| Proxy files (720p, 1080p) | ✅ | ✅ |
-| Multi-file share navigation | ✅ | ✅ |
-| **Watermarking** | | |
-| Video watermarking (enable/disable, select image) | ✅ | ✅ |
-| Image watermarking (enable/disable, select image) | ✅ | ✅ |
-| Advanced watermark customization (position, scale, opacity, rotation) | ❌ | ✅ |
-| Watermark presets (save & reuse configurations) | ❌ | ✅ |
-| Text watermarks | ❌ | ✅ |
-| Personal watermarked copies (one per invited recipient) | ❌ | ✅ |
-| **Collaboration** | | |
-| Timecoded comments on videos | ✅  | ✅ |
-| Comment categories (create, assign, filter) | ✅ | ✅ |
+| Video player with adaptive streaming and proxy files | ✅ | ✅ |
+| PDF, image, audio and Office document previews | ✅ | ✅ |
 | Version history and forks | ✅ | ✅ |
 | Side-by-side version comparison | ❌ | ✅ |
-| Annotations & drawing tools | ❌ | ✅ |
+| **Watermarking** | | |
+| Image watermark on videos and images (bottom-right) | ✅ | ✅ |
+| Position, scale, opacity, rotation and presets | ❌ | ✅ |
+| Text watermarks | ❌ | ✅ |
+| Personal watermarked copies (one per invited recipient) | ❌ | ✅ |
+| **Feedback & Approvals** | | |
+| Timecoded comments, replies and categories | ✅ | ✅ |
+| Approve / request changes / reject, with decision history | ✅ | ✅ |
+| Drawing on PDF pages | ✅ | ✅ |
+| Drawing on video frames and images | ❌ | ✅ |
 | Resolving and reopening feedback | ❌ | ✅ |
-| Comment review panel and export (JSON, CSV, Markdown, WebVTT, PDF, EDL) | ❌ | ✅ |
+| Comment review panel and export (PDF, CSV, Markdown, EDL, WebVTT, JSON) | ❌ | ✅ |
+| Feedback notifications in the app, staff alert emails, guest email updates | ✅ | ✅ |
 | **Branding & Customization** | | |
-| Custom branding / white label | ❌ | ✅ |
-| Custom themes & colors | ❌ | ✅ |
-| Custom logos | ❌ | ✅ |
-| Custom link preview metadata | ❌ | ✅ |
-| **Administration** | | |
-| Client, team & role management | ✅ | ✅ |
-| Server health monitoring | ✅ | ✅ |
-| Audit logs (client & server) | ✅ | ✅ |
-| Maintenance & cleanup tools | ✅ | ✅ |
+| Custom branding: logo, favicon, colours, themes, fonts, welcome message, footer, link previews, custom CSS | ❌ | ✅ |
+| **Administration & Security** | | |
+| Client, team and role management | ✅ | ✅ |
+| Two-step sign-in for staff | ✅ | ✅ |
+| Server health, maintenance and storage settings | ✅ | ✅ |
+| Activity and tamper-evident audit log | ✅ | ✅ |
+| Scanning & privacy (outbound calls, quarterly account review) | ✅ | ✅ |
+| HTTPS certificates (Let's Encrypt) | ✅ | ✅ |
 | Server (Broadcaster) update prompts | ✅ | ✅ |
 | Automatic desktop app updates | ❌ | ✅ |
-| SSL certificate management (Let's Encrypt) | ✅ | ✅ |
 
 > **Note:** In-app desktop updates need an active license. Community users install new versions by downloading them from the [Releases page](https://github.com/45Drives/45flow/releases). See [Automatic Updates](#21-automatic-updates).
 
@@ -80,12 +78,17 @@ configuration, upgrades and rollback.
 ## Table of Contents
 
 1. [System Requirements](#1-system-requirements)
+   - [Client App — 45Flow Community / Pro](#client-app--45flow-community--pro)
+   - [Server — houston-broadcaster](#server--houston-broadcaster)
+   - [Required Server System Packages](#required-server-system-packages)
 2. [Installation](#2-installation)
    - [macOS](#macos)
    - [Windows](#windows)
    - [Linux](#linux)
 3. [Getting Started — Connecting to Your Server](#3-getting-started--connecting-to-your-server)
    - [Logging In](#logging-in)
+   - [Signing In with Two-Step Sign-In](#signing-in-with-two-step-sign-in)
+   - [First-run server setup](#first-run-server-setup)
    - [Automatic Server Discovery](#automatic-server-discovery)
    - [Entering the Server Address](#entering-the-server-address)
    - [Custom Port Configuration](#custom-port-configuration)
@@ -99,37 +102,52 @@ configuration, upgrades and rollback.
    - [Creating a Project](#creating-a-project)
    - [Managing Projects](#managing-projects)
 6. [Dashboard Overview](#6-dashboard-overview)
+   - [Top Bar](#top-bar)
+   - [Notifications](#notifications)
+   - [Main Action Buttons](#main-action-buttons)
+   - [Links Table](#links-table)
+   - [Logging Out](#logging-out)
 7. [Settings](#7-settings)
-   - [URLs & Access](#urls--access)
-   - [SSL Certificate Management](#ssl-certificate-management)
-   - [Public Sharing](#public-sharing)
-   - [Link Options](#link-options)
+   - [New Link Defaults](#new-link-defaults)
+   - [Share Addresses](#share-addresses)
+   - [Internet Sharing](#internet-sharing)
+   - [HTTPS Certificate](#https-certificate)
    - [Preferences](#preferences)
-   - [Performance](#performance)
+   - [Video Processing](#video-processing)
+   - [Two-step Sign-in](#two-step-sign-in)
    - [Server Health](#server-health)
-   - [Maintenance & Cleanup](#maintenance--cleanup)
+   - [Maintenance](#maintenance)
+   - [Storage](#storage)
+   - [Staff Users](#staff-users)
+   - [Upload Security](#upload-security)
+   - [Watermarks](#watermarks)
+   - [File Browsing](#file-browsing)
+   - [Admin Networks](#admin-networks)
+   - [Email (SMTP)](#email-smtp)
+   - [Scanning & Privacy](#scanning--privacy)
+   - [Help & Tours](#help--tours)
    - [Go Pro — License Activation](#go-pro--license-activation)
-   - [Guides](#guides)
 8. [Custom Branding (White Label) — Pro Feature](#8-custom-branding-white-label--pro-feature)
-   - [Enabling Branding](#enabling-branding)
-   - [Company Identity](#company-identity)
-   - [Theme & Colors](#theme--colors)
-   - [Company Logo](#company-logo)
-   - [Support & Contact Information](#support--contact-information)
-   - [Link Preview Metadata](#link-preview-metadata)
-   - [Live Preview](#live-preview)
-   - [Clearing Branding](#clearing-branding)
+   - [Identity](#identity)
+   - [Look](#look)
+   - [Page Content](#page-content)
+   - [Custom CSS](#custom-css)
+   - [How Branding Appears to Recipients](#how-branding-appears-to-recipients)
 9. [Drag and Drop QuickShare](#9-drag-and-drop-quickshare)
-10. [Creating Links — Share, Upload, or Combined](#10-creating-links--share-upload-or-combined)
-    - [Step 1: Select a Project or Destination](#step-1-select-a-project-or-destination)
-    - [Step 2: Configure Link Settings](#step-2-configure-link-settings)
-    - [Link Types — Share, Upload, Combined](#link-types--share-upload-combined)
-    - [File Requirements for Uploads (Pro)](#file-requirements-for-uploads-pro)
-    - [Link Access Modes](#link-access-modes)
+   - [How to Use QuickShare](#how-to-use-quickshare)
+   - [QuickShare Options](#quickshare-options)
+   - [After Creating a QuickShare Link](#after-creating-a-quickshare-link)
+10. [Creating Links — Review, Upload, or Both](#10-creating-links--review-upload-or-both)
+    - [What Kind of Link Is It?](#what-kind-of-link-is-it)
+    - [Files to Share](#files-to-share)
+    - [Details](#details)
+    - [Link Access Mode](#link-access-mode)
     - [Video and Media Options](#video-and-media-options)
     - [Watermark Settings — Video and Image Support](#watermark-settings--video-and-image-support)
     - [Text Watermarks (Pro)](#text-watermarks-pro)
     - [Personal Watermarked Copies (Pro)](#personal-watermarked-copies-pro)
+    - [File Requirements for Uploads (Pro)](#file-requirements-for-uploads-pro)
+    - [Emailing the Link](#emailing-the-link)
     - [Generating the Link](#generating-the-link)
 11. [Add Files](#11-add-files)
     - [Add Files to the List](#add-files-to-the-list)
@@ -147,6 +165,7 @@ configuration, upgrades and rollback.
 14. [Link Details](#14-link-details)
     - [Overview](#overview)
     - [Files](#files)
+    - [Review](#review)
     - [Activity](#activity)
     - [Versions](#versions)
     - [Forks and Comparing Versions](#forks-and-comparing-versions)
@@ -156,11 +175,16 @@ configuration, upgrades and rollback.
     - [Opening the Link](#opening-the-link)
     - [Password-Protected Links](#password-protected-links)
     - [Invite-Only Links](#invite-only-links)
+    - [Staff Sign-In on a Share Page](#staff-sign-in-on-a-share-page)
+    - [Upload Pages](#upload-pages)
 17. [Video Player, Comments & Annotations](#17-video-player-comments--annotations)
+    - [The Share Page](#the-share-page)
     - [Playback Controls](#playback-controls)
     - [Quality Selection](#quality-selection)
     - [Timecoded Comments](#timecoded-comments)
+    - [Approving a Version](#approving-a-version)
     - [Annotations & Drawing Tools](#annotations--drawing-tools)
+    - [PDFs, Images and Documents](#pdfs-images-and-documents)
     - [Multi-File Shares](#multi-file-shares)
 18. [Client Access](#18-client-access)
     - [Viewing Existing Clients](#viewing-existing-clients)
@@ -168,7 +192,7 @@ configuration, upgrades and rollback.
     - [Managing Teams](#managing-teams)
     - [Editing & Deleting Clients](#editing--deleting-clients)
 19. [Role Management](#19-role-management)
-    - [System Roles](#system-roles)
+    - [Built-in Roles](#built-in-roles)
     - [Permission Definitions](#permission-definitions)
     - [Creating Custom Roles](#creating-custom-roles)
     - [Editing & Deleting Roles](#editing--deleting-roles)
@@ -333,22 +357,38 @@ The app will display status messages as it connects:
 
 On success, you'll be taken to the **Projects** screen.
 
+### Signing In with Two-Step Sign-In
+
+If your administrator has turned on two-step sign-in for staff (see [Two-step sign-in](#two-step-sign-in)), an **Authenticator code** box appears after you enter your password:
+
+1. Open the authenticator app on your phone (for example Google Authenticator, Microsoft Authenticator or 1Password).
+2. Type the 6-digit code shown for 45Flow, or one of your **recovery codes** if you don't have your phone.
+3. Click **Sign In**.
+
+Each code works once. Five wrong codes lock the account for 15 minutes.
+
+Not set up yet? Click **Set up two-step sign-in** under the password box. You re-enter your password, then either **Ask a 45Flow administrator** to approve you, or **Use a code issued on the server** by an administrator. After approval, scan the QR code with your authenticator app and save your recovery codes somewhere safe.
+
+![Set up two-step sign-in from the sign-in screen](images/two-step-setup-v4.png)
+
+> **Note:** Two-step sign-in applies to staff (server accounts) only. Clients signing in to invite-only links never need an authenticator.
+
 ### First-run server setup
 
-On a new server, administrators see **Set up your server** before opening projects. An existing server with configured storage and at least one project goes straight to Projects. Other users see “Server setup is not finished. Ask your administrator” until the server is ready.
+On a new server, administrators see the **Set up 45Flow** wizard before opening projects. An existing server with configured storage and at least one project goes straight to Projects. Other users see "Server setup is not finished. Ask your administrator" until the server is ready.
 
 Older servers without setup support remain usable and show an update notice. Update Broadcaster to use the storage and staff-account setup controls.
 
-1. **Storage** — Required. Choose a detected filesystem, then use **Browse** and **Open** to choose a data folder. ZFS filesystems appear first. Existing network mounts are labelled **Network**; 45Flow does not create mounts or store mount credentials. The system root itself cannot be selected.
-2. **Staff server accounts** — Add or remove existing server users who may administer 45Flow. These are separate from client accounts. You cannot remove yourself or the last staff member.
-3. **Share address** — Open the existing share-address settings and internet-sharing checks.
-4. **Uploads** — Check whether a malware scanner is available, install one, or explicitly allow uploads without scanning. A policy locked by the server configuration cannot be changed here.
-5. **Watermarks** — Optionally enable a shared folder of watermark images inside the storage root.
-6. **First project** — Create a project and choose its folder inside the storage root, or skip and create it later from Projects.
+The wizard has four steps. The step counter at the top shows where you are (for example *Step 2 of 4*).
 
-Only Storage is required. Other steps can be skipped and revisited in Settings. Setup remembers your current step for this server in the current app/browser session, including after reconnecting. Guided tours wait until setup finishes.
+1. **Storage** *(required)* — The main folder that holds every project. Choose a detected filesystem, then browse to a folder, or click **New Folder** to make one. ZFS filesystems appear first. Existing network mounts are labelled **Network**; 45Flow does not create mounts or store mount credentials. The system root itself cannot be selected.
+2. **Staff users** — Add or remove existing server accounts that may administer 45Flow. These are separate from client accounts. You cannot remove yourself or the last staff member.
+3. **Sharing settings** — Enter the **Public share address** (for example `https://files.example.com`) and click **Save address**, or click **Use automatic address**. **Test internet access** checks that people outside your network can reach the server. **Advanced: HTTPS certificate** sets up a free Let's Encrypt certificate.
+4. **Projects** *(required)* — Create at least one project and choose its folder inside the storage location. On a server that already has projects, this step lists them so you can edit or remove them. Click **Finish setup** when done.
 
-Choosing a storage root restarts the server. Keep the setup window open while it reconnects. If it cannot reconnect automatically, check the server connection and choose **Check again**.
+Steps 2 and 3 can be skipped with **Skip for now** and changed later in Settings. Upload scanning and the shared watermark folder are set in **Settings → Upload security** and **Settings → Watermarks**. Setup remembers your current step for this server in the current app or browser session, including after reconnecting. Guided tours wait until setup finishes.
+
+Choosing a storage location restarts the server. Keep the setup window open while it reconnects. If it cannot reconnect automatically, check the server connection and choose **Check again**.
 
 ![Connecting to server with status messages](images/login-connecting-v3.png)
 
@@ -408,7 +448,7 @@ After connecting to your server, 45Flow automatically checks the server's licens
   - The window title shows "45Flow (Pro — Legacy)"
   - **Automatic updates are disabled** — you will not receive new app versions, bug fixes, or future Pro features until the license is renewed
   - Any **new Pro features released after your license expired will not be available** until you re-activate
-  - You can re-activate a license at any time in Settings → Go Pro to restore full Pro status, unlock any new features, and resume receiving updates
+  - You can re-activate a license at any time in **Settings → Go Pro** or **Settings → Server health** to restore full Pro status, unlock any new features, and resume receiving updates
 
 ![Dashboard header showing Pro Legacy badge](images/dashboard-pro-legacy-header-v3.png)
 
@@ -420,7 +460,7 @@ If your server is unlicensed, you can activate a license at any time:
 
 1. Open **Settings** from the Dashboard.
 2. Navigate to **Go Pro** in the left sidebar.
-3. Enter your **License Key** provided by 45Drives.
+3. Paste the **License Key** you received (it looks like `STUDIO-XXXX-XXXX-XXXX-XXXX`).
 4. Click **"Activate License"** to validate and activate.
 
 Once activated, the app immediately upgrades to Pro mode and all Pro features unlock.
@@ -429,7 +469,7 @@ Once activated, the app immediately upgrades to Pro mode and all Pro features un
 
 #### Starting a Trial
 
-If you don't have a license key yet, you can start a **30-day free trial** directly from the Go Pro settings section. Trials give you full access to all Pro features for evaluation.
+If you don't have a license key yet, open **Settings → Go Pro** and click **Start Trial** under **Start Free 30-Day Trial**. No email address is needed. Trials give you every Pro feature for 30 days.
 
 After successful login, you'll always be directed to the **Projects** screen.
 
@@ -457,9 +497,11 @@ Port forwarding tells your router to direct incoming traffic on a specific port 
 
 > **Note:** Port forwarding configuration varies by router manufacturer and model. Some ISPs or shared building networks may restrict port forwarding. If you're unsure whether your network supports it, contact your ISP or network administrator.
 
-![Port forwarding help modal](images/port-forwarding-help-v3.png)
+**Set up port forwarding** on the sign-in screen opens **How to port forward**, a step-by-step guide: find the server's local IP, log into your router, add the rule, and test from outside your network.
 
-> **Tip:** After setting up port forwarding, configure your external URL in [Settings](#7-settings) → URLs & Access to ensure links are generated correctly.
+![How to port forward](images/port-forwarding-help-v4.png)
+
+> **Tip:** After setting up port forwarding, set the internet address in [Settings → Share Addresses](#share-addresses) so links are generated correctly.
 
 > **Important:** If you only plan to share files within your LAN or VPN, you can skip this step entirely. Links shared locally do not require port forwarding.
 
@@ -478,7 +520,7 @@ Open **Settings → Share addresses**. The **Set up a public address** steps at 
 
 **2. Use it for share links.** Click **Use *hostname***. This fills in **Internet address** below with `https://` and your hostname. Click **Save**.
 
-**3. Get a trusted certificate.** Click **HTTPS certificate** and get a free Let's Encrypt certificate for the same hostname (see [SSL Certificate Management](#ssl-certificate-management)). Port 80 must also be forwarded to the server while Let's Encrypt checks it. When the step shows **Ready**, internet links can be created and copied.
+**3. Get a trusted certificate.** Click **HTTPS certificate** and get a free Let's Encrypt certificate for the same hostname (see [HTTPS Certificate](#https-certificate)). Port 80 must also be forwarded to the server while Let's Encrypt checks it. When the step shows **Ready**, internet links can be created and copied.
 
 **If No-IP shows a problem:**
 
@@ -498,19 +540,19 @@ Updates stop after a sign-in, hostname or blocking problem so No-IP doesn't lock
 
 ## 5. Projects — Organizing Your Workspace
 
-After logging in, you always land on the **Projects** screen. This is your primary workspace organizer. Each project is a folder on your server for one job or production — open a project to share files with clients or collect their uploads, or create a new one to get started.
+After signing in, you always land on the **Projects** screen. Each project is a folder on your server for one job or production. Open a project to share files with clients or collect their uploads, or create a new one to get started.
 
-![Projects list view](images/projects-list-v3.png)
+![Projects list view](images/projects-list-v4.png)
 
 ### What Are Projects
 
 A project is a named workspace that:
 
-- **Groups related links** — Keep all links for a client, campaign, or workflow together in one place.
-- **Has a project folder** — Each project points to a specific folder on your server. When creating links or adding files within a project, the file browser starts from that folder.
-- **Tracks link counts** — See at a glance how many active, expired, or disabled links each project has.
-- **Scopes your view** — When you open a project, only that project's links are displayed.
-- **Can be archived or deleted** — Archive completed projects to hide them without deletion, or permanently delete projects you no longer need.
+- **Groups related links** — Keep all links for a client, campaign or job together in one place.
+- **Has a project folder** — Each project points to a folder on your server, inside the storage location chosen during setup. When you create links or add files in a project, the file browser starts in that folder.
+- **Tracks link counts** — See at a glance how many links each project has, and how many are active, expired or disabled.
+- **Scopes your view** — When you open a project, only that project's links are shown.
+- **Can be archived or deleted** — Archive finished projects to hide them without deleting anything, or permanently delete projects you no longer need.
 
 ### Links Without a Project
 
@@ -520,225 +562,262 @@ If you have older links that were created before projects (or links whose projec
 - Links whose project was deleted
 - Links created via QuickShare without a project
 
-Click the disclosure arrow to expand or collapse this section. These links are managed the same way as project links — you can view details, edit, disable, or delete them.
+Click the disclosure arrow to expand or collapse this section. These links are managed the same way as project links — you can view details, edit, disable or delete them, and move them into a project from **Edit → Details → Project**.
 
 ![Links Without a Project section below the project list](images/dashboard-unassigned-links-v3.png)
 
 ### The Project Workflow
 
-The typical flow is:
-
-1. **Log in** to 45Flow.
+1. **Sign in** to 45Flow.
 2. **Open a project** (or create a new one) from the Projects screen.
-3. **The project view loads** showing only that project's links.
-4. **Create links, add files, and manage client access** — all within the context of the open project.
+3. **The project view loads**, showing only that project's links.
+4. **Create links, add files and manage client access** — all within the open project.
 5. Click **"Projects"** in the breadcrumb (or **"Back to Projects"**) to return to the project list.
-
-To switch to a different project, return to the project list and open another one.
 
 ### Creating a Project
 
-From the Projects screen, click **"+ New Project"** to create a new project:
+From the Projects screen, click **"+ New Project"**:
 
-1. Enter a **Project name** — A descriptive name (e.g., "Acme Corp Review", "Spring Campaign Edit").
-2. Pick the **Project folder** — The folder on the server that holds this project's media, inside the configured storage root. Click a folder to select it and browse its contents, or type its full path and press **Enter** or leave the path field to apply it. To use a fresh folder, click **"New Folder"** in the folder browser, then select it. Storage can use ZFS or another supported mounted filesystem.
+1. Enter a **Project name** — for example "Spring Campaign" or "Acme Corp Review".
+2. Pick the **Project folder** — the folder on the server that holds this project's media. The browser starts at the storage location (**Browse from storage root**). Click a folder to select it and see what's inside, or type its full path. Click **New Folder** to make a fresh one. Switch between **List** and **Grid** views with the buttons above the files.
 3. For **.45flow folder visibility**, leave **Use server default** selected, or choose **Show .45flow** or **Hide .45flow** for this project.
-4. *(Optional)* Add **Notes** about the project — client, deliverables, anything your team should know.
-5. Click **"Create Project"**.
+4. *(Optional)* Add **Notes** — client, deliverables, anything your team should know.
+5. Click **"Create Project"**. If the button is unavailable, the line beside it says what's missing (for example *"Enter a project name to continue."*).
 
-![Create project modal](images/project-create-modal-v3.png)
+![Create project dialog](images/project-create-modal-v4.png)
 
 **Folder check:**
 
 While you pick a folder, 45Flow checks it and shows what it finds:
 
-- **On a storage pool** — A green check shows the ZFS storage pool the folder is on and how much space is free.
+- **On a storage pool** — A green check shows the ZFS pool the folder is on and how much space is free (for example *"On storage pool tank · 51.4 TB free of 51.4 TB"*).
 - **Not on a storage pool** — A warning shows the disk the folder is on and how much space is free. Media can fill a small disk fast; if the folder is on the server's system disk, the server can stop working.
-- **Low space** — A red warning appears when less than 50 GB is free or the disk is 90% or more used. Pick a folder with more room for proxy files and client uploads.
+- **Low space** — A red warning appears when less than 50 GB is free or the disk is 90% or more used.
 - **New folder** — If the folder doesn't exist yet, 45Flow notes that it will create it.
 
-> **Note:** 45Flow keeps each project's proxy files and streams in a `.45flow` folder inside the project folder. It is hidden in the file browser by default. Links that are not in a project use the `.45flow` folder in the storage root (see [Storage](#storage)).
+> **Note:** 45Flow keeps each project's proxy files and streams in a hidden `.45flow` folder inside the project folder. Links that are not in a project use the `.45flow` folder in the storage location (see [Storage](#storage)).
 
-Once created, the new project opens immediately so you can start creating links or adding files.
+> **Tip for administrators:** Create project folders from 45Flow (**New Folder**) rather than over SSH as `root`. The server software runs as its own service account and must be able to write inside the folder; a folder it can't write to makes video processing fail with *"Permission denied"*.
+
+Once created, the new project opens immediately.
 
 ### Managing Projects
 
 **Viewing Projects:**
 
-The Projects screen shows all active projects as cards in a responsive grid layout with:
+Projects appear as cards. Each card shows:
+
 - Project name
-- **Folder:** the project folder path
 - Link count badges: **Total Links**, **Active** (green), **Expired** (amber), **Disabled** (red)
-- Server name (when connected to multiple servers)
+- **Server** the project is on
+- **Folder:** the project folder path
 - Notes (if provided)
 
-Check **"Show archived projects"** above the cards to include archived projects in the list.
+Check **"Show archived projects"** above the cards to include archived projects. When you have many projects, use the Previous/Next controls at the bottom to page through them.
 
-Projects are paginated when you have many — use the Previous/Next controls at the bottom to navigate pages.
-
-![Project cards with link counts and action buttons](images/project-cards-with-controls-v3.png)
+![Project card with link counts and action buttons](images/project-cards-with-controls-v4.png)
 
 **Project Card Actions:**
 
-Each project card has action buttons in the top-right corner (click without opening the project):
+Each card has buttons in its top-right corner (these don't open the project):
 
 | Button | Description |
 |--------|-------------|
 | **Edit** | Opens the Edit Project dialog (see below). |
 | **Disable / Enable** | Disables the project and all its links, or re-enables them. No files or links are deleted. |
-| **Archive** | Deactivates all links and hides the project from the default view. Available on active projects. |
+| **Archive** | Disables all links and hides the project from the default view. Available on active projects. |
 | **Unarchive** | Restores an archived project and re-enables its links. Available on archived projects. |
 | **Delete** | Permanently removes the project (see below). |
 
 **Editing a Project:**
 
-Click **"Edit"** on a project card, or open the project and click **"Edit Project"** above its links list. The Edit Project dialog lets you update the **Project Name**, **Project Folder** (with the same folder check as when creating a project), **.45flow folder visibility**, and **Notes (optional)**. Choose **Use server default** to clear a project override. The dialog also provides Archive/Unarchive and Delete Project buttons.
+Click **"Edit"** on a project card, or open the project and click **"Edit Project"** above its links. You can change the **Project Name**, **Project Folder** (with the same folder check as when creating), **.45flow folder visibility** and **Notes**. Choose **Use server default** to clear a project override. The dialog also has Archive/Unarchive and Delete Project buttons.
 
 **Archiving a Project:**
 
-Click **"Archive"** on a project card, or open the project and use the Edit Project dialog's Archive button. A confirmation dialog explains what archiving does:
+Click **"Archive"**. The confirmation explains what happens:
 
-- All active links in the project are **disabled** (become inaccessible)
+- All active links in the project are **disabled**
 - The project is hidden from the default project list
 - **No files or links are deleted**
 - You can unarchive at any time to restore everything
 
-![Archive project confirmation dialog](images/project-archive-confirm-v3.png)
+![Archive project confirmation](images/project-archive-confirm-v4.png)
 
 **Restoring an Archived Project:**
 
-Check **"Show archived projects"** to see archived projects. They appear dimmed (reduced opacity) with an "Archived" badge. Click **"Unarchive"** on the card or in the Edit Project dialog to restore the project and re-enable its links.
+Check **"Show archived projects"**. Archived projects appear dimmed with an "Archived" badge. Click **"Unarchive"** to restore the project and re-enable its links.
 
-**Deleting a Project (Hard Delete):**
+**Deleting a Project:**
 
-Click **"Delete"** on a project card or **"Delete Project"** in the Edit Project dialog. A confirmation dialog warns:
+Click **"Delete"** on a card or **"Delete Project"** in the Edit Project dialog. The **Delete Project** dialog warns that this can't be undone:
 
-- The project record is permanently removed
-- Links associated with the project are **unlinked** from it (they are not deleted) and move to **Links Without a Project**, unless you choose to delete them
-- This action **cannot be undone**
+- The project and all its details are permanently removed
+- All links are unlinked from the project and move to **Links Without a Project** — unless you tick **"Delete all N link(s) in this project"**, which permanently removes those links, their activity history and access permissions. When you delete the links, you can also tick **Delete generated files** (proxy files, streams and watermarked copies); type **DELETE** to confirm that.
 
-You can optionally delete the project's links and their generated or original files. When you choose to delete files, you must type "DELETE" to confirm.
+Original files in the project folder are never deleted. Click **"Delete Permanently"** to confirm.
 
-![Delete project confirmation dialog](images/project-delete-confirm-v3.png)
+![Delete project confirmation](images/project-delete-confirm-v4.png)
 
 ---
 
 ## 6. Dashboard Overview
 
-The **Dashboard** is your central hub for managing all file sharing operations. It has two views:
+The **Dashboard** is your central hub. It has two views:
 
-- **Projects screen** — The project list, with **"+ New Project"**, **"Show archived projects"**, and (when any exist) the **Links Without a Project** section.
-- **Project view** — Opens when you click a project. The header shows a **"Projects ›"** breadcrumb, the project name, and **"Project folder:"** with the folder path. Below it are the action cards and the project's links.
+- **Projects screen** — The project list, with **"+ New Project"**, **"Show archived projects"** and (when any exist) the **Links Without a Project** section.
+- **Project view** — Opens when you click a project. The header shows a **"Projects ›"** breadcrumb, the project name, and **"Project folder:"** with the folder path and notes. Below are the action cards and the project's links.
 
-![Dashboard overview](images/dashboard-overview-v3.png)
+![Project view](images/dashboard-overview-v4.png)
 
-### Top Navigation
+### Top Bar
 
-At the top of the Dashboard, you'll find quick-access buttons:
+The bar across the top of every screen has:
+
+| Item | Description |
+|------|-------------|
+| **Connected to:** | The server you are working on, with a green dot while connected. In the desktop app with Pro, click it to switch servers (see [Multi-Server Management](#20-multi-server-management)). Hidden on phone-sized screens. |
+| **License chip** | Appears only when relevant: **Pro Trial — N days left**, **Trial Expired**, or **License Expired** (Pro — Legacy). |
+| **Notifications** (bell icon) | Notification history and client feedback (see below). |
+| **Activity Log** (clipboard icon) | Open the log viewer to see what the app and server have been doing. See [Activity Log](#22-activity-log). |
+| **Settings** (gear icon) | Server and app settings. See [Settings](#7-settings). |
+| **Themes** and the sun/moon icon | Change the colour theme and switch between light and dark mode. |
+
+On the page itself:
 
 | Button | Description |
 |--------|-------------|
-| **Client Access** | Add client accounts, organize them into teams, and manage roles. Shown only inside a project. See [Client Access](#18-client-access). |
-| **Activity Log** | Open the log viewer to inspect application activity and diagnose issues |
-| **Settings** | Configure application-wide defaults for links, URLs, and server behavior |
-| **Log Out** | Disconnect from the server and return to the Login Screen |
-| **Notifications** (bell icon) | View notification history (see below) |
+| **Client Access** | Add client accounts, organize them into teams and manage roles. Shown inside a project. See [Client Access](#18-client-access). |
+| **Log Out** | Sign out and return to the sign-in screen. |
 
 ### Notifications
 
-The **notification bell** in the top navigation provides a central history of all application notifications. A red badge shows the count of unread notifications (displays "9+" when more than 9).
+The **bell** shows a red badge with the number of unread notifications ("9+" when more than 9). Click it to open the panel.
 
-![Notification bell with unread badge](images/notification-bell-v3.png)
+![Notification bell in the top bar](images/notification-bell-v4.png)
 
-Click the bell to open the notification panel. Each notification shows:
+The panel has two parts:
 
-- **Color-coded severity dot** — Red (error), amber (warning), blue (info), green (success)
-- **Title** — Brief description of what happened
-- **Body** — Detailed message (click any notification to expand its full text)
-- **Timestamp** — Relative time (e.g., "2m ago", "1h ago")
+- **Feedback · *server name*** — Client feedback on the connected server: **New comment**, **Reply** and **Reopened** feedback. Each item shows the link, file, version, who wrote it and the comment, with **View link** to open the review. Click **Settings** in this section to choose which kinds of feedback appear (see [Preferences](#preferences)). Read and cleared state is kept for your staff account on that server, so it follows you between computers.
+- **App notifications** — Messages from this app: uploads finished, errors, warnings and so on. Each has a colour-coded dot (red error, amber warning, blue info, green success), a title, a message (click to expand long ones) and a relative time such as "2m ago". The latest 50 are kept.
 
-Notifications are displayed in reverse chronological order (newest first). The panel stores up to 50 notifications. Click **"Clear all"** to dismiss the entire history.
+Click **"Clear all"** to clear the history.
 
-![Notification panel expanded with clickable items](images/notification-bell-expanded-v3.png)
+![Notification panel with client feedback](images/notification-bell-expanded-v4.png)
 
-> **Tip:** Click on any notification in the list to expand or collapse its full message text. This is useful for longer messages that are truncated by default.
+> **Note:** Feedback notifications are available on Community and Pro servers. They need a server version that includes them; older servers show an update notice instead.
 
 ### Main Action Buttons
 
-Inside a project, two large action cards let you perform the core tasks:
+Inside a project, two large cards perform the core tasks:
 
-| Button | Description |
+| Card | Description |
 |--------|-------------|
-| **Create Link** | Send a client a link to review files, send you files, or both. Configure all link settings in one screen. See [Creating Links](#10-creating-links--share-upload-or-combined). |
-| **Add Files** | Copy files from this computer into the project folder. See [Add Files](#11-add-files). |
+| **Create Link** | Send a client a link to review files, upload files to you, or both. See [Creating Links](#10-creating-links--review-upload-or-both). |
+| **Add Files** | Upload videos, images, audio, documents and other files from your computer into this project's folder on the server. See [Add Files](#11-add-files). |
 
-![Dashboard action buttons](images/dashboard-action-buttons-v3.png)
+Next to the project name, the **Quick Share** box is a reminder that you can drop files anywhere on the window to upload them and get a share link in one step. See [QuickShare](#9-drag-and-drop-quickshare).
 
-### Active Links Table
+![Create Link and Add Files cards](images/dashboard-action-buttons-v4.png)
 
-Below the action cards, the project view displays the **Links** table for the open project, with search/filter tools and at-a-glance status information. Above the table, **"Edit Project"** opens the Edit Project dialog and **"Back to Projects"** returns to the project list. See [Managing Links](#13-managing-links) for full details.
+### Links Table
+
+Below the action cards, the project view lists the project's links with search, filters and status. Above the table, **"Edit Project"** opens the Edit Project dialog and **"Back to Projects"** returns to the project list. See [Managing Links](#13-managing-links).
 
 ### Logging Out
 
-Click **"Log Out"** at the top of the Dashboard to disconnect from the server and return to the Login Screen.
+Click **"Log Out"** to sign out and return to the sign-in screen. In a browser this also ends your session on the server straight away.
 
 ---
 
 ## 7. Settings
 
-Configure application-wide defaults and server settings. Access Settings from the Dashboard by clicking **"Settings"**.
+Click the **Settings** (gear) icon in the top bar. Settings has a **Find a setting** search box and a sidebar grouped into sections:
 
-The Settings panel is organized into sections via the left-hand navigation sidebar:
+- **Sharing** — New link defaults, Share addresses, Internet sharing, HTTPS certificate, Branding *(Pro)*
+- **This app** — Preferences, Video processing *(desktop app only)*
+- **Server** — Two-step sign-in, Server health, Maintenance, and for administrators: Storage, Staff users, Upload security, Watermarks, File browsing, Admin networks, Email (SMTP), Scanning & privacy
+- **Help** (or **Pro & help**) — Help & tours, and **Go Pro** when the server is unlicensed or on a trial
 
-- **Link Sharing** — URLs & Access, Public Sharing, Certificate, Link Options
-- **Branding** — White Label (see [Custom Branding](#8-custom-branding-white-label--pro-feature))
-- **This app** — Preferences and Video processing
-- **Server** — Server health and Maintenance; administrators also have Storage, Staff server accounts, Uploads, Watermarks, File browsing, Admin networks, Email, and Scanning & privacy
-- **Help** — Guides
+![Settings](images/settings-v4.png)
 
-![Settings modal](images/settings-v3.png)
+Sections that you edit and then save show **Save changes** and **Discard changes** at the bottom, with *"You have unsaved changes"* when something is pending. Closing Settings with unsaved changes asks you to confirm first.
 
-### File Browsing
+> **Important:** Link defaults only affect **newly created links**. Existing links keep their settings until you edit them.
 
-Under **Server → File browsing**, turn on **Show .45flow by default** and click **Save changes**. The default is off. Changes apply to existing and new projects set to **Use server default** and to folders outside any project. Explicit project choices take precedence. If project folders overlap, the closest project folder governs; if projects use the same folder and disagree, **Hide .45flow** wins.
+### New Link Defaults
 
-This setting only affects server file browsers. Other dotfiles and hidden folders stay hidden, and the setting does not change file permissions or existing share links. It is available on free and Pro servers; only server administrators can change the global default.
-
-### URLs & Access
-
-Toggle between **Internal** and **External** as the default network access mode for new links:
-
-- **Internal** — New links default to LAN/VPN routing.
-- **External** — New links default to public/internet routing (requires port forwarding).
-
-**External Share URL (Public):**
+Starting values for every new link. You can still change them on each link.
 
 | Setting | Description |
 |---------|-------------|
-| **Auto-detect (WAN IP)** | Enable to automatically detect and use your public IP address. Disable to enter a custom domain. |
-| **External base** | Your public hostname or IP (e.g., `https://example.ddns.net`). No path — hostname only. |
-| **External HTTPS port** | Port users will use in their browser. Default is `443`. |
+| **Network** | **Local Network** or **Internet**. Internet links work anywhere (needs port forwarding and a public address); Local Network links only work on the same network or VPN as the server. |
+| **Invite-only links (recommended)** | New links start as **Only invited clients & teams**. Turn off to start them as **Anyone with the link**. |
+| **Allow comments on open links** | Let people comment on links that don't need a sign-in. |
+| **Links never expire** / **Expire after** | Turn off "never expire" to give new links an end date, in hours, days or weeks. |
+| **Make proxy files** | Create smaller copies of videos that stream smoothly in the browser. |
+| **Proxy sizes for uploads** | The proxy files the server makes for uploaded videos when the upload doesn't choose its own: **720p**, **1080p**, **Original**. |
+| **Server encoding** | How the server makes proxy files: **Faster** (sooner, slightly larger and softer files), **Balanced**, or **Higher quality** (takes longer). |
+| **Watermark videos** | Stamp an image on videos in new links. See [Watermark Settings](#watermark-settings--video-and-image-support). |
 
-> **Note:** Using a custom domain requires a valid SSL certificate for that domain. See [SSL Certificate Management](#ssl-certificate-management) below.
+![New link defaults](images/settings-link-options-v4.png)
 
-**Example:**  
-Without a domain: `https://203.0.113.10/s/<token>`  
-With a domain: `https://yourcompany.com/s/<token>`
+### Share Addresses
 
-**Internal Share URL (LAN / VPN):**
+The web addresses your share links use on the internet and on your local network.
+
+**Set up a public address** walks you through getting a hostname and a trusted certificate for internet links. See [Setting Up a Public Address](#setting-up-a-public-address).
+
+**Internet address:**
 
 | Setting | Description |
 |---------|-------------|
-| **Auto-detect (LAN IP)** | Enable to automatically detect and use your local server IP. |
-| **Internal base** | Private IP or internal hostname (e.g., `http://192.168.1.123`). |
+| **Detect automatically** | Use this server's public IP address. Turn off to enter your own hostname. |
+| **HTTPS port** | The port clients reach from the internet. Forward it on your router. Default `443`. |
 
-A **Preview** section shows the currently active external and internal URLs so you can verify your configuration.
+**Local network address:**
 
-### SSL Certificate Management
+| Setting | Description |
+|---------|-------------|
+| **Detect automatically** | Use this server's local IP address. |
+| **Custom address** | A private IP or internal hostname. |
 
-The **Certificate** tab lets you upgrade from the default self-signed certificate to a trusted **Let's Encrypt** certificate for your custom domain. A trusted certificate eliminates browser security warnings when clients open share links.
+**Links will look like** previews the internet and local network addresses.
 
-![Certificate management](images/settings-v3.png)
+> **Note:** 45Flow never puts the server's IP address in an internet link. Internet links need a hostname with a trusted certificate; until both are ready, internet links can't be created or copied.
+
+![Share addresses](images/settings-share-addresses-v4.png)
+
+### Internet Sharing
+
+A status check that clients outside your network can reach your links, with repair tools.
+
+| Row | Description |
+|-----|-------------|
+| **Share URL** | The public URL recipients use. |
+| **Internet links** | **Ready** or **Not ready**. Copied links use a domain name with a trusted certificate, never the server's IP address. |
+| **HTTPS** | **Trusted** or **Local certificate (self-signed)**. With a self-signed certificate, recipients see a browser warning. |
+| **Web routing** | Whether 45Flow has configured the web server (nginx). |
+| **Firewall** | Whether HTTP and HTTPS are allowed through the server firewall. |
+| **Last setup** | When 45Flow last configured public sharing. |
+
+Status chips at the top summarize what needs attention (for example **Needs Trusted Certificate**). Click **Check Now** to recheck.
+
+**Fix problems:**
+
+- **Repair internet sharing** — Fixes common problems (restarts and regenerates the web server configuration).
+- **Install a trusted certificate…** — Opens [HTTPS Certificate](#https-certificate).
+- **Regenerate local certificate** — Makes a new self-signed certificate.
+
+**Advanced details** shows the raw check results.
+
+![Internet sharing](images/settings-public-sharing-v4.png)
+
+### HTTPS Certificate
+
+Upgrade from the default self-signed certificate to a free, trusted **Let's Encrypt** certificate for your domain, so browsers don't show your clients a security warning.
+
+![HTTPS certificate](images/settings-certificate-v4.png)
 
 **Certificate Status:**
 
@@ -753,11 +832,11 @@ The top section shows your current certificate state:
 
 **Setting Up a Trusted Certificate:**
 
-1. **Configure your domain** — Enter your custom domain name (e.g., `yourcompany.com`). This auto-syncs from the External Base if already set.
-2. **Add a contact email** — Let's Encrypt sends renewal notices to this address.
-3. **Create a DNS A record** — At your domain registrar (GoDaddy, Namecheap, Cloudflare, etc.), create an **A record** pointing your domain to your server's public IP address.
+1. **Domain** — Enter your domain name (e.g., `studio.yourcompany.com`). It fills in automatically from the internet address in [Share Addresses](#share-addresses) if that's set.
+2. **Contact email** — Let's Encrypt sends renewal notices to this address.
+3. **Create a DNS A record** — **DNS setup instructions** show the exact record to add at your domain registrar (GoDaddy, Namecheap, Cloudflare, etc.): type **A**, your domain, pointing to your server's public IP.
 4. **Verify DNS** — Click **"Verify DNS"** to confirm the record is active.
-5. **Install certificate** — Once DNS is verified, click **"Install Trusted Certificate"** to automatically obtain and install the Let's Encrypt certificate.
+5. **Install certificate** — Once DNS is verified, click **"Install Trusted Certificate"**. Until the domain, email and DNS check are all done, the button explains what's still required.
 
 **Reverting to Self-Signed:**
 
@@ -765,61 +844,110 @@ If you need to remove the trusted certificate (e.g., domain change), click **"Re
 
 > **Important:** Port 80 and 443 must both be accessible from the internet for Let's Encrypt validation to succeed. Ensure your firewall and port forwarding rules allow both ports.
 
-### Public Sharing
-
-The **Public Sharing** section provides a consolidated status overview of your server's readiness for external (internet) sharing. It shows at a glance whether all the components needed for public link access are correctly configured.
-
-![Public Sharing status panel](images/settings-public-sharing-v3.png)
-
-**Status Summary:**
-
-A color-coded status card shows the overall state:
-- **Green (Ready)** — All components are properly configured for public sharing.
-- **Yellow (Warning)** — Some components need attention (e.g., missing trusted certificate, firewall ports closed).
-- **Red (Error)** — Critical issue (e.g., web routing not working).
-
-**Status Rows:**
-
-| Row | Description |
-|-----|-------------|
-| **Share URL** | The public URL recipients use to access your shared content. |
-| **HTTPS** | Certificate type (Trusted/Self-Signed) and validity status. |
-| **Web routing** | Whether nginx is running and properly configured. |
-| **Firewall** | Whether HTTP (80) and HTTPS (443) ports are open for external access. |
-| **Last setup** | When Houston last configured public sharing (timestamp). |
-
-**Actions:**
-
-- **Check Public Sharing** — Re-checks all status components.
-- **Repair Public Sharing** — Attempts to automatically fix common issues (restarts nginx, regenerates configs).
-- **Install Trusted Certificate** — Navigates to the Certificate section for Let's Encrypt setup.
-
-### Link Options
-
-These defaults are applied automatically when creating new links, but can be changed per link:
-
-| Option | Description |
-|--------|-------------|
-| **Invite-only links** | New links default to invite-only mode: only invited clients and teams can get in. |
-| **Allow comments on open links** | Enable comments by default on open (unauthenticated) links. |
-| **Generate proxy files by default** | Automatically enable proxy file generation for new links. |
-| **Default watermark settings** | Configure default watermark image and settings for new links. See [Watermark Settings — Video and Image Support](#watermark-settings--video-and-image-support) for details on Community vs Pro watermark features. |
-
 ### Preferences
 
-**Display:**
+How 45Flow looks and behaves on this computer, plus your feedback notification choices.
 
-| Option | Description |
-|--------|-------------|
-| **Time format** | Toggle between 24-hour and 12-hour time display throughout the app. |
-| **Default link list view** | Choose which links are shown by default (All Links or Active Only). |
+| Setting | Description |
+|---------|-------------|
+| **Time format** | 24-hour or 12-hour times throughout the app. |
+| **Default link list view** | Show **All Links** or **Active Only** when you open a links list. |
+| **Notify when uploads finish** *(browser)* | Show a browser notification when an upload finishes or fails while the tab is in the background. Click **Turn on**; your browser asks for permission once. |
 
-**Feedback notifications:**
+**Feedback notifications** — Which client feedback shows in the notification bell: **New comments**, **Replies** and **Reopened feedback**. These save right away for your staff account on the connected server. The **Settings** button in the bell's Feedback section opens this page.
 
-Choose which client feedback appears in the notification bell: **New comments**, **Replies** and **Reopened feedback**. Each switch saves right away for your account on the connected server. The **Settings** button in the bell's Feedback section opens this page.
+![Preferences](images/settings-preferences-v4.png)
+
+### Video Processing
+
+*Desktop app only.* Process videos on your own computer before uploading, instead of on the server. In a browser, the server always does the processing.
+
+| Setting | Description |
+|---------|-------------|
+| **Enable client-side transcoding** | Videos are processed on this computer (CPU or GPU) before upload. This makes proxy files faster and takes load off the server. When off, the server processes videos after they upload. |
+| **Hardware Acceleration** — **Use hardware acceleration** | Use your GPU (NVIDIA NVENC, Intel Quick Sync, AMD AMF, Apple VideoToolbox). Falls back to the CPU when no compatible GPU is found. |
+| **Encode Quality** | **Fast** (quicker, larger files), **Balanced**, or **Quality** (slower, best picture). |
+| **Detected Encoders** | Which hardware encoders passed a test on this computer. |
+
+> **Note:** Client-side transcoding is **off by default**.
+
+#### Hardware Requirements for Client-side Transcoding
+
+- **Minimum:** Any modern multi-core CPU (4+ cores recommended)
+- **Recommended:** A GPU with hardware encoding (NVIDIA GTX 1060+ / Intel 6th-gen+ / Apple Silicon)
+- **Storage:** Temporary disk space of about 1.5× the source video's size during processing
+- **FFmpeg** is bundled with 45Flow; nothing extra to install
+
+> **Tip:** If client-side transcoding fails (for example, not enough GPU memory or an unsupported codec), turn it off. The server will process videos instead; it just takes longer.
+
+### Two-step Sign-in
+
+Require staff to enter a code from an authenticator app (such as Google Authenticator, Microsoft Authenticator or 1Password) as well as their password. Available on Community and Pro servers. It applies to staff (server accounts) only, never to clients.
+
+![Two-step sign-in settings](images/settings-two-step-v4.png)
+
+**Set up your own authenticator first:**
+
+1. Click **Set up my two-step sign-in**.
+2. Re-enter your account password.
+3. Choose how you get approval:
+   - **Ask a 45Flow administrator** — an administrator who already uses an authenticator approves your request with their own code. You can't approve yourself.
+   - **Use a code issued on the server** — someone with root access on the server runs `/opt/45drives/houston-broadcaster/dist/mfa-admin.js issue-code <username>` and gives you the one-time code. It lasts 15 minutes and never signs anyone in by itself. Use this for the first administrator, or if you're locked out (see **Locked out, or enrolling the first administrator?**).
+4. Scan the QR code with your authenticator app and enter the 6-digit code it shows.
+5. Save your **recovery codes** somewhere safe. Each one signs you in once if you lose your phone.
+
+Setting up an authenticator signs that account out everywhere, so sign in again with your new code.
+
+**Require it for all staff:**
+
+Under **Staff sign-in policy**, turn it on. You need your password and a current authenticator code (not a recovery code). Staff who haven't set up an authenticator get **14 days** to do so; after that they can't sign in until they enroll. From then on, every request needs a session that passed the code check, so older sessions stop working.
+
+**Your recovery codes** — Click **Replace recovery codes** and enter a current authenticator code to get a new set. Your old recovery codes stop working.
+
+**Approving another staff member** — When someone asks for approval, their request appears under **Waiting for approval**. Check it's really that person, and match the code they read to you, before approving.
+
+**Staff login lockouts** — Five wrong passwords within 15 minutes lock a staff account for 15 minutes; a successful sign-in resets the count. Staff passwords must be at least 16 characters. The panel lists any locked accounts.
+
+> **Note:** Scheduled Storage Wizard backups don't need an authenticator code. They use their own limited backup credentials, which carry no staff authority.
+
+### Server Health
+
+Live status of the servers this app is connected to. Click **Refresh** to update.
+
+| Section | What it shows |
+|---------|---------------|
+| **License status** | **Licensed** / unlicensed, and the license type (for example **Perpetual** or trial). On an unlicensed server, paste a key and click **Activate License** here. |
+| **Uptime** | How long the 45Flow server process and the whole system have been running. |
+| **CPU** | Number of cores and load averages (1, 5 and 15 minutes). |
+| **Memory** | Free and total system memory, and the memory the 45Flow process is using. |
+| **Transcoding (server)** | The encoder the server uses for proxy files (for example `libx264`) and whether it runs on the **CPU** or a GPU. |
+
+![Server health](images/settings-server-health-v4.png)
+
+> **Note:** Server health needs a staff (server account) sign-in.
+
+### Maintenance
+
+Reopen setup, or clean up leftover files and records on the server.
+
+**Setup wizard** — **Run setup again** reopens the four-step wizard (Storage, Staff users, Sharing settings, Projects) on this computer or browser. Nothing is reset or deleted, and you don't need to create another project if one already exists. In the **Projects** step, use the pencil button to edit a project's name, folder or notes, or the trash button to delete its 45Flow record (its folder, files and existing links are kept).
+
+**Existing videos** — **Make proxy files for existing videos** queues the server's proxy sizes (see [New Link Defaults](#new-link-defaults)) for videos uploaded before those sizes were chosen. Videos that already have them, or that chose their own sizes, are skipped. Click **Start**; it runs in the background and you can close Settings.
+
+**Cleanup:**
+
+- **Delete orphan transcode directories** — Remove transcode output folders no longer linked to any file.
+- **Prune missing source files** — Remove database rows for files that no longer exist.
+- **Orphan min age** (hours) and **Max missing checks** limit the scan.
+- Click **Run Scan** to preview what would be cleaned, then **Apply Cleanup**. **Export JSON** saves the scan results.
+
+![Maintenance](images/settings-maintenance-v4.png)
+
 ### Storage
 
 The storage location is the main folder 45Flow uses across the server, not an individual project folder. Each project folder is selected separately and must be inside this location.
+
+![Storage](images/settings-storage-v4.png)
 
 Administrators can view the current storage location, filesystem type and available space, then select another location. Before applying the change, review the listed projects outside the new location, active links, and running transfers or processing jobs, and explicitly confirm. The server restarts; files are never moved automatically. Projects outside the new location may become unavailable.
 
@@ -833,16 +961,15 @@ not apply a storage change. Choose **Next** during setup, or **Save storage loca
 in Settings, to review and confirm a change. Keeping the current location requires
 no confirmation or restart.
 
-### Staff server accounts
+### Staff Users
 
-Manage existing local server users from **Settings → Staff server accounts**, using the same controls as first-run setup. The panel shows whether staff-group enforcement is enabled and lists current members. These controls do not create server users or change client-account access.
+Choose which existing server accounts can administer 45Flow, using the same controls as first-run setup. The panel shows whether staff-group membership is required and lists current members. Click **Add to staff** or **Remove from staff** next to an account. These controls don't create server users or change client access. You can't remove yourself or the last staff member.
 
-Adding or removing a staff member updates only that row. Other eligible users
-remain editable while a save is in progress.
+### Upload Security
 
-### Uploads
+**Malware scanner** shows whether a scanner is available. Turn on **Require malware scanning for uploads** and click **Save scanning policy**; **Check scanner** re-checks it. If scanning is required but no scanner is available, uploads are rejected. An administrator can install the scanner here or, if the policy is not locked by the server configuration, allow uploads without scanning. Unscanned uploads may contain malware.
 
-**Settings → Uploads** shows scanner availability and whether scanning is required. If scanning is required but no scanner is available, uploads are rejected. An administrator can install the scanner here or, if the policy is not locked, choose **Allow uploads without scanning**. Unscanned uploads may contain malware.
+![Upload security](images/settings-upload-security-v4.png)
 
 ### Watermarks
 
@@ -850,75 +977,15 @@ The watermark picker lists built-in images, the enabled global folder, and image
 
 To share images across projects, open **Settings → Watermarks**, turn on **Enable global watermark folder**, select a folder inside the storage root, and choose **Save watermarks**. Turning the switch off hides global-folder images without deleting files. New images uploaded for a project are stored with that project.
 
-### Performance
+![Watermarks](images/settings-watermarks-v4.png)
 
-The **Performance** section controls client-side video transcoding — processing videos on your machine before uploading rather than on the server.
+### File Browsing
 
-| Option | Description |
-|--------|-------------|
-| **Enable client-side transcoding** | When enabled, videos are processed on your computer before upload — using your local CPU or GPU. This creates proxy files faster and reduces load on the server. When disabled, the server handles all video processing after files are uploaded. |
-| **Hardware Acceleration** | Uses your GPU (NVIDIA NVENC, Intel Quick Sync, AMD AMF, Apple VideoToolbox) for faster transcoding. Falls back to CPU-only when no compatible GPU is detected. |
-| **Encode Quality** | Choose between Fast (quicker encode, larger file), Balanced (good tradeoff), or Quality (slower encode, best visual fidelity). |
-| **Detected Encoders** | Shows which hardware encoders passed verification on your system. |
+Under **Server → File browsing**, turn on **Show .45flow by default** and click **Save changes**. The default is off. Changes apply to existing and new projects set to **Use server default** and to folders outside any project. Explicit project choices take precedence. If project folders overlap, the closest project folder governs; if projects use the same folder and disagree, **Hide .45flow** wins.
 
-> **Note:** Client-side transcoding is **disabled by default**. Enable it in Settings → Performance if you want video processing to happen locally. When disabled, videos are transcoded on the server after upload.
+This setting only affects server file browsers. Other dotfiles and hidden folders stay hidden, and the setting does not change file permissions or existing share links. It is available on free and Pro servers; only server administrators can change the global default.
 
-#### Hardware Requirements for Client-side Transcoding
-
-- **Minimum:** Any modern multi-core CPU (4+ cores recommended)
-- **Recommended:** Dedicated GPU with hardware encoding support (NVIDIA GTX 1060+ / Intel 6th-gen+ / Apple Silicon)
-- **Storage:** Temporary disk space equal to ~1.5× the size of the source video during transcode
-- **FFmpeg** is bundled with 45Flow — no separate installation is needed
-
-> **Tip:** If client-side transcoding fails (e.g., insufficient GPU memory or unsupported codec), you can disable it in Settings → Performance. The server will handle transcoding instead — it just takes longer.
-
-### Server Health
-
-The **Server Health** section provides real-time resource statistics from your connected server.
-
-![Server Health panel](images/settings-server-health-v3.png)
-
-Server Health auto-loads when you navigate to the section and shows the following:
-
-| Section | What It Shows |
-|---------|---------------|
-| **Version** | The installed houston-broadcaster version |
-| **Uptime** | Process uptime (how long the server has been running) and system uptime (total OS uptime) |
-| **CPU** | Number of CPU cores and load averages (1-minute, 5-minute, 15-minute) |
-| **Memory** | System total/free RAM and process RSS (resident set size) |
-| **Disk (Share Root)** | Visual progress bar showing disk usage on the share root volume, with used/free/total bytes |
-| **Transcode Queue** | Number of transcode jobs currently queued, running, completed, or failed |
-| **Links & Connections** | Count of active/total links and current WebSocket connections |
-
-The disk usage bar changes color based on usage:
-- 🔵 Blue — under 75% used
-- 🟡 Amber — 75%–90% used
-- 🔴 Red — over 90% used
-
-Click **"Refresh"** to fetch the latest stats from the server.
-
-> **Note:** Server Health requires admin (PAM) access. If you're logged in with a non-admin user or an environment token, you'll see an access denied message.
-
-### Maintenance & Cleanup
-
-For administrators to manage server health:
-
-- **Run setup again** — Reopen the four-step wizard (Storage, Staff users, Sharing settings, Projects) on this computer/browser. This does not reset settings or delete projects, media, or accounts. Existing projects satisfy the final step; a first project is still required on a new server. Changes you explicitly save in the wizard take effect normally.
-
-The **Projects** step lists each project's name and exact folder. Create more
-projects, use the pencil button to edit a project's name, folder or notes, or
-use the trash button to delete its 45Flow record after confirmation. Deleting
-here keeps its folder, source files and existing share links; those links no
-longer belong to the deleted project. At least one project must remain before
-you can finish setup. The folder selected in the project browser is used
-directly; 45Flow does not append another folder to it.
-- **Delete orphan transcode directories** — Remove transcode output folders that no longer have associated links.
-- **Prune DB rows for missing source files** — Clean up database entries where the original files no longer exist on disk.
-- Configure **orphan min age** (hours) and **max missing file checks** to control scan scope.
-- Click **"Run Scan"** to preview what would be cleaned, then **"Apply Cleanup"** to execute.
-- Use **"Export JSON"** to save scan results.
-
-![Maintenance and cleanup scan results](images/settings-maintenance-v3.png)
+![File browsing](images/settings-file-browsing-v4.png)
 
 ### Admin Networks
 
@@ -938,6 +1005,8 @@ The defaults cover common LAN and VPN address ranges, not just your own network.
 Being on an allowed network does not make every device trustworthy.
 You do not need a public domain, Let's Encrypt or port forwarding to use this
 panel on a LAN-only server.
+
+![Admin networks](images/settings-admin-networks-v4.png)
 
 #### Changing the allowed networks
 
@@ -989,159 +1058,175 @@ allow every address in an IP family, are rejected.
 The address check and automatic rollback reduce accidental lockout; they cannot
 guarantee access after your IP address, VPN, proxy or firewall changes.
 
-### Guides
+### Email (SMTP)
 
-The Guides section provides:
+45Flow sends email by signing in to a mail account you already have, such as your company's email, Microsoft 365 or Gmail. Email is used for link invitations, staff alerts, client notifications and security alerts. Administrators only.
+
+![Email settings](images/settings-email-v4.png)
+
+**Setting up email:**
+
+1. Under **Server**, enter the **Host**, **Port** and **Encryption** (**STARTTLS** for port 587, **Implicit TLS** for port 465) from your mail provider.
+2. Enter the **From address** emails come from. Gmail and Microsoft 365 send as the account you sign in with.
+3. Under **Sign-in**, enter the account **Username** and **Password**. The login is encrypted and never shown again. To keep a saved login, leave both blank.
+4. Click **Save email settings**.
+5. Under **Test**, enter your address and click **Send test email**. 45Flow shows what the mail server said.
+
+> **Gmail:** use an **app password**, not your normal Google password. 2-Step Verification must be on. Use `smtp.gmail.com`, port 587, STARTTLS, and your full Gmail address as the username. **Create a Google app password** opens Google's page.
+
+**Delete saved settings** removes the configuration; **Reload** discards unsaved edits.
+
+**Staff alerts** — Addresses (one per line, up to 20) that receive alerts across every link. For each address, choose which events it receives: new comments, replies, reopened feedback, review decisions (approvals, change requests, rejections) and first downloads. New feedback emails start off. Click **Save staff alerts**.
+
+**Security alert emails** — Separate addresses for security alerts (one per line, up to 20). Leave empty to turn security emails off. Click **Save security alerts**.
+
+**Delivery problems** — Emails the mail server refused, couldn't confirm or couldn't send, from every link. Retry them from the link's **Activity** tab. "Sent" means the mail server accepted the email, not that it reached the inbox.
+
+> **Note:** If outbound email is turned off in [Scanning & Privacy](#scanning--privacy), 45Flow doesn't send any email and says so here.
+
+### Scanning & Privacy
+
+What the malware scanner does, and everything this server sends over the internet. Administrators only.
+
+![Scanning & privacy](images/settings-scanning-privacy-v4.png)
+
+**Scanner** — Every uploaded file is checked with ClamAV before it reaches your shares. This shows the engine version, how old the virus signatures are, the last database update, whether automatic signature updates are scheduled, and whether scanning is required. If signatures aren't updated automatically, it shows the command to turn that on.
+
+**Last 90 days** — Counts of files scanned, clean, infected, errors and not fully scanned (for example files over 2 GB, which are too large to scan). **Recent files that weren't clean** lists each one with the link it came through and whether it was kept or deleted. **What the scanner checks, and what it can't** explains the limits.
+
+**Outbound calls** — Every call this server makes to the internet: where it goes, what it sends and how often, with a count of recent calls. Each call is written to the audit history.
+
+| Call | Required? |
+|------|-----------|
+| License activation and refresh | Required for Pro. A server without a license never makes this call. |
+| Server registry heartbeat | Optional. Lets desktop apps on other subnets find this server. |
+| Port-forwarding check | Optional. Only when an admin runs an internet sharing check. |
+| Public IP lookup | Optional. Used while the internet address is set to detect automatically. |
+| Broadcaster update check | Optional. |
+| Package installs | Optional. |
+| Email (SMTP) | Optional. Turning it off stops all email. |
+| Let's Encrypt certificate | Optional. |
+| No-IP dynamic DNS | Optional *(Pro)*. |
+
+Use the switch on an optional call to turn it off. Each card explains what stops working if you do.
+
+**Quarterly account review** — Review staff access every quarter. The panel lists every server account with its last successful sign-in and the projects and links it owns. Accounts inactive for 90 days are flagged for review only; they are never disabled automatically. Click **Record quarterly review** when done. **Legacy unassigned records** lists older projects and links with no owner; choose a current staff member under **Assign to** and click **Assign ownership**.
+
+### Help & Tours
 
 - **Open User Guide** — Opens this documentation in your browser.
-- **Disable guided tours** — Turn off all onboarding walkthroughs and first-time guides.
-- **Re-enable guided tours** — Reset onboarding walkthroughs so they show again on each page.
+- **Open API Docs** — Opens the interactive API reference (Swagger) for the connected server.
+- **Disable guided tours** — Turn off all onboarding walkthroughs.
+- **Reset Tours** — Show the walkthroughs again on each page.
 
-### Saving Settings
-
-- Click **"Save settings"** to apply all changes. New links will use the updated defaults.
-- Click **"Reload"** to discard changes and reload current settings from the server.
-
-> **Important:** Settings changes affect only **newly created links**. Existing links are not modified retroactively.
+![Help & tours](images/settings-help-v4.png)
 
 ### Go Pro — License Activation
 
-The **Go Pro** section appears in Settings when your server is unlicensed or running on a trial license. Use this section to activate a full license or start a free trial.
+*Desktop app.* **Go Pro** appears in the Settings sidebar when the server is unlicensed (including after a trial ends), on a trial, or in **Pro — Legacy** mode. The **Go Pro** button on the Community banner in a project also opens it when the server is unlicensed. You can also enter a renewed key in **Settings → Server health**.
 
 ![Go Pro settings when unlicensed](images/settings-go-pro-unlicensed-v3.png)
 
-**License Activation:**
+**Activating a license:**
 
-1. Enter your **License Key** in the input field.
+1. Paste your **License Key** (it looks like `STUDIO-XXXX-XXXX-XXXX-XXXX`).
 2. Click **"Activate License"**.
-3. The app validates your key with the licensing server.
-4. On success, your server is permanently licensed and the app immediately upgrades to Pro mode.
+3. The server checks the key with the 45Studio license server. On success the app switches to Pro straight away, for everyone on that server.
 
-**Start a Free Trial:**
+**Starting a free trial:**
 
-If you don't have a license key yet:
+Under **Start Free 30-Day Trial**, click **"Start Trial"**. No email address is needed; the trial is activated on the server straight away. It gives every Pro feature for 30 days and is limited to one activation per trial.
 
-1. Click **"Start Free Trial"**.
-2. Enter your email address.
-3. A 30-day trial license is generated and activated automatically.
-4. You'll receive a confirmation email with trial details.
+**What the section shows:**
 
-**Trial Status:**
-
-When running on a trial license, this section shows:
-- Trial expiration date
-- Days remaining
-- Option to upgrade to a full license before the trial expires
+| State | What you see |
+|-------|--------------|
+| **Pro Trial Active** | Days remaining and the expiry date, with **Upgrade to Full License**, a **License Key** box and **Contact 45Studio**. |
+| **Trial Expired** — Community Mode | Premium features are off. **Upgrade to Full License** with a **License Key** box. |
 
 ![Go Pro settings showing active trial](images/settings-go-pro-trial-v3.png)
 
-When a trial expires, the app reverts to Community mode and Pro features are disabled until a full license is activated.
-
-> **Note:** The Go Pro section is hidden once your server has a full Pro license (not trial). To view license details, go to Settings → Application → Server Health.
+> **Note:** License status is also shown in **Settings → Server health**, where an unlicensed server can be activated too.
 
 ---
 
 ## 8. Custom Branding (White Label) — Pro Feature
 
-**Custom branding requires a Pro license.** This feature lets you customize how share links, upload pages, and review pages appear to your clients and collaborators. When enabled, recipients see your company's branding instead of the default 45Flow identity.
+**Custom branding requires a Pro license.** It changes how your share, review, upload and password pages look to clients. Recipients see your company's name, logo, colours and page style instead of the default 45Flow look.
 
-Access branding configuration from **Settings → White Label**.
+Open **Settings → Branding** and turn on **Enable custom branding**. The settings are split into four tabs: **Identity**, **Look**, **Page content** and **Custom CSS**. A **live preview** of a review page sits at the top of the first three tabs and updates as you edit (custom CSS isn't shown in the preview).
 
-![Custom Branding configuration panel](images/settings-branding-v3.png)
+Click **Save changes** to publish, or **Discard changes** to undo your edits. **Clear custom branding**, at the bottom of every tab, resets every branding setting to the 45Flow defaults and removes uploaded images.
 
-### Enabling Branding
+![Branding — Identity tab](images/settings-branding-v4.png)
 
-Toggle the **"Enable white-label branding"** switch at the top of the Branding section. When disabled, all share pages display the default 45Flow branding.
+### Identity
 
-### Company Identity
+| Setting | Description |
+|---------|-------------|
+| **Company name** | Used in page headers and link previews (max 200 characters). |
+| **Logo** | Replaces the 45Studio logo on link pages. PNG, JPEG, SVG or WebP, max 2 MB. Use a transparent background, at least 200 px tall. **Replace** / **Remove**. |
+| **Use a separate logo for dark backgrounds** | Upload a second logo for dark mode, if your logo has poor contrast on dark pages. |
+| **Favicon** | The browser-tab icon. PNG, SVG or ICO, max 512 KB. Uses your logo when empty. |
+| **Support email** | Shown on link pages and error screens. |
+| **Support URL** | Your help documentation or support portal. |
+| **Preview title** / **Preview description** | How links look when pasted into Slack, Teams, email or social media. The title defaults to the company name. |
 
-| Field | Description |
-|-------|-------------|
-| **Company name** | Your company or studio name (max 200 characters). Displayed on share pages below the logo. |
+### Look
 
-### Theme & Colors
+![Branding — Look tab](images/settings-branding-look-v4.png)
 
-Control the visual theme applied to all share/upload pages that recipients see:
+**Theme**
 
-**Enforced Theme:**
+| Setting | Description |
+|---------|-------------|
+| **Recipient theme** | **Recipient's choice (no override)**, one of 22 built-in themes (Flow, Party, Prism, Synthwave, Cyber Pulse, Moon Mist, Flamingo, Spectrum, Fire, Sunset, Borealis, Solstice, Ultraviolet, Infrared, Blue Steel, Graphite, Deep Sea, Titanium, Enterprise, Homelab, Professional, Studio), or **Custom (your brand colors)**. When set, recipients can't change the theme. |
+| **Light or dark mode** | **Recipient's choice**, **Always light** or **Always dark**. Locking a mode hides the toggle. |
 
-Choose from 22+ built-in themes or select **"Custom"** to define your own brand colors:
+**Brand colors** — **Primary brand color** (buttons, highlights and the gradient start) and **Secondary brand color** (gradient end, borders and supporting accents). A warning appears if a colour may be hard to read.
 
-- **Built-in themes** — Pre-designed color palettes (dark, light, and specialty themes) applied automatically to all share pages.
-- **Custom** — Define your own primary and secondary brand colors.
+**Page style**
 
-When **Custom** is selected, two color pickers appear:
+| Setting | Options |
+|---------|---------|
+| **Font** | Default (45Flow), System UI, Neo-grotesque (Helvetica-like), Humanist, Geometric, Rounded, Serif (transitional), Serif (old style), Monospace. System fonts only, so pages load fast; use custom CSS for a web font. |
+| **Corners** | Rounded (default), Subtle, Square, Extra round (pill buttons). |
+| **Buttons** | Gradient (default) or Solid. |
+| **Logo size** | Small, Medium (default), Large, Extra large. |
 
-| Field | Description |
-|-------|-------------|
-| **Primary color** | Main brand color used for buttons, links, and accent elements (e.g., `#D92B2F`). |
-| **Secondary color** | Supporting color used for gradients, hover states, and secondary elements (e.g., `#b02428`). |
+**Page colors and background** — **Background color**, **Background image** (PNG, JPEG or WebP, max 5 MB), **Background texture** (the subtle 45Flow pattern), **Text color**, **Link color** and **Panel color**. Leave a colour empty to use the theme's.
 
-A **gradient preview** shows how your colors will render together. The editor also provides a **WCAG contrast warning** if your color combination may have accessibility issues with text readability.
+### Page Content
 
-> **Note:** When an enforced theme is set, recipients cannot change the theme on share pages — the theme picker is hidden from their view. This ensures consistent brand presentation.
+![Branding — Page content tab](images/settings-branding-content-v4.png)
 
-### Company Logo
+| Setting | Description |
+|---------|-------------|
+| **Welcome message** — **Title** and **Message** | Shown above the files and on the password page (up to 1,000 characters). Recipients can dismiss it on review pages. |
+| **Footer text** | Copyright, address or a short note. Line breaks are kept. |
+| **Privacy policy URL** / **Terms of use URL** | Adds those links to the footer. |
+| **45Flow credit** | Where the small "Powered by 45Flow" credit appears: **Header, under your logo**, or **Footer only** (removes the 45Flow mark from the header). |
 
-Upload your company logo to replace the default 45Flow logo on all share and upload pages.
+### Custom CSS
 
-| Option | Description |
-|--------|-------------|
-| **Default logo** | A single logo used for both light and dark backgrounds. Upload a PNG, JPEG, SVG, or WebP file (max 2 MB). |
-| **Split logos (light/dark)** | Toggle to upload separate logos optimized for light and dark backgrounds. Useful when your logo doesn't work on both. |
+Add your own styles after the built-in ones on every share, review and upload page (up to 50,000 characters). Changes go live when you save. **Start from example** inserts a commented starting point. Expand **CSS reference** for the theme variables (set on `:root`) and page hooks you can target.
 
-After uploading, a preview shows the logo with its dimensions and file size. Click the **trash icon** to remove an uploaded logo.
+![Branding — Custom CSS tab](images/settings-branding-css-v4.png)
 
-> **Tip:** For best results, use a transparent PNG or SVG with adequate padding. Logos are displayed at a reasonable size — overly large images will be scaled down.
-
-### Support & Contact Information
-
-Add your company's support details to share pages, so recipients know who to contact:
-
-| Field | Description |
-|-------|-------------|
-| **Support email** | Displayed as a clickable mailto link on share pages (max 200 characters). |
-| **Support URL** | A link to your help desk, FAQ page, or support portal (max 500 characters). |
-
-These appear on password-protected pages, expired link pages, and in the footer of upload pages.
-
-### Link Preview Metadata
-
-Customize how your share links appear when pasted into social media, Slack, Teams, email clients, or any platform that renders **Open Graph** (OG) previews:
-
-| Field | Description |
-|-------|-------------|
-| **Link preview title** | The title shown in social cards and link unfurls (max 200 characters). |
-| **Link preview description** | The description text shown below the title in link previews (max 500 characters). |
-
-> **Example:** When someone pastes a share link into Slack, instead of showing "45Flow — Secure file sharing", it could show "Acme Studios — Review your project files securely".
-
-### Live Preview
-
-The branding panel includes a **live preview** section showing miniature mockups of how your branding will appear:
-
-- **Protected Link page** — What recipients see when a link requires a password.
-- **Review Page** — The video player / file viewer page.
-- **Upload Page** — The drag-and-drop upload page.
-
-These previews update in real-time as you change settings, giving you immediate visual feedback before saving.
-
-### Clearing Branding
-
-Click **"Clear branding"** at the bottom of the section to reset all branding fields to their defaults. This removes all custom logos, colors, company name, and support info — restoring the default 45Flow appearance on all share pages.
+> **Tip:** Use custom CSS for anything the other tabs don't cover, such as a web font. Test on a phone as well as a computer.
 
 ### How Branding Appears to Recipients
 
-When branding is enabled, recipients viewing your share links will see:
+When branding is on, recipients see:
 
-- **Your logo** instead of the 45Flow logo (respects light/dark mode if split logos are configured)
-- **Your company name** displayed below the logo
-- **Your brand colors** applied to buttons, links, gradients, and backgrounds
-- **Your support contact** on password pages and expired link pages
-- **"Powered by 45Flow"** attribution shown as a subtle footer (required)
-- **Your enforced theme** — recipients cannot change the color theme
+- **Your logo** and **company name** in the header (with your dark-mode logo if you added one) and your **favicon** in the browser tab
+- **Your theme, colours, font and page style**
+- **Your welcome message** and **footer**
+- **Your support contact** on password pages and expired-link pages
+- **Your link preview** title and description when the link is pasted into chat or email
+- A small **"Powered by 45Flow"** credit in the header or footer (required)
 
-> **Important:** Branding is tied to your server's license. If the license expires or is revoked, share pages will revert to default 45Flow branding.
+> **Important:** Branding is tied to your server's license. If a trial ends, link pages go back to the default 45Flow look. A full license that expires keeps its branding in **Pro — Legacy** mode.
 
 ---
 
@@ -1164,210 +1249,150 @@ Previews support files up to 10 MB and may show only part of larger documents or
 
 QuickShare checks all selected files before uploading. If any are unsupported or exceed upload limits, nothing uploads and the rejected files are listed.
 
-**Video Processing:** When client-side transcoding is enabled (Settings → Performance), video files are transcoded on your machine before upload — this generates both a **Stream** (HLS for browser playback) and **Proxy Files** (downloadable MP4s). With server-side mode, files upload first and the server handles processing.
+**Video Processing:** When client-side transcoding is enabled (**Settings → Video processing**, desktop app only), video files are transcoded on your machine before upload — this generates both a **Stream** (HLS for browser playback) and **Proxy Files** (downloadable MP4s). With server-side mode, files upload first and the server handles processing.
 
 ### QuickShare Options
 
 QuickShare lets you configure:
 
 - **Destination folder** — Where files are stored on the server (the project folder unless you pick a subfolder)
-- **Link expiration** — How long the link remains active (default: 7 days)
+- **Link expiration** — How long the link remains active (starts from your [new link defaults](#new-link-defaults))
 - **Access mode** — Open (anyone with link), password-protected, or invited clients/teams
 - **Proxy file qualities** — 720p, 1080p, and/or full resolution (for video)
 - **Watermark** — Overlay a watermark on video and image files (Pro: full positioning; Community: basic)
-- **Network mode** — External (port-forwarded) or Local (LAN/VPN). With External selected, **"Check port"** tests whether the server is reachable from the internet: a green light means it is, red means port forwarding isn't working yet.
+- **Network** — **Internet (outside your network)** or **Local Network only**. With Internet selected, **"Check Port"** tests whether the server is reachable from the internet: a green light means it is, red means port forwarding isn't working yet.
 
-These defaults can be customized in [Settings](#7-settings) under **Link Options**.
+These defaults can be changed in [Settings → New link defaults](#new-link-defaults).
 
 ### After Creating a QuickShare Link
 
-Once generated, the share link is:
-- **Automatically copied to your clipboard** — ready to paste into email, chat, or wherever you need
-- **Displayed on screen** — for immediate viewing and verification
-- **Added to your Active Links table** on the Dashboard for management
+Once the files upload and the link is made:
 
-From the Dashboard, you can find your QuickShare link and:
-- Edit settings (change expiration, access mode, etc.)
-- Copy the link again
-- View access logs
-- Delete the link
+- The link is **shown on screen**. Click **Copy** to copy it (you'll see *"Link Copied"*), then paste it into email or chat.
+- **Email this link (optional)** lets you send it straight away, unless you already used **Upload, Share & Email**.
+- The link is **added to the project's links table**, where you can edit it, copy it again, see its activity or delete it.
 
-> **Tip:** QuickShare is perfect for ad-hoc file sharing when you don't need custom settings. For more control over link configuration, use [Create Link](#10-creating-links--share-upload-or-combined) inside a project instead.
+> **Tip:** QuickShare is perfect for ad-hoc file sharing when you don't need custom settings. For more control over link configuration, use [Create Link](#10-creating-links--review-upload-or-both) inside a project instead.
 
 ---
 
-## 10. Creating Links — Share, Upload, or Combined
+## 10. Creating Links — Review, Upload, or Both
 
-45Flow uses a **unified link system** — every link can be configured to support file sharing (review/download), upload, or both simultaneously. You no longer need to create separate "share links" and "upload links" — a single link can do both.
+Every 45Flow link can let your client **review** files (view, download and comment), **upload** files to you, or both. Open a project and click **"Create Link"**. Everything happens on one screen, from top to bottom:
 
-Open a project and click **"Create Link"** to begin.
+1. **Link name** *(optional)*
+2. **Files to share**
+3. **Details** — client uploads, expiry, network, and what happens after a client uploads
+4. **Link Access Mode** — who can open the link, and comments
+5. **Media Options** — proxy files and watermark (when you picked videos or images)
+6. **File requirements** *(Pro, when uploads are on)*
+7. **Send link by email**
+8. **Generate Flow link**
 
-### Step 1: Select a Project or Destination
+The **Project** selector in the top-right corner shows which project the link belongs to. Changing it moves the file browser to that project's folder. Click **"Back"** (top) or **"Back to Project"** (bottom) to leave without creating a link.
 
-Links are created inside a project. The **Create Link** screen opens for the project you were in, and the file browser starts in that project's folder.
+![Picking files on the Create Link screen](images/share-select-files-v4.png)
 
-To create the link in a different project, use the **Project** selector in the top-right corner of the screen header. Changing the project moves the file browser to that project's folder.
+### What Kind of Link Is It?
 
-![Project selection with ZFS pools](images/share-select-project-v3.png)
+The link type follows from what you pick. There is no separate mode switch:
 
-Click **"Back to Project"** at the bottom of the screen (or **"Back"** in the header) at any time to cancel and return to the project.
+| Type | How to make it | What the client can do |
+|------|----------------|------------------------|
+| **Review** | Pick files under **Files to share**. Leave **Let client upload to** unticked. | View, play, download (if their role allows) and comment. |
+| **Upload** | Leave **Files to share** empty. Tick **Let client upload to**. | Send you files. |
+| **Review + Upload** | Pick files **and** tick **Let client upload to**. | Both. |
 
-### Step 2: Configure Link Settings
+A summary line under the **Generate Flow link** button always says what you are about to create, for example *"This link lets your client review and download 3 files."* or *"No files selected, so this is an upload-only link: your client can send you files."*
 
-The Create Link screen is a single page, from top to bottom:
+### Files to Share
 
-1. **Link name** *(optional)* — An internal name to help you identify the link later (e.g., "Rough Cut v2 for review").
-2. **Files to share** — A full-width file browser for picking what your client should review or download.
-3. **Details** — Whether the client can upload, and to which folder.
-4. **Link options** — Expiry, network, what happens after a client uploads, and who can access the link.
-5. **Video / Image / Media Options** — Proxy files and watermark settings (shown when you have picked video or image files).
-6. **File requirements** *(Pro, upload links only)* — Rules that uploaded files are checked against.
-7. **Generate Flow link**.
+The file browser starts in the project folder (**Showing:** shows the current path).
 
-![File selection and link configuration](images/share-select-files-v3.png)
+- Click a file to select it; tick a folder to include everything in it. **Select All** picks everything shown.
+- Switch between **List** and **Grid** views.
+- Selected files appear under **Selected (N)**. Click **Show** to review them, **✕** to remove one, or **Clear** to start over.
+- Leave **Files to share** empty for an upload-only link.
 
-![Unified link creation interface](images/link-create-unified-v3.png)
+### Details
 
-### Link Types — Share, Upload, Combined
+![Details: uploads, expiry, network and after-upload options](images/link-create-unified-v4.png)
 
-45Flow links support three modes:
+**Let client upload to** — Tick it, then type a folder path (suggestions appear as you type) or click **Browse…** to pick one. Client uploads land in this folder; 45Flow creates it if it doesn't exist. The filesystem root (`/`) can't receive uploads.
 
-| Mode | Description |
-|------|-------------|
-| **Share only** | Recipients can view, download, and comment on files. Pick files under **Files to share** and leave **"Let client upload to"** unchecked. |
-| **Upload only** | Recipients can send files to a specified destination folder. Leave **Files to share** empty and check **"Let client upload to"**. |
-| **Combined (Share + Upload)** | Recipients can both review your shared files AND upload their own files. Pick files and check **"Let client upload to"**. Perfect for collaborative workflows. |
-
-The link type follows from what you pick: there is no separate mode switch. A summary line under the **Generate Flow link** button tells you what kind of link you are about to create.
-
-#### Selecting Files (Share Mode)
-
-The **Files to share** browser sits front and center, across the full width of the screen:
-
-- Use the **file browser** to navigate folders and select individual files. Check a folder to include everything in it.
-- Selected files appear in the **"Selected"** panel with a count. Files from the same folder are grouped together.
-- Click **"Show"** to review your selection, and use the **✕** button to remove individual files or a whole folder group.
-- Click **"Clear"** to start over.
-- Leave **Files to share** empty to make an **upload-only** link.
-
-#### Letting Clients Upload
-
-The **Details** section has a single row for client uploads:
-
-1. Check **"Let client upload to"**.
-2. Type the folder path on the server in the box next to it. The box suggests matching folders as you type.
-3. Or click **"Browse…"** to open the folder browser and pick the folder. Click **"Done"** to close the browser.
-
-Client uploads land in this folder. If the folder doesn't exist yet, 45Flow creates it. The filesystem root (`/`) can't receive uploads.
-
-#### Configuring Basic Settings
-
-**Expiration:**
-- Set how long the link stays active using the **"Expires in"** field.
-- Use the number and time unit (hours, days, weeks) or choose a quick preset: **1 hour**, **1 day**, **1 week**, or **Never**.
-- Once expired, the link becomes inaccessible automatically.
+**Expires in** — A number and **hours**, **days** or **weeks**, or a quick preset: **1 hour**, **1 day**, **1 week**, **Never**. After this time the link stops working. Your files stay on the server, and you can extend the link later.
 
 **Network:**
-- **Share Externally (Over Internet)** — Link accessible from anywhere. Requires port forwarding to be configured. This is listed first and is the default, unless your administrator set the default to Internal in [Settings → URLs & Access](#urls--access).
-- **Share Locally (Over LAN)** — Link accessible only within your local network or VPN.
-- When **Share Externally** is selected, use the **"Check Port"** button to verify your external port forwarding is working.
 
-**After a client uploads** (available when **"Let client upload to"** is checked):
-- **Share uploads back** — Add each upload to the files shared on this link. On an upload-only link, the client can view and download each file right after they upload it, on the same link.
+- **Internet (outside your network)** — Works anywhere. Needs port forwarding and a public address with a trusted certificate (see [Port Forwarding](#4-port-forwarding-for-external-sharing)). If the address isn't ready, 45Flow explains what's missing. Click **Check Port** to test port forwarding: green means the server is reachable from the internet.
+- **Local Network only** — Only opens for people on the same network or VPN as the server (for example, your office).
+
+**After a client uploads** *(when uploads are on)*:
+
+- **Share uploads back** — Let the client view and download each file right after they upload it, on the same link.
 - **Watermark uploads** — Apply this link's watermark settings to new uploads.
-- **Make proxy files for uploads** — The server makes proxy files for each video the client uploads. Choose the **Proxy sizes**: **720p**, **1080p**, and/or **Full Res (MP4)**.
+- **Make proxy files for uploads** — The server makes proxy files for each uploaded video. Choose the **Proxy sizes**: **720p**, **1080p** and/or **Full Res (MP4)**.
 
-**Project:**
-- The link is created in the project shown in the **Project** selector in the header.
+### Link Access Mode
 
-### File Requirements for Uploads (Pro)
-
-On a Pro server, links that accept uploads can check each uploaded file against your delivery specs. When **"Let client upload to"** is checked, a **File requirements** section appears below the link options.
-
-1. Turn on **Check uploads against file requirements**.
-2. Choose what is allowed. Leave a group empty to allow anything:
-   - **File type** (container)
-   - **Video codec**
-   - **Resolution** — pick common sizes, or type others such as `1998x1080, 4096x1716`
-   - **Frame rate (fps)**
-   - **Shortest** and **Longest** duration (`m:ss`)
-3. Under **When a file doesn't match**, choose:
-   - **Reject it and tell the uploader why**, or
-   - **Accept it, but flag it**.
-4. *(Optional)* Tick **Accept files that aren't video or audio (PDFs, images, documents) without checking them**.
-
-Files are checked after they upload. Your client sees a **"This link checks your files"** box listing the rules on the upload page. A rejected file shows the reason; an accepted-but-flagged file is kept and shows a **Flagged** note explaining what didn't match.
-
-To change the rules on an existing link, open **Link Details → Edit**. If you turn uploads on while editing, save the link first, then set the file requirements.
-
-### Link Access Modes
-
-Choose who can access the link:
+Choose who can open the link:
 
 | Mode | Description |
 |------|-------------|
-| **Anyone with the link** | No login required. Anyone with the URL can access the files. You can optionally enable the **"Allow comments"** toggle so visitors can leave a name and comment. |
-| **Anyone with the link + password** | Requires a shared password. Enter a password in the field that appears. The same password is used by all recipients. |
-| **Only invited clients & teams** | Requires each client to log in with their own login. Click **"Invite clients & teams…"** to choose which clients and teams can access the link. Roles set what they can do. |
+| **Only invited clients & teams** | Each person signs in with their own login. Roles set what they can do (see [Role Management](#19-role-management)). Needed for approvals and personal watermarked copies. |
+| **Anyone with the link + password** | One shared password for everyone. Enter it under **Link password**. |
+| **Anyone with the link** | No sign-in required. Anyone it gets forwarded to can see it too. |
 
-![Link access mode options](images/share-access-modes-v3.png)
+![Link access modes](images/share-access-modes-v4.png)
 
-When comments are enabled, you can optionally define **Comment Categories** (for example: *Client Feedback*, *Audio*, *Color*, *VFX*, *Needs Revision*). Categories help standardize review notes and make filtering and exports easier later.
+**Inviting clients and teams:** with **Only invited clients & teams** selected, click **"Invite clients & teams…"**. In the picker, tick clients and teams and choose a role for each, then click **"Add selected to link"**. **Manage teams**, **Manage roles** and **Add client** open those screens without leaving the picker. Afterwards the button reads **"Manage invited clients"** with a count.
+
+![Invite clients & teams picker](images/invite-clients-picker-v4.png)
+
+**Comments:**
+
+- **Invite-only links** — Each invited person's role decides whether they can comment.
+- **Open and password links** — Turn on **Allow comments** so visitors can leave a name and a comment.
+- **Manage Comment Categories** lets you set labels reviewers can pick, such as *Audio*, *Color* or *Needs Revision*. Categories make filtering and exports easier later.
+
+> **Approvals:** To have a client formally approve each file, invite them **directly** (not only through a team), then choose them under **Who approves** in **Link Details → Edit → Access**. See [Review & Approvals](#review).
 
 ### Video and Media Options
 
-When you pick video or image files to share, a **Video Options**, **Image Options**, or **Media Options** section appears below the link options:
+When you pick videos or images, a **Video Options**, **Image Options** or **Media Options** section appears.
 
-![Video options — proxy files and watermark](images/share-video-options-v3.png)
+![Media options: proxy files and watermark](images/share-video-options-v4.png)
 
-**Proxy Files:**
-- Choose which proxy file qualities to generate: **720p**, **1080p**, **Full Res (MP4)**, or any combination.
-- Shared links serve the proxy files instead of the originals, providing faster playback and reduced bandwidth.
-- A note shows whether the video will be transcoded on this computer (client-side transcoding) or by the server.
+**Proxy Files** — Choose **720p**, **1080p** and/or **Full Res (MP4)**. These are lightweight MP4s for downloading and offline review. A browser stream is always made separately, and the original file is always kept. A note shows whether processing happens on this computer (desktop client-side transcoding) or on the server.
 
 ### Watermark Settings — Video and Image Support
 
-45Flow supports watermarking for both **video files** and **image files**. When enabled, watermarks are applied to proxy files (for videos) or directly to the shared image (for images).
+Turn on **Watermark Videos** (or **Watermark Images** / **Watermark Media**) to stamp a watermark on the proxy files and streams (videos) or on the shared copy (images).
 
-**Enable Watermark:**
-- Turn on **"Watermark Videos"** (or **"Watermark Images"** / **"Watermark Media"**, depending on what you picked) to enable watermarking.
-- Click **"Browse…"** to upload a watermark image, or choose from built-in presets.
-
-![Watermark settings showing video and image support](images/watermark-image-support-v3.png)
-
-**Community vs Pro Watermarking:**
+**Community vs Pro watermarking:**
 
 | Feature | Community | Pro |
 |---------|-----------|-----|
-| Video watermarking (enable/disable, select image) | ✅ Yes | ✅ Yes |
-| Image watermarking (enable/disable, select image) | ✅ Yes | ✅ Yes |
-| Position control (9 anchor points) | ❌ Bottom-right only | ✅ Full control |
-| Scale, opacity, rotation | ❌ Fixed defaults | ✅ Customizable |
-| Watermark presets (save & reuse) | ❌ No | ✅ Yes |
-| Text watermarks | ❌ No | ✅ Yes |
-| Personal watermarked copies | ❌ No | ✅ Yes |
+| Video and image watermarking (on/off, choose image) | ✅ | ✅ |
+| Position | Bottom-right only | ✅ Drag anywhere, or exact anchor and offsets |
+| Scale, opacity, rotation | Fixed defaults | ✅ Adjustable |
+| Quick presets and saved presets | ❌ | ✅ |
+| Text watermarks | ❌ | ✅ |
+| Personal watermarked copies | ❌ | ✅ |
 
-![Community mode watermark controls (basic)](images/watermark-community-basic-v3.png)
+![Basic watermark (Community)](images/watermark-community-basic-v3.png)
 
-**Watermark Position & Style (Pro):**
+**Pro image watermark** (**Watermark Customization → Image watermark**):
 
-| Setting | Description |
-|---------|-------------|
-| **Position** | Nine anchor points: Top-Left, Top-Center, Top-Right, Center-Left, Center, Center-Right, Bottom-Left, Bottom-Center, Bottom-Right. |
-| **Scale** | Size of the watermark relative to the frame (percentage). |
-| **Opacity** | Transparency level (0% = invisible, 100% = fully opaque). |
-| **Rotation** | Angle in degrees (e.g., 45° for diagonal placement). |
+- **Choosing the image** — Pick from **Select existing watermark file…** (project images from the project's `.45flow/watermarks` folder, the shared watermark folder, and built-in images when **Show default watermarks** is ticked), or upload your own with **Replace…**. **Refresh** reloads the list.
+- **Quick Presets** — **Bottom Right (Small)**, **Bottom Right (Large)**, **Center (Translucent)**, **Top Left Corner**, **Diagonal (Rotated)**. **Custom Settings** shows your own adjustments; **My Presets** lists presets you saved.
+- **Position** — Drag the watermark in the **Live Preview**, or set an **Anchor Point** with **Horizontal Offset** and **Vertical Offset**.
+- **Scale**, **Opacity** and **Rotation** sliders.
+- **Save as Preset** stores the current settings with a name and description for reuse. **Reset** returns to the defaults.
 
-**Watermark Presets (Pro):**
+![Pro watermark customization](images/watermark-pro-advanced-v4.png)
 
-- The preset dropdown shows all available watermark images with saved settings.
-- Select a preset to instantly apply a predefined watermark configuration.
-- Upload your own watermark image by clicking **"Upload custom watermark"**.
-- Presets can be saved and reused across multiple links.
-
-![Pro mode watermark controls (advanced)](images/watermark-pro-advanced-v3.png)
-
-> **Note:** In Community mode, watermarks (video and image) are applied at a fixed bottom-right position with default scale/opacity. Upgrade to Pro for full customization (position, scale, opacity, rotation), text watermarks, personal copies and reusable presets.
+> **Note:** For images, actual placement may vary slightly depending on dimensions and aspect ratio.
 
 ### Text Watermarks (Pro)
 
@@ -1384,7 +1409,13 @@ On a Pro server, the watermark controls have two cards: **Image watermark** and 
    | **Date** | `{date}` | The date |
    | **Link title** | `{link}` | The link's name |
 
-3. Choose the **Font** (Sans or Sans Bold), **Colour** and **Position**, and adjust size, opacity and rotation. The **Live Preview** shows the result with sample values.
+3. Choose the **Font** (Sans or Sans Bold) and **Colour**. Tick **Outline** for a dark edge that stays readable on bright footage.
+4. Choose **Once** (a single line) or **Tiled** (repeated across the whole frame, which is harder to crop out).
+5. For a single line, pick a **Position** (**Top Left**, **Top Right**, **Center**, **Bottom Left**, **Bottom Right**) or drag it in the preview, then set **Text size**, **Text opacity** and **Text rotation**.
+
+The **Live Preview** shows the result with sample values (for example *"Preview for John Smith"*).
+
+![Text watermark settings](images/watermark-text-v4.png)
 
 `{recipient}`, `{email}` and `{company}` only have values for invited people. On a link that anyone can open, they are left blank and 45Flow shows a warning.
 
@@ -1398,49 +1429,78 @@ Give each invited person their own copy, stamped with their own details. If a co
 2. Add a **text watermark** that uses `{recipient}`, `{email}` or `{company}`, for example `Preview for {recipient} · {company}`.
 3. Generate the link. 45Flow notes that *each invited person gets their own copy with their details filled in, and only ever sees that copy*.
 
-To check progress, open **Link Details → Files**. The **Personal watermarked copies** section lists each person with a status: **Preparing**, **Ready**, **Failed** or **No watermark**, plus a summary such as *"3 of 4 ready."* From there you can turn personal copies on or off and click **Edit the watermark text**.
+![A personal watermarked copy on the share page](images/video-player-v4.png)
+
+To check progress, open **Link Details → Files**. The **Personal watermarked copies** section lists each person with a status: **Preparing N/M**, **Ready**, **Failed** (hover for the reason) or **No watermark**, plus a summary such as *"3 of 4 ready."* From there you can turn personal copies on or off and click **Edit the watermark text**.
 
 > **Tip:** Fill in each client's **Email** and **Company** in [Client Access](#18-client-access) so those variables have something to show.
 
+### File Requirements for Uploads (Pro)
+
+On a Pro server, links that accept uploads can check each uploaded file against your delivery specs. With **Let client upload to** ticked, a **File requirements** section appears.
+
+1. Turn on **Check uploads against file requirements**.
+2. Click **Edit requirements…**.
+3. Under **When a file doesn't match**, choose **Reject it and tell the uploader why** or **Accept it, but flag it**.
+4. Tick what's allowed in each row. A file must match one of the ticked options in every row; rows with nothing ticked aren't checked.
+   - **File type** — QuickTime (.mov), MPEG-4 (.mp4), MXF, Matroska (.mkv), WebM, AVI, MPEG-TS, WAV, AIFF, MP3
+   - **Video codec** — Apple ProRes, Avid DNxHD / DNxHR, H.264, H.265 (HEVC), AV1, VP9, MPEG-2, JPEG 2000, GoPro CineForm, FFV1, Uncompressed 10-bit (v210)
+   - **Resolution** — common sizes, or type others such as `1998x1080, 4096x1716`
+   - **Frame rate (fps)** — 23.976 to 60
+   - **Aspect ratio** — 16:9, 1.85:1, 2.39:1, 4:3, 1:1, 9:16
+   - **Audio** — No audio, Mono, Stereo, 5.1, or 8, 16, 32 or 64 channels
+   - **Length** — shortest and longest (`m:ss`, either can be blank)
+5. *(Optional)* Tick **Accept files that aren't video or audio (PDFs, images, documents) without checking them**.
+6. Click **Done**. The section shows a summary of your rules.
+
+![File requirements dialog](images/upload-spec-editor-v4.png)
+
+![File requirements summary](images/upload-spec-summary-v4.png)
+
+Files are checked after they upload. Your client sees a **"This link checks your files"** box listing the rules on the upload page. A rejected file shows the reason; an accepted-but-flagged file is kept and shows a **Flagged** note explaining what didn't match.
+
+To change the rules later, open **Link Details → Edit**.
+
 ### Emailing the Link
 
-Above the generate button, **Send link by email** emails the link as soon as it is created.
+At the bottom, turn on **Send link by email** to email the link as soon as it is created. Email must be set up first (see [Email (SMTP)](#email-smtp)).
 
-- When you invite clients who have an email address, sending turns on and they are ticked under **Invited people**. Untick anyone you don't want to email, or turn the switch off.
-- Add anyone else under **Other email addresses**. Separate several addresses with commas.
+- Invited clients with an email address are listed and ticked. Untick anyone you don't want to email.
+- Add anyone else under **Other email addresses** (separate several with commas).
 - With at least one recipient, the button reads **"Generate & Send Flow link"**.
 
-After the link is created, each address is listed with its delivery status, and you can email more people from the same spot. Quick Share has the same **Send link by email** section; its button reads **"Upload, Share & Email"**.
+![Send link by email](images/link-email-v4.png)
+
+QuickShare has the same option; its button reads **"Upload, Share & Email"**.
 
 ### Generating the Link
 
-1. Verify all your settings are correct. The summary line under the **"Generate Flow link"** button says what kind of link you are about to create:
-   - *"This link lets your client review and download N files."* — a share (review) link.
-   - *"No files selected, so this is an upload-only link: your client can send you files."* — an upload-only link.
-   - *"This link lets your client review N files and upload files to you."* — a combined link.
-2. Click **"Generate Flow link"** (or **"Generate & Send Flow link"** if you are emailing it).
-3. The generated URL will appear — use the **"Copy"** button to copy it to your clipboard, or **"Open"** to view it in your browser.
-4. The link is now visible in the project's links list for ongoing management.
+1. Check the summary line under the button.
+2. Click **"Generate Flow link"** (or **"Generate & Send Flow link"**). If the button is unavailable, the line beside it says what's missing (for example *"Add at least one client or team to continue."*).
+3. The link appears, for example `https://share.yourstudio.com/link/…`. Click **"Copy"** to copy it, or **"Open"** to see what recipients see.
+4. Under **Email this link (optional)**, enter addresses and click **Send** to email it now. You can also do this later from the link's details.
 
-Click **"Reset"** to clear the form and start over, or **"Back to Project"** to return to the project.
-
-![Generated share link with Copy and Open buttons](images/share-link-generated-v3.png)
+The link now appears in the project's links list. Click **"Reset"** to clear the form and make another, or **"Back to Project"** to return.
 
 ---
 
 ## 11. Add Files
 
-Use this feature to copy files from this computer into a project folder on the server. This is ideal for getting new media onto the server for sharing later.
+Upload videos, images, audio, documents and other files from your computer into a project folder on the server, ready to share later.
 
-Open a project and click **"Add Files"**. Everything happens on one screen: add files, check where they go, set media options, and click **"Upload"**. Click **"Back to Project"** at any time to return to the project.
+Open a project and click **"Add Files"**. Everything happens on one screen: add files, check where they go, set media options, and click **"Upload N Files"**. Click **"Back to Project"** at any time to return to the project. In a browser, the server always processes videos after they upload.
+
+![Add Files screen](images/upload-local-step1-v4.png)
 
 ### Add Files to the List
 
 1. Drag files anywhere onto the screen, or click **"Choose Files"** (you can select several) or **"Choose Folder"** to add everything inside a folder.
 2. The files appear in a list showing **Name**, **Size**, and a **Remove** button. The total count and size are shown above the list, with **"Clear"** to start over.
-3. You can keep adding files until you click **"Upload"**.
+3. You can keep adding files until you click **"Upload N Files"**.
 
 > **Note:** To add a folder, use **"Choose Folder"**. Folders dragged onto the screen are skipped, with a reminder to use Choose Folder.
+
+![Add Files with two files ready to upload](images/upload-local-step2-v4.png)
 
 ### Check Where the Files Go
 
@@ -1461,22 +1521,24 @@ A line under the options shows whether videos are processed on this computer (cl
 
 ### Upload & Monitor Progress
 
-The bar at the bottom summarizes what will happen, for example **"4 files · 2.3 GB → /tank/projects/spring/footage"**. If the **"Upload"** button is unavailable, the same bar says what's missing (for example, choosing a watermark image).
+The bar at the bottom summarizes what will happen, for example **"4 files · 2.3 GB → /tank/projects/spring/footage"**. If the **"Upload N Files"** button is unavailable, the same bar says what's missing (for example, choosing a watermark image).
 
-Click **"Upload"** to start. The file list turns into a live status list:
+Click **"Upload N Files"** to start. An **Uploads Queued** message confirms the files are in the Transfer Dock, and the file list turns into a live status list:
 
 | Column | Description |
 |--------|-------------|
 | **Name** | File name, with percentage, speed and time remaining while it transfers, or the total time once it finishes |
 | **Size** | File size |
-| **Status** | **Waiting**, **Processing** (local transcode), **Uploading**, **Done**, **Canceled**, or **Failed** |
+| **Status** | **Waiting**, **Processing** (local transcode), **Uploading**, **Scanning** (malware check on the server: *"Scanning for malware (queued or running)…"*), **Done**, **Canceled**, or **Failed** |
 | **Cancel** | Stops a file that is waiting, processing or uploading |
 
-The bottom bar shows overall progress across all files. You can leave this screen while uploads run; they continue in the [Transfer Dock](#12-transfer-dock).
+The bottom bar shows overall progress across all files (for example *"0 of 2 done · 2 in progress"*). You can leave this screen while uploads run; they continue in the [Transfer Dock](#12-transfer-dock).
 
-> **Note:** Filenames are automatically sanitized during upload for cross-platform compatibility. Special characters such as apostrophes (`'`), colons (`:`), and other non-standard characters are replaced with underscores (`_`). If a file is renamed, a notification will appear showing the new filename.
+![Uploads being scanned on the server](images/upload-local-table-v4.png)
 
-When **client-side transcoding** is enabled (Settings → Performance), video files go through a two-phase workflow:
+> **Note:** Filenames are automatically sanitized during upload for cross-platform compatibility. Special characters such as apostrophes (`'`), colons (`:`), and other non-standard characters are replaced with underscores (`_`). If a file is renamed, a notification will appear showing the new filename. If a file with the same name already exists in the folder, the upload is saved with a number added, such as `Storyboard (1).pdf`; nothing is overwritten.
+
+When **client-side transcoding** is enabled (**Settings → Video processing**, desktop app only), video files go through a two-phase workflow:
 1. **Processing** — The video is transcoded on your machine using hardware acceleration (GPU) if available. This generates both the **Stream** (HLS adaptive bitrate for browser playback) and **Proxy Files** (downloadable MP4 files at your chosen qualities).
 2. **Upload** — The raw source file is transferred to the server for archival.
 
@@ -1500,22 +1562,22 @@ When every file has finished:
 
 ## 12. Transfer Dock
 
-The **Transfer Dock** is a persistent overlay that tracks all active and recently completed transfers — uploads, transcodes, and proxy file generation. It remains visible across all screens so you can continue working while monitoring progress.
+The **Transfer Dock** is a persistent overlay that tracks all active and recently completed transfers — uploads, transcodes, and proxy file generation. It stays available on every screen, so you can keep working while transfers run.
 
 ![Transfer Dock open](images/transfer-dock-open-v3.png)
 
 ### Transfer Dock Overview
 
-The Transfer Dock appears at the bottom of the screen whenever a transfer is in progress. It shows:
+The Transfer Dock is a panel that slides in from the right side of the window, below the top bar. Open it with the **Transfers** tab on the right edge. It shows:
 
-- **Active transfer count** — e.g., "Transfers (2 active)"
+- **Status** — **In progress…** while anything is running, otherwise **Idle**
 - **Link grouping** — Transfers are grouped by the link they belong to, with the server name and link URL displayed.
 - **Clear finished** — Remove completed transfers from the dock.
 - **Close** — Collapse the dock (transfers continue in the background).
 
-When collapsed, a minimal indicator remains visible showing active transfer count. Click it to expand the dock again.
+When the dock is closed, a **Transfers** tab stays on the right edge of the window, with a badge while transfers are running. Click it to open the dock again.
 
-![Transfer Dock collapsed](images/transfer-dock-hidden-v3.png)
+![Transfers tab on the right edge](images/transfer-dock-hidden-v4.png)
 
 ### Transfer Entry Details
 
@@ -1559,125 +1621,154 @@ Stream                     Client · GPU (QSV)    100%
 Upload                     95.23 MB/s            ETA 0:14            100%
 ```
 
-> **Tip:** If client-side transcoding is enabled (Settings → Performance), video processing happens on your machine before upload. The Transfer Dock shows both the transcode and upload phases separately so you can track each step.
+> **Tip:** If client-side transcoding is enabled (**Settings → Video processing**, desktop app only), video processing happens on your machine before upload. The Transfer Dock shows both the transcode and upload phases separately so you can track each step.
 
 ---
 
 ## 13. Managing Links
 
-All links you create — whether Share, Upload, or Combined — appear on the Dashboard in the **links table**. This is your central view for monitoring and managing all active, expired, and disabled links.
+Every link in a project appears in the project's **links table**, below the Create Link and Add Files cards. The heading shows which links you're looking at (for example **Currently All Links**), and badges show the **Total**, **Active**, **Expired** and **Disabled** counts.
 
-![Links table on the Dashboard](images/manage-links-table-v3.png)
+![Links table](images/manage-links-table-v4.png)
 
 ### Searching & Filtering Links
 
-At the top of the table:
+Above the table:
 
-- **Search bar** — Filter links by title, directory, or file name. Results update as you type.
-- **Type filter** — Show only specific link types: *All types*, *Upload*, *Share*, or *Combined*.
-- **Status filter** — Show only links with a specific status: *All status*, *Active*, *Expired*, or *Disabled*.
-- **Refresh** — Manually reload the link list from the server.
+- **Search** — Filter by title, directory or file name as you type.
+- **Type** — *All types*, *Upload*, *Review* or *Review + Upload*.
+- **Status** — *All status*, *Active*, *Expired* or *Disabled*.
+- **Approvals** — *All approvals*, *Needs attention* (anything not yet fully approved: change requests, rejections, files waiting on a decision, or no approver chosen) or *Approved*.
+- **Show Archived** — Include archived links.
+- **Refresh** — Reload the list.
 
-Summary badges show the count of **Total**, **Active**, **Expired**, and **Disabled** links.
+The default view (All Links or Active Only) is set in [Preferences](#preferences).
 
 ### Link Table Columns
 
 | Column | Description |
 |--------|-------------|
-| **Title** | Internal name of the link. Click the edit icon to rename it inline. Click the title to open Link Details. |
-| **Type** | Badge showing **Upload**, **Share**, or **Combined** (share + upload enabled). |
-| **Link** | The public URL. Click to open in browser, or use the **Copy** button. |
-
-![Link type badges showing Share, Upload, and Combined](images/link-type-badges-v3.png)
-| **Expires** | Time remaining (e.g., *23 Hours*, *6d 22h*, *Never*). Shown in red when less than 24 hours remain. Click **Edit** to change the expiration. |
-| **Status** | Current state: **ACTIVE** (green), **EXPIRED** (amber), or **DISABLED** (gray). |
-| **Access** | Access mode: **Open** (green), **Password** (amber), or **Invited only** (rose). Hover for details. |
+| **Title** | The link's name, with a thumbnail. Click **Edit Title** to rename it in place. Click the title to open Link Details. |
+| **Type** | **Review** and **Upload** badges. The one that's lit shows what the link does; both lit means Review + Upload. |
+| **Link** | The link address, with **Copy**. |
+| **Expires** | Time remaining (e.g., *23 Hours*, *6d 23h*, *Never*). Red when less than 24 hours remain. Click **Edit** to change it. |
+| **Status** | **Active** (green), **Expired** (amber) or **Disabled** (grey). |
+| **Access** | **Open**, **Password** or **Invited only**. Hover for details. |
+| **Review** | Approval progress on invite-only links with files: **Approved**, **N awaiting**, **N/M approved**, **Needs changes**, **N rejected** or **No approver**. A dash means approvals don't apply. Click the column heading to sort by it. |
 | **Created** | Date and time the link was created. |
-| **Actions** | Action buttons (see below). |
+| **Server** | The server the link is on. |
+| **Actions** | See below. |
 
 ### Link Actions
 
-Each link row provides these actions:
-
 | Action | Description |
 |--------|-------------|
-| **Details** | Opens the full Link Details view with configuration, activity log, and file list. |
-| **Open** | Opens the link in your browser to preview what recipients will see. |
-| **Disable / Enable** | Immediately deactivates or reactivates the link. Disabling blocks access without deleting the link. |
-| **Archive / Unarchive** | Soft-hides the link without deleting. Archived links can be restored. |
+| **Details** | Opens [Link Details](#14-link-details). |
+| **Open** | Opens the link in your browser, as recipients see it. |
+| **Disable / Enable** | Blocks access straight away without deleting the link, or restores it. |
+| **Archive / Unarchive** | Hides the link without deleting it. Archived links can be restored. |
 | **Delete** | Permanently deletes the link (see below). |
+
+**Several links at once:** tick the boxes at the left of the rows (or the box in the header to select all shown). A bar shows how many are selected, with **Enable**, **Disable**, **Edit Expiry**, **Move to Project**, **Archive**, **Delete** and **Clear**.
 
 #### Deleting a Link
 
-Clicking **"Delete"** opens a confirmation modal with a detailed preview of what will be removed:
+**Delete** opens **Permanently Delete Link**. It can't be undone and destroys:
 
-The delete preview shows:
-- **Total files** associated with the link
-- **Shared files** — files also used by other links (these are kept)
-- **Option: Delete generated files** — Remove proxy files, transcodes, and streams. Shows how much disk space will be freed.
+- The link itself, which stops working for everyone
+- All its activity history and access logs
+- All client access permissions
 
-Original uploaded files are retained when a link or project is deleted.
+Under **Optional: Clean up associated files**, **Show files** lists the files on the link. Tick **Delete generated files** to also remove its transcodes, proxy videos, HLS streams and watermarked images (the space freed is shown); type **DELETE** to confirm that. **Original files are always kept.** Files shared by other links are kept too.
 
-If you choose to delete generated files, type "DELETE" to confirm. Deleting the link itself cannot be undone.
+Click **Delete Permanently** to finish.
+
+![Permanently Delete Link](images/link-delete-confirm-v4.png)
 
 ---
 
 ## 14. Link Details
 
-Click **"Details"** on any link (or click its title) to view comprehensive information.
+Click **"Details"** on any link (or click its title) to open Link Details.
 
-![Link Details modal](images/link-details-v3.png)
+![Link Details — Overview](images/link-details-v4.png)
 
-The top of the window shows whether the link is **Active**, **Expired** or **Disabled**, its address with a **Copy link** button, and four quick facts: **Who can open it**, **Expires** (with how long is left), **Created** and **Project**. Below that, the details are split into tabs.
+The header shows the link's name and type (for example *Review link*), with **Comments** *(Pro)*, **Edit** and **Close** buttons. Below it are the status (**Active**, **Expired** or **Disabled**), the address with **Copy link**, and four quick facts: **Who can open it**, **Expires** (with time left), **Created** and **Project**.
+
+The rest is split into tabs: **Overview**, **Files**, **Review**, **Activity** and **Versions**. The Files and Activity tabs show counts.
 
 ### Overview
 
 | Section | What it shows |
 |---------|---------------|
-| **Who can open it** | The access option: **Only invited clients & teams**, **Anyone with the link**, or **Anyone with the link + password**. Open links also show whether **Comments** are allowed. Invite-only links list every invited team (with its members and role) and every client invited directly (with their username, email and role). Clients whose login is disabled are marked **Login disabled**. |
-| **Shared files** | How many files are shared (click to jump to the Files tab) and the folder they come from. |
-| **Uploads** | Where uploaded files are saved, whether uploads are added to the shared files and watermarked, and the proxy file qualities made for uploads. On a Pro server, **File requirements** summarizes the upload checks, if any. |
-| **Playback and watermark** | The **Proxy files** qualities (or Off) and the **Watermark** image (or Off). |
-| **Notes** | Your internal notes. |
+| **Who can open it** | The access option. Invite-only links list every invited team (with its members and role) and every client invited directly (with username, email and role). Clients whose login is disabled are marked **Login disabled**. Open and password links show whether **Comments** are allowed. |
+| **Invite by email** | Enter one or more addresses (comma-separated) and click **Send invitation** to email the link. Earlier invitations for the link are listed, with the reason if a send failed. |
+| **Shared files** | How many files are shared and the folder they come from. |
+| **Uploads** | Where uploads are saved, whether they're added to the shared files and watermarked, and the proxy sizes made for them. On a Pro server, **File requirements** summarizes the upload checks. |
+| **Playback and watermark** | The **Proxy files** qualities (or Off) and the **Watermark** (or Off). |
+| **Notes** | Your internal notes. Use **Edit** to add some. |
 
-**Delete link** at the bottom of the Overview tab permanently deletes the link and all associated data.
+**Delete link** at the bottom permanently deletes the link (see [Deleting a Link](#deleting-a-link)).
 
 ### Files
 
-Every file on the link, with its **Name**, **Size** and **Type**. Files uploaded through the link also show who uploaded them, from which IP address, and when.
+Every file people can open from the link, with its **Name**, **Size** and **Type**. Files uploaded through the link also show who uploaded them, from which IP address, and when.
 
-Below the list, **Processing** shows the progress of any proxy files, HLS streams or image watermarks being made for the link, with **Retry** for any that failed.
+**Processing** shows the state of the proxy files, HLS streams and image watermarks for each file: **Ready**, in progress, or **Failed** with the reason and a **Retry** button. *"Everything is ready for viewers."* means nothing is left to do. Click **Refresh** to update.
 
-On a Pro server, invite-only links also show **Personal watermarked copies** here: each invited person and the state of their copy. See [Personal Watermarked Copies (Pro)](#personal-watermarked-copies-pro).
+On a Pro server, invite-only links also show **Personal watermarked copies**: each invited person and the state of their copy (**Preparing**, **Ready**, **Failed** or **No watermark**), with a summary such as *"2 of 2 ready."* See [Personal Watermarked Copies](#personal-watermarked-copies-pro).
+
+![Link Details — Files](images/link-details-files-v4.png)
+
+### Review
+
+Approvals for invite-only links. An approver formally **approves**, **requests changes** to, or **rejects** each version of each file from the share page. Approvals work on Community and Pro servers.
+
+![Link Details — Review](images/link-details-review-v4.png)
+
+- **Approver — Who approves** — The one person who can approve, request changes or reject. Click **Choose** (or **Change**) to pick someone; this opens **Edit → Access**. Only clients invited **directly** to the link can be chosen; invite a team member directly too if you want them to approve.
+- **Files** — Each file's current **Version**, **Status** (**Awaiting approval**, **Approved**, **Changes requested**, **Rejected** or **Superseded** when a newer version replaced it) and **Last decision**.
+- **History** — Every decision, with who made it, when, and any note. **Export CSV** and **Export JSON** download the history (times are in UTC).
+- **Client resolution emails** — Tick invited clients to email them when *their own* feedback is resolved. Off by default; it needs [email](#email-smtp) to be set up. It never gives anyone approval rights.
+
+Approval and resolving comments are separate: resolving feedback never approves or rejects a version.
 
 ### Activity
 
-A log of everything that happened on the link. Filter by action or search by person, IP address or details.
+A log of everything that happened on the link.
+
+**Emails** lists every email sent for the link (invitations, download alerts, review decisions) with its delivery status. Click **Retry** on any that failed or weren't sent. If nobody on your team will get alerts for the link, a note explains why and points to **Settings → Email (SMTP)**.
+
+Below that, filter by action or search by person, IP address or details:
 
 | Column | Description |
 |--------|-------------|
-| **When** | Date and time of the activity. |
-| **Action** | What happened, e.g. *Playback requested*, *Download*, *Upload*, *Expiry updated*. |
-| **Who** | Whether it was a *Guest* or a signed-in client. |
+| **When** | Date and time. |
+| **Action** | What happened, e.g. *Created*, *Playback requested*, *Download*, *Upload*, *Expiry updated*. |
+| **Who** | A guest or a signed-in client. |
 | **From** | IP address and browser. |
-| **Details** | A summary of the action. Click **More** for the full record. |
+| **Details** | A summary. Click **More** for the full record. |
 
-![Access activity log](images/link-details-activity-v3.png)
+![Link Details — Activity](images/link-details-activity-v4.png)
 
 ### Versions
 
-If files on the link have saved versions, choose a file to see them:
+Choose a file to see its saved versions.
 
 | Column | Description |
 |--------|-------------|
-| **Version** | Version number (v1, v2…). |
-| **Created** | When the version was created. |
+| **Version** | v1, v2… |
+| **Created** | When the version was saved. |
 | **Snapshot** | The saved copy of the file. |
 | **Size** | File size at that version. |
-| **Restore** | Restore this version, replacing the current file. Tick **Back up the current file before restoring** to keep a copy first. |
-| **Delete** | Remove this version. The only version can't be deleted. |
+| **Review** | The approval status of that version. |
+| **Actions** | **Fork from this version**, **Compare with…**, **Restore**, **Delete**. |
 
-Tick **Show extra files** to see and copy the paths of each version's proxy files, HLS folder and snapshot, delete them, or (with client-side transcoding on) remake them with this computer's hardware.
+**Restore** replaces the current file with that version. Tick **Back up the current file before restoring** to keep a copy first. **Delete** removes a version (the only version can't be deleted).
+
+Tick **Show extra files (proxy files, HLS, snapshots)** to see and copy the paths of each version's proxy files, HLS folder and snapshot, delete them, or (with client-side transcoding on) remake them with this computer's hardware.
+
+![Link Details — Versions](images/link-details-versions-v4.png)
 
 ### Forks and Comparing Versions
 
@@ -1692,9 +1783,11 @@ A **fork** is a separate copy of one exact version of a file. Use it when a file
    - **Folder** starts as the original's folder.
    - **Label** (optional) is a short name for this branch, such as *Social Cut*. It is shown next to the file name when you compare.
    - **Add to this link** is off by default. Leave it off and the fork stays private: people who open the link can't see it. Tick it to share the fork on this link.
-4. Click **Fork** and wait for **Fork created.** Large files take a while; the dialog shows the copy progress.
+4. Click **Fork** and wait for *"Fork created. Saved as …"* (and *"It was added to this link."* if you ticked that). Large files take a while; the dialog shows the copy progress.
 
-To share a fork later, add it to the link with **Edit → Files**.
+![Fork this version](images/fork-dialog-v4.png)
+
+**Finding forks.** When you choose a fork in **Versions**, a line says *Forked from **file · vN***. On the source version, **Show *label*** jumps to the fork's versions. If the fork isn't on the link yet, **Add *label* to link** adds it to the link's files; then save the link.
 
 **The source version is kept.** Once a fork exists, the version it came from can't be deleted. In the Versions table that version shows *Kept: … was forked from this version* in place of the **Delete** button, and the extra-file delete buttons for its snapshot are off. Removing a link or a project doesn't delete it either.
 
@@ -1704,13 +1797,16 @@ Side-by-side comparison requires a Pro-licensed server. Forking and viewing indi
 
 1. In **Link Details → Versions**, click **Compare with…** on one version. It becomes side **A**.
 2. Choose the other version, side **B**. The list holds the other versions of this file, plus every version of a fork or source file that is on this link, for example *Social Cut · v1*. **Compare with…** is greyed out when there is nothing else on the link to compare with.
-3. Click **Open comparison**. The share page opens in a new browser tab, already set to compare the two versions.
+3. Click **Open comparison**. The share page opens in a new browser tab, already set to compare the two versions (you may need to use **Staff sign in** there).
+
+![Compare with… in the Versions tab](images/compare-dialog-v4.png)
 
 The comparison is on the share page itself, so people you share the link with can compare too, using the **Compare versions** button. They can only compare files that are on the link. Two versions can be compared only when they are the same kind of file (both video, both images, both PDFs or both text) and belong to the same family: one file plus the forks made from it.
 
 **Using the comparison**
 
-- **Video.** Both videos sit side by side and share one timeline: one play button, one position bar. Both start at 0:00; there is no offset. If one video is shorter, its side says *No video at this point* after it ends. Under **Audio**, choose which side you hear.
+- **Video.** Both videos sit side by side. Each side has its own timeline. Click **Sync A & B** to play and seek them together; the button then reads **Synced**, and the gap you set between them is kept (for example *"B is 2s ahead of A"*). **Line up at A** moves B to the same time as A. Click **Synced** again to play and seek each side separately. If one video is shorter, its side says *No video at this point* after it ends. Under **Audio**, choose which side you hear.
+- **Drawing.** **Annotate** works in compare mode too (Pro).
 - **Pictures, PDFs and text.** The two versions sit side by side. PDFs show one page of each at a time, with **Previous page** and **Next page**.
 - **Pick other versions.** Each side has a version menu if you want to change what is being compared.
 - **Comments.** Under **Comment on**, choose **A** or **B** before you write. The comment is saved against that exact version, and at the current time for video. Approvals are not given in a comparison; go back to the normal view (**Exit compare**) to approve.
@@ -1720,284 +1816,321 @@ Showing two videos at once uses about twice the data of one. Choose **Data Saver
 
 ### Comments Review & Export
 
-From the Link Details view, click the **"Comments"** button to review and manage all comments on a link.
+*Pro feature.* Click **"Comments"** in the Link Details header to review every comment on the link.
 
-![Comments panel in Link Details](images/comments-review-modal-v3.png)
+![Comments Review](images/comments-review-modal-v4.png)
 
-![Comments panel with Pro features](images/comments-panel-pro-v3.png)
+**Finding comments** (left panel):
 
-**Reviewing Comments:**
+- **Search text or people**, and switch between **All**, **Open** and **Resolved**.
+- **Filter** by **File**, **Person**, **Category** (including *No category*) and **Version**.
+- **Sort** by Timecode, Date posted, Person, Status or Version; the arrow button reverses the order.
+- **Summary** shows totals, comments, open, resolved and comments with drawings.
 
-- Comments are grouped by file. Replies sit under the comment they answer, including replies to replies, and say who they replied to.
-- Use the panel on the left to **search** text or people, show **All**, **Open** or **Resolved** comments, and filter by **file**, **person**, **category** (including **No category**) or **version** (including **No version**). **Clear filters** resets them all.
-- **Sort** by timecode, date posted, person, status or version; the arrow button reverses the order.
-- **Summary** at the bottom of the panel shows totals, replies, open and resolved comments, and comments with drawings.
-- Click **Resolve** or **Reopen** on a comment to change its status. Each comment shows **Open** or **✓ Resolved** (hover for when it was resolved).
-- Choose a **category** from the menu on each comment. Click **Manage…** next to the Category filter to create and edit categories and their colours.
-- To act on several comments at once, tick them (or click a comment, or use the checkbox at the top to select everything shown), then use **Resolve**, **Reopen** or **Set category…**. Only comments still shown by your filters stay selected.
-- If a comment has a drawing, click **View drawing** to see it over the video frame at that timecode.
-- **Delete** asks you to confirm, and tells you if the comment's drawing and replies will be deleted too.
-- **Refresh** reloads the comments, and **Open link** opens the share page in your browser.
+**Working with comments:**
 
-**Version Tracking:**
+- Comments are grouped by file. Replies sit under the comment they answer.
+- Click **Resolve** or **Reopen**. Resolved comments show **Resolved at *date and time***.
+- Pick a **category** from the menu on each comment. Click **Manage…** next to the Category filter to add, rename and colour categories (suggestions include *Bug / Issue*, *Feedback*, *Question*, *Follow-up*, *Review* and *Approved*), then **Save Categories**.
+- Tick several comments (or the box at the top to select everything shown) to **Resolve**, **Reopen** or **Set category…** in one step.
+- **View drawing** opens the frame with the reviewer's drawing on top, plus the comment's author, timecode, version and frame number.
+- **Delete** asks you to confirm and says whether the drawing and replies will go too.
+- **Refresh** reloads; **Open link** opens the share page.
 
-Comments are automatically tagged with the file version that was being reviewed when they were posted. This lets you:
+![Viewing a drawing](images/annotation-viewer-v4.png)
 
-- See which notes belong to V1, V2, V3, etc.
-- Filter the review panel to show only comments from a specific version.
-- Track which feedback has been addressed across revisions.
+**Version tracking:** each comment is tagged with the file version that was being reviewed (V1, V2…), so you can filter to one version and see which notes were dealt with in later versions.
 
-**Exporting Comments:**
+**Exporting comments:** click **Export…**, choose all files or one file, pick a format and click **Export**. The file is named after the link.
 
-Click **"Export…"**, choose all files or one file, pick a format and click **Export**. The file is named after the link. Formats:
+| Format | Best for |
+|--------|----------|
+| **PDF report** | A styled report grouped by file and version, for sharing or printing. |
+| **CSV** | A spreadsheet with one row per comment. |
+| **Markdown** | A readable list for notes, emails or docs. |
+| **EDL (edit decision list)** | Timeline markers for Premiere, Resolve or Avid. |
+| **WebVTT subtitles** | Timecoded comments as caption cues. |
+| **JSON** | Every field, for scripts and other tools. |
 
-| Format | Description |
-|--------|-------------|
-| **JSON** | Structured data with all fields — timestamps, authors, categories, annotations, tags, resolved status, version info. |
-| **CSV** | Spreadsheet-compatible tabular export with category columns when categories are set. |
-| **Markdown** | Human-readable formatted list, suitable for reports or emails, including category labels when present. |
-| **WebVTT** | Subtitle/caption format — timecoded comments as VTT cues for use in NLEs or other players (comment text includes category context when used). |
-| **PDF** | Styled report with comments grouped by file and version, resolved status checkmarks, tags, and category labels. |
-| **EDL** | Edit Decision List (CMX 3600) with markers — import directly into Premiere, Resolve, or Avid to see notes as timeline markers. |
+![Export comments](images/comments-export-v4.png)
 
-Click **"Edit"** at the top of the Link Details view to modify the link's settings (see next section).
+Click **"Edit"** at the top of Link Details to change the link's settings (see next section).
 
 ---
 
 ## 15. Editing a Link
 
-From the Link Details view, click **"Edit"** to modify an existing link's configuration.
+In Link Details, click **"Edit"**. The **Edit *link name*** window has up to five tabs: **Details**, **Access**, **Files** (when Review is on), **Uploads** (when Upload is on) and **Playback**. *"Changes apply to the live link when you save."*
 
-![Link edit modal](images/link-edit-v3.png)
+![Edit link — Details](images/link-edit-v4.png)
 
-The window becomes a single form, grouped like Settings:
+| Tab | What you can change |
+|-----|---------------------|
+| **Details** | **Title**, **Project** (move the link to another project, or **None**) and internal **Notes**. Under **What this link does**, turn **Review** (share files for clients to view) and **Upload** (let clients send you files) on or off; at least one must be on. Turning one on jumps to its settings. |
+| **Access** | **Who can open it**, the invited clients and teams, and **Who approves** (see below). |
+| **Files** | How many files are shared. **Manage files…** adds or removes files; **Show the file list** lists their paths. |
+| **Uploads** | The folder uploads are saved to; whether uploads are shared back, watermarked or given proxy files (and which sizes); and *(Pro)* the **File requirements**. |
+| **Playback** | **Proxy files** on/off and **Qualities** (720p, 1080p, Full Res (MP4)), the **Watermark** (click **Configure…** for the image, position, size and opacity — full control in Pro), and **Reprocess proxy files** to rebuild proxy files and streams with the new settings (the server does the processing). |
 
-- **Details** — **Title**, **Project** and internal **Notes**.
-- **What this link does** — Turn **Review** (share files for clients to view) and **Upload** (let clients send you files) on or off. At least one must be on.
-- **Shared files** — How many files are selected. Click **"Manage files…"** to add or remove files, and **Show the file list** to check the paths.
-- **Uploads** — The folder uploads are saved to, and whether uploaded files are added to the shared files, watermarked with the link's watermark, or given proxy files (720p, 1080p, Full Res (MP4)). On a Pro server, **File requirements** sets the upload checks (see [File Requirements for Uploads](#file-requirements-for-uploads-pro)).
-- **Who can open it** — Choose **Only invited clients & teams**, **Anyone with the link**, or **Anyone with the link + password**.
-  - Invite-only: click **"Invite clients…"** to add clients or teams or change their roles, or **Remove** to take someone off. Changes are marked **New**, **Role changed** or **Will be removed** (with **Undo**) and only apply when you click **"Save & close"**.
-  - With a password: enter the password. If the link already has one, leave the box blank to keep it.
-  - Open links: turn **Allow comments** on or off. When comments are on, **"Comment categories…"** sets the labels and colours reviewers can use.
-- **Playback and watermark** — Turn **Proxy files** on and pick the qualities, turn the **Watermark** on and click **"Configure…"** to choose the image and its position, size and opacity (full control in Pro), and **Reprocess** to rebuild proxy files with the new settings.
+**Access tab in detail:**
 
-If something stops the link from saving (for example, no files selected or a missing password), the reason shows at the bottom left of the window. Click **"Save & close"** to apply your changes, or **"Cancel"** to go back to Link Details without saving. Closing the window with unsaved changes asks you to confirm first.
+- **Only invited clients & teams** — Click **"Invite clients…"** to add clients or teams or change their roles. Each row shows the role and a **Remove** button. Changes are marked **New**, **Role changed** or **Will be removed** (with **Undo**) and only apply when you save.
+- **Who approves** — Choose the approver from the clients invited **directly** to the link. See [Review](#review).
+- **Anyone with the link + password** — **New password**: leave blank to keep the current password.
+- **Anyone with the link** / password links — **Allow comments**, and **Comment categories…** to set the labels reviewers can use.
 
-> **Important:** Changes to access settings, passwords, and file lists take effect immediately for anyone accessing the link.
+![Edit link — Access](images/link-edit-access-v4.png)
+
+![Edit link — Playback](images/link-edit-playback-v4.png)
+
+If something stops the link from saving (for example, no files selected or a missing password), the reason shows at the bottom left. Click **"Save & close"** to apply your changes, or **"Cancel"**. Closing the window with unsaved changes asks you to confirm first.
+
+> **Important:** Changes to access, passwords and files take effect straight away for anyone opening the link. The link address doesn't change.
+
+> **Expiry:** change a link's expiry from the **Expires → Edit** button in the links table.
 
 ---
 
 ## 16. Accessing a Shared Link
 
-When someone opens a share link you've created, their experience depends on the **access mode** you configured. This section explains what recipients see when accessing links with different restriction levels.
+What a recipient sees depends on the link's access mode. Recipients never need to install anything; links open in any modern browser, on a computer or a phone. If you've set up [custom branding](#8-custom-branding-white-label--pro-feature), every page shows your logo, colours and messages.
 
 ### Opening the Link
 
-For **open access** (Anyone with the link) share links, recipients can immediately browse files, play videos, or download content without any login or password.
-
-![Open access share link](images/video-player-v3.png)
+**Anyone with the link** — The files open straight away.
 
 ### Password-Protected Links
 
-When you protect a link with a password (**Anyone with the link + password**), recipients must enter the correct password before accessing the content.
+**Anyone with the link + password** — *"This link is protected. Enter link password to continue."* The recipient types the password and clicks **Unlock**.
 
-![Password-protected link entry screen](images/link-password-protected-v3.png)
-
-After entering the correct password, they'll have full access to the shared files according to the permissions you set (view, download, comment, etc.).
+![Password-protected link](images/link-password-protected-v4.png)
 
 ### Invite-Only Links
 
-For links set to **Only invited clients & teams**, recipients must log in with their own credentials:
+**Only invited clients & teams** — *"This link is protected. Enter your username and password to continue."*
 
-1. Click **"Sign In"** on the access screen.
-2. Enter their username and password.
-3. If authenticated and authorized, they'll be granted access to the content.
+1. Enter the **Username** and **Password** you gave the client.
+2. Click **Unlock**.
+3. **The first time**, the client must replace their temporary password: enter a **New Password**, **Confirm** it, and click **Set New Password**.
 
-![User-restricted link login screen](images/link-user-restricted-v3.png)
+![Invite-only link sign-in](images/link-user-restricted-v4.png)
 
-> **Note:** Clients must have been invited to the link, directly or through a team, to open an invite-only link. See [Client Access](#18-client-access) for details on adding and managing client accounts.
+![Setting a new password on first sign-in](images/link-first-signin-password-v4.png)
+
+> **Note:** Clients must be invited to the link, directly or through a team. See [Client Access](#18-client-access).
+
+**Log out** in the page header signs the client out of that link.
+
+### Staff Sign-In on a Share Page
+
+Every protected page also has a **Staff sign in** link. Staff (server accounts) can sign in there to view a link without being invited, and to **resolve** or **reopen** feedback. Staff access doesn't give comment, upload, download or approval rights as a client. **Staff sign out** ends that browser session (which also signs you out of the web app in that browser). Sign out of staff access before signing in as a client.
+
+### Upload Pages
+
+On an upload link, the client sees **Upload files**. They click **Choose files** or **Choose folder** (or drag and drop), then **Start Upload**. **Parallel Uploads** sends several files at once (faster, but uses more of their connection). **Upload History** lists what they've sent. Uploads continue until they finish or are cancelled.
+
+If the link has [file requirements](#file-requirements-for-uploads-pro), a **"This link checks your files"** box lists the rules before they upload.
+
+![Client upload page](images/upload-link-external-view-v4.png)
 
 ---
 
 ## 17. Video Player, Comments & Annotations
 
-When someone opens a share link containing video files, they see the **45Flow Video Player** — a browser-based player with collaboration features.
+When a link has files to review, the share page shows the **45Flow player**.
 
-![Video player with sidebar and comments](images/video-player-v3.png)
+![Share page with video player](images/video-player-v4.png)
+
+### The Share Page
+
+- **Header** — Your logo, the light/dark toggle, **Theme** menu (unless your branding locks the theme), **Log out** and **Staff sign in**.
+- **File title** — Name, type, size, version (v1, v2…) and when it was added, plus **Link expires in…** and a **Download** menu (when the recipient's role or the link allows downloads).
+- **Files in this share** (left) — Click a file to open it. Version selection is available when a file has more than one version.
+- **Viewer** (centre) — Video, image, PDF, audio or document preview, with **Compare versions** *(Pro server)* and **Annotate** (where drawing is available).
+- **Right panel** — **Comments** and, on links with an approver, **Approval**. Drag the divider to resize it.
+
+On a phone, the panels stack and the comments open from a **Comments** button.
 
 ### Playback Controls
 
-The player supports standard media controls:
-- **Play / Pause**
-- **Seek bar** with timeline scrubbing
-- **Volume control**
-- **Fullscreen** toggle
-- **Playback rate** adjustment (speed up or slow down)
+- **Play / Pause**, seek bar, volume, **Playback Rate**, **Picture-in-Picture** and **Fullscreen**.
+- **Keyboard shortcuts:** **Space** play/pause · **←/→** back/forward 5 seconds · **,** and **.** (or **Shift+←/→**) step one frame.
 
 ### Quality Selection
 
-If proxy files were generated, viewers can choose a playback mode plus a manual quality:
+Viewers choose a playback mode plus an optional fixed quality:
 
-- **Auto** — Adaptive HLS; quality shifts with available bandwidth among the renditions the viewer is authorized to see.
-- **Best** — Plays the highest authorized rendition available for the file.
-- **Data Saver** — Caps playback at the configured quality ceiling (or the lowest available rendition when no ceiling is configured) and reduces preview preloading. While Data Saver is active, the manual quality selector is disabled to prevent bypassing the cap.
-- **Manual quality** (e.g. 720p, 1080p, Original) — Available while in Auto or Best, this overrides the active mode with a fixed rendition. Once you pick a manual quality, no mode button stays highlighted until you reselect one.
+- **Auto** — Adapts to the viewer's connection (the menu shows the current size, e.g. *Auto - 360p (adaptive)*).
+- **Best** — The highest quality the viewer is allowed to see.
+- **Data Saver** — A smaller stream that uses less data; the manual quality menu is disabled while it's on.
+- **Manual quality** (e.g. 1080p (MP4), Full Res (MP4)) — Overrides the mode with a fixed version.
 
-Clicking any mode button (Auto, Best, or Data Saver) switches playback back to adaptive **HLS (HTTP Live Streaming)** and reactivates that mode.
-
-> **Note:** Available qualities are limited by the renditions generated for that file and your access permissions — not every file offers every option. For uploads that didn't request specific proxy qualities, which renditions get generated depends on the server's configured default rendition profile (an admin-only server setting); uploads that explicitly chose their own qualities keep that explicit selection regardless of the server default.
+> **Note:** Available qualities depend on the proxy files made for that file and the viewer's permissions.
 
 ### Timecoded Comments
 
-If comments are enabled on the link, a **Comments Panel** appears alongside the player:
+If comments are allowed, the **Comments** tab shows every comment with its timecode and version.
 
-![Comments panel with timecoded threads](images/video-player-comments-v3.png)
+![Comments beside the video](images/video-player-comments-v4.png)
 
-- **Viewing comments:** Comments are displayed with the author's name, timecode, and color-coded indicator. Click a timecode to jump to that point in the video.
-- **Adding comments:** Click the comment input area, type your message, optionally choose a **Comment Category**, and submit. The comment is automatically tagged to the current playback position and the file version being viewed.
-- **Replies:** Click on any comment to reply, creating threaded conversations.
-- **Timecode markers:** Visual markers appear on the seek bar indicating where comments exist.
-- **SMPTE timecodes:** Comments display professional SMPTE timecodes (HH:MM:SS:FF, drop-frame where applicable) when the video's frame rate is detected. **"Show SMPTE timecode"** above the comments is on by default; turn it off to show plain HH:MM:SS times.
-- **Previous Version Notes:** If a file has multiple versions and earlier versions have comments, a collapsible **"Previous Version Notes"** section appears below the comments list. It shows notes from prior versions without switching versions; resolved status is available on licensed servers.
-- **Resolve feedback (Pro):** Staff can resolve or reopen comments on the share page; authors can reopen their own resolved comments. Normal comments and replies are also available on Free servers.
+- **Who you are** — *"Commenting as: …"*. Invited clients comment under their account. On open and password links, guests click **Set name** to open **Comment identity**: a **Display name**, a **Random color**, and the option **Email me when my feedback is resolved** (see below).
+- **Adding a comment** — Pause where you want, type in **Write a comment…** and click **Add**. The comment is pinned to the current time and the version you're watching. Click **Range** to set a start time and comment over a span of time instead of a single frame; **Clear** cancels the range. Choose a **category** if the link has them.
+- **Reading comments** — Click a timecode to jump there. Markers on the seek bar show where comments are.
+- **Replies, edits and deletes** — Click the reply button under a comment to answer it. You can edit or delete your own comments.
+- **SMPTE timecode** — **Show SMPTE timecode** (on by default) shows HH:MM:SS:FF with the detected frame rate; turn it off for plain times.
+- **Previous Version Notes** — When earlier versions have comments, they appear in a collapsible section below.
+- **Resolved feedback** *(Pro)* — Staff can **Resolve** or **Reopen** comments here; the comment shows **Resolved at *time***. A comment's author can reopen their own resolved comment.
 
-Use categories to quickly triage feedback types during review (for example, filter to only *Audio* notes before a sound pass, then export a category-focused report for that team).
+![Comment identity for guests](images/guest-name-email-v4.png)
 
-> **Note:** Commenting availability depends on the link's access mode and whether comments were enabled when creating the link.
+**Email updates for guests:** in **Comment identity**, a guest can enter an email address and tick **Email me when my feedback is resolved**. They must open the confirmation email and press **Confirm email** (within 24 hours). Updates cover only the comments they made in that browser tab on that link, and every email has an unsubscribe link.
+
+> **Note:** Commenting depends on the link's access mode, whether comments are allowed, and (on invite-only links) the person's role.
+
+### Approving a Version
+
+On invite-only links with an approver, the **Approval** tab shows the current version's status and, for the approver, three buttons:
+
+- **Approve this version**
+- **Request changes** — Needs at least one unresolved comment on this version. A box, **What needs to change?**, lets the approver add more feedback, which is saved as a comment. Click **Send request**.
+- **Reject**
+
+![Approval panel](images/review-approval-panel-v4.png)
+
+![Request changes](images/review-request-changes-v4.png)
+
+**History** lists every decision. Other viewers can see the status but not decide. Decisions appear in **Link Details → Review**, in the links table's **Review** column, and in staff alert emails if those are set up.
 
 ### Annotations & Drawing Tools
 
-**Pro Feature.** 45Flow includes built-in annotation tools for drawing directly on video frames. Annotations are created alongside comments in the review player.
+Draw on a video frame, image or PDF page to point at exactly what you mean. Drawing on **videos and images** is a **Pro** feature; drawing on **PDF pages** works on Community servers too.
 
-![Annotation drawing tools](images/annotation-tools-v3.png)
+1. Pause at the frame you want.
+2. Click **Annotate**. The drawing toolbar opens.
+3. Pick a tool — **Freehand Draw**, **Rectangle**, **Circle**, **Arrow**, **Text** or **Eraser** — a **colour** and a line **width**. **Undo** and **Clear** fix mistakes.
+4. Draw on the frame.
+5. Click **Save**. In **Save Annotation**, type a **Comment** describing what needs attention and click **Save Annotation**.
 
-**Creating Annotations:**
+![Annotation tools](images/annotation-tools-v4.png)
 
-1. Pause the video at the frame you want to annotate.
-2. Click the **annotation/draw tool** in the comment area.
-3. Use the available tools:
-   - **Freehand** — Draw freeform paths
-   - **Rectangle** — Draw rectangular highlights
-   - **Circle/Ellipse** — Draw circular highlights
-   - **Arrow/Line** — Draw directional arrows or straight lines
-4. Choose a color for your annotation.
-5. Submit the comment — the annotation is saved alongside the timecoded comment.
+![Saving an annotation with a comment](images/annotation-save-v4.png)
 
-**Viewing Annotations:**
+Comments with a drawing show a pencil icon. Click the comment to see the drawing on the frame. In the app, **Link Details → Comments → View drawing** shows it full size.
 
-- **In the review player** — Navigate to a comment with an annotation and the drawing renders on top of the video at the correct timecode.
-- **In Link Details → Comments** — Click **"View Annotation"** on any comment that has one. The **Annotation Viewer** modal shows a full-size view of the annotated frame with all drawing data rendered.
+### PDFs, Images and Documents
 
-![Annotation viewer modal](images/annotation-viewer-v3.png)
+- **PDFs** open in a read-only viewer, one page at a time, with **Fullscreen**. Annotations are drawn on an overlay tied to the page and version; the PDF itself is never changed.
+- **Images** show full size, with watermarks if the link uses them.
+- **Spreadsheets** (Excel, OpenDocument, CSV, TSV) show a read-only grid preview, and **Word (DOCX)** files a text preview. Previews cover files up to 10 MB and may show only part of larger files. Older **DOC** files must be downloaded.
+
+![PDF viewer](images/pdf-viewer-v4.png)
 
 ### Multi-File Shares
 
-For collection links (multiple files), a sidebar file browser appears on the left. Click any file to load it in the player. Version selection is available if multiple versions exist.
+Links with several files list them under **Files in this share**. Click any file to open it.
 
 ---
 
 ## 18. Client Access
 
-Clients are the people you invite to **"Only invited clients & teams"** links. Each client signs in with their own login, and their role decides what they can do. Open a project, then click **"Client Access"** at the top of the screen.
+Clients are people outside your company who sign in to open **invite-only** links. Each client has their own login, and their role decides what they can do. Open a project and click **"Client Access"**.
 
-![Client Access](images/manage-users-v3.png)
+The **Client Access** window has three tabs, each with a count: **Clients**, **Teams** and **Roles**. Clients, teams and roles are shared across the whole server, not per project.
+
+![Client Access — Clients](images/manage-users-v4.png)
 
 ### Viewing Existing Clients
 
-The **Clients** list shows everyone you've added, with:
-- **Name** and **Username**
-- **Email** (if provided)
-- **Company** and **Tags** (if provided)
-- **Assigned role**
-- **Color dot** showing their comment color
-
-Use the **search bar** to filter clients by name, username, email, company, or tags.
+Each client shows their initials (in their comment colour), **name**, **@username**, **email**, **company**, **tags** and **default role**, with **Edit** and **Delete** buttons. Use the search box to filter by name, username, email, company or tags.
 
 ### Adding a Client
 
-Click **"Add client"** to open the form.
+Click **"Add client"**.
 
-![Add client form](images/manage-users-create-v3.png)
+![Add client](images/manage-users-create-v4.png)
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| **Name** | Yes | Display name shown in comments and activity logs. |
-| **Username** | Yes | What the client signs in with. Must be unique. |
-| **Temporary Password** | Yes | First password (4–64 characters). Click **"Generate password"** to make one. Send it to your client securely. |
-| **Confirm Password** | Yes | Must match the temporary password. |
-| **Email** | No | Email address for identification. |
-| **Company** | No | The client's company. |
-| **Tags** | No | Comma-separated tags (e.g., `agency, vip, internal`). |
-| **Default Role** | — | The role the client gets when invited to a link. |
-| **Comment Color** | — | Color used for this client's comments. Use the color picker or type a hex value (e.g., `#94ebc8`). |
+| Section | Field | Description |
+|---------|-------|-------------|
+| **Sign-in** | **Name** *(required)* | Shown in comments and activity logs. |
+| | **Username** *(required)* | What the client types to sign in. Must be unique. |
+| | **Temporary password** / **Confirm password** *(required)* | Their first password. **Generate a password** makes a strong one; **Show** reveals it. The client must change it the first time they sign in. Send it to them securely. |
+| **Details** | **Email** | Used for invitations and email updates, and for `{email}` in personal watermarks. |
+| | **Company** | Used for `{company}` in personal watermarks. |
+| | **Tags** | Comma-separated, handy for searching (e.g. `agency, vip`). |
+| | **Comment colour** | Colour of this client's comments. |
+| **Access** | **Default role** | Picked for them when you invite them to a new link. |
+| | **Teams** | Add them to existing teams, or click **New team**. |
 
-Click **"Add Client"** to save. When you opened Client Access from a link, the button reads **"Add & Invite Client"** and also invites them to that link.
+Click **"Add client"** to save. **Clear form** starts over. When you add a client from a link's invite picker, the dialog is **Add & invite a client** and the button **"Add & invite client"** also invites them to that link.
 
 ### Managing Teams
 
-Teams group clients you share with together (e.g., **Agency**, **Producers**, **Reviewers**) so you can invite them all at once.
+A team is a group of clients. Invite a team to a link and everyone in it gets access in one step.
 
 **Creating a team:**
 
-1. Click **"Teams"** at the top of Client Access.
-2. Enter a **team name** and optional **description**.
-3. Check the clients who belong to the team.
-4. Click **"Create"**.
+1. Open the **Teams** tab and click **"New team"**.
+2. Enter a **Team name**, an optional **Description**, and a **Colour** for its label.
+3. Tick the **Members**.
+4. Click **"Create team"**.
 
-**Inviting a team to a link:**
+Each team shows its member count and description, with **Members**, **Edit** and **Delete**.
 
-When a link is set to **"Only invited clients & teams"**, click **"Invite clients & teams…"** and pick the team. Everyone on the team gets access to the link.
+**Inviting a team:** on an invite-only link, click **"Invite clients & teams…"**, tick the team, choose its role, and click **"Add selected to link"**.
 
-![Teams](images/manage-groups-v3.png)
+![Client Access — Teams](images/manage-groups-v4.png)
 
-> **Tip:** Use teams when you share with the same people again and again. Add a new person to the team once, and they get access to every link shared with that team.
+> **Tip:** Add a new person to a team once, and they get access to every link already shared with that team.
+
+> **Note:** To make someone the **approver** on a link, invite them directly as well; team members aren't offered as approvers.
 
 ### Editing & Deleting Clients
 
-- Click the **pencil icon** on any client to edit their name, email, company, tags, comment color, default role, or to reset their password.
-- Click the **red X** to delete a client. You'll be asked to confirm. **This cannot be undone.**
+- Click **Edit** on a client to change their details, comment colour, default role or teams. **Reset password…** sets a new temporary password when you save.
+- Click **Delete** to remove a client. You'll be asked to confirm. **This cannot be undone.**
 
 ---
 
 ## 19. Role Management
 
-Roles define what clients can do on invite-only links. Open them from **Client Access → Roles**.
+A role decides what someone can do on an invite-only link. You pick a role for each client or team when you invite them. Open **Client Access → Roles**.
 
-![Manage Roles screen](images/manage-roles-v3.png)
+![Client Access — Roles](images/manage-roles-v4.png)
 
-### System Roles
+### Built-in Roles
 
-45Flow includes three built-in roles that cannot be deleted:
+45Flow comes with three built-in roles:
 
 | Role | View | Comment | Download | Upload |
-|------|------|---------|----------|--------|
-| **Editor** | ✅ | ✅ | ✅ | ✅ |
-| **Feedback** | ✅ | ✅ | ✅ | ❌ |
-| **Viewer** | ✅ | ❌ | ❌ | ❌ |
+|------|:----:|:-------:|:--------:|:------:|
+| **editor** | ✅ | ✅ | ✅ | ✅ |
+| **feedback** | ✅ | ✅ | — | — |
+| **viewer** | ✅ | — | — | — |
+
+You can change a built-in role's permissions, but not its name, and built-in roles can't be deleted.
 
 ### Permission Definitions
 
-| Permission | What It Allows |
+| Permission | What it allows |
 |------------|----------------|
-| **View** | See files, open media, browse directory contents |
-| **Comment** | Leave timecoded comments and participate in threads |
-| **Download** | Download files to their device |
-| **Upload** | Upload files (on upload-enabled links) |
+| **View** | Open the link, browse files and play media. |
+| **Comment** | Leave timecoded comments and replies. |
+| **Download** | Download files to their device. |
+| **Upload** | Upload files on links that accept uploads. |
 
 ### Creating Custom Roles
 
-1. Enter a **Role name** (e.g., "Client", "Uploader").
-2. Check the permissions you want to grant.
-3. Click **"Create"**.
+1. Click **"New role"**.
+2. Enter a **Role name** (e.g. "Client", "Uploader").
+3. Tick the permissions to grant.
+4. Save.
 
 ### Editing & Deleting Roles
 
-- Click **Edit** on any custom role to modify its name or permissions, then click **Save**.
-- Click **Delete** to remove a custom role (only if it's not currently assigned to users).
-- System roles (Editor, Feedback, Viewer) cannot be deleted or modified.
+- Click **Edit** on a role to change its permissions (and its name, for custom roles).
+- Click **Delete** to remove a custom role. Built-in roles can't be deleted.
 
-> **Important:** Role changes apply immediately to all users assigned that role. Removing a permission instantly restricts affected users.
+> **Important:** Role changes apply immediately to everyone with that role, on every link.
 
 ---
 
@@ -2051,20 +2184,18 @@ This is useful for managing links across multiple servers from a single view.
 
 When a new version is detected:
 
-1. An **update banner** appears showing the new version number.
-2. Click **"Download"** to begin downloading the update in the background.
-3. A progress indicator shows the download status.
+1. An **Update Available** panel appears in the bottom-right corner, showing the new version number.
+2. Click **"Download Update"** to download it in the background. A progress bar shows how far it has got.
+3. Click **Dismiss** to hide the panel for now.
 
-If you're already on the latest version, you'll see a **"You're up to date"** message when the app checks for updates.
-
-> **Note:** Updates are checked automatically on launch and periodically while the app is running. No manual check is needed.
+Updates are checked automatically when the app starts and periodically while it runs. To check yourself, click **Check Now**; if you're already up to date you'll see *"You already have the latest version."*
 
 ### Downloading & Installing Updates
 
-Once the download completes, the banner changes to show an **"Install & Restart"** button:
+Once the download completes, the panel changes to **Update Ready** with a **"Restart & Install"** button:
 
-- **macOS and Windows:** Click **"Install & Restart"** to quit the app, apply the update, and relaunch automatically.
-- **AppImage (Linux):** Click **"Install & Restart"** — the AppImage self-updates in place and relaunches.
+- **macOS and Windows:** Click **"Restart & Install"** to quit the app, apply the update, and relaunch automatically.
+- **AppImage (Linux):** Click **"Restart & Install"** — the AppImage self-updates in place and relaunches.
 
 The update process is quick (typically a few seconds) and preserves all your settings and server connections.
 
@@ -2085,13 +2216,13 @@ On Linux systems using `.deb` or `.rpm` packages, automatic installation require
 
 ## 22. Activity Log
 
-The Activity Log lets you see what the app and server have been doing, spot errors, and troubleshoot. Click **"Activity Log"** at the top of the Projects screen or inside any project.
+The Activity Log lets you see what the app and server have been doing, spot errors, and troubleshoot. Click the **Activity Log** (clipboard) icon in the top bar.
 
 The Log Viewer has two tabs: **Client Logs** and **Server Logs**.
 
 > **In a browser**, the first tab is **Browser Logs** and it has a **Download** button. See [Browser Logs](#browser-logs).
 
-![Log Viewer with tabs](images/log-viewer-tabs-v3.png)
+![Log Viewer](images/log-viewer-tabs-v4.png)
 
 ### Client Logs
 
@@ -2111,29 +2242,42 @@ At the top, you'll see:
 
 ### Server Logs (Audit Log)
 
-The Server Logs tab retrieves structured audit log entries from the connected server. These entries record every significant action taken on the server — link creation, file changes, transcode operations, user actions, branding updates, license activations, and more.
+The **Server Logs** tab shows the server's audit log: every significant action, including link changes, sign-ins and denied requests, file transfers, transcodes, branding updates, license activations, email and outbound calls. You need a staff (server account) sign-in.
 
-![Server Logs tab](images/log-viewer-server-v3.png)
+![Server Logs with the audit integrity panel](images/log-viewer-server-v4.png)
 
-At the top, you'll see:
+At the top:
 
-- **Log file** — The ops.log file name on the server (e.g., `ops.log`).
-- **Directory** — The server-side log directory path (e.g., `/var/log/houston-broadcaster`).
-- **Database** — The SQLite database path where structured audit entries are stored.
-- **Entries loaded** — Total number of audit log entries in the database.
+- **Log file** — `ops.log`, in **Directory** `/var/lib/45flow/logs`.
+- **Database** — `/var/lib/45flow/studioShare.db`, where structured audit entries are kept.
+- **Entries loaded** — How many audit entries there are.
 
-Each server log entry shows:
+**Audit integrity** *(administrators)* — The audit log is tamper-evident: each entry is chained to the one before it, so changes or deletions can be detected.
+
+| Item | Meaning |
+|------|---------|
+| **Audit writes** | **OK** when entries are being saved. Write failures are reported here. |
+| **Hash chain** | **Intact** (with how many rows were checked and when), a problem, or **Not checked yet**. Click **Verify chain** to check it now. |
+| **Last review** / **Since last review** | When an administrator last reviewed the log and by whom, and how many errors and warnings have appeared since. |
+| **Retention** | How long entries are kept (365 days by default). |
+
+- **Export CSV** / **Export JSONL** download the audit log for your records or a security review.
+- **Mark reviewed…** opens a **Review note** box (what you checked, follow-ups). Click **Record review** to log that you reviewed the entries up to now.
+
+**Quick filters:** **All events**, **Alerts & warnings**, **Security changes** (weakened links, access/role/group changes, scanning turned off), **Denied & failed logins**, **Downloads & streams** and **Audit integrity**. Use **From** and **To** with **Apply** to limit the dates; **Clear** resets them.
+
+Each entry shows:
 
 | Column | Description |
 |--------|-------------|
-| **Time** | Timestamp of the server event. |
-| **Level** | Severity: INFO, WARN, or ERROR. |
-| **Action** | The audit event name (e.g., `link.files_updated`, `annotation.created`, `transcode.cancelled`). |
-| **Actor** | Username of who performed the action. |
-| **Resource** | The resource type and ID affected (e.g., `link/17`, `annotation/42`). |
-| **Details** | Expandable JSON payload with additional context. |
+| **Time** | When it happened. |
+| **Level** | INFO, WARN or ERROR. |
+| **Action** | The event name, e.g. `link.files_updated`, `auth.session.created`, `http.denied`, `egress.call`. |
+| **Actor** | Who did it. |
+| **Resource** | What it affected, e.g. `link/17`. |
+| **Details** | Click **Show detail** for the full record. |
 
-Server logs support **pagination** — use the Previous/Next buttons at the bottom to navigate through pages of results.
+Use Previous/Next at the bottom to page through results.
 
 ### Multi-Server Log Viewer
 
@@ -2149,8 +2293,6 @@ When connected to multiple servers, a **server selector dropdown** appears in th
 | **Level filter** | Show only a specific level: *All levels*, *Error*, *Warn*, *Info*, or *Debug* (client only). |
 | **Errors/warnings only** | (Client tab) Quick toggle to show only error and warning entries. |
 | **Group related events** | (Client tab) Groups similar events together to reduce visual duplication. |
-
-> **Note:** Server Logs require admin (PAM) access. If you're logged in with a non-admin account, you'll see a message indicating that admin access is required.
 
 > **Tip:** If you're experiencing connection or upload issues, check the Client Logs for `ERROR` entries. For server-side issues (transcodes failing, links not updating), check the Server Logs tab.
 
@@ -2170,15 +2312,20 @@ Open this address in your browser, using your server's name or IP address:
 https://<your-server>/app/
 ```
 
-- Your server uses a **self-signed certificate** unless you have set up a domain with Let's Encrypt, so your browser will show a warning the first time ("Your connection is not private"). Check that the address is your own server, then choose to continue. See [SSL Certificate Management](#ssl-certificate-management) to remove the warning.
+- Your server uses a **self-signed certificate** unless you have set up a domain with Let's Encrypt, so your browser will show a warning the first time ("Your connection is not private"). Check that the address is your own server, then choose to continue. See [HTTPS Certificate](#https-certificate) to remove the warning.
 - The web app is only available from **your local network or VPN**. From the internet, the address is blocked. If you are away from the office, connect to your VPN first.
 
 ### Signing In and Out
 
-1. Enter your server **Username** and **Password**, then click **"Connect to Server"**. There is no server to choose: the web app always connects to the server it was opened from.
+The sign-in card says which server you're signing in to (*"Signing in to <server>. You stay signed in until you sign out or step away for a while."*).
+
+1. Enter your server **Username** and **Password**, then click **"Sign In"**. There is no server to choose: the web app always connects to the server it was opened from.
+   - If two-step sign-in is on for your account, enter the **Authenticator code** too. **Set up two-step sign-in** under the password box starts enrollment (see [Signing In with Two-Step Sign-In](#signing-in-with-two-step-sign-in)).
 2. To leave, click **"Log Out"** on the Dashboard. This ends your session on the server straight away.
 
 Your password is never stored in the browser, and there is no "remember password" option.
+
+![Signing in to the web app](images/web-signin-v4.png)
 
 ### Staying Signed In
 
@@ -2201,14 +2348,17 @@ Your password is never stored in the browser, and there is no "remember password
 | Admin Networks | Works for administrators |
 | Server updates | Administrators are offered updates, as in the desktop app |
 | Copy link buttons | Work. If your browser does not allow copying, the app uses a fallback |
+| **Phones and tablets** | The layout adapts to small screens: buttons wrap and the server badge is hidden to save room |
 
 **Notifications.** When a tab is in the background you will not see on-screen messages. To be told when an upload finishes or fails, open **Settings → Preferences** and turn on **"Notify when uploads finish"**. Your browser will ask for permission once.
+
+![45Flow on a phone](images/web-phone-v4.png)
 
 ### What Needs the Desktop App
 
 These are not available in the browser, and the app explains this where it matters:
 
-- **Client-side video processing.** In the desktop app you can create proxy files on your own computer before uploading. In the browser the **server** prepares them after the upload instead, which can take longer for large videos. *Settings → Performance* explains this.
+- **Client-side video processing.** In the desktop app you can create proxy files on your own computer before uploading. In the browser the **server** prepares them after the upload instead, which can take longer for large videos. The sign-in screen mentions this.
 - **First-time server setup** (installing houston-broadcaster over SSH) and **desktop app updates**.
 - **Connecting to more than one server.** The web app talks only to the server it was opened from.
 - **Resuming an interrupted upload.** If a page is closed or reloaded during an upload, start it again.
@@ -2243,7 +2393,7 @@ Restart the service after changing a setting: `sudo systemctl restart houston-br
 | Browser warning about the connection | The self-signed certificate. Check the address, then continue. |
 | "The 45Flow web app is a Pro feature" | The server has no Pro license, or a trial has ended. Activate a license in the desktop app, or ask your administrator. |
 | A blocked or "403 Forbidden" page | You are not on the local network or VPN, or your network is not in the allowed list. |
-| "404 Not Found" at `/app/` | The web app package is not installed on the server, or the server's nginx has not been updated. |
+| "404 Not Found" at `/app/` | The web app package isn't installed yet. A licensed server installs it automatically (it retries every 15 minutes and needs internet access), or install the **45flow-web** package yourself. Also check the server's nginx has been updated. |
 | Sign-in fails with an error | Check the username and password. A server that has not been updated to the version with web sign-in will not accept browser sign-ins. |
 | "You were signed out after a period of inactivity" | Normal. Sign in again. |
 
@@ -2252,7 +2402,7 @@ Restart the service after changing a setting: `sudo systemctl restart houston-br
 ## 24. Frequently Asked Questions
 
 **Q: What's the difference between Community and Pro editions?**  
-A: There is only ONE 45Flow app. It works as Community Edition (free) by default, and automatically upgrades to Pro when connected to a licensed server. You don't download separate apps — Pro features simply unlock when the server has a valid license. Community includes all core file sharing, watermarking (video and image), uploads, review features, and commenting. Pro adds custom branding, advanced watermark customization (position, scale, opacity, rotation, presets), client-side comment review/export workflows, annotations, side-by-side version comparison, and priority support.
+A: There is only ONE 45Flow app. It works as Community Edition (free) by default, and automatically upgrades to Pro when connected to a licensed server. You don't download separate apps — Pro features simply unlock when the server has a valid license. Community includes all core sharing, uploads, review, comments, approvals, basic watermarks and security features. Pro adds the web app, custom branding, advanced, text and personal watermarks, upload file requirements, drawing on videos and images, resolving feedback, comment review and export, side-by-side comparison, multi-server management, No-IP, automatic app updates and priority support. See the [Feature Comparison](#feature-comparison).
 
 **Q: How do I upgrade from Community to Pro?**  
 A: Activate a license on your server. Go to **Settings → Go Pro**, enter your license key, and click **"Activate License"**. Once activated, all users connecting to that server immediately gain Pro features. You can also start a free 30-day trial from the same section.
@@ -2264,13 +2414,13 @@ A: No. Licenses are tied to the server, not individual users. Once a server is l
 A: When a trial license expires, the server reverts to Community mode. Pro features (custom branding, advanced watermarks, client-side comment review/export workflows, annotations) are disabled. All existing links remain accessible, but you can't use Pro features until a full license is activated.
 
 **Q: What happens when my full Pro license expires?**  
-A: The app enters **Pro — Legacy** mode. All the Pro features you had at the time of expiry remain fully functional — you keep what you paid for. However, automatic app updates stop, and any new Pro features or improvements released after your license expired will not be available to you. Renew your license at any time in Settings → Go Pro to unlock everything new and resume receiving updates.
+A: The app enters **Pro — Legacy** mode. All the Pro features you had at the time of expiry remain fully functional — you keep what you paid for. However, automatic app updates stop, and any new Pro features or improvements released after your license expired will not be available to you. Renew your license at any time in **Settings → Go Pro** or **Settings → Server health** to unlock everything new and resume receiving updates.
 
 **Q: What are Projects and do I need to use them?**  
 A: A project is a folder on your server for one job or production. After you sign in you land on your Projects; open one to see its links, create new links and add files. Each project keeps its own proxy files and streams in a hidden `.45flow` folder inside the project folder.
 
 **Q: How do I create a link that supports both sharing and uploading?**  
-A: Pick files under **Files to share** and also check **"Let client upload to"** with a destination folder. This creates a Combined link where recipients can view/download your shared files AND upload their own files. The summary line under **"Generate Flow link"** confirms the link type. Perfect for collaborative review workflows.
+A: Pick files under **Files to share** and also check **"Let client upload to"** with a destination folder. This creates a **Review + Upload** link where recipients can view/download your shared files AND upload their own files. The summary line under **"Generate Flow link"** confirms the link type. Perfect for collaborative review workflows.
 
 **Q: Can I watermark images, or just videos?**  
 A: Both! Watermarking for video and image files is available in both Community and Pro editions. In Community mode, watermarks are applied at a fixed bottom-right position with default settings. Pro unlocks full customization — position (9 anchor points), scale, opacity, rotation, and the ability to save/reuse watermark presets.
@@ -2279,7 +2429,7 @@ A: Both! Watermarking for video and image files is available in both Community a
 A: The `houston-broadcaster` service must be running on the server, and you must be on the same subnet. Otherwise, type the server's IP address into the **"Or enter the server address"** box on the sign-in screen.
 
 **Q: External share links aren't working. What should I check?**  
-A: Ensure port 443 (or your custom HTTPS port) is forwarded on your router. Use the **"Check Port"** button when creating a link to verify. Also confirm your external URL is correctly configured in **Settings**.
+A: Ensure port 443 (or your custom HTTPS port) is forwarded on your router. Use the **"Check Port"** button when creating a link to verify. Also check **Settings → Internet sharing**, and confirm your internet address is correctly configured in **Settings**.
 
 **Q: What file types are supported for upload?**  
 A: 45Flow supports a wide range of media file types including:
@@ -2309,19 +2459,40 @@ A: Click **"Delete"** in the link's action column. A confirmation modal shows a 
 A: When you delete a project, its links are **not deleted** unless you choose to delete them. Kept links appear in the **Links Without a Project** section below your project list. You can move them into another project later from the link edit screen.
 
 **Q: How are uploaded files scanned for security?**  
-A: All uploaded files go through a quarantine process with malware scanning before being moved to the destination folder. Files that fail the scan are rejected.
+A: When a malware scanner is installed and **Require malware scanning for uploads** is on, every uploaded file is checked with ClamAV before it reaches the destination folder. Infected files are deleted. Files over 2 GB are too large to scan fully; they're kept and reported as *not fully scanned*. See [Upload Security](#upload-security) and [Scanning & Privacy](#scanning--privacy).
 
 **Q: Where are my logs stored?**  
-A: **Client logs** are stored in your local application data directory (shown in the Log Viewer's Client tab). **Server logs** (audit entries) are stored on the server in both a SQLite database and the ops.log file. You can view both from the Log Viewer — use the Client/Server tabs to switch.
+A: **Client logs** are stored in your local application data directory (shown in the Log Viewer's Client tab). **Server logs** (audit entries) are stored on the server in `/var/lib/45flow/studioShare.db` and `/var/lib/45flow/logs/ops.log`. In a browser, **Browser Logs** are kept for the current tab only. You can view both from the Log Viewer — use the Client/Server tabs to switch.
 
 **Q: I can't see Server Logs — it says "Admin access required". What do I do?**  
-A: Server logs require a system (PAM) account login. If you logged in using an environment token or open access, you won't have admin privileges. Log in with your server's system username and password to access server logs and health stats.
+A: Server logs and server health need a staff sign-in: a server account that is a member of the staff group. Ask an administrator to add you under **Settings → Staff users**.
 
 **Q: How do I connect to multiple servers?**  
 A: 45Flow supports multiple simultaneous server connections. After connecting to your first server, use the Connection Manager (from the server switcher dropdown in the header) to add additional servers. Each server maintains its own authentication and license state.
 
+**Q: How does a client approve a version?**  
+A: Make the link **Only invited clients & teams**, invite the client **directly**, and choose them under **Who approves** in **Link Details → Edit → Access**. On the share page, the **Approval** tab then shows **Approve this version**, **Request changes** and **Reject**. Decisions show in **Link Details → Review** and the links table's **Review** column. See [Approving a Version](#approving-a-version).
+
+**Q: Why can't I choose a team member as the approver?**  
+A: Only clients invited directly to the link are offered. Invite that person directly as well as through the team, then choose them.
+
+**Q: A client forgot their password. What do I do?**  
+A: Open **Client Access**, click **Edit** on the client, click **Reset password…**, and save. Send them the new temporary password securely; they must change it the first time they sign in.
+
+**Q: Can clients download files?**  
+A: It depends on their role. **editor** can download; the built-in **feedback** and **viewer** roles can't. Change a role's permissions, or make your own, in **Client Access → Roles**. On open and password links, anyone with the link can download.
+
+**Q: How do I get emailed when a client comments, approves or downloads?**  
+A: Set up **Settings → Email (SMTP)**, then add your address under **Staff alerts** and tick the events you want. Feedback also appears in the notification bell without email.
+
+**Q: How do I turn on two-step sign-in for staff?**  
+A: Set up your own authenticator first in **Settings → Two-step sign-in → Set up my two-step sign-in**, then turn on the **Staff sign-in policy**. Other staff get 14 days to enroll. See [Two-step Sign-in](#two-step-sign-in).
+
+**Q: Video processing fails with "Permission denied". Why?**  
+A: The server software runs as its own service account and must be able to write in the project folder. This happens when a folder was created outside 45Flow (for example over SSH as `root`). Create folders with **New Folder** in 45Flow, or give the service account write access, then click **Retry** in **Link Details → Files**.
+
 **Q: Can I view annotations created by other users?**  
-A: Yes. All annotations are visible to anyone with access to the link. They appear as overlays on the video frame at the timecoded position where they were created.
+A: Yes. Drawings are visible to anyone who can see the comments on the link. They appear on the video frame (or PDF page) at the time where they were created.
 
 ---
 

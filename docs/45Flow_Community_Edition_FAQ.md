@@ -150,14 +150,14 @@ This is a safety check, and it only appears the first time. It's making sure you
 
 ### What is the "Set up 45Flow" window?
 
-On a brand-new server, 45Flow walks you through a short setup. Only the first step is required. You can skip the rest and come back later in **Settings**.
+On a brand-new server, 45Flow walks you through four quick steps. Only the first and last are required. You can skip the middle two and come back later in **Settings**.
 
 1. **Storage** (required): pick the main folder on your server where all your 45Flow work will live. Choose your big storage drive, not the system drive.
-2. **Staff users**: pick which server accounts are allowed to run 45Flow. You can skip this.
-3. **Sharing**: how links will reach people. You can skip this for now (see [Section 10](#10-sharing-outside-your-office-over-the-internet)).
-4. **Upload security**: 45Flow can scan files clients upload for viruses. Click to install the scanner if it offers. Recommended.
-5. **Watermarks**: an optional shared folder for your watermark images.
-6. **First project**: give your first job a name and a folder. You can also do this later.
+2. **Staff users**: pick which server accounts are allowed to run 45Flow.
+3. **Sharing settings**: the web address links use outside your office. Click **Skip for now** if you only share inside the office.
+4. **Projects** (required): give your first job a name and a folder, then click **Finish setup**.
+
+Virus scanning for uploads is in **Settings → Upload security**. It's on when a scanner is installed; install one there if it isn't.
 
 > Choosing the storage folder restarts the server software. Keep the window open, and it will reconnect by itself.
 
@@ -185,6 +185,10 @@ In Community Edition you work with **one server at a time**. To switch, click **
 
 > **⭐ Pro:** Pro lets you stay connected to several servers at once and switch between them from the top of the screen, or see all their links in one list.
 
+### Can staff use two-step sign-in?
+
+Yes, on every server. In **Settings → Two-step sign-in**, click **Set up my two-step sign-in**, re-enter your password, get approval from another administrator (or a code issued on the server), then scan the QR code with an authenticator app on your phone. Save your recovery codes. Then turn on **Staff sign-in policy** to require it for all staff; they get 14 days to set up. Clients never need it.
+
 ### How do I sign out?
 
 Click **Log Out** at the top of the screen.
@@ -197,7 +201,7 @@ Click **Log Out** at the top of the screen.
 
 A project is a folder on your server for one job, like "Acme spring ad" or "Smith wedding". All the links for that job stay together inside it. After you sign in, you always land on your list of projects.
 
-![Your list of projects](images/projects-list-v3.png)
+![Your list of projects](images/projects-list-v4.png)
 
 ### How do I make a project?
 
@@ -209,7 +213,7 @@ A project is a folder on your server for one job, like "Acme spring ad" or "Smit
 
 The project opens right away.
 
-![Making a new project](images/project-create-modal-v3.png)
+![Making a new project](images/project-create-modal-v4.png)
 
 > **Watch for warnings.** If 45Flow shows a yellow or red warning about space while you pick a folder, choose a folder on a bigger drive. Videos fill up space fast.
 
@@ -222,7 +226,7 @@ Two big buttons, and your list of links:
 | **Create Link** | Make a link to send files to someone, get files from them, or both. |
 | **Add Files** | Copy files from your computer into this project on the server. |
 
-![Inside a project](images/dashboard-action-buttons-v3.png)
+![Inside a project](images/dashboard-action-buttons-v4.png)
 
 ### I'm done with a job. Should I delete the project?
 
@@ -283,7 +287,7 @@ The link is **copied for you**. Paste it into an email or chat. Done.
 5. Click **Generate Flow link**.
 6. Click **Copy** and send the link to your client.
 
-![Picking files to share](images/share-select-files-v3.png)
+![Picking files to share](images/share-select-files-v4.png)
 
 ![Your link is ready](images/share-link-generated-v3.png)
 
@@ -297,16 +301,16 @@ You choose one of three options:
 | **Anyone with the link + password** | A bit more private. Send the password separately. |
 | **Only invited clients & teams** | The most private. Each person signs in with their own login. See [Section 11](#11-clients-teams-and-what-they-can-do). |
 
-![Who can open the link](images/share-access-modes-v3.png)
+![Who can open the link](images/share-access-modes-v4.png)
 
 ### How long does a link last?
 
 You set it under **Expires in**. Pick **1 hour**, **1 day**, **1 week**, **Never**, or type your own. When it expires, the link simply stops working. You can extend it later.
 
-### What's "Share Externally" vs "Share Locally"?
+### What's "Internet" vs "Local Network only"?
 
-- **Share Locally (Over LAN)**: only works for people in your office or on your VPN. Nothing extra to set up.
-- **Share Externally (Over Internet)**: works for anyone, anywhere. Needs a one-time setup first. See [Section 10](#10-sharing-outside-your-office-over-the-internet).
+- **Local Network only**: only works for people in your office or on your VPN. Nothing extra to set up.
+- **Internet (outside your network)**: works for anyone, anywhere. Needs a one-time setup first. See [Section 10](#10-sharing-outside-your-office-over-the-internet).
 
 ### Can I email the link straight from 45Flow?
 
@@ -337,7 +341,7 @@ Almost anything. Videos (MP4, MOV, MKV and many more), pictures, audio, PDFs, Wo
 
 Your client opens the link and drags in their files. They land in the folder you chose.
 
-![The page your client sees for uploading](images/upload-link-external-view-v3.png)
+![The page your client sees for uploading](images/upload-link-external-view-v4.png)
 
 ### Can one link do both: send files and get files back?
 
@@ -366,11 +370,11 @@ Yes, once. Sharing inside your office works straight away. To reach people outsi
 
 Every router looks different. If you're stuck, your internet provider can help.
 
-![Port forwarding help in the app](images/port-forwarding-help-v3.png)
+![Port forwarding help in the app](images/port-forwarding-help-v4.png)
 
 ### How do I know it worked?
 
-When you create a link with **Share Externally** selected, click **Check port**. Green means you're good. Red means the router isn't passing traffic through yet.
+When you create a link with **Internet (outside your network)** selected, click **Check Port**. Green means you're good. Red means the router isn't passing traffic through yet.
 
 ### Do I need a web address like share.mycompany.com?
 
@@ -406,7 +410,7 @@ Only if you use **Only invited clients & teams** links. For the other two link t
 
 Send them their username and password privately.
 
-![Client Access](images/manage-users-v3.png)
+![Client Access](images/manage-users-v4.png)
 
 ### What are teams?
 
@@ -419,10 +423,10 @@ With **roles**. Every invited person has one:
 | Role | View | Comment | Download | Upload |
 |---|:-:|:-:|:-:|:-:|
 | **Editor** | ✅ | ✅ | ✅ | ✅ |
-| **Feedback** | ✅ | ✅ | ✅ | ❌ |
+| **Feedback** | ✅ | ✅ | ❌ | ❌ |
 | **Viewer** | ✅ | ❌ | ❌ | ❌ |
 
-You can make your own roles in **Client Access → Roles**.
+You can change what each role allows, or make your own, in **Client Access → Roles**.
 
 ---
 
@@ -440,21 +444,27 @@ It opens in their web browser. No app, no account (unless you chose invite-only)
 
 Yes. Videos play right in the browser, with play, pause, volume, full screen and speed controls. They can pick the quality, or let it adjust to their internet speed.
 
-![The video player](images/video-player-v3.png)
+![The video player](images/video-player-v4.png)
 
 ### Can clients leave comments?
 
 Yes, if comments are on for that link. They pause the video, type a note and send it. The comment is pinned to that exact moment. Click any comment's time to jump to that point. Anyone can reply to a comment, and comments can be sorted into **categories** like "Audio" or "Colour".
 
-![Comments beside the video](images/video-player-comments-v3.png)
+![Comments beside the video](images/video-player-comments-v4.png)
 
 > **⭐ Pro:** With Pro, reviewers can **draw** on the video frame (circles, arrows, boxes) to point at exactly what they mean, and your team can mark feedback as **resolved**.
+
+### Can my client approve a version?
+
+Yes. On an **Only invited clients & teams** link, pick one invited person as the approver: open the link's **Details → Edit → Access** and choose them under **Who approves**. (Invite them directly, not only through a team.) On the share page they get an **Approval** tab with **Approve this version**, **Request changes** and **Reject**. You see the result in the link's **Review** tab and in the **Review** column of your links list.
+
+![Approving a version](images/review-approval-panel-v4.png)
 
 ### If I update a file, do old comments get lost?
 
 No. 45Flow keeps versions. Comments are tagged with the version they were made on, and notes from older versions show up under **Previous Version Notes**.
 
-> **⭐ Pro:** Pro adds **Compare versions**, so you and your client can view two versions side by side, with one play button for both.
+> **⭐ Pro:** Pro adds **Compare versions**, so you and your client can view two versions side by side and play them in sync.
 
 ---
 
@@ -462,9 +472,9 @@ No. 45Flow keeps versions. Comments are tagged with the version they were made o
 
 ### Where are all my links?
 
-Inside each project, below the big buttons. You can search, and filter by type (Share, Upload, Combined) or status (Active, Expired, Disabled).
+Inside each project, below the big buttons. You can search, and filter by type (Review, Upload, Review + Upload) or status (Active, Expired, Disabled).
 
-![Your list of links](images/manage-links-table-v3.png)
+![Your list of links](images/manage-links-table-v4.png)
 
 ### How do I see who opened my link?
 
@@ -502,8 +512,9 @@ Click **Settings** at the top of the screen. Most people only ever need these:
 | **Internet sharing** | A green / yellow / red check that internet links will work. |
 | **HTTPS certificate** | Get a free trusted certificate so clients don't see browser warnings. |
 | **Preferences** | 12- or 24-hour time, which links you see first, and which notifications you get. |
+| **Two-step sign-in** | Require an authenticator code for staff sign-ins. |
 | **Video processing** | Let your own computer prepare videos (faster on a good graphics card). |
-| **Server health** | How busy the server is and how full the storage is. |
+| **Server health** | How busy the server is, and its license status. |
 | **Email (SMTP)** | Lets 45Flow send link emails (admins only). |
 | **Help & tours** | Open the full user guide, or turn the on-screen tips on or off. |
 | **Go Pro** | Start a free 30-day Pro trial or enter a license key. |

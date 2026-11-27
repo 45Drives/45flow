@@ -96,6 +96,8 @@ The top of the app shows which one you're on: **Community Edition**, **Pro Editi
 | Projects, clients, teams and roles | ✅ | ✅ |
 | Video playback in the browser with proxy files | ✅ | ✅ |
 | Comments pinned to a moment in the video, with replies and categories | ✅ | ✅ |
+| Approve / request changes / reject a version | ✅ | ✅ |
+| Two-step sign-in for staff | ✅ | ✅ |
 | Basic watermark (image, bottom-right corner) | ✅ | ✅ |
 | Virus scanning of uploads | ✅ | ✅ |
 | Emailing links, activity history, server health | ✅ | ✅ |
@@ -103,7 +105,7 @@ The top of the app shows which one you're on: **Community Edition**, **Pro Editi
 | **Your logo, colours and company name on client pages** | ❌ | ✅ |
 | **Watermark anywhere, any size, text watermarks, presets** | ❌ | ✅ |
 | **Personal watermarked copies for each person** | ❌ | ✅ |
-| **Drawing on video frames** | ❌ | ✅ |
+| **Drawing on video frames and images** (PDF pages work on both) | ❌ | ✅ |
 | **Comment review panel, resolving and exporting** | ❌ | ✅ |
 | **Compare two versions side by side** | ❌ | ✅ |
 | **Upload rules (file type, resolution and so on)** | ❌ | ✅ |
@@ -191,14 +193,14 @@ This is a safety check that appears the first time. It's making sure you're talk
 
 ### What is the "Set up 45Flow" window?
 
-On a brand-new server, 45Flow walks you through a short setup. Only the first step is required. You can skip the rest and come back later in **Settings**.
+On a brand-new server, 45Flow walks you through four quick steps. Only the first and last are required. You can skip the middle two and come back later in **Settings**.
 
 1. **Storage** (required): pick the main folder on your server where all your 45Flow work will live. Choose your big storage drive, not the system drive.
 2. **Staff users**: pick which server accounts are allowed to run 45Flow.
-3. **Sharing**: how links will reach people (see [Section 11](#11-sharing-outside-your-office-over-the-internet)).
-4. **Upload security**: install the virus scanner for client uploads. Recommended.
-5. **Watermarks**: an optional shared folder for your watermark images.
-6. **First project**: give your first job a name and a folder.
+3. **Sharing settings**: the web address links use outside your office. Click **Skip for now** if you only share inside the office.
+4. **Projects** (required): give your first job a name and a folder, then click **Finish setup**.
+
+Virus scanning for uploads is in **Settings → Upload security**. It's on when a scanner is installed; install one there if it isn't.
 
 > Choosing the storage folder restarts the server software. Keep the window open, and it will reconnect by itself.
 
@@ -237,7 +239,7 @@ You don't lose what you paid for. The app switches to **Pro — Legacy**:
 
 - Every Pro feature you had **keeps working**.
 - **Automatic updates stop**, and you won't get Pro features released after that date.
-- Enter a new key in **Settings → Go Pro** any time to get everything back up to date.
+- Enter a renewed key in **Settings → Go Pro** or **Settings → Server health** any time to get everything back up to date.
 
 ### Do I need a license for every person?
 
@@ -297,6 +299,10 @@ Almost everything works the same: projects, links, uploads, QuickShare drag-and-
 
 > **Tip:** Want to know when a browser upload finishes while you're in another tab? Turn on **Notify when uploads finish** in **Settings → Preferences**.
 
+### Can staff use two-step sign-in?
+
+Yes, on every server. In **Settings → Two-step sign-in**, click **Set up my two-step sign-in**, re-enter your password, get approval from another administrator (or a code issued on the server), then scan the QR code with an authenticator app on your phone. Save your recovery codes. Then turn on **Staff sign-in policy** to require it for all staff; they get 14 days to set up. Clients never need it.
+
 ### How do I sign out?
 
 Click **Log Out** at the top of the screen.
@@ -309,7 +315,7 @@ Click **Log Out** at the top of the screen.
 
 A project is a folder on your server for one job, like "Acme spring ad" or "Smith wedding". All the links for that job stay together inside it. After you sign in, you always land on your list of projects.
 
-![Your list of projects](images/projects-list-v3.png)
+![Your list of projects](images/projects-list-v4.png)
 
 ### How do I make a project?
 
@@ -319,7 +325,7 @@ A project is a folder on your server for one job, like "Acme spring ad" or "Smit
 4. Add **Notes** if you like.
 5. Click **Create Project**.
 
-![Making a new project](images/project-create-modal-v3.png)
+![Making a new project](images/project-create-modal-v4.png)
 
 > **Watch for warnings.** If 45Flow shows a yellow or red warning about space, choose a folder on a bigger drive. Videos fill up space fast.
 
@@ -332,7 +338,7 @@ A project is a folder on your server for one job, like "Acme spring ad" or "Smit
 
 Below them is the list of this project's links.
 
-![Inside a project](images/dashboard-action-buttons-v3.png)
+![Inside a project](images/dashboard-action-buttons-v4.png)
 
 ### I'm done with a job. Should I delete the project?
 
@@ -389,7 +395,7 @@ The link is **copied for you**. Paste it into an email or chat.
 5. Click **Generate Flow link**.
 6. Click **Copy** and send the link.
 
-![Picking files to share](images/share-select-files-v3.png)
+![Picking files to share](images/share-select-files-v4.png)
 
 ![Your link is ready](images/share-link-generated-v3.png)
 
@@ -401,16 +407,16 @@ The link is **copied for you**. Paste it into an email or chat.
 | **Anyone with the link + password** | A bit more private. Send the password separately. |
 | **Only invited clients & teams** | The most private. Each person signs in with their own login. Needed for personal watermarked copies. |
 
-![Who can open the link](images/share-access-modes-v3.png)
+![Who can open the link](images/share-access-modes-v4.png)
 
 ### How long does a link last?
 
 You set it under **Expires in**: **1 hour**, **1 day**, **1 week**, **Never**, or your own. Expired links simply stop working. You can extend them later.
 
-### What's "Share Externally" vs "Share Locally"?
+### What's "Internet" vs "Local Network only"?
 
-- **Share Locally (Over LAN)**: only for people in your office or on your VPN.
-- **Share Externally (Over Internet)**: for anyone, anywhere. Needs a one-time setup ([Section 11](#11-sharing-outside-your-office-over-the-internet)).
+- **Local Network only**: only for people in your office or on your VPN.
+- **Internet (outside your network)**: for anyone, anywhere. Needs a one-time setup ([Section 11](#11-sharing-outside-your-office-over-the-internet)).
 
 ### Can I email the link straight from 45Flow?
 
@@ -435,7 +441,7 @@ Almost anything: videos, pictures, audio, PDFs, Word documents and spreadsheets.
 3. Tick **Let client upload to** and pick the folder their files should go to.
 4. Click **Generate Flow link** and send it.
 
-![The page your client sees for uploading](images/upload-link-external-view-v3.png)
+![The page your client sees for uploading](images/upload-link-external-view-v4.png)
 
 ### Can one link do both: send files and get files back?
 
@@ -464,11 +470,11 @@ Yes, once. Your router needs to let people outside through to your server. This 
 3. Add a rule: port **443**, protocol **TCP**, sent to your **server's address**.
 4. Save.
 
-![Port forwarding help in the app](images/port-forwarding-help-v3.png)
+![Port forwarding help in the app](images/port-forwarding-help-v4.png)
 
 ### How do I know it worked?
 
-When you create a link with **Share Externally** selected, click **Check port**. Green is good. Red means the router isn't passing traffic through yet.
+When you create a link with **Internet (outside your network)** selected, click **Check Port**. Green is good. Red means the router isn't passing traffic through yet.
 
 ### Do I need a web address like share.mycompany.com?
 
@@ -512,7 +518,7 @@ Only for **Only invited clients & teams** links.
 4. Add their **email** and **company**. With Pro, these can appear in personal watermarks.
 5. Click **Add Client**.
 
-![Client Access](images/manage-users-v3.png)
+![Client Access](images/manage-users-v4.png)
 
 ### What are teams?
 
@@ -525,10 +531,10 @@ With **roles**:
 | Role | View | Comment | Download | Upload |
 |---|:-:|:-:|:-:|:-:|
 | **Editor** | ✅ | ✅ | ✅ | ✅ |
-| **Feedback** | ✅ | ✅ | ✅ | ❌ |
+| **Feedback** | ✅ | ✅ | ❌ | ❌ |
 | **Viewer** | ✅ | ❌ | ❌ | ❌ |
 
-You can make your own roles in **Client Access → Roles**.
+You can change what each role allows, or make your own, in **Client Access → Roles**.
 
 ---
 
@@ -546,23 +552,29 @@ It opens in their web browser. With Pro, it shows **your** logo and colours (see
 
 Yes, right in the browser, with all the usual controls. They can pick the quality or let it adjust to their internet speed.
 
-![The video player](images/video-player-v3.png)
+![The video player](images/video-player-v4.png)
 
 ### How do clients leave comments?
 
 If comments are on for the link, they pause the video, type a note and send it. The note is pinned to that exact moment. Anyone can reply, and notes can be sorted into **categories** like "Audio" or "Colour".
 
-![Comments beside the video](images/video-player-comments-v3.png)
+![Comments beside the video](images/video-player-comments-v4.png)
 
 ### ⭐ Can clients draw on the video?
 
 Yes. When writing a comment, they click the **draw** tool, then draw freehand, boxes, circles or arrows in any colour. The drawing is saved with the comment and shows up on the frame when anyone clicks it.
 
-![Drawing tools](images/annotation-tools-v3.png)
+![Drawing tools](images/annotation-tools-v4.png)
 
 ### ⭐ Can my team mark feedback as done?
 
 Yes. Your staff can **resolve** a comment on the share page once it's dealt with, or **reopen** it. The person who wrote it can reopen their own comment too.
+
+### Can my client approve a version?
+
+Yes. On an **Only invited clients & teams** link, pick one invited person as the approver: open the link's **Details → Edit → Access** and choose them under **Who approves**. (Invite them directly, not only through a team.) On the share page they get an **Approval** tab with **Approve this version**, **Request changes** and **Reject**. You see the result in the link's **Review** tab and in the **Review** column of your links list.
+
+![Approving a version](images/review-approval-panel-v4.png)
 
 ### If I update a file, do old comments get lost?
 
@@ -574,9 +586,9 @@ No. Comments are tagged with the version they were made on. Notes from older ver
 
 ### Where are all my links?
 
-Inside each project, below the big buttons. Search, or filter by type (Share, Upload, Combined) or status (Active, Expired, Disabled).
+Inside each project, below the big buttons. Search, or filter by type (Review, Upload, Review + Upload) or status (Active, Expired, Disabled).
 
-![Your list of links](images/manage-links-table-v3.png)
+![Your list of links](images/manage-links-table-v4.png)
 
 ### How do I see who opened my link?
 
@@ -606,19 +618,18 @@ Every page your clients see: the share page, the video player, the upload page a
 ### How do I set it up?
 
 1. Go to **Settings → Branding**.
-2. Turn on **Enable custom branding**.
-3. Type your **Company name**.
-4. Pick a **theme**, or choose **Custom** and pick your two brand colours.
-5. Upload your **logo** (PNG, JPEG, SVG or WebP, up to 2 MB). If your logo doesn't show up well on both light and dark backgrounds, turn on **split logos** and upload one of each.
-6. *(Optional)* Add a **Support email** and **Support URL** so clients know who to contact.
-7. *(Optional)* Set the **Link preview title** and **description**. This is what shows when someone pastes your link into Slack, Teams or a text message.
-8. Check the **live preview**, then click **Save**.
+2. Turn on **Enable custom branding**. The settings are on four tabs, with a live preview at the top.
+3. **Identity** tab: type your **Company name** and upload your **Logo** (PNG, JPEG, SVG or WebP, up to 2 MB). If it doesn't show up well on dark pages, turn on **Use a separate logo for dark backgrounds** and upload a second one. Add a **Favicon** for the browser tab, a **Support email** and **Support URL**, and the **Preview title** and **description** people see when your link is pasted into Slack, Teams or a text message.
+4. **Look** tab: pick a **Recipient theme**, or choose **Custom (your brand colors)** and pick your two brand colours. You can also lock light or dark mode, and change the font, corner style, button style, logo size and background.
+5. **Page content** tab *(optional)*: add a **Welcome message**, **Footer text**, and links to your privacy policy and terms of use.
+6. **Custom CSS** tab *(optional)*: for anything else, if you or your web person know CSS.
+7. Click **Save changes**.
 
-![Branding settings](images/settings-branding-v3.png)
+![Branding settings](images/settings-branding-v4.png)
 
 ### Can I go back to the normal look?
 
-Yes. Click **Clear branding** at the bottom, or just turn the switch off.
+Yes. Click **Clear custom branding** at the bottom, or just turn the switch off and save.
 
 ---
 
@@ -644,7 +655,7 @@ Yes. Click **Clear branding** at the bottom, or just turn the switch off.
 
 You can also set a default watermark for every new link in **Settings → New link defaults**.
 
-![Pro watermark controls](images/watermark-pro-advanced-v3.png)
+![Pro watermark controls](images/watermark-pro-advanced-v4.png)
 
 ### What are personal watermarked copies?
 
@@ -664,7 +675,7 @@ Each person only ever sees their own copy.
 
 Open the link's **Details** and click **Comments** at the top.
 
-![Comment review panel](images/comments-review-modal-v3.png)
+![Comment review panel](images/comments-review-modal-v4.png)
 
 ### What can I do in there?
 
@@ -698,7 +709,7 @@ Click **Export…**, choose all files or one file, pick a format, and click **Ex
 3. Click **Compare with…** on one version, then choose the other.
 4. Click **Open comparison**.
 
-The two versions open side by side in your browser. For videos, one play button controls both. You choose which side's sound you hear.
+The two versions open side by side in your browser. For videos, click **Sync A & B** to play them together (or **Line up at A** to match their times). You choose which side's sound you hear.
 
 ### Can my client compare too?
 
@@ -723,13 +734,16 @@ Rules that check what a client sends you, so you don't get the wrong format by m
 ### How do I set them up?
 
 1. When making a link, tick **Let client upload to**.
-2. In **File requirements**, turn on **Check uploads against file requirements**.
-3. Pick what's allowed: **File type**, **Video codec**, **Resolution**, **Frame rate**, and the **shortest** and **longest** length.
-4. Under **When a file doesn't match**, choose:
+2. In **File requirements**, turn on **Check uploads against file requirements**, then click **Edit requirements…**.
+3. Under **When a file doesn't match**, choose:
    - **Reject it and tell the uploader why**, or
    - **Accept it, but flag it** (so you can check it later).
+4. Tick what's allowed: **File type**, **Video codec**, **Resolution**, **Frame rate**, **Aspect ratio**, **Audio** channels, and the **Length**. Rows with nothing ticked aren't checked.
+5. Click **Done**. A summary of your rules appears.
 
-You can change the rules later in the link's **Details → Edit**.
+![File requirements](images/upload-spec-editor-v4.png)
+
+Your client sees the rules on the upload page before they send anything. You can change the rules later in the link's **Details → Edit → Uploads**.
 
 ---
 
@@ -763,10 +777,11 @@ Click **Settings** at the top of the screen.
 | **HTTPS certificate** | A free trusted certificate, so nobody sees browser warnings. |
 | **Branding** ⭐ | Your logo, colours and company name. |
 | **Preferences** | Time format, which links you see first, notifications. |
+| **Two-step sign-in** | Require an authenticator code for staff sign-ins. |
 | **Video processing** | Let your own computer prepare videos (desktop app only). |
-| **Server health** | How busy the server is and how full the storage is. |
+| **Server health** | How busy the server is, and its license status (enter a renewed key here if your license expired). |
 | **Email (SMTP)** | Lets 45Flow send link emails (admins only). |
-| **Go Pro** | Your license, trial days left, or where to enter a new key. |
+| **Go Pro** | Start a trial or enter a license key (unlicensed and trial servers). |
 | **Help & tours** | Open the full user guide, or turn the on-screen tips on or off. |
 
 Click **Save** after changing anything. New settings apply to **new** links, not ones you've already made.
