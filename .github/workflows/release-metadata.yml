@@ -1,0 +1,114 @@
+name: Release metadata
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish-release-metadata:
+    name: Sign Linux assets and publish release metadata
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb # v3.8.2
+        with:
+          cosign-release: v2.4.3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+
+      - name: Install locked dependencies
+        run: |
+          corepack enable
+          yarn install --immutable --mode=skip-build
+
+      - name: Generate CycloneDX dependency SBOM
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          SBOM_PATH="$RUNNER_TEMP/45flow-${VERSION}-dependencies.cdx.json"
+          env -u COPILOT_AGENT_SESSION_ID npx --yes --package=@cdxgen/cdxgen@13.8.0 cdxgen \
+            --type js \
+            --no-recurse \
+            --output "$SBOM_PATH" \
+            "$GITHUB_WORKSPACE"
+          test -s "$SBOM_PATH"
+          echo "SBOM_PATH=$SBOM_PATH" >> "$GITHUB_ENV"
+          echo "SBOM_NAME=$(basename "$SBOM_PATH")" >> "$GITHUB_ENV"
+
+      - name: Publish SBOM and asset checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="$GITHUB_REF_NAME"
+          RELEASE_DIR="$RUNNER_TEMP/release-assets"
+          mkdir -p "$RELEASE_DIR"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir "$RELEASE_DIR"
+
+          required_patterns=(
+            "$RELEASE_DIR/45Flow-*-linux-*.deb"
+            "$RELEASE_DIR/45Flow-*-linux-*.rpm"
+            "$RELEASE_DIR/45Flow-*-linux-*.AppImage"
+          )
+          for pattern in "${required_patterns[@]}"; do
+            if ! compgen -G "$pattern" >/dev/null; then
+              echo "Missing required Linux release asset matching $pattern." >&2
+              exit 1
+            fi
+          done
+
+          shopt -s nullglob
+          LINUX_ASSETS=(
+            "$RELEASE_DIR"/45Flow-*-linux-*.deb
+            "$RELEASE_DIR"/45Flow-*-linux-*.rpm
+            "$RELEASE_DIR"/45Flow-*-linux-*.AppImage
+          )
+          shopt -u nullglob
+          CERTIFICATE_IDENTITY="https://github.com/${GITHUB_WORKFLOW_REF}"
+          SIGNATURE_BUNDLES=()
+          for asset in "${LINUX_ASSETS[@]}"; do
+            bundle="${asset}.sigstore.json"
+            rm -f -- "$bundle"
+            cosign sign-blob --yes --bundle "$bundle" "$asset"
+            cosign verify-blob \
+              --bundle "$bundle" \
+              --certificate-identity "$CERTIFICATE_IDENTITY" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              "$asset"
+            SIGNATURE_BUNDLES+=("$bundle")
+          done
+
+          cp "$SBOM_PATH" "$RELEASE_DIR/$SBOM_NAME"
+
+          (
+            cd "$RELEASE_DIR"
+            mapfile -d '' -t ASSETS < <(
+              find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\0' | LC_ALL=C sort -z
+            )
+            if [[ "${#ASSETS[@]}" -eq 0 ]]; then
+              echo "No release assets found for checksum generation." >&2
+              exit 1
+            fi
+            sha256sum "${ASSETS[@]}" > SHA256SUMS
+            sha256sum -c SHA256SUMS
+          )
+
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            "$RELEASE_DIR/$SBOM_NAME" "$RELEASE_DIR/SHA256SUMS" "${SIGNATURE_BUNDLES[@]}"
+          RELEASE_ASSETS="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+          grep -Fx "$SBOM_NAME" <<< "$RELEASE_ASSETS"
+          grep -Fx SHA256SUMS <<< "$RELEASE_ASSETS"
+          for bundle in "${SIGNATURE_BUNDLES[@]}"; do
+            grep -Fx "$(basename "$bundle")" <<< "$RELEASE_ASSETS"
+          done
