@@ -1563,7 +1563,7 @@ const setupSection = computed(() => setupSections.some(item => item.key === acti
 const contentRef = ref<HTMLElement | null>(null);
 watch(activeSection, () => { contentRef.value?.scrollTo?.({ top: 0 }); void egress.load() }, { immediate: true });
 
-const showUpgrade = computed(() => !isPremiumActive.value || isTrial.value);
+const showUpgrade = computed(() => !isPremiumActive.value || isTrial.value || isFallback.value);
 
 const navGroups = computed(() => {
     const item = (key: Section) => ({ key, label: SECTION_META[key].label, icon: SECTION_META[key].icon });
